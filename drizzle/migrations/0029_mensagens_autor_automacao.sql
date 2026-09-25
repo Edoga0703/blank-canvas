@@ -1,0 +1,2 @@
+ALTER TABLE public.mensagens DROP CONSTRAINT IF EXISTS mensagens_autor_check;
+ALTER TABLE public.mensagens ADD CONSTRAINT mensagens_autor_check CHECK (autor = ANY (ARRAY['ia'::text, 'humano'::text, 'contato'::text, 'automacao'::text]));

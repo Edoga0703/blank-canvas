@@ -1,0 +1,1 @@
+UPDATE public.plugin SET status = 'ativo', descricao = 'Envie eventos do atendimento (mensagens, lead criado, venda ganha, lead perdido, CSAT respondido) para Zapier, Make, n8n ou seu próprio servidor, com assinatura de segurança.' WHERE slug = 'webhooks-out';

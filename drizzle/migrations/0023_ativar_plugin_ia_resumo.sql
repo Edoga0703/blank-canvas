@@ -1,0 +1,1 @@
+UPDATE public.plugin SET status = 'ativo', descricao = 'Resume qualquer conversa com IA em um clique: o que o cliente quer, pendências e o próximo passo sugerido. Botão de resumo no topo de cada conversa.' WHERE slug = 'ia-resumo';

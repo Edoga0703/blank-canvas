@@ -1,0 +1,2 @@
+UPDATE public.company SET status_cobranca = 'ativo' WHERE id = '45a25827-220b-4105-a1fc-b6c1ab5b6108';
+UPDATE public.subscription SET status = 'active', canceled_at = NULL WHERE company_id = '45a25827-220b-4105-a1fc-b6c1ab5b6108';

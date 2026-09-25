@@ -1,0 +1,1 @@
+UPDATE public.plugin SET status = 'ativo', descricao = 'Exporte os contatos da empresa para uma planilha nova do Google Sheets com um clique. Cada atendente conecta a própria conta do Google.' WHERE slug = 'google-sheets';

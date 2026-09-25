@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "sdk_version": "0.28.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://sjvqsukwyxxkuxxaqogs.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "atendzap-mcp",
+      "version": "0.1.0",
+      "title": "AtendZap"
+    },
+    "tools": [
+      {
+        "name": "list_leads",
+        "title": "Listar leads (CRM)",
+        "description": "Lista os cards do CRM do usuário autenticado, com nome, telefone, valor e estágio.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "description": "Quantidade máxima (padrão 20).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "stage_id": {
+              "description": "Filtrar por estágio específico.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_recent_conversations",
+        "title": "Conversas recentes",
+        "description": "Lista as últimas conversas do WhatsApp por número, com a mensagem mais recente.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "description": "Quantidade máxima (padrão 15).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "send_whatsapp_message",
+        "title": "Enviar mensagem WhatsApp",
+        "description": "Envia uma mensagem de texto pelo WhatsApp através da instância conectada da empresa do usuário.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "numero": {
+              "type": "string",
+              "minLength": 8,
+              "description": "Número do destinatário com DDI+DDD, ex: 5511999999999."
+            },
+            "texto": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000,
+              "description": "Texto da mensagem."
+            }
+          },
+          "required": [
+            "numero",
+            "texto"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+# Metrix CRM
+
+> IA que atende seu WhatsApp 24/7 e organiza leads em um CRM Kanban automaticamente.
+
+Metrix CRM conecta seu número de WhatsApp, deixa uma IA responder e qualificar cada lead em segundos, e move os cards no funil Kanban sem esforço manual. Foco em times de vendas que querem parar de perder oportunidade por demora de atendimento.
+
+## Pages
+
+- [Home](/): visão geral, como funciona, planos e demonstração.
+- [Termos e Condições](/termos): termos de uso do serviço.
+- [Política de Privacidade](/privacidade): tratamento de dados (LGPD).
+- [Política de Reembolso](/reembolso): garantia de 30 dias.

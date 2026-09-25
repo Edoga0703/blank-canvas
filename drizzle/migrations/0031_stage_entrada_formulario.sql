@@ -1,0 +1,1 @@
+ALTER TABLE public.crm_stage ADD COLUMN IF NOT EXISTS entrada_formulario boolean NOT NULL DEFAULT false;

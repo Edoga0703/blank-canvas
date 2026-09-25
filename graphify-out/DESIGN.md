@@ -1,0 +1,335 @@
+# Design system
+
+Generated: 2026-09-08T18:54:12.877665+00:00
+
+## Tokens
+- --radius-sm: calc(var(--radius) - 4px) (src/styles.css)
+- --radius-md: calc(var(--radius) - 2px) (src/styles.css)
+- --radius-lg: var(--radius) (src/styles.css)
+- --radius-xl: calc(var(--radius) + 4px) (src/styles.css)
+- --radius-2xl: calc(var(--radius) + 8px) (src/styles.css)
+- --radius-3xl: calc(var(--radius) + 12px) (src/styles.css)
+- --radius-4xl: calc(var(--radius) + 16px) (src/styles.css)
+- --color-background: var(--background) (src/styles.css)
+- --color-foreground: var(--foreground) (src/styles.css)
+- --color-card: var(--card) (src/styles.css)
+- --color-card-foreground: var(--card-foreground) (src/styles.css)
+- --color-popover: var(--popover) (src/styles.css)
+- --color-popover-foreground: var(--popover-foreground) (src/styles.css)
+- --color-primary: var(--primary) (src/styles.css)
+- --color-primary-foreground: var(--primary-foreground) (src/styles.css)
+- --color-secondary: var(--secondary) (src/styles.css)
+- --color-secondary-foreground: var(--secondary-foreground) (src/styles.css)
+- --color-muted: var(--muted) (src/styles.css)
+- --color-muted-foreground: var(--muted-foreground) (src/styles.css)
+- --color-accent: var(--accent) (src/styles.css)
+- --color-accent-foreground: var(--accent-foreground) (src/styles.css)
+- --color-destructive: var(--destructive) (src/styles.css)
+- --color-destructive-foreground: var(--destructive-foreground) (src/styles.css)
+- --color-border: var(--border) (src/styles.css)
+- --color-input: var(--input) (src/styles.css)
+- --color-ring: var(--ring) (src/styles.css)
+- --color-ring-offset-background: var(--background) (src/styles.css)
+- --color-chart-1: var(--chart-1) (src/styles.css)
+- --color-chart-2: var(--chart-2) (src/styles.css)
+- --color-chart-3: var(--chart-3) (src/styles.css)
+- --color-chart-4: var(--chart-4) (src/styles.css)
+- --color-chart-5: var(--chart-5) (src/styles.css)
+- --color-sidebar: var(--sidebar) (src/styles.css)
+- --color-sidebar-foreground: var(--sidebar-foreground) (src/styles.css)
+- --color-sidebar-primary: var(--sidebar-primary) (src/styles.css)
+- --color-sidebar-primary-foreground: var(--sidebar-primary-foreground) (src/styles.css)
+- --color-sidebar-accent: var(--sidebar-accent) (src/styles.css)
+- --color-sidebar-accent-foreground: var(--sidebar-accent-foreground) (src/styles.css)
+- --color-sidebar-border: var(--sidebar-border) (src/styles.css)
+- --color-sidebar-ring: var(--sidebar-ring) (src/styles.css)
+- --color-brand: var(--brand) (src/styles.css)
+- --color-brand-strong: var(--brand-strong) (src/styles.css)
+- --color-brand-master: var(--brand-master) (src/styles.css)
+- --color-surface: var(--surface) (src/styles.css)
+- --color-panel-2: var(--panel-2) (src/styles.css)
+- --color-sidebar-bg: var(--sidebar-bg) (src/styles.css)
+- --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif (src/styles.css)
+- --font-display: "Montserrat", ui-sans-serif, system-ui, sans-serif (src/styles.css)
+- --radius: 0.9rem (src/styles.css)
+- --brand: #0B22FE (src/styles.css)
+- --brand-strong: #3D50FF (src/styles.css)
+- --brand-master: #DC2626 (src/styles.css)
+- --bg-deep: #F8F9FB (src/styles.css)
+- --panel: #FFFFFF (src/styles.css)
+- --panel-2: #F3F5FC (src/styles.css)
+- --hairline: rgba(11,22,64,.11) (src/styles.css)
+- --hairline-strong: rgba(11,22,64,.16) (src/styles.css)
+- --surface: var(--panel) (src/styles.css)
+- --sidebar-bg: #FFFFFF (src/styles.css)
+- --background: var(--bg-deep) (src/styles.css)
+- --foreground: #0A0F2A (src/styles.css)
+- --card: var(--panel) (src/styles.css)
+- --card-foreground: #0A0F2A (src/styles.css)
+- --popover: #FFFFFF (src/styles.css)
+- --popover-foreground: #0A0F2A (src/styles.css)
+- --primary: var(--brand) (src/styles.css)
+- --primary-foreground: #FFFFFF (src/styles.css)
+- --secondary: #E6EAFB (src/styles.css)
+- --secondary-foreground: #0A0F2A (src/styles.css)
+- --muted: #EFF1FA (src/styles.css)
+- --muted-foreground: #3C4670 (src/styles.css)
+- --accent: #E6EAFB (src/styles.css)
+- --accent-foreground: #0A0F2A (src/styles.css)
+- --destructive: #DC2626 (src/styles.css)
+- --destructive-foreground: #FFFFFF (src/styles.css)
+- --border: var(--hairline) (src/styles.css)
+- --input: rgba(11,22,64,.13) (src/styles.css)
+- --ring: var(--brand) (src/styles.css)
+- --chart-1: #0B22FE (src/styles.css)
+- --chart-2: #0EA5E9 (src/styles.css)
+- --chart-3: #7A88FF (src/styles.css)
+- --chart-4: #DC2626 (src/styles.css)
+- --chart-5: #F59E0B (src/styles.css)
+- --sidebar: var(--sidebar-bg) (src/styles.css)
+- --sidebar-foreground: #0A0F2A (src/styles.css)
+- --sidebar-primary: var(--brand) (src/styles.css)
+- --sidebar-primary-foreground: #FFFFFF (src/styles.css)
+- --sidebar-accent: #EFF1FA (src/styles.css)
+- --sidebar-accent-foreground: #0A0F2A (src/styles.css)
+- --sidebar-border: var(--hairline) (src/styles.css)
+- --sidebar-ring: var(--brand) (src/styles.css)
+- --brand-soft: rgba(11,34,254,.10) (src/styles.css)
+- --brand-soft-strong: rgba(11,34,254,.20) (src/styles.css)
+- --brand-text: #0B22FE (src/styles.css)
+- --shadow-card: 0 1px 3px rgba(11,22,64,.07), 0 1px 2px rgba(11,22,64,.04) (src/styles.css)
+- --shadow-glow: 0 0 0 1px rgba(11,34,254,.18), 0 8px 24px -10px rgba(11,34,254,.30) (src/styles.css)
+- --page-gradient: radial-gradient(900px 500px at 100% -10%, rgba(11,34,254,.05), transparent 60%),
+    radial-gradient(700px 400px at -10% 10%, rgba(11,34,254,.04), transparent 60%),
+    var(--bg-deep) (src/styles.css)
+- --brand: #4A5DFF (src/styles.css)
+- --brand-strong: #7A88FF (src/styles.css)
+- --brand-master: #FF5A5A (src/styles.css)
+- --bg-deep: #05081A (src/styles.css)
+- --panel: #0F1330 (src/styles.css)
+- --panel-2: #171C3D (src/styles.css)
+- --hairline: rgba(255,255,255,.11) (src/styles.css)
+- --hairline-strong: rgba(255,255,255,.18) (src/styles.css)
+- --surface: var(--panel) (src/styles.css)
+- --sidebar-bg: #0A0E24 (src/styles.css)
+- --background: var(--bg-deep) (src/styles.css)
+- --foreground: #F1F3FF (src/styles.css)
+- --card: var(--panel) (src/styles.css)
+- --card-foreground: #F1F3FF (src/styles.css)
+- --popover: var(--panel-2) (src/styles.css)
+- --popover-foreground: #F1F3FF (src/styles.css)
+- --primary: var(--brand) (src/styles.css)
+- --primary-foreground: #05081A (src/styles.css)
+- --secondary: #171C3D (src/styles.css)
+- --secondary-foreground: #F1F3FF (src/styles.css)
+- --muted: #131736 (src/styles.css)
+- --muted-foreground: #B7BEE6 (src/styles.css)
+- --accent: #171C3D (src/styles.css)
+- --accent-foreground: #F1F3FF (src/styles.css)
+- --destructive: #FF5A5A (src/styles.css)
+- --destructive-foreground: #1B0606 (src/styles.css)
+- --border: var(--hairline) (src/styles.css)
+- --input: rgba(255,255,255,.12) (src/styles.css)
+- --ring: var(--brand-strong) (src/styles.css)
+- --chart-1: #7A88FF (src/styles.css)
+- --chart-2: #22D3EE (src/styles.css)
+- --chart-3: #A3B0FF (src/styles.css)
+- --chart-4: #FF5A5A (src/styles.css)
+- --chart-5: #F59E0B (src/styles.css)
+- --sidebar: var(--sidebar-bg) (src/styles.css)
+- --sidebar-foreground: #F1F3FF (src/styles.css)
+- --sidebar-primary: var(--brand) (src/styles.css)
+- --sidebar-primary-foreground: #05081A (src/styles.css)
+- --sidebar-accent: #131736 (src/styles.css)
+- --sidebar-accent-foreground: #F1F3FF (src/styles.css)
+- --sidebar-border: var(--hairline) (src/styles.css)
+- --sidebar-ring: var(--brand-strong) (src/styles.css)
+- --brand-soft: rgba(74,93,255,.16) (src/styles.css)
+- --brand-soft-strong: rgba(74,93,255,.26) (src/styles.css)
+- --brand-text: #A3B0FF (src/styles.css)
+- --shadow-card: 0 1px 0 rgba(255,255,255,.02) inset, 0 6px 18px -10px rgba(0,0,0,.5) (src/styles.css)
+- --shadow-glow: 0 0 0 1px rgba(74,93,255,.22), 0 8px 28px -10px rgba(74,93,255,.35) (src/styles.css)
+- --page-gradient: radial-gradient(1200px 600px at 85% -15%, rgba(74,93,255,.09), transparent 60%),
+    radial-gradient(900px 500px at -10% 15%, rgba(74,93,255,.06), transparent 60%),
+    var(--bg-deep) (src/styles.css)
+
+## UI components
+- accordion
+- alert
+- alert-dialog
+- aspect-ratio
+- avatar
+- avatar-viewer
+- badge
+- breadcrumb
+- button
+- calendar
+- card
+- carousel
+- channel-icons
+- chart
+- checkbox
+- collapsible
+- command
+- context-menu
+- dialog
+- drawer
+- dropdown-menu
+- form
+- hover-card
+- initials-avatar
+- input
+- input-otp
+- label
+- menubar
+- navigation-menu
+- pagination
+- popover
+- progress
+- radio-group
+- resizable
+- scroll-area
+- select
+- separator
+- sheet
+- sidebar
+- skeleton
+- slider
+- sonner
+- switch
+- table
+- tabs
+- textarea
+- toggle
+- toggle-group
+- tooltip
+
+## Project components
+- src/components/agenda/quick-schedule-dialog.tsx
+- src/components/agente/agent-avatar.tsx
+- src/components/agente/avatar-builder.tsx
+- src/components/agente/avatar-layers/index.tsx
+- src/components/announcement-manager.tsx
+- src/components/app-shell.tsx
+- src/components/auth-shell.tsx
+- src/components/brand-mark.tsx
+- src/components/catalogo/produto-edit-dialog.tsx
+- src/components/chat/chat-media.tsx
+- src/components/chat/media-lightbox.tsx
+- src/components/chat/media-preview-dialog.tsx
+- src/components/chat/quick-replies-dialog.tsx
+- src/components/chat/whatsapp-audio.tsx
+- src/components/comercial/comercial-widgets.tsx
+- src/components/comercial/meta-dialog.tsx
+- src/components/comercial/period-filter.tsx
+- src/components/comercial/venda-dialog.tsx
+- src/components/conexao/meta-connect-dialog.tsx
+- src/components/conexao/meta-oauth-handler.tsx
+- src/components/conexao/nova-conexao-dialog.tsx
+- src/components/conexao/qr-code-dialog.tsx
+- src/components/conexao/telegram-connect-dialog.tsx
+- src/components/config/avatar-upload-dialog.tsx
+- src/components/config/company-logo-dialog.tsx
+- src/components/config/csat-respostas-tab.tsx
+- src/components/config/departamentos-tab.tsx
+- src/components/config/distribuicao-tab.tsx
+- src/components/config/equipe-tab.tsx
+- src/components/config/funcoes-tab.tsx
+- src/components/config/horarios-tab.tsx
+- src/components/config/integracao-guias.tsx
+- src/components/config/integracoes-tab.tsx
+- src/components/config/logs-tab.tsx
+- src/components/config/metas-panel.tsx
+- src/components/config/tags-tab.tsx
+- src/components/config/templates-tab.tsx
+- src/components/crm/lead-drawer.tsx
+- src/components/dashboard-v2/DashboardGrid.tsx
+- src/components/dashboard-v2/PeriodFilterButton.tsx
+- src/components/dashboard-v2/WidgetPicker.tsx
+- src/components/dashboard-v2/WidgetSettingsDialog.tsx
+- src/components/dashboard-v2/widgets-registry.tsx
+- src/components/dashboard/agent-status-card.tsx
+- src/components/dashboard/kpi-card.tsx
+- src/components/dashboard/message-timeline.tsx
+- src/components/dashboard/mini-area-chart.tsx
+- src/components/help-tip.tsx
+- src/components/legal-shell.tsx
+- src/components/master-subtabs.tsx
+- src/components/master/alerts-bell.tsx
+- src/components/master/billing-panel.tsx
+- src/components/master/clientes-lista.tsx
+- src/components/master/nova-empresa-form.tsx
+- src/components/mic-dictate-button.tsx
+- src/components/mobile-app-banner.tsx
+- src/components/mobile-bottom-nav.tsx
+- src/components/notifications-bell.tsx
+- src/components/onboarding-tour.tsx
+- src/components/plan-usage-badge.tsx
+- src/components/plugins/google-calendar-panel.tsx
+- src/components/plugins/plugin-banners.tsx
+- src/components/plugins/plugin-detail-dialog.tsx
+- src/components/plugins/plugin-gate.tsx
+- src/components/plugins/plugin-revenue-card.tsx
+- src/components/route-fallbacks.tsx
+- src/components/support/support-article.tsx
+- src/components/support/support-config-dialog.tsx
+- src/components/support/support-floating-button.tsx
+- src/components/support/support-home.tsx
+- src/components/support/support-metrics-dialog.tsx
+- src/components/templates/template-detail-dialog.tsx
+- src/components/templates/template-form-dialog.tsx
+- src/components/theme-toggle.tsx
+- src/components/training/academy-home.tsx
+- src/components/training/banner-carousel.tsx
+- src/components/training/course-shelf.tsx
+- src/components/training/training-layout.tsx
+- src/components/trial-banner.tsx
+- src/components/ui/accordion.tsx
+- src/components/ui/alert-dialog.tsx
+- src/components/ui/alert.tsx
+- src/components/ui/aspect-ratio.tsx
+- src/components/ui/avatar-viewer.tsx
+- src/components/ui/avatar.tsx
+- src/components/ui/badge.tsx
+- src/components/ui/breadcrumb.tsx
+- src/components/ui/button.tsx
+- src/components/ui/calendar.tsx
+- src/components/ui/card.tsx
+- src/components/ui/carousel.tsx
+- src/components/ui/channel-icons.tsx
+- src/components/ui/chart.tsx
+- src/components/ui/checkbox.tsx
+- src/components/ui/collapsible.tsx
+- src/components/ui/command.tsx
+- src/components/ui/context-menu.tsx
+- src/components/ui/dialog.tsx
+- src/components/ui/drawer.tsx
+- src/components/ui/dropdown-menu.tsx
+- src/components/ui/form.tsx
+- src/components/ui/hover-card.tsx
+- src/components/ui/initials-avatar.tsx
+- src/components/ui/input-otp.tsx
+- src/components/ui/input.tsx
+- src/components/ui/label.tsx
+- src/components/ui/menubar.tsx
+- src/components/ui/navigation-menu.tsx
+- src/components/ui/pagination.tsx
+- src/components/ui/popover.tsx
+- src/components/ui/progress.tsx
+- src/components/ui/radio-group.tsx
+- src/components/ui/resizable.tsx
+- src/components/ui/scroll-area.tsx
+- src/components/ui/select.tsx
+- src/components/ui/separator.tsx
+- src/components/ui/sheet.tsx
+- src/components/ui/sidebar.tsx
+- src/components/ui/skeleton.tsx
+- src/components/ui/slider.tsx
+- src/components/ui/sonner.tsx
+- src/components/ui/switch.tsx
+- src/components/ui/table.tsx
+- src/components/ui/tabs.tsx
+- src/components/ui/textarea.tsx
+- src/components/ui/toggle-group.tsx
+- src/components/ui/toggle.tsx
+- src/components/ui/tooltip.tsx
