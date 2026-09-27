@@ -81,7 +81,7 @@ function MobilePage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#F4F5F9] text-[#0A0A0F] selection:bg-[#72FF00] selection:text-white antialiased overflow-x-hidden" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+    <div className="public-surface min-h-screen bg-[#F4F5F9] text-[#0A0A0F] selection:bg-[#334155] selection:text-white antialiased overflow-x-hidden" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <main className="max-w-7xl mx-auto px-4 sm:px-8 py-12 md:py-24 space-y-24 md:space-y-32">
         
         {/* Header / Hero Section (Aligned with Home Identity) */}
@@ -97,7 +97,7 @@ function MobilePage() {
             
             <div className="space-y-6">
               <h1 className="font-display font-black leading-[1.05] tracking-tight" style={{ fontSize: "clamp(2.5rem, 5vw, 5.5rem)" }}>
-                Seu CRM agora cabe no <span className="text-[#72FF00]">bolso.</span>
+                Seu CRM agora cabe no <span className="text-[#334155]">bolso.</span>
               </h1>
               <p className="text-lg md:text-xl text-[#0A0A0F]/70 max-w-xl mx-auto lg:mx-0 leading-relaxed">
                 Leve toda a potência do Capi Conversa para onde você estiver. Instalação rápida, interface fluida e produtividade máxima no celular.
@@ -105,7 +105,7 @@ function MobilePage() {
             </div>
             
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4">
-              <Button asChild size="lg" className="bg-[#72FF00] text-white rounded-full h-14 px-8 font-bold text-lg hover:scale-[1.03] transition-transform shadow-lg shadow-[#72FF00]/25">
+              <Button asChild size="lg" className="bg-[#334155] text-white rounded-full h-14 px-8 font-bold text-lg hover:scale-[1.03] transition-transform shadow-lg shadow-[#334155]/25">
                 <a href="#instalar">Instalar Agora <Download className="ml-2 size-5" /></a>
               </Button>
             </div>
@@ -113,9 +113,9 @@ function MobilePage() {
 
           <div className="lg:col-span-5 relative flex items-center justify-center min-h-[400px]">
              <div aria-hidden className="absolute inset-0 flex items-center justify-center scale-150 lg:scale-100">
-                <div className="absolute w-[110%] aspect-square rounded-full border border-dashed border-[#72FF00]/15" />
-                <div className="absolute w-[85%] aspect-square rounded-full border border-dashed border-[#72FF00]/25" />
-                <div className="absolute w-[95%] aspect-square rounded-full bg-[#72FF00]/10 blur-3xl" />
+                <div className="absolute w-[110%] aspect-square rounded-full border border-dashed border-[#334155]/15" />
+                <div className="absolute w-[85%] aspect-square rounded-full border border-dashed border-[#334155]/25" />
+                <div className="absolute w-[95%] aspect-square rounded-full bg-[#334155]/10 blur-3xl" />
              </div>
              <img src={mascotMobile.url} alt="Mascote Capi Conversa Mobile" className="relative w-full max-w-md h-auto object-contain drop-shadow-2xl animate-[float_6s_ease-in-out_infinite]" />
           </div>
@@ -124,9 +124,9 @@ function MobilePage() {
         {/* Instalação Section */}
         <section id="instalar" className="space-y-12">
           <div className="text-center space-y-4">
-            <div className="text-sm font-bold text-[#72FF00] uppercase tracking-widest">Setup Rápido</div>
+            <div className="text-sm font-bold text-[#334155] uppercase tracking-widest">Setup Rápido</div>
             <h2 className="font-display font-black leading-[1.05] tracking-tight" style={{ fontSize: "clamp(2.2rem, 4.5vw, 4.5rem)" }}>
-              Instalação em <span className="text-[#72FF00]">30 segundos</span>
+              Instalação em <span className="text-[#334155]">30 segundos</span>
             </h2>
             <p className="text-lg md:text-xl text-[#0A0A0F]/60 max-w-2xl mx-auto leading-relaxed">Escolha seu sistema para ver o passo a passo ilustrado.</p>
           </div>
@@ -135,7 +135,7 @@ function MobilePage() {
             <button
               onClick={() => { setPlatform("ios"); setActiveStep(0); }}
               className={`flex items-center gap-4 px-12 md:px-20 py-6 rounded-[2rem] text-base md:text-xl font-black transition-all ${
-                platform === "ios" ? "bg-[#72FF00] text-white shadow-xl shadow-[#72FF00]/25 scale-105" : "text-slate-900 hover:bg-slate-50"
+                platform === "ios" ? "bg-[#334155] text-white shadow-xl shadow-[#334155]/25 scale-105" : "text-slate-900 hover:bg-slate-50"
               }`}
             >
               <img 
@@ -148,7 +148,7 @@ function MobilePage() {
             <button
               onClick={() => { setPlatform("android"); setActiveStep(0); }}
               className={`flex items-center gap-4 px-12 md:px-20 py-6 rounded-[2rem] text-base md:text-xl font-black transition-all ${
-                platform === "android" ? "bg-[#72FF00] text-white shadow-xl shadow-[#72FF00]/25 scale-105" : "text-slate-900 hover:bg-slate-50"
+                platform === "android" ? "bg-[#334155] text-white shadow-xl shadow-[#334155]/25 scale-105" : "text-slate-900 hover:bg-slate-50"
               }`}
             >
               <img 
@@ -167,24 +167,24 @@ function MobilePage() {
                   key={i} 
                   onClick={() => setActiveStep(i)}
                   className={`w-full flex items-center gap-5 p-6 rounded-3xl border transition-all text-left ${
-                    activeStep === i ? "bg-white border-[#72FF00]/30 shadow-xl translate-x-2" : "bg-white/50 border-transparent hover:bg-white"
+                    activeStep === i ? "bg-white border-[#334155]/30 shadow-xl translate-x-2" : "bg-white/50 border-transparent hover:bg-white"
                   }`}
                 >
                   <span className={`shrink-0 h-10 w-10 rounded-full grid place-items-center text-sm font-bold transition-all ${
-                    activeStep === i ? "bg-[#72FF00] text-white scale-110" : "bg-slate-200 text-slate-500"
+                    activeStep === i ? "bg-[#334155] text-white scale-110" : "bg-slate-200 text-slate-500"
                   }`}>
                     {i + 1}
                   </span>
                   <span className={`text-base md:text-lg font-bold transition-colors ${activeStep === i ? "text-[#0A0A0F]" : "text-slate-500"}`}>
                     {step.text}
                   </span>
-                  {activeStep === i && <ChevronRight className="ml-auto size-5 text-[#72FF00]" />}
+                  {activeStep === i && <ChevronRight className="ml-auto size-5 text-[#334155]" />}
                 </button>
               ))}
             </div>
 
             <div className="relative group order-1 lg:order-2">
-              <div className="absolute -inset-10 bg-[#72FF00]/5 blur-[80px] rounded-full group-hover:bg-[#72FF00]/10 transition-all" />
+              <div className="absolute -inset-10 bg-[#334155]/5 blur-[80px] rounded-full group-hover:bg-[#334155]/10 transition-all" />
               <div className="relative aspect-[9/19] max-w-[300px] mx-auto w-full rounded-[3rem] border-[12px] border-slate-900 bg-slate-900 overflow-hidden shadow-[0_40px_100px_-20px_rgba(0,0,0,0.3)]">
                 <img 
                   src={steps[activeStep].img} 
@@ -199,15 +199,15 @@ function MobilePage() {
         {/* App Showcase (Interactive Concept) */}
         <section className="space-y-16">
           <div className="text-center space-y-4">
-            <div className="text-sm font-bold text-[#72FF00] uppercase tracking-widest">Recursos</div>
+            <div className="text-sm font-bold text-[#334155] uppercase tracking-widest">Recursos</div>
             <h2 className="font-display font-black leading-[1.05] tracking-tight" style={{ fontSize: "clamp(2.2rem, 4.5vw, 4.5rem)" }}>
-              O que você terá no <span className="text-[#72FF00]">celular</span>
+              O que você terá no <span className="text-[#334155]">celular</span>
             </h2>
             <p className="text-lg md:text-xl text-[#0A0A0F]/60 max-w-2xl mx-auto leading-relaxed">Explore as funcionalidades como se estivesse dentro do app.</p>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center bg-white rounded-[3rem] p-8 md:p-12 border border-slate-200 shadow-sm relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-[#72FF00]/5 blur-3xl rounded-full -mr-32 -mt-32" />
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[#334155]/5 blur-3xl rounded-full -mr-32 -mt-32" />
             
             <div className="lg:col-span-5 relative">
               <div className="relative aspect-[9/19] max-w-[280px] mx-auto w-full rounded-[2.5rem] border-[8px] border-slate-900 bg-slate-900 overflow-hidden shadow-2xl">
@@ -219,7 +219,7 @@ function MobilePage() {
                     </div>
                     <div className="flex-1 p-4 space-y-4">
                        <div className="flex items-center gap-2 mb-2">
-                          <div className="h-8 w-8 rounded-lg bg-[#72FF00]/10 flex items-center justify-center text-[#72FF00]">
+                          <div className="h-8 w-8 rounded-lg bg-[#334155]/10 flex items-center justify-center text-[#334155]">
                              {(() => {
                                 const Icon = MOBILE_FEATURES[activeFeature].icon;
                                 return <Icon size={16} />;
@@ -232,8 +232,8 @@ function MobilePage() {
                              <div className="space-y-2">
                                <div className="grid grid-cols-2 gap-2">
                                  <div className="h-14 bg-white rounded-xl border border-slate-100 p-2 flex flex-col justify-center gap-1">
-                                   <div className="h-1.5 w-1/2 bg-[#72FF00]/20 rounded" />
-                                   <div className="h-3 w-3/4 bg-[#72FF00] rounded" />
+                                   <div className="h-1.5 w-1/2 bg-[#334155]/20 rounded" />
+                                   <div className="h-3 w-3/4 bg-[#334155] rounded" />
                                  </div>
                                  <div className="h-14 bg-white rounded-xl border border-slate-100 p-2 flex flex-col justify-center gap-1">
                                    <div className="h-1.5 w-1/2 bg-slate-100 rounded" />
@@ -241,10 +241,10 @@ function MobilePage() {
                                  </div>
                                </div>
                                <div className="h-24 w-full bg-white rounded-xl border border-slate-100 p-2 relative overflow-hidden">
-                                 <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#72FF00]/10 to-transparent" />
+                                 <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#334155]/10 to-transparent" />
                                  <div className="flex items-end justify-between h-full px-1 pb-1">
                                    {[40, 70, 50, 90, 60, 80].map((h, i) => (
-                                     <div key={i} className="w-2 bg-[#72FF00] rounded-t-sm" style={{ height: `${h}%` }} />
+                                     <div key={i} className="w-2 bg-[#334155] rounded-t-sm" style={{ height: `${h}%` }} />
                                    ))}
                                  </div>
                                </div>
@@ -270,7 +270,7 @@ function MobilePage() {
                            {activeFeature === 2 && ( // CRM Kanban
                              <div className="grid grid-cols-2 gap-2 h-48">
                                <div className="bg-slate-50/50 rounded-xl border border-dashed border-slate-200 p-1.5 space-y-1.5">
-                                 <div className="h-1.5 w-1/2 bg-[#72FF00]/30 rounded mx-auto" />
+                                 <div className="h-1.5 w-1/2 bg-[#334155]/30 rounded mx-auto" />
                                  <div className="h-12 w-full bg-white rounded-lg shadow-sm border border-slate-100 p-2">
                                    <div className="h-1.5 w-3/4 bg-slate-800 rounded mb-1" />
                                    <div className="h-1 w-1/2 bg-emerald-500 rounded" />
@@ -291,16 +291,16 @@ function MobilePage() {
                                <div className="h-2 w-1/2 bg-slate-50 rounded" />
                                <div className="mt-auto grid grid-cols-2 gap-2">
                                   <div className="h-8 bg-slate-50 rounded-lg" />
-                                  <div className="h-8 bg-[#72FF00]/10 rounded-lg" />
+                                  <div className="h-8 bg-[#334155]/10 rounded-lg" />
                                </div>
                              </div>
                            )}
                         </div>
                     </div>
                     <div className="h-14 bg-white border-t border-slate-100 flex items-center justify-around px-2 pb-2">
-                       <LayoutDashboard className="size-4 text-[#72FF00]" />
+                       <LayoutDashboard className="size-4 text-[#334155]" />
                        <MessageSquareText className="size-4 text-slate-300" />
-                       <div className="h-10 w-10 rounded-full bg-[#72FF00] shadow-lg shadow-[#72FF00]/30 flex items-center justify-center text-white -mt-4">
+                       <div className="h-10 w-10 rounded-full bg-[#334155] shadow-lg shadow-[#334155]/30 flex items-center justify-center text-white -mt-4">
                           <Zap size={20} />
                        </div>
                        <KanbanSquare className="size-4 text-slate-300" />
@@ -316,11 +316,11 @@ function MobilePage() {
                   key={i} 
                   onClick={() => setActiveFeature(i)}
                   className={`group p-6 rounded-3xl border transition-all flex gap-4 text-left ${
-                    activeFeature === i ? "bg-[#72FF00] border-[#72FF00] text-white shadow-xl shadow-[#72FF00]/20" : "bg-slate-50 border-transparent hover:bg-white hover:border-slate-200"
+                    activeFeature === i ? "bg-[#334155] border-[#334155] text-white shadow-xl shadow-[#334155]/20" : "bg-slate-50 border-transparent hover:bg-white hover:border-slate-200"
                   }`}
                 >
                   <div className={`h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 ${
-                    activeFeature === i ? "bg-white/20 text-white" : "bg-[#72FF00]/10 text-[#72FF00]"
+                    activeFeature === i ? "bg-white/20 text-white" : "bg-[#334155]/10 text-[#334155]"
                   }`}>
                     <f.icon className="h-6 w-6" />
                   </div>
@@ -335,7 +335,7 @@ function MobilePage() {
         </section>
 
         {/* CTA (Aligned with Home Identity) */}
-        <section className="bg-[#72FF00] rounded-[3rem] p-12 md:p-20 text-center space-y-8 shadow-2xl shadow-[#72FF00]/30 relative overflow-hidden">
+        <section className="bg-[#334155] rounded-[3rem] p-12 md:p-20 text-center space-y-8 shadow-2xl shadow-[#334155]/30 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 blur-[120px] -mr-48 -mt-48 rounded-full" />
           <div className="absolute bottom-0 left-0 w-96 h-96 bg-black/10 blur-[120px] -ml-48 -mb-48 rounded-full" />
           
@@ -347,7 +347,7 @@ function MobilePage() {
           </div>
           
           <div className="relative pt-6 flex flex-wrap justify-center gap-4 z-10">
-            <Button asChild size="lg" className="bg-white text-[#72FF00] hover:bg-slate-100 rounded-full h-16 px-12 font-black text-xl shadow-xl transition-all hover:scale-105 active:scale-95">
+            <Button asChild size="lg" className="bg-white text-[#334155] hover:bg-slate-100 rounded-full h-16 px-12 font-black text-xl shadow-xl transition-all hover:scale-105 active:scale-95">
               <a href="#instalar">Instalar Capi Conversa <Download className="ml-3 size-6" /></a>
             </Button>
           </div>

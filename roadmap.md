@@ -50,3 +50,4 @@
 ## Widget de atendimentos por departamento — 2026-09-22
 - [x] Criar gráfico radial com tickets abertos por departamento
 - [x] Integrar à galeria e validar no painel
+

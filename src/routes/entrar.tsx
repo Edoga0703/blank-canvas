@@ -234,7 +234,7 @@ function EntrarPage() {
   }
 
   return (
-    <div className="min-h-screen w-full relative overflow-hidden bg-white text-[#12263A]">
+    <div className="public-surface min-h-screen w-full relative overflow-hidden bg-white text-[#12263A]">
       {/* Subtle grid + blue glow bg */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <div
@@ -253,7 +253,7 @@ function EntrarPage() {
         />
         <div
           className="absolute bottom-[-200px] -right-40 h-[600px] w-[600px] rounded-full blur-3xl opacity-30"
-          style={{ background: "radial-gradient(circle, #72FF00 0%, transparent 65%)" }}
+          style={{ background: "radial-gradient(circle, #334155 0%, transparent 65%)" }}
         />
       </div>
 
@@ -261,7 +261,7 @@ function EntrarPage() {
         {/* LEFT — mascot & brand */}
         <aside className="hidden lg:flex flex-col justify-between p-10 xl:p-14 relative">
           <div className="flex items-center justify-between gap-4">
-            <Link to="/" className="inline-flex items-center gap-2 text-sm text-[#12263A]/60 hover:text-[#72FF00] transition-colors">
+            <Link to="/" className="inline-flex items-center gap-2 text-sm text-[#12263A]/60 hover:text-[#334155] transition-colors">
               <ArrowLeft className="size-4" />
               voltar ao site
             </Link>
@@ -273,10 +273,10 @@ function EntrarPage() {
 
           <div className="relative flex-1 flex items-center justify-center">
             <div aria-hidden className="absolute inset-0 flex items-center justify-center">
-              <div className="absolute w-[85%] aspect-square rounded-full border border-dashed border-[#72FF00]/15" />
-              <div className="absolute w-[65%] aspect-square rounded-full border border-dashed border-[#72FF00]/25" />
-              <div className="absolute w-[45%] aspect-square rounded-full border border-dashed border-[#72FF00]/35" />
-              <div className="absolute w-[70%] aspect-square rounded-full bg-[#72FF00]/10 blur-3xl" />
+              <div className="absolute w-[85%] aspect-square rounded-full border border-dashed border-[#334155]/15" />
+              <div className="absolute w-[65%] aspect-square rounded-full border border-dashed border-[#334155]/25" />
+              <div className="absolute w-[45%] aspect-square rounded-full border border-dashed border-[#334155]/35" />
+              <div className="absolute w-[70%] aspect-square rounded-full bg-[#334155]/10 blur-3xl" />
             </div>
 
             <img
@@ -286,8 +286,8 @@ function EntrarPage() {
               loading="eager"
             />
 
-            <div className="absolute top-6 left-2 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#72FF00]/10 px-3 py-2 border border-[#72FF00]/10 animate-[float_6s_ease-in-out_infinite]">
-              <div className="w-8 h-8 rounded-lg bg-[#72FF00] flex items-center justify-center text-white shrink-0">
+            <div className="absolute top-6 left-2 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#334155]/10 px-3 py-2 border border-[#334155]/10 animate-[float_6s_ease-in-out_infinite]">
+              <div className="w-8 h-8 rounded-lg bg-[#334155] flex items-center justify-center text-white shrink-0">
                 <MessageCircle className="w-4 h-4" />
               </div>
               <div className="text-left">
@@ -296,8 +296,8 @@ function EntrarPage() {
               </div>
             </div>
 
-            <div className="absolute top-24 right-4 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#72FF00]/10 px-3 py-2 border border-[#72FF00]/10 animate-[float_7s_ease-in-out_infinite_0.8s]">
-              <div className="w-8 h-8 rounded-lg bg-[#72FF00]/10 flex items-center justify-center text-[#72FF00] shrink-0">
+            <div className="absolute top-24 right-4 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#334155]/10 px-3 py-2 border border-[#334155]/10 animate-[float_7s_ease-in-out_infinite_0.8s]">
+              <div className="w-8 h-8 rounded-lg bg-[#334155]/10 flex items-center justify-center text-[#334155] shrink-0">
                 <TrendingUp className="w-4 h-4" />
               </div>
               <div className="text-left">
@@ -306,8 +306,8 @@ function EntrarPage() {
               </div>
             </div>
 
-            <div className="absolute bottom-10 left-4 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#72FF00]/10 px-3 py-2 border border-[#72FF00]/10 animate-[float_8s_ease-in-out_infinite_1.4s]">
-              <div className="w-8 h-8 rounded-lg bg-[#72FF00] flex items-center justify-center text-white shrink-0">
+            <div className="absolute bottom-10 left-4 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#334155]/10 px-3 py-2 border border-[#334155]/10 animate-[float_8s_ease-in-out_infinite_1.4s]">
+              <div className="w-8 h-8 rounded-lg bg-[#334155] flex items-center justify-center text-white shrink-0">
                 <Sparkles className="w-4 h-4" />
               </div>
               <div className="text-left">
@@ -316,8 +316,8 @@ function EntrarPage() {
               </div>
             </div>
 
-            <div className="absolute bottom-24 right-2 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#72FF00]/10 px-3 py-2 border border-[#72FF00]/10 animate-[float_6.5s_ease-in-out_infinite_0.4s]">
-              <div className="w-8 h-8 rounded-lg bg-[#72FF00]/10 flex items-center justify-center text-[#72FF00] shrink-0">
+            <div className="absolute bottom-24 right-2 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#334155]/10 px-3 py-2 border border-[#334155]/10 animate-[float_6.5s_ease-in-out_infinite_0.4s]">
+              <div className="w-8 h-8 rounded-lg bg-[#334155]/10 flex items-center justify-center text-[#334155] shrink-0">
                 <Calendar className="w-4 h-4" />
               </div>
               <div className="text-left">
@@ -328,16 +328,16 @@ function EntrarPage() {
           </div>
 
           <div className="flex items-center gap-5 text-xs text-[#12263A]/60">
-            <span className="inline-flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-[#72FF00]" /> LGPD-friendly</span>
-            <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-[#72FF00]" /> Sem cartão p/ testar</span>
-            <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-[#72FF00]" /> Cancele quando quiser</span>
+            <span className="inline-flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-[#334155]" /> LGPD-friendly</span>
+            <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-[#334155]" /> Sem cartão p/ testar</span>
+            <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-[#334155]" /> Cancele quando quiser</span>
           </div>
         </aside>
 
         {/* RIGHT — form */}
         <main className="flex flex-col items-center justify-center px-4 py-6 sm:px-8 sm:py-10 md:px-12">
           <div className="lg:hidden w-full max-w-md mb-5 flex items-center justify-between">
-            <Link to="/" className="inline-flex items-center gap-2 text-sm text-[#12263A]/60 hover:text-[#72FF00]">
+            <Link to="/" className="inline-flex items-center gap-2 text-sm text-[#12263A]/60 hover:text-[#334155]">
               <ArrowLeft className="size-4" /> voltar
             </Link>
             <img src={metrixLogo.url} alt="Capi Conversa" className="h-9 sm:h-11 w-auto" />
@@ -345,7 +345,7 @@ function EntrarPage() {
 
           <div className="lg:hidden mb-3 sm:mb-5 relative">
             <div aria-hidden className="absolute inset-0 flex items-center justify-center">
-              <div className="w-40 sm:w-56 aspect-square rounded-full bg-[#72FF00]/10 blur-3xl" />
+              <div className="w-40 sm:w-56 aspect-square rounded-full bg-[#334155]/10 blur-3xl" />
             </div>
             <img
               src={mascotLogin.url}
@@ -357,7 +357,7 @@ function EntrarPage() {
           <div className="w-full max-w-md">
 
 
-            <div className="relative rounded-2xl bg-white border border-[#72FF00]/10 shadow-xl shadow-[#72FF00]/10 p-5 sm:p-7 overflow-hidden">
+            <div className="relative rounded-2xl bg-white border border-[#334155]/10 shadow-xl shadow-[#334155]/10 p-5 sm:p-7 overflow-hidden">
               <div
                 aria-hidden
                 className="absolute -top-24 -right-24 size-56 rounded-full blur-3xl opacity-40"
@@ -366,8 +366,8 @@ function EntrarPage() {
 
               <div className="relative">
                 {planInfo && (
-                  <div className="mb-5 rounded-xl border border-[#72FF00]/20 bg-[#72FF00]/5 p-4">
-                    <div className="flex items-center gap-2 text-[11px] uppercase font-bold tracking-[0.14em] text-[#72FF00]">
+                  <div className="mb-5 rounded-xl border border-[#334155]/20 bg-[#334155]/5 p-4">
+                    <div className="flex items-center gap-2 text-[11px] uppercase font-bold tracking-[0.14em] text-[#334155]">
                       <Sparkles className="size-3.5" /> Plano escolhido
                     </div>
                     <div className="mt-1 flex items-baseline justify-between">
@@ -380,8 +380,8 @@ function EntrarPage() {
 
                 {signupSentTo ? (
                   <div className="text-center py-2">
-                    <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-[#72FF00]/10">
-                      <CheckCircle2 className="size-8 text-[#72FF00]" />
+                    <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-[#334155]/10">
+                      <CheckCircle2 className="size-8 text-[#334155]" />
                     </div>
                     <h1 className="font-display text-[22px] sm:text-[26px] font-black leading-tight tracking-tight">
                       Verifique seu e-mail
@@ -399,7 +399,7 @@ function EntrarPage() {
                         type="button"
                         size="lg"
                         onClick={() => { setSignupSentTo(null); setMode("login"); setPassword(""); setConfirmPassword(""); }}
-                        className="w-full h-12 bg-[#72FF00] hover:bg-[#0919cc] text-white font-semibold rounded-full shadow-lg shadow-[#72FF00]/30"
+                        className="w-full h-12 bg-[#334155] hover:bg-[#1E293B] text-white font-semibold rounded-full shadow-sm"
                       >
                         Ir para o login
                       </Button>
@@ -414,7 +414,7 @@ function EntrarPage() {
                           toast.success("Link reenviado! Confira seu e-mail.");
                         }}
                         disabled={loading}
-                        className="w-full h-10 text-sm text-[#12263A]/70 hover:text-[#72FF00]"
+                        className="w-full h-10 text-sm text-[#12263A]/70 hover:text-[#334155]"
                       >
                         {loading && <Loader2 className="size-4 mr-2 animate-spin" />}
                         Reenviar link de confirmação
@@ -424,12 +424,12 @@ function EntrarPage() {
                 ) : (
                 <>
                 {/* Tabs */}
-                <div className={`${isStandalone ? "hidden" : "grid"} grid-cols-2 gap-1 p-1 rounded-full bg-[#72FF00]/5 border border-[#72FF00]/10 mb-6`}>
+                <div className={`${isStandalone ? "hidden" : "grid"} grid-cols-2 gap-1 p-1 rounded-full bg-[#334155]/5 border border-[#334155]/10 mb-6`}>
                   <button
                     type="button"
                     onClick={() => setMode("signup")}
                     className={`h-10 rounded-full text-sm font-semibold transition-colors ${
-                      mode === "signup" ? "bg-primary text-primary-foreground shadow-md shadow-[#72FF00]/25" : "text-[#12263A]/60 hover:text-[#72FF00]"
+                      mode === "signup" ? "bg-primary text-primary-foreground shadow-md shadow-[#334155]/25" : "text-[#12263A]/60 hover:text-[#334155]"
                     }`}
                   >
                     Criar conta
@@ -438,7 +438,7 @@ function EntrarPage() {
                     type="button"
                     onClick={() => setMode("login")}
                     className={`h-10 rounded-full text-sm font-semibold transition-colors ${
-                      mode === "login" ? "bg-primary text-primary-foreground shadow-md shadow-[#72FF00]/25" : "text-[#12263A]/60 hover:text-[#72FF00]"
+                      mode === "login" ? "bg-primary text-primary-foreground shadow-md shadow-[#334155]/25" : "text-[#12263A]/60 hover:text-[#334155]"
                     }`}
                   >
                     Entrar
@@ -507,7 +507,7 @@ function EntrarPage() {
                       autoComplete="new-password"
                     />
 
-                    <Button type="submit" disabled={loading} size="lg" className="w-full h-12 bg-[#72FF00] hover:bg-[#0919cc] text-white font-semibold rounded-full shadow-lg shadow-[#72FF00]/30">
+                    <Button type="submit" disabled={loading} size="lg" className="w-full h-12 bg-[#334155] hover:bg-[#1E293B] text-white font-semibold rounded-full shadow-sm">
                       {loading && <Loader2 className="size-4 mr-2 animate-spin" />}
                       {planInfo ? "Criar conta e continuar" : "Criar conta grátis"}
                     </Button>
@@ -533,7 +533,7 @@ function EntrarPage() {
                       placeholder="Sua senha"
                       autoComplete="current-password"
                       rightSlot={
-                        <Link to="/esqueci-senha" className="text-[11.5px] font-medium text-[#12263A]/60 hover:text-[#72FF00] transition-colors">
+                        <Link to="/esqueci-senha" className="text-[11.5px] font-medium text-[#12263A]/60 hover:text-[#334155] transition-colors">
                           Esqueci minha senha
                         </Link>
                       }
@@ -544,7 +544,7 @@ function EntrarPage() {
                         type="checkbox"
                         checked={remember}
                         onChange={(e) => setRemember(e.target.checked)}
-                        className="mt-0.5 size-4 rounded border-[#12263A]/25 accent-[#72FF00]"
+                        className="mt-0.5 size-4 rounded border-[#12263A]/25 accent-[#334155]"
                       />
                       <span className="text-[12.5px] leading-snug text-[#12263A]/70">
                         Manter-me conectado
@@ -556,7 +556,7 @@ function EntrarPage() {
                       </span>
                     </label>
 
-                    <Button type="submit" disabled={loading} size="lg" className="w-full h-12 bg-[#72FF00] hover:bg-[#0919cc] text-white font-semibold rounded-full shadow-lg shadow-[#72FF00]/30">
+                    <Button type="submit" disabled={loading} size="lg" className="w-full h-12 bg-[#334155] hover:bg-[#1E293B] text-white font-semibold rounded-full shadow-sm">
                       {loading && <Loader2 className="size-4 mr-2 animate-spin" />}
                       Entrar
                     </Button>
@@ -564,7 +564,7 @@ function EntrarPage() {
 
                     <p className={`${isStandalone ? "hidden" : "block"} text-[12px] text-[#12263A]/60 text-center pt-1`}>
                       Ainda não tem conta?{" "}
-                      <button type="button" onClick={() => setMode("signup")} className="font-semibold text-[#72FF00] hover:underline">
+                      <button type="button" onClick={() => setMode("signup")} className="font-semibold text-[#334155] hover:underline">
                         Criar agora
                       </button>
                     </p>
@@ -583,15 +583,15 @@ function EntrarPage() {
 
             <p className="text-[11.5px] text-[#12263A]/60 text-center mt-5">
               Ao continuar, você concorda com nossos{" "}
-              <Link to="/termos" className="underline underline-offset-2 hover:text-[#72FF00]">Termos</Link>{" "}
+              <Link to="/termos" className="underline underline-offset-2 hover:text-[#334155]">Termos</Link>{" "}
               e{" "}
-              <Link to="/privacidade" className="underline underline-offset-2 hover:text-[#72FF00]">Política de privacidade</Link>.
+              <Link to="/privacidade" className="underline underline-offset-2 hover:text-[#334155]">Política de privacidade</Link>.
             </p>
 
             <div className="lg:hidden mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-[#12263A]/60">
-              <span className="inline-flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-[#72FF00]" /> LGPD-friendly</span>
-              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-[#72FF00]" /> Sem cartão</span>
-              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-[#72FF00]" /> Cancele quando quiser</span>
+              <span className="inline-flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-[#334155]" /> LGPD-friendly</span>
+              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-[#334155]" /> Sem cartão</span>
+              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-[#334155]" /> Cancele quando quiser</span>
             </div>
           </div>
         </main>
@@ -642,7 +642,7 @@ function PasswordField({
           type="button"
           onClick={toggle}
           aria-label={show ? "Ocultar senha" : "Mostrar senha"}
-          className="absolute right-2 top-1/2 -translate-y-1/2 size-8 grid place-items-center rounded-md text-[#12263A]/50 hover:text-[#72FF00] hover:bg-[#72FF00]/5 transition-colors"
+          className="absolute right-2 top-1/2 -translate-y-1/2 size-8 grid place-items-center rounded-md text-[#12263A]/50 hover:text-[#334155] hover:bg-[#334155]/5 transition-colors"
           tabIndex={-1}
         >
           {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -654,8 +654,8 @@ function PasswordField({
 
 function MiniFeature({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-[#72FF00]/10 bg-white p-3">
-      <div className="size-8 rounded-lg grid place-items-center bg-[#72FF00]/10 text-[#72FF00] shrink-0">
+    <div className="flex items-center gap-3 rounded-xl border border-[#334155]/10 bg-white p-3">
+      <div className="size-8 rounded-lg grid place-items-center bg-[#334155]/10 text-[#334155] shrink-0">
         {icon}
       </div>
       <div className="font-semibold text-[13.5px]">{text}</div>

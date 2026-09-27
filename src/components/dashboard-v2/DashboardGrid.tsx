@@ -326,11 +326,11 @@ export function DashboardGrid({ workspaceId, operationalMode = false }: Props) {
 
   return (
     <OpsWorkspaceProvider workspaceId={workspaceId}>
-    <div className="space-y-5 sm:space-y-6">
+     <div className="space-y-6 sm:space-y-7">
       {/* Toolbar */}
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-start pt-1 sm:pt-2">
+       <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-4 items-start rounded-[20px] border border-border bg-card px-5 py-5 sm:px-7 sm:py-6 shadow-sm">
         <div>
-          <h1 className="text-[24px] sm:text-[30px] font-extrabold leading-tight">Painel</h1>
+           <h1 className="text-[26px] sm:text-[32px] font-extrabold leading-tight tracking-tight text-foreground">Painel</h1>
           <p className="text-[12px] sm:text-[13px] text-muted-foreground mt-0.5">Visão geral em tempo real do seu negócio</p>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap sm:flex-wrap sm:justify-end self-end">

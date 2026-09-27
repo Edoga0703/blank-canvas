@@ -2,8 +2,8 @@
 export const brand = {
   name: "Capi Conversa",
   tagline: "IA que atende seu WhatsApp 24/7 + CRM Kanban",
-  primary: "#72FF00",
-  primaryOklch: "0.85 0.27 131",
+  primary: "#2563EB",
+  primaryOklch: "0.55 0.23 264",
 };
 
 // Suporte é feito exclusivamente pelo chat interno do sistema (SupportFloatingButton).

@@ -94,7 +94,7 @@ export const Route = createFileRoute("/")({
     return (
       <div className="p-8 text-center bg-white min-h-screen flex flex-col items-center justify-center">
         <div className="max-w-md w-full border border-gray-100 rounded-3xl p-8 shadow-sm">
-          <h1 className="text-2xl font-black font-display text-[#72FF00] mb-4">Ops!</h1>
+          <h1 className="text-2xl font-black font-display text-[#334155] mb-4">Ops!</h1>
           <p className="mb-6 text-[#12263A]/70 text-sm leading-relaxed">
             Ocorreu um erro ao carregar a página.
           </p>
@@ -103,7 +103,7 @@ export const Route = createFileRoute("/")({
           </div>
           <button 
             onClick={() => window.location.reload()}
-            className="w-full py-3 bg-primary text-primary-foreground rounded-full font-bold hover:scale-[1.02] transition-transform shadow-lg shadow-[#72FF00]/20"
+            className="w-full py-3 bg-primary text-primary-foreground rounded-full font-bold hover:scale-[1.02] transition-transform shadow-lg shadow-[#334155]/20"
           >
             Recarregar e tentar novamente
           </button>
@@ -113,7 +113,7 @@ export const Route = createFileRoute("/")({
   }
 });
 
-const BLUE = "#72FF00";
+const BLUE = "#334155";
 
 async function goCta(path: "/entrar" | "#planos", plano: string = "pro") {
   if (path === "#planos") {
@@ -138,7 +138,7 @@ async function goCta(path: "/entrar" | "#planos", plano: string = "pro") {
 function Landing() {
   return (
     <div
-      className="min-h-screen w-full bg-[#F4F5F9] text-[#12263A] selection:bg-[#72FF00] selection:text-white antialiased overflow-x-hidden"
+      className="public-surface min-h-screen w-full bg-[#F4F5F9] text-[#12263A] selection:bg-[#334155] selection:text-white antialiased overflow-x-hidden"
       style={{ fontFamily: "'Manrope', system-ui, sans-serif" }}
     >
       <Header />
@@ -179,15 +179,15 @@ function Header() {
           <img src={metrixLogo.url} alt="Capi Conversa" className="h-7 sm:h-8 md:h-9 w-auto" />
         </a>
         <nav className="hidden lg:flex items-center gap-8 text-sm font-medium text-[#12263A]/70">
-          <a href="#como-funciona" className="hover:text-[#72FF00] transition-colors">Como funciona</a>
-          <a href="#recursos" className="hover:text-[#72FF00] transition-colors">Recursos</a>
-          <a href="#planos" className="hover:text-[#72FF00] transition-colors">Planos</a>
-          <a href="#faq" className="hover:text-[#72FF00] transition-colors">FAQ</a>
+          <a href="#como-funciona" className="hover:text-[#334155] transition-colors">Como funciona</a>
+          <a href="#recursos" className="hover:text-[#334155] transition-colors">Recursos</a>
+          <a href="#planos" className="hover:text-[#334155] transition-colors">Planos</a>
+          <a href="#faq" className="hover:text-[#334155] transition-colors">FAQ</a>
         </nav>
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             onClick={() => (window.location.href = "/entrar")}
-            className="hidden sm:inline-flex px-3 md:px-4 py-2 text-sm font-semibold text-[#12263A]/80 hover:text-[#72FF00] transition-colors"
+            className="hidden sm:inline-flex px-3 md:px-4 py-2 text-sm font-semibold text-[#12263A]/80 hover:text-[#334155] transition-colors"
           >
             Entrar
           </button>
@@ -223,15 +223,15 @@ function Hero() {
       />
 
       <div className="lg:col-span-7 z-10 text-center lg:text-left">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#72FF00]/20 bg-[#72FF00]/5 text-[#72FF00] text-xs sm:text-sm font-medium mb-5 md:mb-6">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#334155]/20 bg-[#334155]/5 text-[#334155] text-xs sm:text-sm font-medium mb-5 md:mb-6">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#72FF00] opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#72FF00]"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#334155] opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#334155]"></span>
           </span>
           Venda mais, trabalhe menos
         </div>
         <h1 className="font-display font-black mb-5 md:mb-8" style={{ fontSize: "clamp(1.9rem, 5vw, 5.25rem)", lineHeight: 1.05, letterSpacing: "-0.035em" }}>
-          Tenha o controle da sua operação. <span className="text-[#72FF00]">E transforme mais oportunidades em vendas.</span>
+          Tenha o controle da sua operação. <span className="text-[#334155]">E transforme mais oportunidades em vendas.</span>
         </h1>
         <p className="text-base sm:text-lg md:text-xl text-[#12263A]/70 max-w-xl mx-auto lg:mx-0 mb-4 leading-relaxed">
           Não perca mais clientes por demora no atendimento. A Capi Conversa captura seus leads, qualifica em segundos e organiza tudo em um funil visual perfeito. Seu único trabalho será entregar o produto.
@@ -240,7 +240,7 @@ function Hero() {
         <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 md:gap-6">
           <button
             onClick={() => goCta("/entrar")}
-            className="px-6 sm:px-8 py-3.5 sm:py-4 bg-primary text-primary-foreground rounded-full font-bold text-sm sm:text-base md:text-lg hover:scale-[1.03] transition-transform cursor-pointer shadow-lg shadow-[#72FF00]/25"
+            className="px-6 sm:px-8 py-3.5 sm:py-4 bg-primary text-primary-foreground rounded-full font-bold text-sm sm:text-base md:text-lg hover:scale-[1.03] transition-transform cursor-pointer shadow-lg shadow-[#334155]/25"
           >
             Teste grátis por 7 dias
           </button>
@@ -250,10 +250,10 @@ function Hero() {
       <div className="lg:col-span-5 relative flex items-center justify-center min-h-[340px] sm:min-h-[420px] lg:min-h-[560px] w-full max-w-lg mx-auto lg:max-w-full">
         {/* Concentric dashed rings */}
         <div aria-hidden className="absolute inset-0 flex items-center justify-center">
-          <div className="absolute w-[110%] aspect-square rounded-full border border-dashed border-[#72FF00]/15" />
-          <div className="absolute w-[85%] aspect-square rounded-full border border-dashed border-[#72FF00]/25" />
-          <div className="absolute w-[60%] aspect-square rounded-full border border-dashed border-[#72FF00]/30" />
-          <div className="absolute w-[95%] aspect-square rounded-full bg-[#72FF00]/10 blur-3xl" />
+          <div className="absolute w-[110%] aspect-square rounded-full border border-dashed border-[#334155]/15" />
+          <div className="absolute w-[85%] aspect-square rounded-full border border-dashed border-[#334155]/25" />
+          <div className="absolute w-[60%] aspect-square rounded-full border border-dashed border-[#334155]/30" />
+          <div className="absolute w-[95%] aspect-square rounded-full bg-[#334155]/10 blur-3xl" />
         </div>
 
         <img
@@ -265,8 +265,8 @@ function Hero() {
         />
 
         {/* Floating notification cards */}
-        <div className="absolute top-2 left-0 md:-left-4 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#72FF00]/10 px-2.5 sm:px-3 py-1.5 sm:py-2 border border-[#72FF00]/10 animate-[float_6s_ease-in-out_infinite]">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#72FF00] flex items-center justify-center text-white shrink-0">
+        <div className="absolute top-2 left-0 md:-left-4 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#334155]/10 px-2.5 sm:px-3 py-1.5 sm:py-2 border border-[#334155]/10 animate-[float_6s_ease-in-out_infinite]">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#334155] flex items-center justify-center text-white shrink-0">
             <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </div>
           <div className="text-left">
@@ -275,8 +275,8 @@ function Hero() {
           </div>
         </div>
 
-        <div className="hidden sm:flex absolute top-8 -right-2 md:-right-12 items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#72FF00]/10 px-3 py-2 border border-[#72FF00]/10 animate-[float_7s_ease-in-out_infinite_0.8s]">
-          <div className="w-8 h-8 rounded-lg bg-[#72FF00]/10 flex items-center justify-center text-[#72FF00] shrink-0">
+        <div className="hidden sm:flex absolute top-8 -right-2 md:-right-12 items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#334155]/10 px-3 py-2 border border-[#334155]/10 animate-[float_7s_ease-in-out_infinite_0.8s]">
+          <div className="w-8 h-8 rounded-lg bg-[#334155]/10 flex items-center justify-center text-[#334155] shrink-0">
             <TrendingUp className="w-4 h-4" />
           </div>
           <div className="text-left">
@@ -286,8 +286,8 @@ function Hero() {
         </div>
 
 
-        <div className="absolute bottom-6 sm:bottom-16 left-0 md:-left-6 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#72FF00]/10 px-2.5 sm:px-3 py-1.5 sm:py-2 border border-[#72FF00]/10 animate-[float_8s_ease-in-out_infinite_1.4s]">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#72FF00] flex items-center justify-center text-white shrink-0">
+        <div className="absolute bottom-6 sm:bottom-16 left-0 md:-left-6 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#334155]/10 px-2.5 sm:px-3 py-1.5 sm:py-2 border border-[#334155]/10 animate-[float_8s_ease-in-out_infinite_1.4s]">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#334155] flex items-center justify-center text-white shrink-0">
             <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </div>
           <div className="text-left">
@@ -296,8 +296,8 @@ function Hero() {
           </div>
         </div>
 
-        <div className="hidden sm:flex absolute top-[62%] right-0 md:-right-2 items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#72FF00]/10 px-3 py-2 border border-[#72FF00]/10 animate-[float_6.5s_ease-in-out_infinite_0.4s]">
-          <div className="w-8 h-8 rounded-lg bg-[#72FF00]/10 flex items-center justify-center text-[#72FF00] shrink-0">
+        <div className="hidden sm:flex absolute top-[62%] right-0 md:-right-2 items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#334155]/10 px-3 py-2 border border-[#334155]/10 animate-[float_6.5s_ease-in-out_infinite_0.4s]">
+          <div className="w-8 h-8 rounded-lg bg-[#334155]/10 flex items-center justify-center text-[#334155] shrink-0">
             <Calendar className="w-4 h-4" />
           </div>
           <div className="text-left">
@@ -326,12 +326,12 @@ function Metrics() {
           key={it.l}
           className={`p-6 md:p-8 rounded-2xl ${
             it.blue
-              ? "bg-primary text-primary-foreground shadow-xl shadow-[#72FF00]/20"
+              ? "bg-primary text-primary-foreground shadow-xl shadow-[#334155]/20"
               : "bg-white border border-gray-200"
           }`}
         >
           <div
-            className={`font-bold text-2xl md:text-3xl mb-1 font-display ${it.blue ? "" : "text-[#72FF00]"}`}
+            className={`font-bold text-2xl md:text-3xl mb-1 font-display ${it.blue ? "" : "text-[#334155]"}`}
           >
             {it.v}
           </div>
@@ -353,9 +353,9 @@ function HowItWorks() {
   return (
     <section id="como-funciona" className="flex flex-col gap-10 md:gap-14">
       <div className="mx-auto max-w-3xl text-center">
-        <div className="text-sm font-bold text-[#72FF00] uppercase tracking-widest mb-4">Agente de IA</div>
+        <div className="text-sm font-bold text-[#334155] uppercase tracking-widest mb-4">Agente de IA</div>
         <h2 className="font-bold font-display leading-[1.05] tracking-tight" style={{ fontSize: "clamp(1.75rem, 3.6vw, 3.75rem)" }}>
-          Seu agente de IA trabalha por você, <span className="text-[#72FF00]">qualifica leads 24 horas por dia.</span>
+          Seu agente de IA trabalha por você, <span className="text-[#334155]">qualifica leads 24 horas por dia.</span>
         </h2>
         <p className="mt-5 text-base md:text-lg text-[#12263A]/60 mx-auto max-w-2xl">
           Enquanto você toma um café, a IA atende, entende e move cada lead pra frente no CRM — todos os dias, sem folga.
@@ -364,7 +364,7 @@ function HowItWorks() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
         <div className="relative order-2 lg:order-1">
-          <div className="absolute inset-0 bg-[#72FF00]/10 blur-3xl rounded-full" aria-hidden />
+          <div className="absolute inset-0 bg-[#334155]/10 blur-3xl rounded-full" aria-hidden />
           <img
             src={mascoteNotebook.url}
             alt="Logo Capi Conversa"
@@ -376,9 +376,9 @@ function HowItWorks() {
           {steps.map((s) => (
             <li
               key={s.n}
-              className="group flex gap-4 sm:gap-5 p-5 sm:p-6 rounded-2xl bg-white border border-gray-200 hover:border-[#72FF00]/40 hover:shadow-lg hover:shadow-[#72FF00]/10 transition-all"
+              className="group flex gap-4 sm:gap-5 p-5 sm:p-6 rounded-2xl bg-white border border-gray-200 hover:border-[#334155]/40 hover:shadow-lg hover:shadow-[#334155]/10 transition-all"
             >
-              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-[#72FF00] grid place-items-center text-white font-bold shrink-0 font-display group-hover:rotate-6 transition-transform">
+              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-[#334155] grid place-items-center text-white font-bold shrink-0 font-display group-hover:rotate-6 transition-transform">
                 {s.n}
               </div>
               <div className="min-w-0">
@@ -457,9 +457,9 @@ function Features() {
   return (
     <section id="recursos" className="flex flex-col gap-12">
       <div className="mx-auto max-w-3xl text-center">
-        <div className="text-sm font-bold text-[#72FF00] uppercase tracking-widest mb-4">Recursos</div>
+        <div className="text-sm font-bold text-[#334155] uppercase tracking-widest mb-4">Recursos</div>
         <h2 className="font-bold font-display leading-[1.05] tracking-tight" style={{ fontSize: "clamp(1.75rem, 3.6vw, 3.75rem)" }}>
-          Uma plataforma. <span className="text-[#72FF00]">Oito módulos</span> que trabalham juntos.
+          Uma plataforma. <span className="text-[#334155]">Oito módulos</span> que trabalham juntos.
         </h2>
         <p className="mt-5 text-base md:text-lg text-[#12263A]/60 mx-auto max-w-2xl">
           Do primeiro "oi" no WhatsApp até o pós-venda — tudo conversando entre si, sem gambiarra, sem plugin, sem outra assinatura.
@@ -473,25 +473,25 @@ function Features() {
           return (
             <div
               key={f.key}
-              className={`group relative rounded-3xl p-6 md:p-7 border transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-[#72FF00]/10 flex flex-col gap-4 ${
+              className={`group relative rounded-3xl p-6 md:p-7 border transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-[#334155]/10 flex flex-col gap-4 ${
                 featured
                   ? "sm:col-span-2 lg:col-span-1 bg-primary border-primary text-primary-foreground"
-                  : "bg-white border-gray-200 hover:border-[#72FF00]/40"
+                  : "bg-white border-gray-200 hover:border-[#334155]/40"
               }`}
             >
               <div className="flex items-center justify-between">
                 <div
                   className={`w-12 h-12 rounded-2xl grid place-items-center shrink-0 ${
-                    featured ? "bg-white/15" : "bg-[#72FF00]/10 group-hover:bg-[#72FF00] transition-colors"
+                    featured ? "bg-white/15" : "bg-[#334155]/10 group-hover:bg-[#334155] transition-colors"
                   }`}
                 >
                   <FIcon
-                    className={`w-6 h-6 ${featured ? "text-white" : "text-[#72FF00] group-hover:text-white transition-colors"}`}
+                    className={`w-6 h-6 ${featured ? "text-white" : "text-[#334155] group-hover:text-white transition-colors"}`}
                   />
                 </div>
                 <span
                   className={`text-[10px] font-bold uppercase tracking-widest ${
-                    featured ? "text-white/70" : "text-[#72FF00]/70"
+                    featured ? "text-white/70" : "text-[#334155]/70"
                   }`}
                 >
                   {f.tag}
@@ -529,12 +529,12 @@ function Pricing() {
   return (
     <section id="planos" className="relative flex flex-col items-center gap-12">
       <div className="text-center max-w-2xl">
-        <div className="text-sm font-bold text-[#72FF00] uppercase tracking-widest mb-3">Plano único</div>
+        <div className="text-sm font-bold text-[#334155] uppercase tracking-widest mb-3">Plano único</div>
         <h2
           className="font-bold font-display leading-[1.05]"
           style={{ fontSize: "clamp(1.75rem, 3.6vw, 3.75rem)" }}
         >
-          Um plano. <span className="text-[#72FF00]">Tudo incluso.</span>
+          Um plano. <span className="text-[#334155]">Tudo incluso.</span>
         </h2>
         <p className="text-[#12263A]/60 mt-4">Sem letra miúda, sem upsell escondido. Comece grátis e veja resultado antes de pagar.</p>
       </div>
@@ -548,25 +548,25 @@ function Pricing() {
         />
 
         {/* Card em destaque, centralizado */}
-        <div className="w-full max-w-xl bg-white border border-gray-200 rounded-3xl p-6 sm:p-8 md:p-12 shadow-2xl shadow-[#72FF00]/10 relative overflow-hidden">
-          <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-[#72FF00]/10 blur-3xl" />
-          <div className="absolute -bottom-24 -left-24 w-64 h-64 rounded-full bg-[#72FF00]/5 blur-3xl" />
+        <div className="w-full max-w-xl bg-white border border-gray-200 rounded-3xl p-6 sm:p-8 md:p-12 shadow-2xl shadow-[#334155]/10 relative overflow-hidden">
+          <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-[#334155]/10 blur-3xl" />
+          <div className="absolute -bottom-24 -left-24 w-64 h-64 rounded-full bg-[#334155]/5 blur-3xl" />
           <div className="relative text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#72FF00]/10 text-[#72FF00] text-xs font-bold uppercase tracking-widest mb-5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#334155]/10 text-[#334155] text-xs font-bold uppercase tracking-widest mb-5">
               Capi PRO
             </div>
             <div className="flex items-baseline justify-center gap-2 mb-2">
               <div className="text-5xl sm:text-6xl md:text-7xl font-bold font-display text-[#12263A]">R$ 79,90</div>
               <div className="text-[#12263A]/50 text-sm sm:text-base">/mês</div>
             </div>
-            <div className="text-xs sm:text-sm text-[#72FF00] font-bold uppercase tracking-widest mb-6 sm:mb-8">
+            <div className="text-xs sm:text-sm text-[#334155] font-bold uppercase tracking-widest mb-6 sm:mb-8">
               7 dias grátis · sem cartão
             </div>
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 mb-8 text-left">
               {perks.map((p) => (
                 <li key={p} className="flex items-center gap-3 text-sm">
-                  <div className="w-5 h-5 rounded-full bg-[#72FF00]/10 grid place-items-center shrink-0">
-                    <Check className="w-3 h-3 text-[#72FF00]" />
+                  <div className="w-5 h-5 rounded-full bg-[#334155]/10 grid place-items-center shrink-0">
+                    <Check className="w-3 h-3 text-[#334155]" />
                   </div>
                   <span className="text-[#12263A]/80">{p}</span>
                 </li>
@@ -593,9 +593,9 @@ function Faq() {
   return (
     <section id="faq" className="flex flex-col gap-12">
       <div className="mx-auto max-w-3xl text-center">
-        <div className="text-sm font-bold text-[#72FF00] uppercase tracking-widest mb-4">FAQ</div>
+        <div className="text-sm font-bold text-[#334155] uppercase tracking-widest mb-4">FAQ</div>
         <h2 className="font-bold font-display leading-[1.05] tracking-tight" style={{ fontSize: "clamp(1.75rem, 3.6vw, 3.75rem)" }}>
-          Dúvidas <span className="text-[#72FF00]">rápidas</span> sobre a plataforma.
+          Dúvidas <span className="text-[#334155]">rápidas</span> sobre a plataforma.
         </h2>
         <p className="mt-5 text-base md:text-lg text-[#12263A]/60 mx-auto max-w-2xl">
           Como cada módulo trabalha por você — do primeiro contato no WhatsApp até o fechamento no CRM.
@@ -609,7 +609,7 @@ function Faq() {
               key={it.q}
               onClick={() => setOpen(isOpen ? null : i)}
               className={`text-left bg-white border rounded-2xl p-5 sm:p-6 transition-all ${
-                isOpen ? "border-[#72FF00]/40 shadow-lg shadow-[#72FF00]/5" : "border-gray-200 hover:border-gray-300"
+                isOpen ? "border-[#334155]/40 shadow-lg shadow-[#334155]/5" : "border-gray-200 hover:border-gray-300"
               }`}
             >
               <div className="flex items-center justify-between gap-4">
@@ -629,10 +629,10 @@ function Faq() {
 
 function CtaImpacto() {
   return (
-    <section className="relative overflow-hidden rounded-[1.75rem] sm:rounded-[2rem] md:rounded-[2.5rem] bg-gradient-to-br from-[#72FF00] via-[#1D33FF] to-[#12263A] px-6 py-10 sm:p-10 md:p-16 text-white">
+    <section className="relative overflow-hidden rounded-[1.75rem] sm:rounded-[2rem] md:rounded-[2.5rem] bg-gradient-to-br from-[#334155] via-[#25364B] to-[#12263A] px-6 py-10 sm:p-10 md:p-16 text-white">
       <div className="absolute inset-0 opacity-[0.12]" style={{ backgroundImage: "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)", backgroundSize: "48px 48px" }} />
       <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-white/10 blur-3xl" />
-      <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-[#72FF00]/40 blur-3xl" />
+      <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-[#334155]/40 blur-3xl" />
       <div className="relative z-10 max-w-4xl mx-auto flex flex-col items-center text-center gap-6 sm:gap-8">
         <span className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full border border-white/20 bg-white/10 backdrop-blur text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em]">
           Chega de perder venda no WhatsApp
@@ -644,7 +644,7 @@ function CtaImpacto() {
           A Capi Conversa responde, qualifica e agenda no automático — 24 horas por dia. Você entra na conversa só quando o cliente está pronto para comprar.
         </p>
         <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 pt-2 w-full sm:w-auto">
-          <button onClick={() => goCta("#planos")} className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl bg-white text-[#72FF00] font-bold text-sm sm:text-base shadow-2xl shadow-black/30 hover:scale-[1.03] transition-transform">
+          <button onClick={() => goCta("#planos")} className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl bg-white text-[#334155] font-bold text-sm sm:text-base shadow-2xl shadow-black/30 hover:scale-[1.03] transition-transform">
             Ver planos e começar agora →
           </button>
           <span className="text-xs sm:text-sm text-white/70">Teste grátis por 7 dias · sem cartão</span>
@@ -664,10 +664,10 @@ function Footer() {
           <span className="text-sm text-[#12263A]/40">© {new Date().getFullYear()}</span>
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#12263A]/60">
-          <a href="/termos" className="hover:text-[#72FF00]">Termos</a>
-          <a href="/privacidade" className="hover:text-[#72FF00]">Privacidade</a>
-          <a href="/reembolso" className="hover:text-[#72FF00]">Reembolso</a>
-          <a href="/entrar" className="hover:text-[#72FF00]">Entrar</a>
+          <a href="/termos" className="hover:text-[#334155]">Termos</a>
+          <a href="/privacidade" className="hover:text-[#334155]">Privacidade</a>
+          <a href="/reembolso" className="hover:text-[#334155]">Reembolso</a>
+          <a href="/entrar" className="hover:text-[#334155]">Entrar</a>
         </div>
       </div>
     </footer>

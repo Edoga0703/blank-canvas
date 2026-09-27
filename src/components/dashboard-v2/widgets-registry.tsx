@@ -95,7 +95,7 @@ function KpiBig({
     primary: "text-primary",
   }[color];
   return (
-    <div className="h-full flex flex-col justify-between p-3.5 sm:p-5 bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+     <div className="h-full flex flex-col justify-between p-4 sm:p-5 bg-card border border-border rounded-[20px] overflow-hidden shadow-sm">
       <Header title={label} Icon={Icon} />
       <div className="flex-1 flex flex-col justify-center min-w-0">
         <div
@@ -124,7 +124,7 @@ function ChartCard({
   label, Icon, children,
 }: { label: string; Icon: LucideIcon; children: React.ReactNode }) {
   return (
-    <div className="h-full flex flex-col p-3.5 sm:p-5 bg-card border border-border rounded-2xl min-h-0 shadow-sm">
+     <div className="h-full flex flex-col p-4 sm:p-5 bg-card border border-border rounded-[20px] min-h-0 shadow-sm">
       <Header title={label} Icon={Icon} />
       <div className="flex-1 min-h-0 mt-1">{children}</div>
     </div>
@@ -137,8 +137,8 @@ function AreaBig({ data }: { data: { date: string; value: number }[] }) {
       <LineChart data={data} margin={{ top: 10, right: 6, left: -20, bottom: 0 }}>
         <defs>
           <linearGradient id="areaG" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#0b22fe" stopOpacity={0.35} />
-            <stop offset="100%" stopColor="#0b22fe" stopOpacity={0} />
+             <stop offset="0%" stopColor="#2563EB" stopOpacity={0.16} />
+             <stop offset="100%" stopColor="#2563EB" stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid stroke="var(--border)" vertical={false} />
@@ -149,7 +149,7 @@ function AreaBig({ data }: { data: { date: string; value: number }[] }) {
           wrapperStyle={{ zIndex: 50, outline: "none" }}
           contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 10, fontSize: 12 }}
         />
-        <Line type="monotone" dataKey="value" stroke="var(--chart-1)" strokeWidth={2.5} dot={{ fill: "var(--chart-2)", strokeWidth: 0, r: 4 }} activeDot={{ fill: "var(--chart-2)", r: 6 }} />
+         <Line type="monotone" dataKey="value" stroke="var(--chart-1)" strokeWidth={2.5} dot={{ fill: "#BFEFCF", stroke: "var(--chart-1)", strokeWidth: 1, r: 4 }} activeDot={{ fill: "#BFEFCF", stroke: "var(--chart-1)", r: 6 }} />
       </LineChart>
     </ResponsiveContainer>
   );
@@ -163,7 +163,7 @@ function BarBig({ data }: { data: { stage: string; count: number }[] }) {
         <XAxis dataKey="stage" fontSize={10} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
         <YAxis fontSize={10} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
         <Tooltip
-          cursor={{ fill: "rgba(11, 34, 254, 0.06)" }}
+           cursor={{ fill: "rgba(37, 99, 235, 0.06)" }}
           wrapperStyle={{ zIndex: 50, outline: "none" }}
           contentStyle={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 10, fontSize: 12, boxShadow: "0 6px 20px -8px rgba(0,0,0,0.25)" }}
         />
@@ -181,7 +181,7 @@ function FunnelBig({ data }: { data: { stage: string; count: number }[] }) {
     ? stages
     : DEFAULT_STAGES.map((stage) => ({ stage, count: 0 }));
 
-   const COLORS = ["#72FF00", "#8EEB6A", "#B1F2A5", "#D9FBD5", "#E9FFE4", "#F3FFF0"];
+   const COLORS = ["#2563EB", "#4B81EF", "#84A9F3", "#BFEFCF", "#DDF7E7", "#ECF9F0"];
   const n = rendered.length;
   // Largura vai de 100% no topo até 45% na base — trapézio contínuo.
   const widthAt = (i: number) => 100 - (i / n) * 55;
@@ -204,7 +204,7 @@ function FunnelBig({ data }: { data: { stage: string; count: number }[] }) {
               className="absolute inset-0 flex items-center justify-center px-4"
               style={{ background: color, clipPath: clip }}
             >
-               <div className="flex items-center gap-2 min-w-0 text-foreground">
+                <div className={`flex items-center gap-2 min-w-0 ${i < 3 ? "text-white" : "text-foreground"}`}>
                 <span className="truncate text-[12px] font-semibold drop-shadow-sm">{s.stage}</span>
                  <span className="shrink-0 text-[11px] font-bold bg-card/60 rounded-md px-1.5 py-0.5">
                   {s.count}
