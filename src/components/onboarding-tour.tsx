@@ -24,7 +24,7 @@ const rawSteps: TourStep[] = [
   {
     target: "body",
     placement: "center",
-    title: "Oi! Eu sou o NOX, mascote do Capi Conversa 👋",
+    title: "Bem-vindo ao Capi Conversa 👋",
     image: noxWelcome,
     content:
       "Vou te dar um tour rápido pelos módulos principais. É rapidinho — e você pode refazer sempre que quiser pelo menu do usuário.",
@@ -55,7 +55,7 @@ function renderContent(s: TourStep) {
     <div className="flex flex-col sm:flex-row gap-2 items-center text-left">
       <img
         src={(s.image ?? noxWelcome).url}
-        alt="NOX — mascote Capi Conversa"
+        alt="Capi Conversa"
         className="w-24 h-24 sm:w-40 sm:h-40 md:w-48 md:h-48 object-contain shrink-0"
         loading="eager"
       />

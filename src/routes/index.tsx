@@ -258,8 +258,8 @@ function Hero() {
 
         <img
           src={mascoteNotebook.url}
-          alt="Mascote Capi Conversa com notebook"
-          className="relative w-[75%] sm:w-[70%] lg:w-full max-w-md lg:max-w-full h-auto object-contain drop-shadow-2xl lg:scale-115"
+          alt="Logo Capi Conversa"
+          className="relative w-[75%] sm:w-[70%] lg:w-full max-w-md lg:max-w-full rounded-3xl bg-white p-5 h-auto object-contain drop-shadow-2xl lg:scale-115"
           loading="eager"
           decoding="async"
         />
@@ -367,8 +367,8 @@ function HowItWorks() {
           <div className="absolute inset-0 bg-[#72FF00]/10 blur-3xl rounded-full" aria-hidden />
           <img
             src={mascoteNotebook.url}
-            alt="Mascote do Capi Conversa relaxando enquanto o notebook trabalha sozinho"
-            className="relative w-full h-auto max-w-xl mx-auto drop-shadow-2xl"
+            alt="Logo Capi Conversa"
+            className="relative w-full h-auto max-w-xl mx-auto rounded-3xl bg-white p-6 shadow-sm"
           />
         </div>
 
@@ -543,8 +543,8 @@ function Pricing() {
         {/* Mascote pequeno no canto */}
         <img
           src={mascoteOferta.url}
-          alt="Mascote Capi Conversa"
-          className="hidden lg:block absolute right-4 xl:right-16 -bottom-4 w-40 xl:w-48 h-auto drop-shadow-xl animate-float pointer-events-none select-none"
+          alt="Logo Capi Conversa"
+          className="hidden lg:block absolute right-4 xl:right-16 -bottom-4 w-40 xl:w-48 h-auto rounded-lg bg-white p-2 shadow-sm animate-float pointer-events-none select-none"
         />
 
         {/* Card em destaque, centralizado */}
