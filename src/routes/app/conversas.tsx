@@ -1623,20 +1623,11 @@ function ConversasPage() {
         {/* ============ CENTER — THREAD ============ */}
         <section className={`inbox-panel ${active ? "flex" : "hidden lg:flex"} flex-col min-h-0 min-w-0 h-full relative`}>
           {!active ? (
-            <div
-              className="flex-1 w-full h-full grid place-items-center bg-[color:var(--panel)]"
-              style={{
-                backgroundImage:
-                  "radial-gradient(color-mix(in oklab, var(--hairline) 55%, transparent) 1px, transparent 1px)",
-                backgroundSize: "18px 18px",
-              }}
-            >
-              <img
-                src={metrixLogoCenter.url}
-                alt="Capi Conversa"
-                className="w-[min(60%,360px)] max-w-full opacity-90 select-none pointer-events-none"
-                draggable={false}
-              />
+            <div className="flex-1 w-full h-full grid place-items-center bg-card px-6">
+              <div className="flex flex-col items-center gap-5 text-center">
+                <div className="grid size-16 place-items-center rounded-[20px] bg-accent text-primary"><MessageSquareText className="size-8" strokeWidth={1.6} /></div>
+                <div><h3 className="text-lg font-extrabold text-foreground">Sua caixa de entrada</h3><p className="mt-1 text-sm text-muted-foreground">Selecione uma conversa para começar.</p></div>
+              </div>
             </div>
           ) : (
             <>

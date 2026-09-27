@@ -95,7 +95,7 @@ function KpiBig({
     primary: "text-primary",
   }[color];
   return (
-    <div className="h-full flex flex-col justify-between p-3.5 sm:p-5 bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+     <div className="h-full flex flex-col justify-between p-4 sm:p-5 bg-card border border-border rounded-[20px] overflow-hidden shadow-sm">
       <Header title={label} Icon={Icon} />
       <div className="flex-1 flex flex-col justify-center min-w-0">
         <div
@@ -124,7 +124,7 @@ function ChartCard({
   label, Icon, children,
 }: { label: string; Icon: LucideIcon; children: React.ReactNode }) {
   return (
-    <div className="h-full flex flex-col p-3.5 sm:p-5 bg-card border border-border rounded-2xl min-h-0 shadow-sm">
+     <div className="h-full flex flex-col p-4 sm:p-5 bg-card border border-border rounded-[20px] min-h-0 shadow-sm">
       <Header title={label} Icon={Icon} />
       <div className="flex-1 min-h-0 mt-1">{children}</div>
     </div>

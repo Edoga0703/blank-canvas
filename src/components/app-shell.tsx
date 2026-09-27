@@ -310,7 +310,6 @@ export function AppShell({
   const isConversasPath = pathForLayout.startsWith("/app/conversas");
   const isCrmPath = pathForLayout.startsWith("/app/crm");
   const isTrainingPath = loc.pathname.startsWith("/app/treinamentos");
-  const isCurrentConversasPath = loc.pathname.startsWith("/app/conversas");
   const isContainedPath = isConversasPath || isCrmPath;
   const [collapsed, setCollapsed] = useState<boolean>(true);
   const unreadConversations = unreadConversationsCount;
