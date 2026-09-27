@@ -13,7 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 
-import metrixLogo from "@/assets/metrix-logo-full.png.asset.json";
+import metrixLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import mascotLogin from "@/assets/mascote-login.png.asset.json";
 
 function NotFoundComponent() {
@@ -44,7 +44,7 @@ function NotFoundComponent() {
 
       <header className="relative z-10 px-5 sm:px-8 py-5">
         <Link to="/" className="inline-flex items-center">
-          <img src={metrixLogo.url} alt="Metrix CRM" className="h-8 sm:h-9 w-auto" />
+           <img src={metrixLogo.url} alt="Capi Conversa" className="h-8 sm:h-9 w-auto" />
         </Link>
       </header>
 
@@ -58,7 +58,7 @@ function NotFoundComponent() {
               Página não<br />encontrada
             </h1>
             <p className="mt-4 text-base sm:text-lg text-[#0A0A0F]/60 max-w-md mx-auto lg:mx-0">
-              A página que você procura não existe ou foi movida. Vamos te levar de volta pra rota certa.
+               A página que você procura não existe ou foi movida. Vamos te levar de volta pra rota certa.
             </p>
             <div className="mt-8 flex flex-wrap justify-center lg:justify-start gap-3">
               <Link
@@ -144,21 +144,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Metrix CRM — WhatsApp com IA + CRM Kanban" },
+       { title: "Capi Conversa — WhatsApp com IA + CRM Kanban" },
       { name: "description", content: "Conecte o WhatsApp, deixe a IA atender e organize seus leads em um kanban arrastável." },
-      { name: "author", content: "Metrix CRM" },
+       { name: "author", content: "Capi Conversa" },
       { name: "google-site-verification", content: "hsdXT_bpeecFPBeT-jTzjGHxswmPzR4o7aR-JfLkIoU" },
-      { name: "theme-color", content: "#0B22FE" },
+       { name: "theme-color", content: "#72FF00" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
-      { name: "apple-mobile-web-app-title", content: "Metrix" },
-      { name: "application-name", content: "Metrix CRM" },
-      { property: "og:title", content: "Metrix CRM — WhatsApp com IA + CRM Kanban" },
+       { name: "apple-mobile-web-app-title", content: "Capi Conversa" },
+       { name: "application-name", content: "Capi Conversa" },
+       { property: "og:title", content: "Capi Conversa — WhatsApp com IA + CRM Kanban" },
       { property: "og:description", content: "Conecte o WhatsApp, deixe a IA atender e organize seus leads em um kanban arrastável." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "Metrix CRM — WhatsApp com IA + CRM Kanban" },
+       { name: "twitter:title", content: "Capi Conversa — WhatsApp com IA + CRM Kanban" },
       { name: "twitter:description", content: "Conecte o WhatsApp, deixe a IA atender e organize seus leads em um kanban arrastável." },
     ],
     links: [
@@ -170,7 +170,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Sora:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap",
+         href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap",
       },
     ],
   }),
