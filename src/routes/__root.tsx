@@ -34,11 +34,11 @@ function NotFoundComponent() {
         />
         <div
           className="absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full blur-3xl opacity-40"
-          style={{ background: "radial-gradient(circle, #0B22FE 0%, transparent 60%)" }}
+          style={{ background: "radial-gradient(circle, #72FF00 0%, transparent 60%)" }}
         />
         <div
           className="absolute -bottom-40 -right-40 h-[500px] w-[500px] rounded-full blur-3xl opacity-30"
-          style={{ background: "radial-gradient(circle, #0B22FE 0%, transparent 65%)" }}
+          style={{ background: "radial-gradient(circle, #72FF00 0%, transparent 65%)" }}
         />
       </div>
 
@@ -51,7 +51,7 @@ function NotFoundComponent() {
       <main className="relative z-10 flex-1 flex items-center justify-center px-5 py-8">
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center max-w-5xl w-full">
           <div className="order-2 lg:order-1 text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#0B22FE]/15 bg-[#0B22FE]/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#0B22FE]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#72FF00]/15 bg-[#72FF00]/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#72FF00]">
               Erro 404
             </div>
             <h1 className="mt-4 text-5xl sm:text-6xl md:text-7xl font-black tracking-tight text-[#0A0A0F]">
@@ -63,13 +63,13 @@ function NotFoundComponent() {
             <div className="mt-8 flex flex-wrap justify-center lg:justify-start gap-3">
               <Link
                 to="/"
-                className="inline-flex items-center justify-center rounded-xl bg-[#0B22FE] px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(11,34,254,0.5)] hover:bg-[#0A1FE0] transition-colors"
+                className="inline-flex items-center justify-center rounded-xl bg-[#72FF00] px-6 py-3 text-sm font-semibold text-[#12263A] shadow-sm hover:bg-[#63E900] transition-colors"
               >
                 Voltar para o início
               </Link>
               <Link
                 to="/entrar"
-                className="inline-flex items-center justify-center rounded-xl border border-[#0B22FE]/20 bg-white px-6 py-3 text-sm font-semibold text-[#0A0A0F] hover:border-[#0B22FE]/40 transition-colors"
+                className="inline-flex items-center justify-center rounded-xl border border-[#72FF00]/20 bg-white px-6 py-3 text-sm font-semibold text-[#0A0A0F] hover:border-[#72FF00]/40 transition-colors"
               >
                 Entrar no sistema
               </Link>
@@ -83,11 +83,11 @@ function NotFoundComponent() {
             <div className="relative">
               <div
                 className="absolute inset-0 -m-8 rounded-full blur-3xl opacity-40"
-                style={{ background: "radial-gradient(circle, #0B22FE 0%, transparent 60%)" }}
+                style={{ background: "radial-gradient(circle, #72FF00 0%, transparent 60%)" }}
               />
               <img
                 src={mascotLogin.url}
-                alt="Mascote Capi Conversa"
+                alt="Capi Conversa"
                 className="relative h-56 sm:h-72 lg:h-80 w-auto drop-shadow-2xl"
               />
             </div>

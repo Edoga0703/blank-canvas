@@ -2,9 +2,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { brand } from "@/config/brand";
 import metrixLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
-import metrixMascot from "@/assets/metrix-mascot.png.asset.json";
-import mascoteNotebook from "@/assets/mascote-notebook-v2.png.asset.json";
-import mascoteOferta from "@/assets/mascote-oferta.png.asset.json";
+import mascoteNotebook from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
+import mascoteOferta from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import {
