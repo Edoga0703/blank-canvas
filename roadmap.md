@@ -51,8 +51,3 @@
 - [x] Criar gráfico radial com tickets abertos por departamento
 - [x] Integrar à galeria e validar no painel
 
-## Correção visual Capi Conversa — 2026-09-27
-- [x] Neutralizar cores neon de páginas externas e Academy sem alterar marca gráfica
-- [x] Reconstruir shell e Conversas com painel de filtros, lista e conversa
-- [x] Refinar Dashboard e tokens compartilhados nas rotas internas
-- [ ] Validar visualmente desktop/mobile, typecheck e erros do preview
