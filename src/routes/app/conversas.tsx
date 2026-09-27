@@ -439,7 +439,7 @@ function ConversasPage() {
     function onMove(e: MouseEvent) {
       if (!resizingRef.current || !gridRootRef.current) return;
       const left = gridRootRef.current.getBoundingClientRect().left;
-      const filterWidth = 196;
+      const filterWidth = window.innerWidth >= 1280 ? 196 : 0;
       const w = Math.min(INBOX_MAX, Math.max(INBOX_MIN, e.clientX - left - filterWidth));
       setInboxWidth(w);
     }
@@ -1182,12 +1182,12 @@ function ConversasPage() {
         style={{
           ["--inbox-w" as any]: `${inboxWidth}px`,
           gridTemplateColumns: typeof window !== "undefined" && window.innerWidth >= 1024
-            ? (showDetails && active ? `196px ${inboxWidth}px minmax(0,1fr) 280px` : `196px ${inboxWidth}px minmax(0,1fr)`)
+            ? (showDetails && active ? `${window.innerWidth >= 1280 ? "196px " : ""}${inboxWidth}px minmax(0,1fr) 280px` : `${window.innerWidth >= 1280 ? "196px " : ""}${inboxWidth}px minmax(0,1fr)`)
             : undefined,
         }}
       >
 
-        <nav aria-label="Pastas de conversas" className="inbox-panel hidden lg:flex flex-col p-3 min-h-0">
+        <nav aria-label="Pastas de conversas" className="inbox-panel hidden xl:flex flex-col p-3 min-h-0">
           <div className="px-2 pt-3 pb-5 border-b border-border">
             <h2 className="text-base font-extrabold text-foreground">Mensagens</h2>
             <p className="text-[11px] text-muted-foreground mt-0.5">Caixas de entrada</p>
@@ -1404,7 +1404,7 @@ function ConversasPage() {
             </div>
 
             {/* Filtros rápidos do dia a dia */}
-             <div className="mt-2.5 flex flex-nowrap items-center gap-1 overflow-x-auto pb-0.5 lg:hidden">
+             <div className="mt-2.5 flex flex-nowrap items-center gap-1 overflow-x-auto pb-0.5 xl:hidden">
               {(isAtendenteUser ? QUICK_FILTERS_ATENDENTE : QUICK_FILTERS).filter((qf) => !(qf.key === "grupos" && !gruposAtivos)).map((qf) => {
                 const active = filter === qf.key;
                 const count = tabCounts[qf.key] ?? 0;

@@ -63,7 +63,7 @@ function NotFoundComponent() {
             <div className="mt-8 flex flex-wrap justify-center lg:justify-start gap-3">
               <Link
                 to="/"
-                className="inline-flex items-center justify-center rounded-xl bg-[#334155] px-6 py-3 text-sm font-semibold text-[#12263A] shadow-sm hover:bg-[#1E293B] transition-colors"
+                className="inline-flex items-center justify-center rounded-xl bg-[#334155] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#1E293B] transition-colors"
               >
                 Voltar para o início
               </Link>
