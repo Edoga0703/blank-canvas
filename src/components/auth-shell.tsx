@@ -15,7 +15,7 @@ export function AuthShell({
   footer?: React.ReactNode;
 }) {
   return (
-    <div className="relative min-h-screen bg-[#F2F4F6] text-[#12263A] overflow-hidden">
+    <div className="public-surface relative min-h-screen bg-[#F2F4F6] text-[#12263A] overflow-hidden">
       {/* Background decor */}
       <div className="absolute inset-0 -z-10">
         <div
@@ -36,7 +36,7 @@ export function AuthShell({
         />
         <div
           className="absolute bottom-[-200px] -right-40 h-[600px] w-[600px] rounded-full blur-3xl opacity-30"
-          style={{ background: "radial-gradient(circle, #72FF00 0%, transparent 65%)" }}
+          style={{ background: "radial-gradient(circle, #334155 0%, transparent 65%)" }}
         />
       </div>
 
@@ -46,7 +46,7 @@ export function AuthShell({
           <div className="flex items-center gap-4">
             <Link
               to="/entrar"
-              className="inline-flex items-center gap-2 text-sm text-[#12263A]/60 hover:text-[#72FF00] transition-colors"
+              className="inline-flex items-center gap-2 text-sm text-[#12263A]/60 hover:text-[#334155] transition-colors"
             >
               <ArrowLeft className="size-4" />
               voltar para o login
@@ -63,10 +63,10 @@ export function AuthShell({
 
           <div className="relative flex-1 flex items-center justify-center">
             <div aria-hidden className="absolute inset-0 flex items-center justify-center">
-              <div className="absolute w-[85%] aspect-square rounded-full border border-dashed border-[#72FF00]/15" />
-              <div className="absolute w-[65%] aspect-square rounded-full border border-dashed border-[#72FF00]/25" />
-              <div className="absolute w-[45%] aspect-square rounded-full border border-dashed border-[#72FF00]/35" />
-              <div className="absolute w-[70%] aspect-square rounded-full bg-[#72FF00]/10 blur-3xl" />
+              <div className="absolute w-[85%] aspect-square rounded-full border border-dashed border-[#334155]/15" />
+              <div className="absolute w-[65%] aspect-square rounded-full border border-dashed border-[#334155]/25" />
+              <div className="absolute w-[45%] aspect-square rounded-full border border-dashed border-[#334155]/35" />
+              <div className="absolute w-[70%] aspect-square rounded-full bg-[#334155]/10 blur-3xl" />
             </div>
 
             <img
@@ -76,8 +76,8 @@ export function AuthShell({
               loading="eager"
             />
 
-            <div className="absolute top-10 left-2 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#72FF00]/10 px-3 py-2 border border-[#72FF00]/10 animate-[float_6s_ease-in-out_infinite]">
-              <div className="w-8 h-8 rounded-lg bg-[#72FF00] flex items-center justify-center text-white shrink-0">
+            <div className="absolute top-10 left-2 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#334155]/10 px-3 py-2 border border-[#334155]/10 animate-[float_6s_ease-in-out_infinite]">
+              <div className="w-8 h-8 rounded-lg bg-[#334155] flex items-center justify-center text-white shrink-0">
                 <KeyRound className="w-4 h-4" />
               </div>
               <div className="text-left">
@@ -86,8 +86,8 @@ export function AuthShell({
               </div>
             </div>
 
-            <div className="absolute bottom-16 right-2 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#72FF00]/10 px-3 py-2 border border-[#72FF00]/10 animate-[float_7s_ease-in-out_infinite_0.6s]">
-              <div className="w-8 h-8 rounded-lg bg-[#72FF00]/10 flex items-center justify-center text-[#72FF00] shrink-0">
+            <div className="absolute bottom-16 right-2 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#334155]/10 px-3 py-2 border border-[#334155]/10 animate-[float_7s_ease-in-out_infinite_0.6s]">
+              <div className="w-8 h-8 rounded-lg bg-[#334155]/10 flex items-center justify-center text-[#334155] shrink-0">
                 <ShieldCheck className="w-4 h-4" />
               </div>
               <div className="text-left">
@@ -99,10 +99,10 @@ export function AuthShell({
 
           <div className="flex items-center gap-5 text-xs text-[#12263A]/60">
             <span className="inline-flex items-center gap-1.5">
-              <ShieldCheck className="size-3.5 text-[#72FF00]" /> LGPD-friendly
+              <ShieldCheck className="size-3.5 text-[#334155]" /> LGPD-friendly
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <CheckCircle2 className="size-3.5 text-[#72FF00]" /> Suporte humano
+              <CheckCircle2 className="size-3.5 text-[#334155]" /> Suporte humano
             </span>
           </div>
         </aside>
@@ -112,7 +112,7 @@ export function AuthShell({
           <div className="lg:hidden w-full max-w-md mb-5 flex items-center justify-between">
             <Link
               to="/entrar"
-              className="inline-flex items-center gap-2 text-sm text-[#12263A]/60 hover:text-[#72FF00]"
+              className="inline-flex items-center gap-2 text-sm text-[#12263A]/60 hover:text-[#334155]"
             >
               <ArrowLeft className="size-4" /> login
             </Link>
@@ -121,7 +121,7 @@ export function AuthShell({
 
           <div className="lg:hidden mb-3 sm:mb-5 relative">
             <div aria-hidden className="absolute inset-0 flex items-center justify-center">
-              <div className="w-40 sm:w-56 aspect-square rounded-full bg-[#72FF00]/10 blur-3xl" />
+              <div className="w-40 sm:w-56 aspect-square rounded-full bg-[#334155]/10 blur-3xl" />
             </div>
             <img
               src={mascotLogin.url}
@@ -131,7 +131,7 @@ export function AuthShell({
           </div>
 
           <div className="w-full max-w-md">
-            <div className="relative rounded-2xl bg-white border border-[#72FF00]/10 shadow-xl shadow-[#72FF00]/10 p-5 sm:p-7 overflow-hidden">
+            <div className="relative rounded-2xl bg-white border border-[#334155]/10 shadow-xl shadow-[#334155]/10 p-5 sm:p-7 overflow-hidden">
               <div
                 aria-hidden
                 className="absolute -top-24 -right-24 size-56 rounded-full blur-3xl opacity-40"
@@ -152,10 +152,10 @@ export function AuthShell({
 
             <div className="lg:hidden mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-[#12263A]/60">
               <span className="inline-flex items-center gap-1.5">
-                <ShieldCheck className="size-3.5 text-[#72FF00]" /> LGPD-friendly
+                <ShieldCheck className="size-3.5 text-[#334155]" /> LGPD-friendly
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <CheckCircle2 className="size-3.5 text-[#72FF00]" /> Suporte humano
+                <CheckCircle2 className="size-3.5 text-[#334155]" /> Suporte humano
               </span>
             </div>
           </div>
@@ -207,7 +207,7 @@ export function PasswordField({
           type="button"
           onClick={toggle}
           aria-label={show ? "Ocultar senha" : "Mostrar senha"}
-          className="absolute right-2 top-1/2 -translate-y-1/2 size-8 grid place-items-center rounded-md text-[#12263A]/50 hover:text-[#72FF00] hover:bg-[#72FF00]/5 transition-colors"
+          className="absolute right-2 top-1/2 -translate-y-1/2 size-8 grid place-items-center rounded-md text-[#12263A]/50 hover:text-[#334155] hover:bg-[#334155]/5 transition-colors"
           tabIndex={-1}
         >
           {show ? (

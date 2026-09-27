@@ -17,7 +17,7 @@ export function TrainingLayout({ children }: { children: ReactNode }) {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F2F4F6] text-[#12263A] flex flex-col font-sans selection:bg-primary/30">
+    <div className="public-surface min-h-screen bg-[#F2F4F6] text-[#12263A] flex flex-col font-sans selection:bg-primary/30">
       {/* Sidebar Netflix Style */}
       <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-[240px] bg-white flex-col py-8 z-[70] border-r border-[#E7EAEE] px-4">
         <div className="mb-12 px-2">

@@ -18,7 +18,7 @@ import mascotLogin from "@/assets/capi-conversa-logo-horizontal-black.png.asset.
 
 function NotFoundComponent() {
   return (
-    <div className="relative min-h-screen bg-[#F8F9FB] text-[#0A0A0F] overflow-hidden flex flex-col">
+    <div className="public-surface relative min-h-screen bg-[#F8F9FB] text-[#0A0A0F] overflow-hidden flex flex-col">
       <div className="absolute inset-0 -z-10 pointer-events-none">
         <div
           className="absolute inset-0 opacity-50"
@@ -34,11 +34,11 @@ function NotFoundComponent() {
         />
         <div
           className="absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full blur-3xl opacity-40"
-          style={{ background: "radial-gradient(circle, #72FF00 0%, transparent 60%)" }}
+          style={{ background: "radial-gradient(circle, #334155 0%, transparent 60%)" }}
         />
         <div
           className="absolute -bottom-40 -right-40 h-[500px] w-[500px] rounded-full blur-3xl opacity-30"
-          style={{ background: "radial-gradient(circle, #72FF00 0%, transparent 65%)" }}
+          style={{ background: "radial-gradient(circle, #334155 0%, transparent 65%)" }}
         />
       </div>
 
@@ -51,7 +51,7 @@ function NotFoundComponent() {
       <main className="relative z-10 flex-1 flex items-center justify-center px-5 py-8">
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center max-w-5xl w-full">
           <div className="order-2 lg:order-1 text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#72FF00]/15 bg-[#72FF00]/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#72FF00]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#334155]/15 bg-[#334155]/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#334155]">
               Erro 404
             </div>
             <h1 className="mt-4 text-5xl sm:text-6xl md:text-7xl font-black tracking-tight text-[#0A0A0F]">
@@ -63,13 +63,13 @@ function NotFoundComponent() {
             <div className="mt-8 flex flex-wrap justify-center lg:justify-start gap-3">
               <Link
                 to="/"
-                className="inline-flex items-center justify-center rounded-xl bg-[#72FF00] px-6 py-3 text-sm font-semibold text-[#12263A] shadow-sm hover:bg-[#63E900] transition-colors"
+                className="inline-flex items-center justify-center rounded-xl bg-[#334155] px-6 py-3 text-sm font-semibold text-[#12263A] shadow-sm hover:bg-[#1E293B] transition-colors"
               >
                 Voltar para o início
               </Link>
               <Link
                 to="/entrar"
-                className="inline-flex items-center justify-center rounded-xl border border-[#72FF00]/20 bg-white px-6 py-3 text-sm font-semibold text-[#0A0A0F] hover:border-[#72FF00]/40 transition-colors"
+                className="inline-flex items-center justify-center rounded-xl border border-[#334155]/20 bg-white px-6 py-3 text-sm font-semibold text-[#0A0A0F] hover:border-[#334155]/40 transition-colors"
               >
                 Entrar no sistema
               </Link>
@@ -83,7 +83,7 @@ function NotFoundComponent() {
             <div className="relative">
               <div
                 className="absolute inset-0 -m-8 rounded-full blur-3xl opacity-40"
-                style={{ background: "radial-gradient(circle, #72FF00 0%, transparent 60%)" }}
+                style={{ background: "radial-gradient(circle, #334155 0%, transparent 60%)" }}
               />
               <img
                 src={mascotLogin.url}
@@ -106,7 +106,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   }, [error]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="public-surface flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
           Esta página não carregou
@@ -148,7 +148,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Conecte o WhatsApp, deixe a IA atender e organize seus leads em um kanban arrastável." },
        { name: "author", content: "Capi Conversa" },
       { name: "google-site-verification", content: "hsdXT_bpeecFPBeT-jTzjGHxswmPzR4o7aR-JfLkIoU" },
-       { name: "theme-color", content: "#72FF00" },
+       { name: "theme-color", content: "#334155" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
