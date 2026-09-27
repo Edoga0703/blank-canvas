@@ -46,12 +46,12 @@ export function AcademiaMetricsHome() {
       <div className="fixed inset-0 bg-[#050505] z-[100] flex flex-col items-center justify-center gap-8">
         <div className="relative">
           <div className="absolute inset-0 bg-primary/20 blur-3xl animate-pulse" />
-          <img src={academyLogo.url} alt="Metrix Academy" className="size-32 relative z-10" />
+          <img src={academyLogo.url} alt="Capi Conversa Academy" className="size-32 relative z-10" />
         </div>
         <div className="w-48 h-1 bg-zinc-900 rounded-full overflow-hidden relative">
           <div className="absolute inset-y-0 left-0 bg-primary w-0 animate-[loading-bar_2s_ease-in-out_infinite]" />
         </div>
-        <span className="text-zinc-500 font-medium tracking-[0.2em] text-xs uppercase">Metrix Academy</span>
+        <span className="text-zinc-500 font-medium tracking-[0.2em] text-xs uppercase">Capi Conversa Academy</span>
       </div>
     );
   }

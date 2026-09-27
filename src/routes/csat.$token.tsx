@@ -214,7 +214,7 @@ function CsatPage() {
         </Button>
 
         <p className="mt-5 text-center text-[11px] text-black/40">
-          Powered by <span className="font-semibold">Metrix CRM</span>
+          Powered by <span className="font-semibold">Capi Conversa</span>
         </p>
       </div>
     </Shell>

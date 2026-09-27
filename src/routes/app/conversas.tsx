@@ -93,9 +93,9 @@ export const Route = createFileRoute("/app/conversas")({
   head: () => ({
     meta: [
       { title: `${brand.name} — Conversas` },
-      { name: "description", content: "Central de conversas e grupos do WhatsApp no Metrix CRM." },
+      { name: "description", content: "Central de conversas e grupos do WhatsApp no Capi Conversa." },
       { property: "og:title", content: `${brand.name} — Conversas` },
-      { property: "og:description", content: "Central de conversas e grupos do WhatsApp no Metrix CRM." },
+      { property: "og:description", content: "Central de conversas e grupos do WhatsApp no Capi Conversa." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -1608,7 +1608,7 @@ function ConversasPage() {
             >
               <img
                 src={metrixLogoCenter.url}
-                alt="Metrix CRM"
+                alt="Capi Conversa"
                 className="w-[min(60%,360px)] max-w-full opacity-90 select-none pointer-events-none"
                 draggable={false}
               />

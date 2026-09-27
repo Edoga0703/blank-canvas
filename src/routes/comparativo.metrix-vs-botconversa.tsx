@@ -2,9 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, X, ArrowRight, Bot, KanbanSquare, Sparkles, Zap } from "lucide-react";
 import { brand } from "@/config/brand";
 
-const TITLE = "Metrix CRM vs Botconversa: qual é melhor para WhatsApp em 2026?";
+const TITLE = "Capi Conversa vs Botconversa: qual é melhor para WhatsApp em 2026?";
 const DESC =
-  "Comparativo direto entre Metrix CRM e Botconversa: IA nativa, CRM automático, agendamentos e preço. Veja qual atende melhor sua PME no WhatsApp.";
+  "Comparativo direto entre Capi Conversa e Botconversa: IA nativa, CRM automático, agendamentos e preço. Veja qual atende melhor sua PME no WhatsApp.";
 const URL = "https://metrixcrm.com.br/comparativo/metrix-vs-botconversa";
 
 export const Route = createFileRoute("/comparativo/metrix-vs-botconversa")({
@@ -41,10 +41,10 @@ export const Route = createFileRoute("/comparativo/metrix-vs-botconversa")({
           mainEntity: [
             {
               "@type": "Question",
-              name: "Metrix CRM ou Botconversa: qual é melhor para PMEs?",
+              name: "Capi Conversa ou Botconversa: qual é melhor para PMEs?",
               acceptedAnswer: {
                 "@type": "Answer",
-                text: "Metrix CRM é melhor para quem quer IA nativa qualificando lead e movendo o card no CRM sozinha. Botconversa é um construtor de fluxos com bot mais tradicional — bom para automações simples, mas exige montar árvore de decisão manualmente.",
+                text: "Capi Conversa é melhor para quem quer IA nativa qualificando lead e movendo o card no CRM sozinha. Botconversa é um construtor de fluxos com bot mais tradicional — bom para automações simples, mas exige montar árvore de decisão manualmente.",
               },
             },
             {
@@ -105,11 +105,11 @@ function Page() {
             <Sparkles className="h-3.5 w-3.5" /> Comparativo 2026
           </span>
           <h1 className="text-3xl md:text-5xl font-bold tracking-tight leading-tight">
-            Metrix CRM vs Botconversa: qual atende melhor sua PME no WhatsApp?
+            Capi Conversa vs Botconversa: qual atende melhor sua PME no WhatsApp?
           </h1>
           <p className="text-lg text-muted-foreground leading-relaxed">
             Se você chegou aqui pesquisando <strong>Botconversa</strong>, provavelmente quer automatizar
-            WhatsApp e organizar leads. A diferença central é simples: o <strong>Metrix CRM</strong> traz
+            WhatsApp e organizar leads. A diferença central é simples: o <strong>Capi Conversa</strong> traz
             IA nativa que <em>entende</em> a conversa, responde e move o card no funil sozinha —
             sem você desenhar árvore de decisão manualmente.
           </p>
@@ -139,7 +139,7 @@ function Page() {
               <thead className="bg-muted/50 text-muted-foreground text-xs uppercase tracking-wide">
                 <tr>
                   <th className="text-left font-semibold px-4 py-3">Recurso</th>
-                  <th className="text-left font-semibold px-4 py-3">Metrix CRM</th>
+                  <th className="text-left font-semibold px-4 py-3">Capi Conversa</th>
                   <th className="text-left font-semibold px-4 py-3">Botconversa</th>
                 </tr>
               </thead>
@@ -178,7 +178,7 @@ function Page() {
         </section>
 
         <section className="rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 p-8 md:p-10 text-center space-y-4">
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Teste o Metrix CRM 7 dias grátis</h2>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Teste o Capi Conversa 7 dias grátis</h2>
           <p className="text-muted-foreground max-w-xl mx-auto">
             Conecte seu WhatsApp em 2 minutos e veja a IA qualificar seu primeiro lead. Sem cartão, sem amarração.
           </p>

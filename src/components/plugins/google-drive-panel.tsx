@@ -112,7 +112,7 @@ export function GoogleDrivePanel() {
       {conectado ? (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
-            Os arquivos aparecem no detalhe do lead, aba <strong>Mídia → Drive</strong>, em uma pasta por contato dentro de “Metrix CRM”, iguais para todos os usuários.
+            Os arquivos aparecem no detalhe do lead, aba <strong>Mídia → Drive</strong>, em uma pasta por contato dentro de “Capi Conversa”, iguais para todos os usuários.
           </p>
           {podeConectar && (
             <Button size="sm" variant="outline" className="text-destructive" disabled={busy} onClick={desconectar}>

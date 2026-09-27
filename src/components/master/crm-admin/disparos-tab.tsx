@@ -55,7 +55,7 @@ export function DisparosTab({ temConexao, onDone }: { temConexao: boolean; onDon
 
       <Textarea
         rows={5}
-        placeholder="Olá {{nome}}, novidade na Metrix CRM…"
+        placeholder="Olá {{nome}}, novidade na Capi Conversa…"
         value={texto}
         onChange={(e) => setTexto(e.target.value)}
       />

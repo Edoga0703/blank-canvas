@@ -21,7 +21,7 @@ export function TrainingLayout({ children }: { children: ReactNode }) {
       {/* Sidebar Netflix Style */}
       <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-[240px] bg-[#0A0A0A] flex-col py-8 z-[70] border-r border-white/5 px-4">
         <div className="mb-12 px-2">
-          <img src={academyLogo.url} alt="Metrix Academy" className="h-20 w-auto object-contain" />
+          <img src={academyLogo.url} alt="Capi Conversa Academy" className="h-20 w-auto object-contain" />
         </div>
 
         <nav className="flex flex-col gap-2 flex-1">

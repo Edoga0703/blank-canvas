@@ -3,10 +3,10 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 export const Route = createFileRoute("/app/treinamentos")({
   head: () => ({
     meta: [
-      { title: "Metrix Academy — O Portal da sua Evolução" },
-      { name: "description", content: "Centro de treinamentos e vídeo aulas da Metrix Academy." },
-      { property: "og:title", content: "Metrix Academy" },
-      { property: "og:description", content: "Centro de treinamentos e vídeo aulas da Metrix Academy." },
+      { title: "Capi Conversa Academy — O Portal da sua Evolução" },
+      { name: "description", content: "Centro de treinamentos e vídeo aulas da Capi Conversa Academy." },
+      { property: "og:title", content: "Capi Conversa Academy" },
+      { property: "og:description", content: "Centro de treinamentos e vídeo aulas da Capi Conversa Academy." },
       { name: "theme-color", content: "#050505" },
     ],
   }),

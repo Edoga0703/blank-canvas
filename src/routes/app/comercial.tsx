@@ -32,9 +32,9 @@ export const Route = createFileRoute("/app/comercial")({
   head: () => ({
     meta: [
       { title: `${brand.name} — Comercial` },
-      { name: "description", content: "Gestão de vendas, metas, produtos e relatórios comerciais no Metrix CRM." },
+      { name: "description", content: "Gestão de vendas, metas, produtos e relatórios comerciais no Capi Conversa." },
       { property: "og:title", content: `${brand.name} — Comercial` },
-      { property: "og:description", content: "Gestão de vendas, metas, produtos e relatórios comerciais no Metrix CRM." },
+      { property: "og:description", content: "Gestão de vendas, metas, produtos e relatórios comerciais no Capi Conversa." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

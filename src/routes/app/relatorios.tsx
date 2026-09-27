@@ -183,7 +183,7 @@ function RelatoriosPage() {
     const footer = () => {
       doc.setDrawColor(226, 229, 238); doc.line(margin, pageHeight - 26, pageWidth - margin, pageHeight - 26);
       doc.setTextColor(110, 116, 134); doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
-      doc.text("Metrix CRM · Operação Sevcon", margin, pageHeight - 13);
+      doc.text("Capi Conversa · Operação Sevcon", margin, pageHeight - 13);
       doc.text(`Página ${page}`, pageWidth - margin, pageHeight - 13, { align: "right" });
     };
     header();

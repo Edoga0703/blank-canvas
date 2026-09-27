@@ -2,8 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { LegalShell } from "@/components/legal-shell";
 
 const TERMOS_URL = "https://metrixcrm.com.br/termos";
-const TERMOS_TITLE = "Termos e Condições — Metrix CRM";
-const TERMOS_DESC = "Termos e Condições de uso do Metrix CRM.";
+const TERMOS_TITLE = "Termos e Condições — Capi Conversa";
+const TERMOS_DESC = "Termos e Condições de uso do Capi Conversa.";
 
 export const Route = createFileRoute("/termos")({
   head: () => ({
@@ -26,8 +26,8 @@ function TermosPage() {
       <section>
         <h2>1. Quem somos</h2>
         <p>
-          Estes Termos regulam o uso do serviço Metrix CRM ("Serviço"), fornecido por
-          <strong> Metrix CRM</strong> ("nós", "nosso"). Ao usar o Serviço, você concorda com
+          Estes Termos regulam o uso do serviço Capi Conversa ("Serviço"), fornecido por
+          <strong> Capi Conversa</strong> ("nós", "nosso"). Ao usar o Serviço, você concorda com
           estes Termos. Se não concordar, não utilize o Serviço.
         </p>
       </section>
@@ -44,7 +44,7 @@ function TermosPage() {
       <section>
         <h2>3. Descrição do Serviço</h2>
         <p>
-          O Metrix CRM oferece automação e gestão de atendimento via WhatsApp, incluindo
+          O Capi Conversa oferece automação e gestão de atendimento via WhatsApp, incluindo
           recursos de mensageria, fluxos automatizados e integrações.
         </p>
       </section>
@@ -65,7 +65,7 @@ function TermosPage() {
         <h2>5. Propriedade intelectual</h2>
         <p>
           Todo o software, marca, documentação e materiais do Serviço são de propriedade
-          do Metrix CRM. Concedemos a você uma licença limitada, não exclusiva e
+          do Capi Conversa. Concedemos a você uma licença limitada, não exclusiva e
           intransferível para usar o Serviço conforme o plano contratado.
         </p>
       </section>
@@ -124,7 +124,7 @@ function TermosPage() {
         <h2>11. Lei aplicável</h2>
         <p>
           Estes Termos são regidos pelas leis do Brasil. Fica eleito o foro do domicílio
-          do Metrix CRM para dirimir controvérsias, salvo disposição legal em contrário.
+          do Capi Conversa para dirimir controvérsias, salvo disposição legal em contrário.
         </p>
       </section>
 
