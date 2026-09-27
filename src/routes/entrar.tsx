@@ -399,7 +399,7 @@ function EntrarPage() {
                         type="button"
                         size="lg"
                         onClick={() => { setSignupSentTo(null); setMode("login"); setPassword(""); setConfirmPassword(""); }}
-                        className="w-full h-12 bg-[#334155] hover:bg-[#0919cc] text-white font-semibold rounded-full shadow-lg shadow-[#334155]/30"
+                        className="w-full h-12 bg-[#334155] hover:bg-[#1E293B] text-white font-semibold rounded-full shadow-sm"
                       >
                         Ir para o login
                       </Button>
@@ -507,7 +507,7 @@ function EntrarPage() {
                       autoComplete="new-password"
                     />
 
-                    <Button type="submit" disabled={loading} size="lg" className="w-full h-12 bg-[#334155] hover:bg-[#0919cc] text-white font-semibold rounded-full shadow-lg shadow-[#334155]/30">
+                    <Button type="submit" disabled={loading} size="lg" className="w-full h-12 bg-[#334155] hover:bg-[#1E293B] text-white font-semibold rounded-full shadow-sm">
                       {loading && <Loader2 className="size-4 mr-2 animate-spin" />}
                       {planInfo ? "Criar conta e continuar" : "Criar conta grátis"}
                     </Button>
@@ -556,7 +556,7 @@ function EntrarPage() {
                       </span>
                     </label>
 
-                    <Button type="submit" disabled={loading} size="lg" className="w-full h-12 bg-[#334155] hover:bg-[#0919cc] text-white font-semibold rounded-full shadow-lg shadow-[#334155]/30">
+                    <Button type="submit" disabled={loading} size="lg" className="w-full h-12 bg-[#334155] hover:bg-[#1E293B] text-white font-semibold rounded-full shadow-sm">
                       {loading && <Loader2 className="size-4 mr-2 animate-spin" />}
                       Entrar
                     </Button>
