@@ -498,42 +498,25 @@ function Sidebar({
 
 
 
-  const shortcuts = sections.flatMap((sec) => sec.items).filter((item) => item.to && (!item.adminOnly || isAdmin) && (!item.superOnly || isSuperAdmin) && (!item.operationalOnly || company?.atendimento_operacional === true) && !(company?.atendimento_operacional === true && MODULOS_OCULTOS_MODO_OPERACIONAL.includes(item.to)) && isFeatureVisible(item.flag) && isCapacidadeVisible(item.capacidade) && (!(company as any)?.funcoes_individuais || isAdmin || isSuperAdmin || MODULOS_RESTRITOS.includes(item.to) || (company?.atendimento_operacional === true && item.to === "/app/crm")));
-  const width = collapsed ? "w-[72px]" : "w-[292px]";
+  const width = collapsed ? "w-[72px]" : "w-[248px]";
 
   return (
-    <aside
-       className={`hidden lg:flex ${width} h-full min-h-0 transition-all duration-200 bg-card text-foreground border-r border-border shadow-sm`}
-    >
-       <div className="w-[72px] shrink-0 flex flex-col items-center border-r border-border py-5 gap-5">
-         <Link to="/app/dashboard" title="Capi Conversa" className="grid size-11 place-items-center rounded-xl bg-muted overflow-hidden">
-          <img src="/favicon.png" alt="Capi Conversa" className="size-9 object-contain" />
-        </Link>
-         <nav aria-label="Atalhos" className="flex-1 flex flex-col items-center gap-2 overflow-y-auto no-scrollbar">
-          {shortcuts.map((item) => {
-            const Icon = item.icon;
-            const active = activePath.startsWith(item.to ?? "#");
-             return <Link key={item.to} to={item.to} title={item.label} aria-label={item.label} onPointerDown={() => onNavigateStart?.(item.to)} className={`grid size-10 shrink-0 place-items-center rounded-full transition-colors ${active ? "bg-accent text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}><Icon className="size-[18px]" strokeWidth={1.8} /></Link>;
-          })}
-        </nav>
-        <button onClick={onToggleCollapsed} title={collapsed ? "Expandir menu" : "Recolher menu"} className="grid size-10 place-items-center rounded-full bg-muted text-foreground hover:bg-accent">
-          {collapsed ? <ChevronsRight className="size-5" /> : <ChevronsLeft className="size-5" />}
-        </button>
-      </div>
-       {!collapsed && <div className="w-[220px] min-w-0 h-full flex flex-col">
-      {/* Brand + collapse toggle */}
-      <div className="h-[72px] flex items-center gap-2 px-5 border-b border-border">
-        <div className="flex-1 min-w-0 flex items-center justify-center">
-           <img src={logoFull.url} alt={brand.name} className="h-11 w-full object-contain" />
-        </div>
-      </div>
+     <aside
+        className={`hidden lg:flex ${width} shrink-0 h-full min-h-0 flex-col transition-all duration-200 bg-card text-foreground border-r border-border shadow-sm`}
+     >
+       <div className={`h-[72px] shrink-0 flex items-center border-b border-border ${collapsed ? "justify-center" : "gap-1 px-3"}`}>
+         <Link to="/app/dashboard" title="Capi Conversa" className={collapsed ? "grid size-11 place-items-center rounded-xl bg-muted overflow-hidden" : "flex-1 min-w-0 flex items-center justify-center"}>
+           {collapsed ? <img src="/favicon.png" alt="Capi Conversa" className="size-9 object-contain" /> : <img src={logoFull.url} alt={brand.name} className="h-11 w-full object-contain" />}
+         </Link>
+         {!collapsed && <button type="button" onClick={onToggleCollapsed} title="Recolher menu" aria-label="Recolher menu" className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-foreground hover:bg-accent"><ChevronsLeft className="size-5" /></button>}
+       </div>
 
 
-       <nav className="px-3 py-5 [@media(max-height:820px)]:py-2 flex-1 overflow-y-auto overflow-x-hidden no-scrollbar space-y-5 [@media(max-height:820px)]:space-y-2">
+        <nav aria-label="Menu principal" className={`${collapsed ? "px-3" : "px-3"} py-5 [@media(max-height:820px)]:py-2 flex-1 overflow-y-auto overflow-x-hidden no-scrollbar space-y-5 [@media(max-height:820px)]:space-y-2`}>
         {sections.map((sec, i) => (
           <div key={sec.label}>
             {i > 0 && <div className="h-px bg-border mx-2 mb-3" />}
-            <div className="px-3 pb-2 text-[10px] font-bold uppercase text-muted-foreground">{sec.label}</div>
+             {!collapsed && <div className="px-3 pb-2 text-[10px] font-bold uppercase text-muted-foreground">{sec.label}</div>}
             <div className="flex flex-col gap-[3px]">
               {sec.items.filter((i: any) => (!i.adminOnly || isAdmin) && (!i.superOnly || isSuperAdmin) && (!i.operationalOnly || company?.atendimento_operacional === true) && !(company?.atendimento_operacional === true && i.to && MODULOS_OCULTOS_MODO_OPERACIONAL.includes(i.to)) && isFeatureVisible(i.flag) && isCapacidadeVisible(i.capacidade) && (!(company as any)?.funcoes_individuais || isAdmin || isSuperAdmin || MODULOS_RESTRITOS.includes(i.to) || (company?.atendimento_operacional === true && i.to === "/app/crm"))).map((item: any) => (
                 item.children
@@ -545,7 +528,8 @@ function Sidebar({
         ))}
       </nav>
 
-      <div className="p-3 border-t border-border">
+       <div className={`shrink-0 border-t border-border ${collapsed ? "p-3" : "p-3"}`}>
+         {collapsed && <button type="button" onClick={onToggleCollapsed} title="Expandir menu" aria-label="Expandir menu" className="mb-3 grid size-10 place-items-center rounded-full bg-muted text-foreground hover:bg-accent"><ChevronsRight className="size-5" /></button>}
         <DropdownMenu>
 
 
@@ -626,7 +610,7 @@ function Sidebar({
 
           </DropdownMenuContent>
         </DropdownMenu>
-      </div></div>}
+       </div>
     </aside>
   );
 }
