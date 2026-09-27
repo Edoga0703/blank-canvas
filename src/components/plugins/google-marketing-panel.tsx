@@ -75,8 +75,8 @@ export function GoogleMarketingPanel({ servico }: { servico: Servico }) {
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
             {ads
-              ? "Entre com a conta Google que administra o Google Ads para acompanhar o desempenho das campanhas dentro do Metrix."
-              : "Entre com a conta Google que tem acesso ao Analytics para acompanhar acessos e conversões do site dentro do Metrix."}
+              ? "Entre com a conta Google que administra o Google Ads para acompanhar o desempenho das campanhas dentro do Capi Conversa."
+              : "Entre com a conta Google que tem acesso ao Analytics para acompanhar acessos e conversões do site dentro do Capi Conversa."}
           </p>
           <Button
             size="sm"

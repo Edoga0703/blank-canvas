@@ -368,7 +368,7 @@ function HowItWorks() {
           <div className="absolute inset-0 bg-[#72FF00]/10 blur-3xl rounded-full" aria-hidden />
           <img
             src={mascoteNotebook.url}
-            alt="Mascote da Capi Conversa relaxando enquanto o notebook trabalha sozinho"
+            alt="Mascote do Capi Conversa relaxando enquanto o notebook trabalha sozinho"
             className="relative w-full h-auto max-w-xl mx-auto drop-shadow-2xl"
           />
         </div>

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { TrainingLayout } from "@/components/training/training-layout";
 import { CourseShelf } from "@/components/training/course-shelf";
 import { BannerCarousel } from "@/components/training/banner-carousel";
-import academyLogo from "@/assets/academy-logo.png.asset.json";
+import academyLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import { useServerFn } from "@tanstack/react-start";
 import { getTrainingHomeData } from "@/lib/training.functions";
 
@@ -46,7 +46,7 @@ export function AcademiaMetricsHome() {
       <div className="fixed inset-0 bg-[#050505] z-[100] flex flex-col items-center justify-center gap-8">
         <div className="relative">
           <div className="absolute inset-0 bg-primary/20 blur-3xl animate-pulse" />
-          <img src={academyLogo.url} alt="Capi Conversa Academy" className="size-32 relative z-10" />
+          <img src={academyLogo.url} alt="Capi Conversa Academy" className="w-44 h-auto relative z-10 rounded-md bg-white p-2" />
         </div>
         <div className="w-48 h-1 bg-zinc-900 rounded-full overflow-hidden relative">
           <div className="absolute inset-y-0 left-0 bg-primary w-0 animate-[loading-bar_2s_ease-in-out_infinite]" />

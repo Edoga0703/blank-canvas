@@ -14,7 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 
 import metrixLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
-import mascotLogin from "@/assets/mascote-login.png.asset.json";
+import mascotLogin from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 
 function NotFoundComponent() {
   return (
@@ -87,7 +87,7 @@ function NotFoundComponent() {
               />
               <img
                 src={mascotLogin.url}
-                alt="Mascote Metrix"
+                alt="Mascote Capi Conversa"
                 className="relative h-56 sm:h-72 lg:h-80 w-auto drop-shadow-2xl"
               />
             </div>

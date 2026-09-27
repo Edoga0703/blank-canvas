@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { brand } from "@/config/brand";
 import metrixLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
-import mascotLogin from "@/assets/mascote-login.png.asset.json";
+import mascotLogin from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import { getRememberChoice, setRememberChoice } from "@/lib/session-persistence";
 import { maskPhone } from "@/lib/masks";
 import { parseBrPhone } from "@/lib/br-phone";

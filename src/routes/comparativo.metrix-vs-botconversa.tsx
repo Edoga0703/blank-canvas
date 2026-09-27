@@ -49,10 +49,10 @@ export const Route = createFileRoute("/comparativo/metrix-vs-botconversa")({
             },
             {
               "@type": "Question",
-              name: "O Metrix substitui o Botconversa?",
+              name: "O Capi Conversa substitui o Botconversa?",
               acceptedAnswer: {
                 "@type": "Answer",
-                text: "Sim. Metrix cobre atendimento por IA, CRM Kanban, agendamentos, campanhas em massa e catálogo em um plano só, sem precisar de plataforma de bot separada.",
+                text: "Sim. Capi Conversa cobre atendimento por IA, CRM Kanban, agendamentos, campanhas em massa e catálogo em um plano só, sem precisar de plataforma de bot separada.",
               },
             },
           ],
@@ -97,7 +97,7 @@ function Page() {
         <nav aria-label="Breadcrumb" className="text-xs text-muted-foreground">
           <Link to="/" className="hover:text-foreground">Início</Link>
           <span className="mx-2">/</span>
-          <span>Comparativo Metrix vs Botconversa</span>
+          <span>Comparativo Capi Conversa vs Botconversa</span>
         </nav>
 
         <section className="space-y-4">
@@ -158,12 +158,12 @@ function Page() {
         </section>
 
         <section className="space-y-4">
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Quando o Metrix ganha</h2>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Quando o Capi Conversa ganha</h2>
           <ul className="space-y-3 text-[15px] leading-relaxed">
             <li className="flex gap-3"><Check className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" /> Você quer <strong>responder em segundos</strong> — não desenhar fluxograma de bot pra cada cenário.</li>
             <li className="flex gap-3"><Check className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" /> Precisa que <strong>o lead entre no CRM sozinho</strong> e ande no funil sem alguém arrastar card.</li>
             <li className="flex gap-3"><Check className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" /> Atende <strong>clínica, imobiliária, serviços ou e-commerce</strong> e quer agendamento + catálogo no mesmo sistema.</li>
-            <li className="flex gap-3"><Check className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" /> Não quer <strong>pagar por contato ativo</strong> — Metrix tem plano único e previsível.</li>
+            <li className="flex gap-3"><Check className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" /> Não quer <strong>pagar por contato ativo</strong> — Capi Conversa tem plano único e previsível.</li>
           </ul>
         </section>
 
@@ -173,7 +173,7 @@ function Page() {
             Se o seu caso é 100% construir <strong>fluxos manuais de bot</strong> (menus, botões, gatilhos por palavra-chave)
             e você não precisa de CRM Kanban, agendamento ou IA que entende linguagem natural, um construtor
             de bot tradicional cobre. A partir do momento em que você quer atendimento humanizado, qualificação
-            automática e um funil vivo, o Metrix ganha por vir <strong>tudo pronto</strong>.
+            automática e um funil vivo, o Capi Conversa ganha por vir <strong>tudo pronto</strong>.
           </p>
         </section>
 

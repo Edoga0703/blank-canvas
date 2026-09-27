@@ -78,7 +78,7 @@ function CrmAdminPage() {
       <header>
         <h1 className="text-xl font-semibold">CRM Admin</h1>
         <p className="text-sm text-muted-foreground">
-          Prospecção e relacionamento com a própria base, usando o WhatsApp comercial da Metrix. Só o
+          Prospecção e relacionamento com a própria base, usando o WhatsApp comercial do Capi Conversa. Só o
           super admin enxerga.
         </p>
       </header>

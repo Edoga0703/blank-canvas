@@ -392,7 +392,7 @@ function SistemaPage() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="openai">OpenAI (GPT-4o / GPT-4o-mini)</SelectItem>
-                  <SelectItem value="gemini">Google Gemini (Gateway Metrix)</SelectItem>
+                  <SelectItem value="gemini">Google Gemini (Gateway Capi Conversa)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -24,8 +24,8 @@ import appleIcon from "@/assets/apple.svg.asset.json";
 import androidIcon from "@/assets/android2.svg.asset.json";
 import { brand } from "@/config/brand";
 import { Button } from "@/components/ui/button";
-import metrixLogo from "@/assets/metrix-logo.png.asset.json";
-import mascotMobile from "@/assets/mascot-mobile.png.asset.json";
+import metrixLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
+import mascotMobile from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import iphoneStep1 from "@/assets/iphone-step-1.png.asset.json";
 import iphoneStep2 from "@/assets/iphone-step-2.png.asset.json";
 import iphoneStep3 from "@/assets/iphone-step-3.png.asset.json";
@@ -36,7 +36,7 @@ import androidStep2 from "@/assets/android-step-2.png.asset.json";
 import androidStep3 from "@/assets/android-step-3.png.asset.json";
 import androidStep4 from "@/assets/android-step-4.png.asset.json";
 
-const TITLE = "Metrix no celular: CRM e WhatsApp na palma da mão";
+const TITLE = "Capi Conversa no celular: CRM e WhatsApp na palma da mão";
 const DESC = "Instale o Capi Conversa no seu celular em 30 segundos. Responda leads, mova cards no Kanban e receba notificações onde você estiver.";
 const URL = "https://metrixcrm.com.br/mobile";
 
@@ -52,7 +52,7 @@ const ANDROID_STEPS = [
   { text: "1. Abra metrixcrm.com.br no navegador e toque no menu ⋮ no canto superior.", img: androidStep1.url },
   { text: "2. Escolha “Instalar e criar atalho” ou “Instalar aplicativo”.", img: androidStep2.url },
   { text: "3. Confirme a instalação clicando em “Instalar”.", img: androidStep3.url },
-  { text: "4. O Metrix agora aparecerá junto aos seus apps instalados.", img: androidStep4.url },
+  { text: "4. O Capi Conversa agora aparecerá junto aos seus apps instalados.", img: androidStep4.url },
 ];
 
 const MOBILE_FEATURES = [
@@ -117,7 +117,7 @@ function MobilePage() {
                 <div className="absolute w-[85%] aspect-square rounded-full border border-dashed border-[#0B22FE]/25" />
                 <div className="absolute w-[95%] aspect-square rounded-full bg-[#0B22FE]/10 blur-3xl" />
              </div>
-             <img src={mascotMobile.url} alt="Mascote Metrix Mobile" className="relative w-full max-w-md h-auto object-contain drop-shadow-2xl animate-[float_6s_ease-in-out_infinite]" />
+             <img src={mascotMobile.url} alt="Mascote Capi Conversa Mobile" className="relative w-full max-w-md h-auto object-contain drop-shadow-2xl animate-[float_6s_ease-in-out_infinite]" />
           </div>
         </section>
 

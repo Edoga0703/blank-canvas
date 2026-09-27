@@ -128,7 +128,7 @@ const routeSubtitles: Record<string, string> = {
   "/app/campanhas": "Disparos em massa",
   "/app/templates": "Modelos HSM aprovados pela Meta",
   "/app/catalogo": "Produtos e serviços",
-  "/app/treinamentos": "Centro de treinamento e vídeo aulas da Capi Conversa Academy",
+  "/app/treinamentos": "Centro de treinamento e vídeo aulas do Capi Conversa Academy",
   "/app/conexao": "Status do WhatsApp",
   "/app/usuarios": "Gerencie usuários, funções e permissões",
   "/app/configuracoes": "Preferências da conta",

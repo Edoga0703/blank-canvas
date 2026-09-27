@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ShieldCheck, CheckCircle2, KeyRound } from "lucide-react";
 import metrixLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
-import mascotLogin from "@/assets/mascote-login.png.asset.json";
+import mascotLogin from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 
 export function AuthShell({
   title,

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouterState } from "@tanstack/react-router";
 import { ArrowUpRight, Search, MessageCircle } from "lucide-react";
-import mascotAsset from "@/assets/mascot-support.png.asset.json";
+import mascotAsset from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import {
   KB_CATEGORIAS, artigosPorCategoria, buscarKb, sugestoesPorContexto,
   type KbArtigo, type KbCategoria,
@@ -115,7 +115,7 @@ export function SupportHome({
             ref={inputRef}
             value={q}
             onChange={(e) => { setQ(e.target.value); if (e.target.value) setCat(null); }}
-            placeholder="Pergunte qualquer coisa ao Metrix…"
+            placeholder="Pergunte qualquer coisa ao Capi Conversa…"
             className="w-full pl-9 pr-3 py-2.5 rounded-xl border-0 bg-muted/60 text-sm outline-none focus:outline-none focus:ring-0"
           />
         </div>

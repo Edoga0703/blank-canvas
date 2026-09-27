@@ -26,7 +26,7 @@ export const Route = createRoute("/master/treinamentos")({
   head: () => ({
     meta: [
       { title: `${brand.name} — Gestão de Academia` },
-      { name: "description", content: "Administre o portal de treinamentos Metrix." }
+      { name: "description", content: "Administre o portal de treinamentos Capi Conversa." }
     ]
   }),
   component: MasterTrainingPage,

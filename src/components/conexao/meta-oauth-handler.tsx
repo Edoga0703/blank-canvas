@@ -104,7 +104,7 @@ export function MetaOAuthHandler({ onConnected }: { onConnected?: () => void }) 
         <DialogHeader>
           <DialogTitle>Escolha o que conectar</DialogTitle>
           <DialogDescription>
-            Selecione as Páginas do Facebook que devem receber mensagens no Metrix.
+            Selecione as Páginas do Facebook que devem receber mensagens no Capi Conversa.
           </DialogDescription>
         </DialogHeader>
         {loading ? (

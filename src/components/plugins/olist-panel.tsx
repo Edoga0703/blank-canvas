@@ -92,7 +92,7 @@ export function OlistPanel() {
             <div>
               <p className="text-xs font-medium">Criar pedido na Olist ao registrar venda</p>
               <p className="text-[11px] text-muted-foreground">
-                Toda venda registrada na Metrix vira pedido na Olist automaticamente.
+                Toda venda registrada no Capi Conversa vira pedido na Olist automaticamente.
               </p>
             </div>
             <Switch

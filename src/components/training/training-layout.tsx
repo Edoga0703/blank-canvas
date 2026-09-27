@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
-import academyLogo from "@/assets/academy-logo-white.png.asset.json";
+import academyLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import { ChevronLeft, GraduationCap, PlayCircle, Library, Award, Search, User, MessageSquare, Users, LogOut, Home, Monitor, Globe, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -21,7 +21,7 @@ export function TrainingLayout({ children }: { children: ReactNode }) {
       {/* Sidebar Netflix Style */}
       <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-[240px] bg-[#0A0A0A] flex-col py-8 z-[70] border-r border-white/5 px-4">
         <div className="mb-12 px-2">
-          <img src={academyLogo.url} alt="Capi Conversa Academy" className="h-20 w-auto object-contain" />
+          <img src={academyLogo.url} alt="Capi Conversa Academy" className="h-12 w-auto rounded-md bg-white p-1 object-contain" />
         </div>
 
         <nav className="flex flex-col gap-2 flex-1">
