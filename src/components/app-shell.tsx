@@ -511,7 +511,7 @@ function Sidebar({
     >
       <div className="w-[72px] shrink-0 flex flex-col items-center border-r border-border py-4 gap-5">
         <Link to="/app/dashboard" title="Capi Conversa" className="grid size-11 place-items-center rounded-xl bg-muted overflow-hidden">
-          <img src={logoFull.url} alt="Capi Conversa" className="w-[145px] max-w-none object-contain -translate-x-[38px]" />
+          <img src="/favicon.png" alt="Capi Conversa" className="size-9 object-contain" />
         </Link>
         <nav aria-label="Atalhos" className="flex-1 flex flex-col items-center gap-3 overflow-y-auto no-scrollbar">
           {shortcuts.map((item) => {

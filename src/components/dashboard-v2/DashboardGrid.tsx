@@ -108,7 +108,7 @@ export function DashboardGrid({ workspaceId, operationalMode = false }: Props) {
     if (!el) return;
     const compute = () => {
       const w = el.getBoundingClientRect().width;
-      const c = w >= 1024 ? 6 : w >= 640 ? 4 : 2;
+       const c = w >= 850 ? 6 : w >= 600 ? 4 : 2;
       // Largura: sempre ocupa 100% do container (sem sobra à direita).
       const cw = Math.floor((w - GAP * (c - 1)) / c);
       // Alturas confortáveis preservam legibilidade dos gráficos e do ranking.

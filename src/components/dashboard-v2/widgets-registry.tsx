@@ -142,7 +142,7 @@ function AreaBig({ data }: { data: { date: string; value: number }[] }) {
           </linearGradient>
         </defs>
         <CartesianGrid stroke="var(--border)" vertical={false} />
-        <XAxis dataKey="date" fontSize={10} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} />
+        <XAxis dataKey="date" interval={Math.max(0, Math.ceil(data.length / 6) - 1)} fontSize={10} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} />
         <YAxis fontSize={10} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} />
         <Tooltip
           cursor={{ stroke: "var(--chart-1)", strokeOpacity: 0.35, strokeWidth: 1 }}
@@ -219,6 +219,7 @@ function FunnelBig({ data }: { data: { stage: string; count: number }[] }) {
 }
 
 function PieBig({ data }: { data: { name: string; value: number }[] }) {
+  if (!data.some((item) => item.value > 0)) return <div className="flex h-full flex-col items-center justify-center text-center text-sm text-muted-foreground gap-1"><PieIcon className="size-7 mb-1" strokeWidth={1.5} /><span>Sem dados no período.</span><span className="text-xs">Os dados aparecerão aqui quando houver registros.</span></div>;
   return (
     <ResponsiveContainer width="100%" height="100%">
       <PieChart>
