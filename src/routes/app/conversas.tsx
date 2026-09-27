@@ -13,7 +13,7 @@ import {
   Star, ChevronDown, ChevronUp, X, Tag as TagIcon,
   Paperclip, Mic, Square, Trash2, FileText, Play, ThumbsUp, ThumbsDown, Plus, Trash, AlertCircle,
   Smile, PanelRightClose, PanelRightOpen, Pencil, Reply, Package, ChevronLeft, ChevronRight, Info, CheckCircle2,
-  UserPlus, Wifi, WifiOff, Image as ImageIcon, Mic as MicIcon, Video as VideoIcon,
+  UserPlus, Users, Inbox, Wifi, WifiOff, Image as ImageIcon, Mic as MicIcon, Video as VideoIcon,
   Filter as FunnelIcon, Check, CheckCheck, Bell, BellOff, Contact as ContactIcon, Ban, RefreshCw,
   CalendarPlus, Sparkles, Gauge, Download, UserRound,
 } from "lucide-react";
@@ -1182,7 +1182,7 @@ function ConversasPage() {
         style={{
           ["--inbox-w" as any]: `${inboxWidth}px`,
           gridTemplateColumns: typeof window !== "undefined" && window.innerWidth >= 1024
-            ? (showDetails && active ? `196px ${inboxWidth}px minmax(0,1fr) ${operationalMode ? 320 : 340}px` : `196px ${inboxWidth}px minmax(0,1fr)`)
+            ? (showDetails && active ? `196px ${inboxWidth}px minmax(0,1fr) 280px` : `196px ${inboxWidth}px minmax(0,1fr)`)
             : undefined,
         }}
       >
@@ -1888,8 +1888,6 @@ function ConversasPage() {
               <div
                 ref={threadRef}
                  className="flex-1 overflow-auto p-3 sm:p-6 flex flex-col gap-3 bg-muted"
-                style={{
-                }}
               >
                 {thread.map((m, i) => {
                   const quoted = m.reply_to_id ? msgs.find((x) => x.id === m.reply_to_id) ?? null : null;
