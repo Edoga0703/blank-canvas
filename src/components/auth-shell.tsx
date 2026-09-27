@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ShieldCheck, CheckCircle2, KeyRound } from "lucide-react";
-import metrixLogo from "@/assets/metrix-logo-full.png.asset.json";
+import metrixLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import mascotLogin from "@/assets/mascote-login.png.asset.json";
 
 export function AuthShell({
@@ -15,7 +15,7 @@ export function AuthShell({
   footer?: React.ReactNode;
 }) {
   return (
-    <div className="relative min-h-screen bg-[#F8F9FB] text-[#0A0A0F] overflow-hidden">
+    <div className="relative min-h-screen bg-[#F2F4F6] text-[#12263A] overflow-hidden">
       {/* Background decor */}
       <div className="absolute inset-0 -z-10">
         <div
@@ -32,11 +32,11 @@ export function AuthShell({
         />
         <div
           className="absolute -top-40 -left-40 h-[600px] w-[600px] rounded-full blur-3xl opacity-40"
-          style={{ background: "radial-gradient(circle, #0B22FE 0%, transparent 60%)" }}
+          style={{ background: "radial-gradient(circle, var(--brand-soft) 0%, transparent 60%)" }}
         />
         <div
           className="absolute bottom-[-200px] -right-40 h-[600px] w-[600px] rounded-full blur-3xl opacity-30"
-          style={{ background: "radial-gradient(circle, #0B22FE 0%, transparent 65%)" }}
+          style={{ background: "radial-gradient(circle, #72FF00 0%, transparent 65%)" }}
         />
       </div>
 
@@ -46,7 +46,7 @@ export function AuthShell({
           <div className="flex items-center gap-4">
             <Link
               to="/entrar"
-              className="inline-flex items-center gap-2 text-sm text-[#0A0A0F]/60 hover:text-[#0B22FE] transition-colors"
+              className="inline-flex items-center gap-2 text-sm text-[#12263A]/60 hover:text-[#72FF00] transition-colors"
             >
               <ArrowLeft className="size-4" />
               voltar para o login
@@ -56,53 +56,53 @@ export function AuthShell({
           <div className="absolute top-8 right-8 xl:top-10 xl:right-10 z-20">
             <img
               src={metrixLogo.url}
-              alt="Metrix CRM"
+              alt="Capi Conversa"
               className="h-16 xl:h-20 w-auto drop-shadow-sm"
             />
           </div>
 
           <div className="relative flex-1 flex items-center justify-center">
             <div aria-hidden className="absolute inset-0 flex items-center justify-center">
-              <div className="absolute w-[85%] aspect-square rounded-full border border-dashed border-[#0B22FE]/15" />
-              <div className="absolute w-[65%] aspect-square rounded-full border border-dashed border-[#0B22FE]/25" />
-              <div className="absolute w-[45%] aspect-square rounded-full border border-dashed border-[#0B22FE]/35" />
-              <div className="absolute w-[70%] aspect-square rounded-full bg-[#0B22FE]/10 blur-3xl" />
+              <div className="absolute w-[85%] aspect-square rounded-full border border-dashed border-[#72FF00]/15" />
+              <div className="absolute w-[65%] aspect-square rounded-full border border-dashed border-[#72FF00]/25" />
+              <div className="absolute w-[45%] aspect-square rounded-full border border-dashed border-[#72FF00]/35" />
+              <div className="absolute w-[70%] aspect-square rounded-full bg-[#72FF00]/10 blur-3xl" />
             </div>
 
             <img
               src={mascotLogin.url}
-              alt="Mascote Metrix CRM"
+              alt="Mascote Capi Conversa"
               className="relative w-[72%] max-w-md h-auto object-contain drop-shadow-2xl"
               loading="eager"
             />
 
-            <div className="absolute top-10 left-2 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#0B22FE]/10 px-3 py-2 border border-[#0B22FE]/10 animate-[float_6s_ease-in-out_infinite]">
-              <div className="w-8 h-8 rounded-lg bg-[#0B22FE] flex items-center justify-center text-white shrink-0">
+            <div className="absolute top-10 left-2 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#72FF00]/10 px-3 py-2 border border-[#72FF00]/10 animate-[float_6s_ease-in-out_infinite]">
+              <div className="w-8 h-8 rounded-lg bg-[#72FF00] flex items-center justify-center text-white shrink-0">
                 <KeyRound className="w-4 h-4" />
               </div>
               <div className="text-left">
                 <div className="text-xs font-bold">Acesso seguro</div>
-                <div className="text-[10px] text-[#0A0A0F]/60">criptografia ponta a ponta</div>
+                <div className="text-[10px] text-[#12263A]/60">criptografia ponta a ponta</div>
               </div>
             </div>
 
-            <div className="absolute bottom-16 right-2 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#0B22FE]/10 px-3 py-2 border border-[#0B22FE]/10 animate-[float_7s_ease-in-out_infinite_0.6s]">
-              <div className="w-8 h-8 rounded-lg bg-[#0B22FE]/10 flex items-center justify-center text-[#0B22FE] shrink-0">
+            <div className="absolute bottom-16 right-2 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#72FF00]/10 px-3 py-2 border border-[#72FF00]/10 animate-[float_7s_ease-in-out_infinite_0.6s]">
+              <div className="w-8 h-8 rounded-lg bg-[#72FF00]/10 flex items-center justify-center text-[#72FF00] shrink-0">
                 <ShieldCheck className="w-4 h-4" />
               </div>
               <div className="text-left">
                 <div className="text-xs font-bold">LGPD-friendly</div>
-                <div className="text-[10px] text-[#0A0A0F]/60">seus dados protegidos</div>
+                <div className="text-[10px] text-[#12263A]/60">seus dados protegidos</div>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-5 text-xs text-[#0A0A0F]/60">
+          <div className="flex items-center gap-5 text-xs text-[#12263A]/60">
             <span className="inline-flex items-center gap-1.5">
-              <ShieldCheck className="size-3.5 text-[#0B22FE]" /> LGPD-friendly
+              <ShieldCheck className="size-3.5 text-[#72FF00]" /> LGPD-friendly
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <CheckCircle2 className="size-3.5 text-[#0B22FE]" /> Suporte humano
+              <CheckCircle2 className="size-3.5 text-[#72FF00]" /> Suporte humano
             </span>
           </div>
         </aside>
@@ -112,26 +112,26 @@ export function AuthShell({
           <div className="lg:hidden w-full max-w-md mb-5 flex items-center justify-between">
             <Link
               to="/entrar"
-              className="inline-flex items-center gap-2 text-sm text-[#0A0A0F]/60 hover:text-[#0B22FE]"
+              className="inline-flex items-center gap-2 text-sm text-[#12263A]/60 hover:text-[#72FF00]"
             >
               <ArrowLeft className="size-4" /> login
             </Link>
-            <img src={metrixLogo.url} alt="Metrix CRM" className="h-9 sm:h-11 w-auto" />
+            <img src={metrixLogo.url} alt="Capi Conversa" className="h-9 sm:h-11 w-auto" />
           </div>
 
           <div className="lg:hidden mb-3 sm:mb-5 relative">
             <div aria-hidden className="absolute inset-0 flex items-center justify-center">
-              <div className="w-40 sm:w-56 aspect-square rounded-full bg-[#0B22FE]/10 blur-3xl" />
+              <div className="w-40 sm:w-56 aspect-square rounded-full bg-[#72FF00]/10 blur-3xl" />
             </div>
             <img
               src={mascotLogin.url}
-              alt="Mascote Metrix CRM"
+              alt="Mascote Capi Conversa"
               className="relative w-28 sm:w-40 h-auto object-contain drop-shadow-xl"
             />
           </div>
 
           <div className="w-full max-w-md">
-            <div className="relative rounded-2xl bg-white border border-[#0B22FE]/10 shadow-xl shadow-[#0B22FE]/10 p-5 sm:p-7 overflow-hidden">
+            <div className="relative rounded-2xl bg-white border border-[#72FF00]/10 shadow-xl shadow-[#72FF00]/10 p-5 sm:p-7 overflow-hidden">
               <div
                 aria-hidden
                 className="absolute -top-24 -right-24 size-56 rounded-full blur-3xl opacity-40"
@@ -141,7 +141,7 @@ export function AuthShell({
                 <div className="mb-5">
                   <h1 className="font-display text-2xl font-black tracking-tight">{title}</h1>
                   {subtitle && (
-                    <p className="text-sm text-[#0A0A0F]/60 mt-1">{subtitle}</p>
+                    <p className="text-sm text-[#12263A]/60 mt-1">{subtitle}</p>
                   )}
                 </div>
                 {children}
@@ -150,12 +150,12 @@ export function AuthShell({
 
             {footer && <div className="mt-5 text-center text-sm">{footer}</div>}
 
-            <div className="lg:hidden mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-[#0A0A0F]/60">
+            <div className="lg:hidden mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-[#12263A]/60">
               <span className="inline-flex items-center gap-1.5">
-                <ShieldCheck className="size-3.5 text-[#0B22FE]" /> LGPD-friendly
+                <ShieldCheck className="size-3.5 text-[#72FF00]" /> LGPD-friendly
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <CheckCircle2 className="size-3.5 text-[#0B22FE]" /> Suporte humano
+                <CheckCircle2 className="size-3.5 text-[#72FF00]" /> Suporte humano
               </span>
             </div>
           </div>
@@ -207,7 +207,7 @@ export function PasswordField({
           type="button"
           onClick={toggle}
           aria-label={show ? "Ocultar senha" : "Mostrar senha"}
-          className="absolute right-2 top-1/2 -translate-y-1/2 size-8 grid place-items-center rounded-md text-[#0A0A0F]/50 hover:text-[#0B22FE] hover:bg-[#0B22FE]/5 transition-colors"
+          className="absolute right-2 top-1/2 -translate-y-1/2 size-8 grid place-items-center rounded-md text-[#12263A]/50 hover:text-[#72FF00] hover:bg-[#72FF00]/5 transition-colors"
           tabIndex={-1}
         >
           {show ? (

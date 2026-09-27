@@ -23,7 +23,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { brand } from "@/config/brand";
-import metrixLogo from "@/assets/metrix-logo-full.png.asset.json";
+import metrixLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import mascotLogin from "@/assets/mascote-login.png.asset.json";
 import { getRememberChoice, setRememberChoice } from "@/lib/session-persistence";
 import { maskPhone } from "@/lib/masks";
@@ -59,7 +59,7 @@ export const Route = createFileRoute("/entrar")({
 
 const PLAN_LABEL: Record<string, { nome: string; preco: string }> = {
   starter: { nome: "Starter", preco: "R$ 97/mês" },
-  pro: { nome: "Metrix PRO", preco: "R$ 79,90/mês" },
+  pro: { nome: "Capi PRO", preco: "R$ 79,90/mês" },
   business: { nome: "Business", preco: "R$ 497/mês" },
 };
 
@@ -234,7 +234,7 @@ function EntrarPage() {
   }
 
   return (
-    <div className="min-h-screen w-full relative overflow-hidden bg-white text-[#0A0A0F]">
+    <div className="min-h-screen w-full relative overflow-hidden bg-white text-[#12263A]">
       {/* Subtle grid + blue glow bg */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <div
@@ -249,11 +249,11 @@ function EntrarPage() {
         />
         <div
           className="absolute -top-40 -left-40 h-[600px] w-[600px] rounded-full blur-3xl opacity-40"
-          style={{ background: "radial-gradient(circle, #0B22FE 0%, transparent 60%)" }}
+          style={{ background: "radial-gradient(circle, var(--brand-soft) 0%, transparent 60%)" }}
         />
         <div
           className="absolute bottom-[-200px] -right-40 h-[600px] w-[600px] rounded-full blur-3xl opacity-30"
-          style={{ background: "radial-gradient(circle, #0B22FE 0%, transparent 65%)" }}
+          style={{ background: "radial-gradient(circle, #72FF00 0%, transparent 65%)" }}
         />
       </div>
 
@@ -261,95 +261,95 @@ function EntrarPage() {
         {/* LEFT — mascot & brand */}
         <aside className="hidden lg:flex flex-col justify-between p-10 xl:p-14 relative">
           <div className="flex items-center justify-between gap-4">
-            <Link to="/" className="inline-flex items-center gap-2 text-sm text-[#0A0A0F]/60 hover:text-[#0B22FE] transition-colors">
+            <Link to="/" className="inline-flex items-center gap-2 text-sm text-[#12263A]/60 hover:text-[#72FF00] transition-colors">
               <ArrowLeft className="size-4" />
               voltar ao site
             </Link>
           </div>
 
           <div className="absolute top-8 right-8 xl:top-10 xl:right-10 z-20">
-            <img src={metrixLogo.url} alt="Metrix CRM" className="h-16 xl:h-20 w-auto drop-shadow-sm" />
+            <img src={metrixLogo.url} alt="Capi Conversa" className="h-16 xl:h-20 w-auto drop-shadow-sm" />
           </div>
 
           <div className="relative flex-1 flex items-center justify-center">
             <div aria-hidden className="absolute inset-0 flex items-center justify-center">
-              <div className="absolute w-[85%] aspect-square rounded-full border border-dashed border-[#0B22FE]/15" />
-              <div className="absolute w-[65%] aspect-square rounded-full border border-dashed border-[#0B22FE]/25" />
-              <div className="absolute w-[45%] aspect-square rounded-full border border-dashed border-[#0B22FE]/35" />
-              <div className="absolute w-[70%] aspect-square rounded-full bg-[#0B22FE]/10 blur-3xl" />
+              <div className="absolute w-[85%] aspect-square rounded-full border border-dashed border-[#72FF00]/15" />
+              <div className="absolute w-[65%] aspect-square rounded-full border border-dashed border-[#72FF00]/25" />
+              <div className="absolute w-[45%] aspect-square rounded-full border border-dashed border-[#72FF00]/35" />
+              <div className="absolute w-[70%] aspect-square rounded-full bg-[#72FF00]/10 blur-3xl" />
             </div>
 
             <img
               src={mascotLogin.url}
-              alt="Mascote Metrix CRM"
+              alt="Mascote Capi Conversa"
               className="relative w-[78%] max-w-md h-auto object-contain drop-shadow-2xl"
               loading="eager"
             />
 
-            <div className="absolute top-6 left-2 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#0B22FE]/10 px-3 py-2 border border-[#0B22FE]/10 animate-[float_6s_ease-in-out_infinite]">
-              <div className="w-8 h-8 rounded-lg bg-[#0B22FE] flex items-center justify-center text-white shrink-0">
+            <div className="absolute top-6 left-2 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#72FF00]/10 px-3 py-2 border border-[#72FF00]/10 animate-[float_6s_ease-in-out_infinite]">
+              <div className="w-8 h-8 rounded-lg bg-[#72FF00] flex items-center justify-center text-white shrink-0">
                 <MessageCircle className="w-4 h-4" />
               </div>
               <div className="text-left">
                 <div className="text-xs font-bold">Nova conversa</div>
-                <div className="text-[10px] text-[#0A0A0F]/60">WhatsApp · há 2s</div>
+                <div className="text-[10px] text-[#12263A]/60">WhatsApp · há 2s</div>
               </div>
             </div>
 
-            <div className="absolute top-24 right-4 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#0B22FE]/10 px-3 py-2 border border-[#0B22FE]/10 animate-[float_7s_ease-in-out_infinite_0.8s]">
-              <div className="w-8 h-8 rounded-lg bg-[#0B22FE]/10 flex items-center justify-center text-[#0B22FE] shrink-0">
+            <div className="absolute top-24 right-4 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#72FF00]/10 px-3 py-2 border border-[#72FF00]/10 animate-[float_7s_ease-in-out_infinite_0.8s]">
+              <div className="w-8 h-8 rounded-lg bg-[#72FF00]/10 flex items-center justify-center text-[#72FF00] shrink-0">
                 <TrendingUp className="w-4 h-4" />
               </div>
               <div className="text-left">
                 <div className="text-xs font-bold">+R$ 12.480 hoje</div>
-                <div className="text-[10px] text-[#0A0A0F]/60">↑ 23% vs ontem</div>
+                <div className="text-[10px] text-[#12263A]/60">↑ 23% vs ontem</div>
               </div>
             </div>
 
-            <div className="absolute bottom-10 left-4 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#0B22FE]/10 px-3 py-2 border border-[#0B22FE]/10 animate-[float_8s_ease-in-out_infinite_1.4s]">
-              <div className="w-8 h-8 rounded-lg bg-[#0B22FE] flex items-center justify-center text-white shrink-0">
+            <div className="absolute bottom-10 left-4 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#72FF00]/10 px-3 py-2 border border-[#72FF00]/10 animate-[float_8s_ease-in-out_infinite_1.4s]">
+              <div className="w-8 h-8 rounded-lg bg-[#72FF00] flex items-center justify-center text-white shrink-0">
                 <Sparkles className="w-4 h-4" />
               </div>
               <div className="text-left">
                 <div className="text-xs font-bold">IA respondeu</div>
-                <div className="text-[10px] text-[#0A0A0F]/60">Lead qualificado</div>
+                <div className="text-[10px] text-[#12263A]/60">Lead qualificado</div>
               </div>
             </div>
 
-            <div className="absolute bottom-24 right-2 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#0B22FE]/10 px-3 py-2 border border-[#0B22FE]/10 animate-[float_6.5s_ease-in-out_infinite_0.4s]">
-              <div className="w-8 h-8 rounded-lg bg-[#0B22FE]/10 flex items-center justify-center text-[#0B22FE] shrink-0">
+            <div className="absolute bottom-24 right-2 flex items-center gap-2 bg-white rounded-xl shadow-lg shadow-[#72FF00]/10 px-3 py-2 border border-[#72FF00]/10 animate-[float_6.5s_ease-in-out_infinite_0.4s]">
+              <div className="w-8 h-8 rounded-lg bg-[#72FF00]/10 flex items-center justify-center text-[#72FF00] shrink-0">
                 <Calendar className="w-4 h-4" />
               </div>
               <div className="text-left">
                 <div className="text-xs font-bold">Reunião agendada</div>
-                <div className="text-[10px] text-[#0A0A0F]/60">Amanhã, 14h</div>
+                <div className="text-[10px] text-[#12263A]/60">Amanhã, 14h</div>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-5 text-xs text-[#0A0A0F]/60">
-            <span className="inline-flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-[#0B22FE]" /> LGPD-friendly</span>
-            <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-[#0B22FE]" /> Sem cartão p/ testar</span>
-            <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-[#0B22FE]" /> Cancele quando quiser</span>
+          <div className="flex items-center gap-5 text-xs text-[#12263A]/60">
+            <span className="inline-flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-[#72FF00]" /> LGPD-friendly</span>
+            <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-[#72FF00]" /> Sem cartão p/ testar</span>
+            <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-[#72FF00]" /> Cancele quando quiser</span>
           </div>
         </aside>
 
         {/* RIGHT — form */}
         <main className="flex flex-col items-center justify-center px-4 py-6 sm:px-8 sm:py-10 md:px-12">
           <div className="lg:hidden w-full max-w-md mb-5 flex items-center justify-between">
-            <Link to="/" className="inline-flex items-center gap-2 text-sm text-[#0A0A0F]/60 hover:text-[#0B22FE]">
+            <Link to="/" className="inline-flex items-center gap-2 text-sm text-[#12263A]/60 hover:text-[#72FF00]">
               <ArrowLeft className="size-4" /> voltar
             </Link>
-            <img src={metrixLogo.url} alt="Metrix CRM" className="h-9 sm:h-11 w-auto" />
+            <img src={metrixLogo.url} alt="Capi Conversa" className="h-9 sm:h-11 w-auto" />
           </div>
 
           <div className="lg:hidden mb-3 sm:mb-5 relative">
             <div aria-hidden className="absolute inset-0 flex items-center justify-center">
-              <div className="w-40 sm:w-56 aspect-square rounded-full bg-[#0B22FE]/10 blur-3xl" />
+              <div className="w-40 sm:w-56 aspect-square rounded-full bg-[#72FF00]/10 blur-3xl" />
             </div>
             <img
               src={mascotLogin.url}
-              alt="Mascote Metrix CRM"
+              alt="Mascote Capi Conversa"
               className="relative w-28 sm:w-40 md:w-48 h-auto object-contain drop-shadow-xl"
             />
           </div>
@@ -357,7 +357,7 @@ function EntrarPage() {
           <div className="w-full max-w-md">
 
 
-            <div className="relative rounded-2xl bg-white border border-[#0B22FE]/10 shadow-xl shadow-[#0B22FE]/10 p-5 sm:p-7 overflow-hidden">
+            <div className="relative rounded-2xl bg-white border border-[#72FF00]/10 shadow-xl shadow-[#72FF00]/10 p-5 sm:p-7 overflow-hidden">
               <div
                 aria-hidden
                 className="absolute -top-24 -right-24 size-56 rounded-full blur-3xl opacity-40"
@@ -366,32 +366,32 @@ function EntrarPage() {
 
               <div className="relative">
                 {planInfo && (
-                  <div className="mb-5 rounded-xl border border-[#0B22FE]/20 bg-[#0B22FE]/5 p-4">
-                    <div className="flex items-center gap-2 text-[11px] uppercase font-bold tracking-[0.14em] text-[#0B22FE]">
+                  <div className="mb-5 rounded-xl border border-[#72FF00]/20 bg-[#72FF00]/5 p-4">
+                    <div className="flex items-center gap-2 text-[11px] uppercase font-bold tracking-[0.14em] text-[#72FF00]">
                       <Sparkles className="size-3.5" /> Plano escolhido
                     </div>
                     <div className="mt-1 flex items-baseline justify-between">
                       <div className="font-display text-lg font-bold">{planInfo.nome}</div>
                       <div className="text-sm font-semibold">{planInfo.preco}</div>
                     </div>
-                    <div className="text-xs text-[#0A0A0F]/60 mt-1">7 dias grátis • cancele antes e não paga nada</div>
+                    <div className="text-xs text-[#12263A]/60 mt-1">7 dias grátis • cancele antes e não paga nada</div>
                   </div>
                 )}
 
                 {signupSentTo ? (
                   <div className="text-center py-2">
-                    <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-[#0B22FE]/10">
-                      <CheckCircle2 className="size-8 text-[#0B22FE]" />
+                    <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-[#72FF00]/10">
+                      <CheckCircle2 className="size-8 text-[#72FF00]" />
                     </div>
                     <h1 className="font-display text-[22px] sm:text-[26px] font-black leading-tight tracking-tight">
                       Verifique seu e-mail
                     </h1>
-                    <p className="text-sm text-[#0A0A0F]/70 mt-2 leading-relaxed">
+                    <p className="text-sm text-[#12263A]/70 mt-2 leading-relaxed">
                       Enviamos um link de confirmação para
                       <br />
-                      <span className="font-semibold text-[#0A0A0F]">{signupSentTo}</span>
+                      <span className="font-semibold text-[#12263A]">{signupSentTo}</span>
                     </p>
-                    <p className="text-xs text-[#0A0A0F]/55 mt-3">
+                    <p className="text-xs text-[#12263A]/55 mt-3">
                       Clique no link do e-mail para ativar sua conta. Não esqueça de conferir a caixa de spam.
                     </p>
                     <div className="mt-6 space-y-3">
@@ -399,7 +399,7 @@ function EntrarPage() {
                         type="button"
                         size="lg"
                         onClick={() => { setSignupSentTo(null); setMode("login"); setPassword(""); setConfirmPassword(""); }}
-                        className="w-full h-12 bg-[#0B22FE] hover:bg-[#0919cc] text-white font-semibold rounded-full shadow-lg shadow-[#0B22FE]/30"
+                        className="w-full h-12 bg-[#72FF00] hover:bg-[#0919cc] text-white font-semibold rounded-full shadow-lg shadow-[#72FF00]/30"
                       >
                         Ir para o login
                       </Button>
@@ -414,7 +414,7 @@ function EntrarPage() {
                           toast.success("Link reenviado! Confira seu e-mail.");
                         }}
                         disabled={loading}
-                        className="w-full h-10 text-sm text-[#0A0A0F]/70 hover:text-[#0B22FE]"
+                        className="w-full h-10 text-sm text-[#12263A]/70 hover:text-[#72FF00]"
                       >
                         {loading && <Loader2 className="size-4 mr-2 animate-spin" />}
                         Reenviar link de confirmação
@@ -424,12 +424,12 @@ function EntrarPage() {
                 ) : (
                 <>
                 {/* Tabs */}
-                <div className={`${isStandalone ? "hidden" : "grid"} grid-cols-2 gap-1 p-1 rounded-full bg-[#0B22FE]/5 border border-[#0B22FE]/10 mb-6`}>
+                <div className={`${isStandalone ? "hidden" : "grid"} grid-cols-2 gap-1 p-1 rounded-full bg-[#72FF00]/5 border border-[#72FF00]/10 mb-6`}>
                   <button
                     type="button"
                     onClick={() => setMode("signup")}
                     className={`h-10 rounded-full text-sm font-semibold transition-colors ${
-                      mode === "signup" ? "bg-[#0B22FE] text-white shadow-md shadow-[#0B22FE]/25" : "text-[#0A0A0F]/60 hover:text-[#0B22FE]"
+                      mode === "signup" ? "bg-primary text-primary-foreground shadow-md shadow-[#72FF00]/25" : "text-[#12263A]/60 hover:text-[#72FF00]"
                     }`}
                   >
                     Criar conta
@@ -438,7 +438,7 @@ function EntrarPage() {
                     type="button"
                     onClick={() => setMode("login")}
                     className={`h-10 rounded-full text-sm font-semibold transition-colors ${
-                      mode === "login" ? "bg-[#0B22FE] text-white shadow-md shadow-[#0B22FE]/25" : "text-[#0A0A0F]/60 hover:text-[#0B22FE]"
+                      mode === "login" ? "bg-primary text-primary-foreground shadow-md shadow-[#72FF00]/25" : "text-[#12263A]/60 hover:text-[#72FF00]"
                     }`}
                   >
                     Entrar
@@ -448,7 +448,7 @@ function EntrarPage() {
                 <h1 className="font-display text-[24px] sm:text-[28px] font-black leading-tight tracking-tight">
                   {mode === "login" ? "Bem-vindo de volta" : "Crie sua conta"}
                 </h1>
-                <p className="text-sm text-[#0A0A0F]/60 mt-1.5 mb-6">
+                <p className="text-sm text-[#12263A]/60 mt-1.5 mb-6">
                   {mode === "login"
                     ? "Entre com seu e-mail e senha pra continuar."
                     : "Preencha os dados abaixo pra começar seu teste grátis."}
@@ -474,7 +474,7 @@ function EntrarPage() {
                         className="h-11"
                         autoComplete="tel"
                       />
-                      <p className="text-xs text-[#0A0A0F]/50">Enviaremos as boas-vindas por WhatsApp.</p>
+                      <p className="text-xs text-[#12263A]/50">Enviaremos as boas-vindas por WhatsApp.</p>
                     </div>
 
                     <div className="space-y-1.5">
@@ -507,13 +507,13 @@ function EntrarPage() {
                       autoComplete="new-password"
                     />
 
-                    <Button type="submit" disabled={loading} size="lg" className="w-full h-12 bg-[#0B22FE] hover:bg-[#0919cc] text-white font-semibold rounded-full shadow-lg shadow-[#0B22FE]/30">
+                    <Button type="submit" disabled={loading} size="lg" className="w-full h-12 bg-[#72FF00] hover:bg-[#0919cc] text-white font-semibold rounded-full shadow-lg shadow-[#72FF00]/30">
                       {loading && <Loader2 className="size-4 mr-2 animate-spin" />}
                       {planInfo ? "Criar conta e continuar" : "Criar conta grátis"}
                     </Button>
 
-                    <p className="text-[11.5px] text-[#0A0A0F]/60 text-center pt-1 leading-relaxed">
-                      Sem cartão para começar os <span className="font-semibold text-[#0A0A0F]">7 dias grátis</span>. Cancele quando quiser.
+                    <p className="text-[11.5px] text-[#12263A]/60 text-center pt-1 leading-relaxed">
+                      Sem cartão para começar os <span className="font-semibold text-[#12263A]">7 dias grátis</span>. Cancele quando quiser.
                     </p>
                   </form>
                 ) : (
@@ -533,7 +533,7 @@ function EntrarPage() {
                       placeholder="Sua senha"
                       autoComplete="current-password"
                       rightSlot={
-                        <Link to="/esqueci-senha" className="text-[11.5px] font-medium text-[#0A0A0F]/60 hover:text-[#0B22FE] transition-colors">
+                        <Link to="/esqueci-senha" className="text-[11.5px] font-medium text-[#12263A]/60 hover:text-[#72FF00] transition-colors">
                           Esqueci minha senha
                         </Link>
                       }
@@ -544,11 +544,11 @@ function EntrarPage() {
                         type="checkbox"
                         checked={remember}
                         onChange={(e) => setRemember(e.target.checked)}
-                        className="mt-0.5 size-4 rounded border-[#0A0A0F]/25 accent-[#0B22FE]"
+                        className="mt-0.5 size-4 rounded border-[#12263A]/25 accent-[#72FF00]"
                       />
-                      <span className="text-[12.5px] leading-snug text-[#0A0A0F]/70">
+                      <span className="text-[12.5px] leading-snug text-[#12263A]/70">
                         Manter-me conectado
-                        <span className="block text-[11px] text-[#0A0A0F]/45">
+                        <span className="block text-[11px] text-[#12263A]/45">
                           {remember
                             ? "Você não precisará digitar e-mail e senha novamente neste navegador."
                             : "Por segurança, pediremos login novamente após 12h sem uso."}
@@ -556,15 +556,15 @@ function EntrarPage() {
                       </span>
                     </label>
 
-                    <Button type="submit" disabled={loading} size="lg" className="w-full h-12 bg-[#0B22FE] hover:bg-[#0919cc] text-white font-semibold rounded-full shadow-lg shadow-[#0B22FE]/30">
+                    <Button type="submit" disabled={loading} size="lg" className="w-full h-12 bg-[#72FF00] hover:bg-[#0919cc] text-white font-semibold rounded-full shadow-lg shadow-[#72FF00]/30">
                       {loading && <Loader2 className="size-4 mr-2 animate-spin" />}
                       Entrar
                     </Button>
 
 
-                    <p className={`${isStandalone ? "hidden" : "block"} text-[12px] text-[#0A0A0F]/60 text-center pt-1`}>
+                    <p className={`${isStandalone ? "hidden" : "block"} text-[12px] text-[#12263A]/60 text-center pt-1`}>
                       Ainda não tem conta?{" "}
-                      <button type="button" onClick={() => setMode("signup")} className="font-semibold text-[#0B22FE] hover:underline">
+                      <button type="button" onClick={() => setMode("signup")} className="font-semibold text-[#72FF00] hover:underline">
                         Criar agora
                       </button>
                     </p>
@@ -581,17 +581,17 @@ function EntrarPage() {
               <MiniFeature icon={<Zap className="size-4" />} text="Pronto em 2 minutos" />
             </div>
 
-            <p className="text-[11.5px] text-[#0A0A0F]/60 text-center mt-5">
+            <p className="text-[11.5px] text-[#12263A]/60 text-center mt-5">
               Ao continuar, você concorda com nossos{" "}
-              <Link to="/termos" className="underline underline-offset-2 hover:text-[#0B22FE]">Termos</Link>{" "}
+              <Link to="/termos" className="underline underline-offset-2 hover:text-[#72FF00]">Termos</Link>{" "}
               e{" "}
-              <Link to="/privacidade" className="underline underline-offset-2 hover:text-[#0B22FE]">Política de privacidade</Link>.
+              <Link to="/privacidade" className="underline underline-offset-2 hover:text-[#72FF00]">Política de privacidade</Link>.
             </p>
 
-            <div className="lg:hidden mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-[#0A0A0F]/60">
-              <span className="inline-flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-[#0B22FE]" /> LGPD-friendly</span>
-              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-[#0B22FE]" /> Sem cartão</span>
-              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-[#0B22FE]" /> Cancele quando quiser</span>
+            <div className="lg:hidden mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-[#12263A]/60">
+              <span className="inline-flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-[#72FF00]" /> LGPD-friendly</span>
+              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-[#72FF00]" /> Sem cartão</span>
+              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="size-3.5 text-[#72FF00]" /> Cancele quando quiser</span>
             </div>
           </div>
         </main>
@@ -642,7 +642,7 @@ function PasswordField({
           type="button"
           onClick={toggle}
           aria-label={show ? "Ocultar senha" : "Mostrar senha"}
-          className="absolute right-2 top-1/2 -translate-y-1/2 size-8 grid place-items-center rounded-md text-[#0A0A0F]/50 hover:text-[#0B22FE] hover:bg-[#0B22FE]/5 transition-colors"
+          className="absolute right-2 top-1/2 -translate-y-1/2 size-8 grid place-items-center rounded-md text-[#12263A]/50 hover:text-[#72FF00] hover:bg-[#72FF00]/5 transition-colors"
           tabIndex={-1}
         >
           {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -654,8 +654,8 @@ function PasswordField({
 
 function MiniFeature({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-[#0B22FE]/10 bg-white p-3">
-      <div className="size-8 rounded-lg grid place-items-center bg-[#0B22FE]/10 text-[#0B22FE] shrink-0">
+    <div className="flex items-center gap-3 rounded-xl border border-[#72FF00]/10 bg-white p-3">
+      <div className="size-8 rounded-lg grid place-items-center bg-[#72FF00]/10 text-[#72FF00] shrink-0">
         {icon}
       </div>
       <div className="font-semibold text-[13.5px]">{text}</div>
@@ -698,7 +698,7 @@ function PasswordStrength({ value }: { value: string }) {
       <div className={`text-[11.5px] font-semibold ${textColors[score]}`}>Força: {labels[score]}</div>
       <ul className="space-y-1">
         {checks.map((c) => (
-          <li key={c.label} className={`text-[11.5px] flex items-center gap-1.5 ${c.ok ? "text-emerald-600" : "text-[#0A0A0F]/50"}`}>
+          <li key={c.label} className={`text-[11.5px] flex items-center gap-1.5 ${c.ok ? "text-emerald-600" : "text-[#12263A]/50"}`}>
             <span className="inline-block size-3.5 rounded-full grid place-items-center text-[9px] leading-none" style={{ background: c.ok ? "#10b981" : "#e5e7eb", color: c.ok ? "white" : "#9ca3af" }}>
               {c.ok ? "✓" : "•"}
             </span>
