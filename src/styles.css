@@ -78,58 +78,60 @@
 :root {
   --radius: 1.125rem;
 
-  --brand: #72FF00;
-  --brand-strong: #63E900;
+  --brand: #2563EB;
+  --brand-strong: #1D4ED8;
   --brand-master: #DC2626;
 
-  --bg-deep: #F2F4F6;
+  --bg-deep: #F4F6F8;
   --panel: #FFFFFF;
-  --panel-2: #F7F9FA;
-  --hairline: #E7EAEE;
+  --panel-2: #F4F6F8;
+  --hairline: #E6EAF0;
   --hairline-strong: #D9DEE5;
 
   --surface: var(--panel);
   --sidebar-bg: #FFFFFF;
 
   --background: var(--bg-deep);
-  --foreground: #12263A;
+  --foreground: #142B44;
   --card: var(--panel);
-  --card-foreground: #12263A;
+  --card-foreground: #142B44;
   --popover: #FFFFFF;
-  --popover-foreground: #12263A;
+  --popover-foreground: #142B44;
 
   --primary: var(--brand);
-  --primary-foreground: #12263A;
+  --primary-foreground: #FFFFFF;
   --secondary: #EDF2F5;
-  --secondary-foreground: #12263A;
-  --muted: #F2F4F6;
+  --secondary-foreground: #142B44;
+  --muted: #F4F6F8;
   --muted-foreground: #7B8794;
-  --accent: #E9FFD9;
-  --accent-foreground: #12263A;
+  --accent: #EAF1FF;
+  --accent-foreground: #142B44;
   --destructive: #DC2626;
   --destructive-foreground: #FFFFFF;
   --border: var(--hairline);
   --input: #D9DEE5;
   --ring: var(--brand);
 
-  --chart-1: #12263A;
-  --chart-2: #72FF00;
-  --chart-3: #82D973;
+  --chart-1: #142B44;
+  --chart-2: #2563EB;
+  --chart-3: #BFEFCF;
   --chart-4: #DC2626;
   --chart-5: #F59E0B;
 
   --sidebar: var(--sidebar-bg);
-  --sidebar-foreground: #12263A;
+  --sidebar-foreground: #142B44;
   --sidebar-primary: var(--brand);
-  --sidebar-primary-foreground: #12263A;
-  --sidebar-accent: #E9FFD9;
-  --sidebar-accent-foreground: #12263A;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #EAF1FF;
+  --sidebar-accent-foreground: #142B44;
   --sidebar-border: var(--hairline);
   --sidebar-ring: var(--brand);
 
-  --brand-soft: #E9FFD9;
-  --brand-soft-strong: #D5FFB8;
-  --brand-text: #12263A;
+  --brand-soft: #EAF1FF;
+  --brand-soft-strong: #DCE8FF;
+  --brand-text: #1D4ED8;
+  --status-soft: #DDF7E7;
+  --status-foreground: #166534;
 
   --prospect-success: oklch(0.95 0.05 160);
   --prospect-success-foreground: oklch(0.36 0.11 160);
@@ -147,7 +149,7 @@
   --report-accent-soft: oklch(0.955 0.025 237);
 
   --shadow-card: 0 1px 4px rgba(18,38,58,.04);
-  --shadow-glow: 0 0 0 1px #D5FFB8, 0 6px 20px -10px #72FF00;
+  --shadow-glow: 0 0 0 1px #DCE8FF, 0 6px 20px -10px #2563EB;
 
   --page-gradient: var(--bg-deep);
 }
@@ -158,8 +160,8 @@
 .dark {
   color-scheme: dark;
 
-  --brand: #72FF00;
-  --brand-strong: #63E900;
+  --brand: #60A5FA;
+  --brand-strong: #93C5FD;
   --brand-master: #FF5A5A;
 
   --bg-deep: #05081A;
@@ -207,9 +209,11 @@
   --sidebar-border: var(--hairline);
   --sidebar-ring: var(--brand-strong);
 
-  --brand-soft: rgba(74,93,255,.16);
-  --brand-soft-strong: rgba(74,93,255,.26);
-  --brand-text: #A3B0FF;
+  --brand-soft: rgba(96,165,250,.16);
+  --brand-soft-strong: rgba(96,165,250,.26);
+  --brand-text: #93C5FD;
+  --status-soft: #163B2B;
+  --status-foreground: #BFEFCF;
 
   --prospect-success: oklch(0.29 0.055 160);
   --prospect-success-foreground: oklch(0.84 0.1 160);
@@ -233,6 +237,32 @@
     radial-gradient(1200px 600px at 85% -15%, rgba(74,93,255,.09), transparent 60%),
     radial-gradient(900px 500px at -10% 15%, rgba(74,93,255,.06), transparent 60%),
     var(--bg-deep);
+}
+
+/* External-facing pages keep a restrained, independent interaction palette. */
+.public-surface {
+  --primary: #334155;
+  --primary-foreground: #FFFFFF;
+  --brand: #334155;
+  --brand-strong: #1E293B;
+  --brand-soft: #E8EEF5;
+  --brand-text: #334155;
+  --accent: #E8EEF5;
+  --ring: #334155;
+}
+
+/* The inbox is an application workspace, not a flat full-bleed white page. */
+.inbox-workspace { background: var(--background); }
+.inbox-workspace .inbox-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  min-width: 0;
+  box-shadow: var(--shadow-card);
+}
+@media (max-width: 1023px) {
+  .inbox-workspace .inbox-panel { border-radius: 0; border: 0; }
 }
 
 html, body {
