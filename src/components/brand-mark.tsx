@@ -1,4 +1,4 @@
-import markAsset from "@/assets/metrix-mark.png.asset.json";
+import markAsset from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import { brand } from "@/config/brand";
 
 export function BrandMark({ className = "size-10 rounded-xl" }: { className?: string }) {
