@@ -1,0 +1,1 @@
+Keep the authenticated CRM desktop navigation in one collapsible sidebar, not a permanent icon rail plus a second menu; this keeps one consistent navigation surface in both widths.
