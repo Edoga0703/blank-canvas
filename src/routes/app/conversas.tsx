@@ -50,7 +50,6 @@ import { listQuickReplies, toggleQuickReplyFavorito, deleteQuickReply, type Quic
 import { QuickRepliesDialog } from "@/components/chat/quick-replies-dialog";
 import { listProdutos, type Produto } from "@/lib/produtos.functions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import metrixLogoCenter from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import { WhatsappAudio } from "@/components/chat/whatsapp-audio";
 import { ChatMedia } from "@/components/chat/chat-media";
 import { ChatLocation, parseLocationText } from "@/components/chat/chat-location";
