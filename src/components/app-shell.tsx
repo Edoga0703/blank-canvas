@@ -312,17 +312,14 @@ export function AppShell({
   const isTrainingPath = loc.pathname.startsWith("/app/treinamentos");
   const isCurrentConversasPath = loc.pathname.startsWith("/app/conversas");
   const isContainedPath = isConversasPath || isCrmPath;
-  const [collapsed, setCollapsed] = useState<boolean>(() => isCurrentConversasPath);
-  useEffect(() => {
-    setCollapsed(isCurrentConversasPath);
-  }, [isCurrentConversasPath]);
+  const [collapsed, setCollapsed] = useState<boolean>(true);
   const unreadConversations = unreadConversationsCount;
   useRealtimeSounds(company?.id);
   const { muted: soundsMuted, toggle: toggleSounds } = useSoundsMuted();
 
 
   return (
-    <div className={`h-screen overflow-hidden flex flex-col bg-background text-foreground ${isTrainingPath ? "dark" : ""}`}>
+     <div className="h-screen overflow-hidden flex flex-col bg-background text-foreground">
       <TrialBanner company={company} isSuperAdmin={isSuperAdmin} />
 
       {/* Mobile / tablet-portrait top bar */}
@@ -387,17 +384,17 @@ export function AppShell({
           <main
             className={
               isTrainingPath
-                ? "relative flex-1 min-w-0 min-h-0 w-full overflow-y-auto bg-[#050505]"
-                : isConversasPath
-                  ? "relative flex-1 min-w-0 min-h-0 w-full overflow-hidden"
+                 ? "relative flex-1 min-w-0 min-h-0 w-full overflow-y-auto bg-background"
+                 : isConversasPath
+                   ? "relative flex-1 min-w-0 min-h-0 w-full overflow-hidden"
                   : isCrmPath
                     ? "relative flex-1 min-w-0 min-h-0 w-full max-w-[1600px] 2xl:max-w-[1920px] mx-auto overflow-hidden px-3 pt-3 pb-24 sm:px-4 sm:pt-4 md:px-8 md:pt-6 lg:pb-6"
-                    : "relative flex-1 min-w-0 min-h-0 overflow-y-auto px-3 pt-3 pb-28 sm:px-4 sm:pt-4 md:px-8 md:pt-6 lg:pb-8 w-full"
+                   : "relative flex-1 min-w-0 min-h-0 overflow-y-auto px-3 pt-4 pb-28 sm:px-5 sm:pt-6 md:px-8 md:pt-8 lg:pb-10 w-full"
             }
           >
             {(pendingPath || routerBusy) && (
               <div className="absolute left-0 right-0 top-0 z-30 h-[2px] overflow-hidden bg-transparent" aria-hidden>
-                <div className="h-full w-full animate-pulse rounded-full bg-[color:var(--brand)]" />
+                 <div className="h-full w-full animate-pulse rounded-full bg-primary" />
               </div>
             )}
             <div className={isConversasPath || isCrmPath || isTrainingPath ? "contents" : "max-w-[1600px] 2xl:max-w-[1920px] w-full mx-auto"}>
@@ -441,11 +438,11 @@ export function AppShell({
                     setMoreOpen(false);
                   }}
                   className="flex min-h-[86px] flex-col items-center justify-center gap-1.5 rounded-2xl border border-[color:var(--hairline)] bg-[color:var(--panel)] px-2 py-3 text-center transition-colors active:scale-[.98] hover:bg-[color:var(--panel-2)]"
-                  style={active ? { color: primary, borderColor: primary, background: `color-mix(in oklab, ${primary} 8%, transparent)` } : undefined}
+                   style={active ? { color: "var(--primary)", borderColor: "var(--primary)", background: "var(--accent)" } : undefined}
                 >
                   <span
                     className="grid size-9 shrink-0 place-items-center rounded-xl"
-                    style={{ background: active ? primary : "color-mix(in oklab, currentColor 8%, transparent)", color: active ? "#fff" : undefined }}
+                     style={{ background: active ? "var(--primary)" : "var(--muted)", color: active ? "var(--primary-foreground)" : undefined }}
                   >
                     <Icon className="size-[18px]" strokeWidth={2} />
                   </span>
@@ -503,37 +500,37 @@ function Sidebar({
 
 
   const shortcuts = sections.flatMap((sec) => sec.items).filter((item) => item.to && (!item.adminOnly || isAdmin) && (!item.superOnly || isSuperAdmin) && (!item.operationalOnly || company?.atendimento_operacional === true) && !(company?.atendimento_operacional === true && MODULOS_OCULTOS_MODO_OPERACIONAL.includes(item.to)) && isFeatureVisible(item.flag) && isCapacidadeVisible(item.capacidade) && (!(company as any)?.funcoes_individuais || isAdmin || isSuperAdmin || MODULOS_RESTRITOS.includes(item.to) || (company?.atendimento_operacional === true && item.to === "/app/crm")));
-  const width = collapsed ? "w-[72px]" : "w-[320px]";
+  const width = collapsed ? "w-[72px]" : "w-[292px]";
 
   return (
     <aside
-      className={`hidden lg:flex ${width} h-full min-h-0 transition-all duration-200 bg-card text-foreground border-r border-border`}
+       className={`hidden lg:flex ${width} h-full min-h-0 transition-all duration-200 bg-card text-foreground border-r border-border shadow-sm`}
     >
-      <div className="w-[72px] shrink-0 flex flex-col items-center border-r border-border py-4 gap-5">
-        <Link to="/app/dashboard" title="Capi Conversa" className="grid size-11 place-items-center rounded-xl bg-muted overflow-hidden">
+       <div className="w-[72px] shrink-0 flex flex-col items-center border-r border-border py-5 gap-5">
+         <Link to="/app/dashboard" title="Capi Conversa" className="grid size-11 place-items-center rounded-xl bg-muted overflow-hidden">
           <img src="/favicon.png" alt="Capi Conversa" className="size-9 object-contain" />
         </Link>
-        <nav aria-label="Atalhos" className="flex-1 flex flex-col items-center gap-3 overflow-y-auto no-scrollbar">
+         <nav aria-label="Atalhos" className="flex-1 flex flex-col items-center gap-2 overflow-y-auto no-scrollbar">
           {shortcuts.map((item) => {
             const Icon = item.icon;
             const active = activePath.startsWith(item.to ?? "#");
-            return <Link key={item.to} to={item.to} title={item.label} aria-label={item.label} onPointerDown={() => onNavigateStart?.(item.to)} className={`grid size-10 shrink-0 place-items-center rounded-xl transition-colors ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}><Icon className="size-5" strokeWidth={1.8} /></Link>;
+             return <Link key={item.to} to={item.to} title={item.label} aria-label={item.label} onPointerDown={() => onNavigateStart?.(item.to)} className={`grid size-10 shrink-0 place-items-center rounded-full transition-colors ${active ? "bg-accent text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}><Icon className="size-[18px]" strokeWidth={1.8} /></Link>;
           })}
         </nav>
         <button onClick={onToggleCollapsed} title={collapsed ? "Expandir menu" : "Recolher menu"} className="grid size-10 place-items-center rounded-full bg-muted text-foreground hover:bg-accent">
           {collapsed ? <ChevronsRight className="size-5" /> : <ChevronsLeft className="size-5" />}
         </button>
       </div>
-      {!collapsed && <div className="w-[248px] min-w-0 h-full flex flex-col">
+       {!collapsed && <div className="w-[220px] min-w-0 h-full flex flex-col">
       {/* Brand + collapse toggle */}
       <div className="h-[72px] flex items-center gap-2 px-5 border-b border-border">
         <div className="flex-1 min-w-0 flex items-center justify-center">
-          <img src={logoFull.url} alt={brand.name} className="h-14 w-full object-contain" />
+           <img src={logoFull.url} alt={brand.name} className="h-11 w-full object-contain" />
         </div>
       </div>
 
 
-      <nav className="px-3 py-4 [@media(max-height:820px)]:py-2 flex-1 overflow-y-auto overflow-x-hidden no-scrollbar space-y-4 [@media(max-height:820px)]:space-y-2">
+       <nav className="px-3 py-5 [@media(max-height:820px)]:py-2 flex-1 overflow-y-auto overflow-x-hidden no-scrollbar space-y-5 [@media(max-height:820px)]:space-y-2">
         {sections.map((sec, i) => (
           <div key={sec.label}>
             {i > 0 && <div className="h-px bg-border mx-2 mb-3" />}
@@ -651,7 +648,7 @@ function NavLink({ item, active, primary, collapsed, badgeCount, onNavigateStart
       title={collapsed ? item.label : undefined}
       className={`group relative flex items-center ${collapsed ? "justify-center px-0 py-2.5 [@media(max-height:820px)]:py-1.5" : "gap-3 px-3 py-2 [@media(max-height:820px)]:py-1.5"} rounded-lg text-[13.5px] font-medium whitespace-nowrap transition-colors ${
         active
-          ? "bg-primary text-primary-foreground"
+           ? "bg-accent text-primary font-bold"
           : "text-foreground hover:bg-muted"
       }`}
     >
@@ -720,7 +717,7 @@ function NavGroup({ item, activePath, primary, collapsed, isAdmin, onNavigateSta
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={`relative flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] font-medium whitespace-nowrap transition-colors ${
-          anyActive ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
+           anyActive ? "bg-accent text-primary" : "text-foreground hover:bg-muted"
         }`}
       >
         <Icon className="size-[17px] shrink-0" strokeWidth={anyActive ? 2.2 : 1.9} />
