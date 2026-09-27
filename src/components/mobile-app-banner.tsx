@@ -28,7 +28,7 @@ export function MobileAppBanner() {
           <Smartphone className="size-[18px]" />
         </div>
         <div className="min-w-0">
-          <div className="truncate text-[13.5px] font-semibold">Novo: use o {"Metrix"} no celular</div>
+          <div className="truncate text-[13.5px] font-semibold">Novo: use o {"Capi Conversa"} no celular</div>
           <div className="truncate text-[12px] text-muted-foreground">
             Instale na tela de início e atenda leads de qualquer lugar.
           </div>

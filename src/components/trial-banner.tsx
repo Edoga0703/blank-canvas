@@ -110,7 +110,7 @@ export function TrialBanner({ company, isSuperAdmin }: Props) {
             <p className="mt-2 text-sm text-muted-foreground">
               {isCarencia
                 ? `Sua conta está com restrições: você pode navegar e consultar, mas não realizar ações (enviar mensagens, mover cards, cadastrar). Faltam ${acesso.horasCarencia}h para o acesso ser bloqueado — ative seu plano para liberar tudo novamente.`
-                : "Escolha um plano agora para não perder o acesso ao Metrix CRM, suas conversas e automações."}
+                : "Escolha um plano agora para não perder o acesso ao Capi Conversa, suas conversas e automações."}
             </p>
             <div className="mt-6 flex flex-col sm:flex-row gap-2">
               <button

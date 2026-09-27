@@ -2,9 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { LegalShell } from "@/components/legal-shell";
 
 const URL_PAGE = "https://metrixcrm.com.br/exclusao-dados";
-const TITLE = "Exclusão de Dados do Usuário — Metrix CRM";
+const TITLE = "Exclusão de Dados do Usuário — Capi Conversa";
 const DESC =
-  "Como solicitar a exclusão dos seus dados e desconectar o Facebook/Instagram do Metrix CRM.";
+  "Como solicitar a exclusão dos seus dados e desconectar o Facebook/Instagram do Capi Conversa.";
 
 export const Route = createFileRoute("/exclusao-dados")({
   head: () => ({
@@ -28,7 +28,7 @@ function ExclusaoDadosPage() {
       <section>
         <h2>Resumo</h2>
         <p>
-          O <strong>Metrix CRM</strong> permite que você exclua a qualquer momento os dados
+          O <strong>Capi Conversa</strong> permite que você exclua a qualquer momento os dados
           associados à sua conta, incluindo os dados recebidos da Meta (Facebook e Instagram)
           por meio das conexões de mensagens.
         </p>
@@ -64,7 +64,7 @@ function ExclusaoDadosPage() {
           >
             Facebook → Configurações → Apps e sites
           </a>
-          , removendo o app <strong>Metrix CRM</strong>. Ao receber a notificação de remoção,
+          , removendo o app <strong>Capi Conversa</strong>. Ao receber a notificação de remoção,
           excluímos os dados vinculados a esse acesso.
         </p>
       </section>

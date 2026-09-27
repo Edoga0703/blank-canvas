@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { LegalShell } from "@/components/legal-shell";
 
 const PRIV_URL = "https://metrixcrm.com.br/privacidade";
-const PRIV_TITLE = "Política de Privacidade — Metrix CRM";
-const PRIV_DESC = "Como o Metrix CRM coleta, usa e protege seus dados (LGPD).";
+const PRIV_TITLE = "Política de Privacidade — Capi Conversa";
+const PRIV_DESC = "Como o Capi Conversa coleta, usa e protege seus dados (LGPD).";
 
 export const Route = createFileRoute("/privacidade")({
   head: () => ({
@@ -26,7 +26,7 @@ function PrivacidadePage() {
       <section>
         <h2>1. Controlador dos dados</h2>
         <p>
-          <strong>Metrix CRM</strong> atua como controlador dos dados pessoais tratados
+          <strong>Capi Conversa</strong> atua como controlador dos dados pessoais tratados
           no âmbito do Serviço, conforme a LGPD (Lei nº 13.709/2018) e demais leis aplicáveis.
         </p>
       </section>
@@ -103,13 +103,13 @@ function PrivacidadePage() {
       <section>
         <h2>9. Dados do Google (Google API Services)</h2>
         <p>
-          Quando você conecta sua conta Google ao Metrix CRM (integração com o Google
+          Quando você conecta sua conta Google ao Capi Conversa (integração com o Google
           Agenda), solicitamos apenas os escopos necessários para criar, ler, atualizar e
           excluir eventos de agenda associados aos agendamentos criados no Serviço, além
           do seu e-mail para identificar a conta conectada.
         </p>
         <p>
-          O uso e a transferência, pelo Metrix CRM, de informações recebidas das APIs do
+          O uso e a transferência, pelo Capi Conversa, de informações recebidas das APIs do
           Google seguem a{" "}
           <a
             href="https://developers.google.com/terms/api-services-user-data-policy"

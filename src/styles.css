@@ -51,8 +51,8 @@
   --color-surface: var(--surface);
   --color-panel-2: var(--panel-2);
   --color-sidebar-bg: var(--sidebar-bg);
-  --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-prospect-display: "Sora", ui-sans-serif, system-ui, sans-serif;
   --font-prospect-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --color-prospect-success: var(--prospect-success);
@@ -76,60 +76,60 @@
    LIGHT THEME (default :root) — clean & legible
    ============================================================ */
 :root {
-  --radius: 0.9rem;
+  --radius: 1.125rem;
 
-  --brand: #0B22FE;
-  --brand-strong: #3D50FF;
+  --brand: #72FF00;
+  --brand-strong: #63E900;
   --brand-master: #DC2626;
 
-  --bg-deep: #F8F9FB;
+  --bg-deep: #F2F4F6;
   --panel: #FFFFFF;
-  --panel-2: #F3F5FC;
-  --hairline: rgba(11,22,64,.11);
-  --hairline-strong: rgba(11,22,64,.16);
+  --panel-2: #F7F9FA;
+  --hairline: #E7EAEE;
+  --hairline-strong: #D9DEE5;
 
   --surface: var(--panel);
   --sidebar-bg: #FFFFFF;
 
   --background: var(--bg-deep);
-  --foreground: #0A0F2A;
+  --foreground: #12263A;
   --card: var(--panel);
-  --card-foreground: #0A0F2A;
+  --card-foreground: #12263A;
   --popover: #FFFFFF;
-  --popover-foreground: #0A0F2A;
+  --popover-foreground: #12263A;
 
   --primary: var(--brand);
-  --primary-foreground: #FFFFFF;
-  --secondary: #E6EAFB;
-  --secondary-foreground: #0A0F2A;
-  --muted: #EFF1FA;
-  --muted-foreground: #3C4670;
-  --accent: #E6EAFB;
-  --accent-foreground: #0A0F2A;
+  --primary-foreground: #12263A;
+  --secondary: #EDF2F5;
+  --secondary-foreground: #12263A;
+  --muted: #F2F4F6;
+  --muted-foreground: #7B8794;
+  --accent: #E9FFD9;
+  --accent-foreground: #12263A;
   --destructive: #DC2626;
   --destructive-foreground: #FFFFFF;
   --border: var(--hairline);
-  --input: rgba(11,22,64,.13);
+  --input: #D9DEE5;
   --ring: var(--brand);
 
-  --chart-1: #0B22FE;
-  --chart-2: #0EA5E9;
-  --chart-3: #7A88FF;
+  --chart-1: #12263A;
+  --chart-2: #72FF00;
+  --chart-3: #82D973;
   --chart-4: #DC2626;
   --chart-5: #F59E0B;
 
   --sidebar: var(--sidebar-bg);
-  --sidebar-foreground: #0A0F2A;
+  --sidebar-foreground: #12263A;
   --sidebar-primary: var(--brand);
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #EFF1FA;
-  --sidebar-accent-foreground: #0A0F2A;
+  --sidebar-primary-foreground: #12263A;
+  --sidebar-accent: #E9FFD9;
+  --sidebar-accent-foreground: #12263A;
   --sidebar-border: var(--hairline);
   --sidebar-ring: var(--brand);
 
-  --brand-soft: rgba(11,34,254,.10);
-  --brand-soft-strong: rgba(11,34,254,.20);
-  --brand-text: #0B22FE;
+  --brand-soft: #E9FFD9;
+  --brand-soft-strong: #D5FFB8;
+  --brand-text: #12263A;
 
   --prospect-success: oklch(0.95 0.05 160);
   --prospect-success-foreground: oklch(0.36 0.11 160);
@@ -146,13 +146,10 @@
   --report-accent: oklch(0.685 0.169 237);
   --report-accent-soft: oklch(0.955 0.025 237);
 
-  --shadow-card: 0 1px 3px rgba(11,22,64,.07), 0 1px 2px rgba(11,22,64,.04);
-  --shadow-glow: 0 0 0 1px rgba(11,34,254,.18), 0 8px 24px -10px rgba(11,34,254,.30);
+  --shadow-card: 0 1px 4px rgba(18,38,58,.04);
+  --shadow-glow: 0 0 0 1px #D5FFB8, 0 6px 20px -10px #72FF00;
 
-  --page-gradient:
-    radial-gradient(900px 500px at 100% -10%, rgba(11,34,254,.05), transparent 60%),
-    radial-gradient(700px 400px at -10% 10%, rgba(11,34,254,.04), transparent 60%),
-    var(--bg-deep);
+  --page-gradient: var(--bg-deep);
 }
 
 /* ============================================================
@@ -161,8 +158,8 @@
 .dark {
   color-scheme: dark;
 
-  --brand: #4A5DFF;
-  --brand-strong: #7A88FF;
+  --brand: #72FF00;
+  --brand-strong: #63E900;
   --brand-master: #FF5A5A;
 
   --bg-deep: #05081A;

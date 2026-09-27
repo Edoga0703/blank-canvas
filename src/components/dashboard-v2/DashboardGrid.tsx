@@ -38,7 +38,7 @@ const DEFAULT_STATE: Omit<WidgetState, "id">[] = [
   { widgetId: "chart_ranking", chart: "bar", x: 4, y: 2, size: 2 },
 ];
 
-const GAP = 14;
+const GAP = 16;
 
 // Bump this whenever DEFAULT_STATE changes so every account (inclusive contas
 // antigas que já têm layout salvo) recebe o novo layout padrão.
@@ -108,20 +108,12 @@ export function DashboardGrid({ workspaceId, operationalMode = false }: Props) {
     if (!el) return;
     const compute = () => {
       const w = el.getBoundingClientRect().width;
-      const c = w >= 1024 ? 6 : w >= 640 ? 4 : 2;
+       const c = w >= 850 ? 6 : w >= 600 ? 4 : 2;
       // Largura: sempre ocupa 100% do container (sem sobra à direita).
       const cw = Math.floor((w - GAP * (c - 1)) / c);
-      // Altura: no desktop encolhe para o layout caber na tela sem scroll.
-      let ch = cw;
-      if (w >= 1024) {
-        const top = el.getBoundingClientRect().top;
-        const available = window.innerHeight - top - 24; // respiro inferior
-        const rows = Math.max(1, Math.min(layoutRows, 4));
-        const chFit = Math.floor((available - GAP * (rows - 1)) / rows);
-        // Nunca deixar o cartão achatado: mínimo de 72% da largura da célula.
-        const minCh = Math.max(150, Math.round(cw * 0.72));
-        if (chFit > 0) ch = Math.max(minCh, Math.min(cw, chFit));
-      } else if (w < 640) {
+      // Alturas confortáveis preservam legibilidade dos gráficos e do ranking.
+      let ch = Math.max(164, Math.round(cw * 0.8));
+      if (w < 640) {
         // Mobile: cartões mais baixos que largos para reduzir a rolagem.
         ch = Math.max(112, Math.round(cw * 0.8));
       }
@@ -334,14 +326,14 @@ export function DashboardGrid({ workspaceId, operationalMode = false }: Props) {
 
   return (
     <OpsWorkspaceProvider workspaceId={workspaceId}>
-    <div className="space-y-4 sm:space-y-5">
+    <div className="space-y-5 sm:space-y-6">
       {/* Toolbar */}
-      <div className="space-y-3 sm:space-y-4 pt-1 sm:pt-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-start pt-1 sm:pt-2">
         <div>
-          <h1 className="text-[21px] sm:text-[26px] font-bold tracking-tight leading-tight">Painel</h1>
+          <h1 className="text-[24px] sm:text-[30px] font-extrabold leading-tight">Painel</h1>
           <p className="text-[12px] sm:text-[13px] text-muted-foreground mt-0.5">Visão geral em tempo real do seu negócio</p>
         </div>
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap sm:flex-wrap sm:justify-end">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap sm:flex-wrap sm:justify-end self-end">
           <div className="-mx-1 px-1 min-w-0 flex-1 sm:flex-none sm:w-auto">
             <PeriodFilterButton value={range} onChange={setRange} />
           </div>
@@ -372,7 +364,7 @@ export function DashboardGrid({ workspaceId, operationalMode = false }: Props) {
               className={`inline-flex shrink-0 items-center gap-1 sm:gap-1.5 text-[10.5px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border whitespace-nowrap ${
                 a.level === "danger"
                   ? "bg-destructive/10 border-destructive/30 text-destructive"
-                  : "bg-amber-500/10 border-amber-500/30 text-amber-500"
+                   : "bg-prospect-warning border-prospect-warning-foreground/30 text-prospect-warning-foreground"
               }`}
             >
               <AlertTriangle className="h-3 w-3 shrink-0" />

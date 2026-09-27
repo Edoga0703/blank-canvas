@@ -7,9 +7,9 @@ import type { WidgetMeta } from "./widgets-registry";
 
 function Shell({ title, Icon, children, footer }: { title: string; Icon: LucideIcon; children: React.ReactNode; footer?: React.ReactNode }) {
   return (
-    <div className="h-full flex flex-col p-3.5 sm:p-5 bg-card border border-border/60 rounded-2xl min-h-0 shadow-sm">
+     <div className="h-full flex flex-col p-3.5 sm:p-5 bg-card border border-border rounded-2xl min-h-0 shadow-sm">
       <div className="flex items-start justify-between gap-1.5 mb-1.5">
-        <div className="text-[10.5px] uppercase tracking-[0.1em] text-muted-foreground/80 font-semibold leading-tight break-words min-w-0 flex-1">
+         <div className="text-[11px] uppercase text-foreground/75 font-bold leading-tight break-words min-w-0 flex-1">
           {title}
         </div>
         <Icon className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 mt-0.5" />

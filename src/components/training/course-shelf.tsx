@@ -65,20 +65,20 @@ export function CourseShelf({ courses }: CourseShelfProps) {
               key={course.id}
               to="/app/treinamentos/$courseId"
               params={{ courseId: course.id }}
-              className="flex-[0_0_180px] md:flex-[0_0_210px] aspect-[2/3] relative group cursor-pointer rounded-sm overflow-hidden bg-zinc-900 border-2 border-[#8B5CF6]/40 transition-all duration-300 hover:scale-[1.04] hover:z-40 shadow-[0_0_15px_rgba(139,92,246,0.3)] hover:shadow-[0_0_25px_rgba(139,92,246,0.6)]"
+              className="flex-[0_0_180px] md:flex-[0_0_210px] aspect-[2/3] relative group cursor-pointer rounded-[20px] overflow-hidden bg-white border border-[#E7EAEE] transition-all duration-300 hover:scale-[1.04] hover:z-40 shadow-sm hover:shadow-md"
             >
               <img src={course.thumbnail} className="w-full h-full object-cover" loading="lazy" />
               
               {/* Central Play Overlay - visible on hover */}
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10">
-                <div className="size-16 rounded-full bg-[#8B5CF6] flex items-center justify-center shadow-[0_0_20px_rgba(139,92,246,0.5)] transition-transform group-hover:scale-110">
+                <div className="size-16 rounded-full bg-primary flex items-center justify-center shadow-[0_0_20px_rgba(139,92,246,0.5)] transition-transform group-hover:scale-110">
                   <Play className="size-6 text-white fill-white ml-1" />
                 </div>
                 <span className="mt-4 text-xs font-medium text-white uppercase tracking-wider">Assistir</span>
               </div>
 
               {/* Hover Glow Border */}
-              <div className="absolute inset-0 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none ring-2 ring-[#8B5CF6] ring-inset shadow-[inset_0_0_20px_rgba(139,92,246,0.5)]" />
+              <div className="absolute inset-0 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none ring-2 ring-primary ring-inset" />
             </Link>
           ))}
         </div>
@@ -88,7 +88,7 @@ export function CourseShelf({ courses }: CourseShelfProps) {
       {canScrollPrev && (
         <button 
           onClick={scrollPrev}
-          className="absolute -left-10 top-1/2 -translate-y-1/2 z-40 text-white/40 hover:text-white transition-all p-2"
+          className="absolute -left-10 top-1/2 -translate-y-1/2 z-40 text-[#7B8794] hover:text-[#12263A] transition-all p-2"
           aria-label="Anterior"
         >
           <ChevronLeft className="size-8" strokeWidth={1.5} />
@@ -98,7 +98,7 @@ export function CourseShelf({ courses }: CourseShelfProps) {
       {canScrollNext && (
         <button 
           onClick={scrollNext}
-          className="absolute -right-10 top-1/2 -translate-y-1/2 z-40 text-white/40 hover:text-white transition-all p-2"
+          className="absolute -right-10 top-1/2 -translate-y-1/2 z-40 text-[#7B8794] hover:text-[#12263A] transition-all p-2"
           aria-label="Próximo"
         >
           <ChevronRight className="size-8" strokeWidth={1.5} />

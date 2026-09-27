@@ -11,7 +11,7 @@ export type MobileNavItem = {
 
 export function MobileBottomNav({
   items,
-  accent = "#ffffff",
+  accent = "var(--foreground)",
   onNavigateStart,
   activePath,
 }: {
@@ -28,8 +28,7 @@ export function MobileBottomNav({
       aria-label="Navegação principal"
     >
       <div
-        className="mx-auto max-w-md sm:max-w-lg rounded-2xl border border-white/10 shadow-[0_8px_30px_-12px_rgba(0,0,0,.45)] flex items-center justify-around px-1.5 py-1.5"
-        style={{ background: "#214AC4" }}
+        className="mx-auto max-w-md sm:max-w-lg rounded-2xl border border-border bg-card shadow-sm flex items-center justify-around px-1.5 py-1.5"
       >
         {items.map((it, idx) => {
           const active =
@@ -40,28 +39,20 @@ export function MobileBottomNav({
               : false);
           const Icon = it.icon;
           const className =
-            "tt-exempt relative min-w-0 flex-1 flex flex-col items-center justify-center gap-0.5 px-0.5 py-1.5 min-h-[48px] rounded-xl text-[10px] sm:text-[10.5px] font-medium transition-all";
-          const style = active
-            ? { color: accent }
-            : { color: "rgba(255,255,255,.72)" };
+            `tt-exempt relative min-w-0 flex-1 flex flex-col items-center justify-center gap-0.5 px-0.5 py-1.5 min-h-[48px] rounded-xl text-[10px] sm:text-[10.5px] font-medium transition-all ${active ? "bg-primary" : "text-muted-foreground"}`;
+          const style = active ? { color: accent } : undefined;
           const inner = (
             <>
               <span className="relative">
                 <Icon className="size-[20px] sm:size-[22px] shrink-0" strokeWidth={active ? 2.4 : 1.9} />
                 {!!it.badge && it.badge > 0 && (
-                  <span className="absolute -top-1.5 -right-2 min-w-[15px] h-[15px] px-1 grid place-items-center rounded-full bg-destructive text-white text-[9px] font-bold leading-none">
+                  <span className="absolute -top-1.5 -right-2 min-w-[15px] h-[15px] px-1 grid place-items-center rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold leading-none">
                     {it.badge > 9 ? "9+" : it.badge}
                   </span>
                 )}
               </span>
               <span className="truncate max-w-full leading-tight">{it.label}</span>
 
-              {active && (
-                <span
-                  className="absolute -top-0.5 h-[3px] w-7 rounded-full"
-                  style={{ background: accent, boxShadow: `0 0 10px ${accent}` }}
-                />
-              )}
             </>
           );
           if (it.onClick || !it.to) {

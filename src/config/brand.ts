@@ -1,10 +1,9 @@
-// Branding centralizado. Troque aqui pra renomear/recolorir o app inteiro.
+// Identidade visual centralizada do produto.
 export const brand = {
-  name: "Metrix CRM",
+  name: "Capi Conversa",
   tagline: "IA que atende seu WhatsApp 24/7 + CRM Kanban",
-  // Metrix blue
-  primary: "#0B22FE",
-  primaryOklch: "0.42 0.29 268",
+  primary: "#72FF00",
+  primaryOklch: "0.85 0.27 131",
 };
 
 // Suporte é feito exclusivamente pelo chat interno do sistema (SupportFloatingButton).

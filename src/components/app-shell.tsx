@@ -24,8 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { brand } from "@/config/brand";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { BrandMark } from "@/components/brand-mark";
-import logoFull from "@/assets/metrix-bubble-v4.png.asset.json";
-import faviconMark from "@/assets/metrix-mark.png.asset.json";
+import logoFull from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 
 
 import { MobileBottomNav, type MobileNavItem } from "@/components/mobile-bottom-nav";
@@ -75,7 +74,7 @@ const sections: { label: string; items: (NavItem & { flag?: string })[] }[] = [
       { to: "/app/campanhas", label: "Campanhas", icon: Megaphone, flag: "module.campanhas" },
       { to: "/app/templates", label: "Templates", icon: FileText, adminOnly: true, tag: "Meta", flag: "module.templates" },
       { to: "/app/catalogo", label: "Catálogo", icon: Package, flag: "module.catalogo" },
-      { to: "/app/treinamentos", label: "Metrix Academy", icon: GraduationCap, tag: "Interno", superOnly: true, flag: "module.treinamentos" },
+      { to: "/app/treinamentos", label: "Capi Conversa Academy", icon: GraduationCap, tag: "Interno", superOnly: true, flag: "module.treinamentos" },
 
     ],
   },
@@ -129,7 +128,7 @@ const routeSubtitles: Record<string, string> = {
   "/app/campanhas": "Disparos em massa",
   "/app/templates": "Modelos HSM aprovados pela Meta",
   "/app/catalogo": "Produtos e serviços",
-  "/app/treinamentos": "Centro de treinamento e vídeo aulas da Metrix Academy",
+  "/app/treinamentos": "Centro de treinamento e vídeo aulas do Capi Conversa Academy",
   "/app/conexao": "Status do WhatsApp",
   "/app/usuarios": "Gerencie usuários, funções e permissões",
   "/app/configuracoes": "Preferências da conta",
@@ -201,7 +200,7 @@ export function AppShell({
     navigate({ to: "/entrar", replace: true });
   }
 
-  // Cores legadas do projeto antigo (verdes) são ignoradas — identidade Metrix é padrão.
+  // Mantém a identidade do produto no layout compartilhado.
   const LEGACY_COLORS = ["#22c55e", "#25d366", "#16a34a", "#10b981"];
   const rawPrimary = (company?.primary_color || "").trim().toLowerCase();
   const primary = !rawPrimary || LEGACY_COLORS.includes(rawPrimary) ? brand.primary : company!.primary_color;
@@ -323,14 +322,13 @@ export function AppShell({
 
 
   return (
-    <div className={`h-screen overflow-hidden flex flex-col bg-background text-foreground ${isTrainingPath ? "dark" : ""}`} style={{ ["--brand" as any]: primary }}>
+    <div className={`h-screen overflow-hidden flex flex-col bg-background text-foreground ${isTrainingPath ? "dark" : ""}`}>
       <TrialBanner company={company} isSuperAdmin={isSuperAdmin} />
 
       {/* Mobile / tablet-portrait top bar */}
       <header
-        className="lg:hidden sticky top-0 z-30 flex items-center justify-between gap-3 px-4 py-3 text-white border-b border-white/10"
+        className="lg:hidden sticky top-0 z-30 flex items-center justify-between gap-3 px-4 py-3 text-foreground bg-card border-b border-border"
         style={{
-          background: "#214AC4",
           paddingTop: "max(0.75rem, env(safe-area-inset-top))",
           paddingLeft: "max(1rem, env(safe-area-inset-left))",
           paddingRight: "max(1rem, env(safe-area-inset-right))",
@@ -344,14 +342,14 @@ export function AppShell({
           <button
             onClick={toggleSounds}
             title={soundsMuted ? "Ativar sons" : "Silenciar sons"}
-            className="size-9 grid place-items-center rounded-lg text-white/80 hover:text-white"
+            className="size-9 grid place-items-center rounded-lg text-muted-foreground hover:text-foreground"
           >
             {soundsMuted ? <VolumeX className="size-[18px]" /> : <Volume2 className="size-[18px]" />}
           </button>
           <button
             onClick={signOut}
             title="Sair"
-            className="size-9 grid place-items-center rounded-lg text-white/80 hover:text-white"
+            className="size-9 grid place-items-center rounded-lg text-muted-foreground hover:text-foreground"
           >
             <LogOut className="size-[18px]" />
           </button>
@@ -410,7 +408,7 @@ export function AppShell({
       </div>
 
       {!isTrainingPath && (
-        <MobileBottomNav items={mobileItems} accent="#ffffff" onNavigateStart={startModuleNavigation} activePath={activePath} />
+        <MobileBottomNav items={mobileItems} onNavigateStart={startModuleNavigation} activePath={activePath} />
       )}
       {!isTrainingPath && (
         <div className="hidden lg:block">
@@ -504,43 +502,42 @@ function Sidebar({
 
 
 
-  const width = collapsed ? "w-[76px]" : "w-[248px]";
+  const shortcuts = sections.flatMap((sec) => sec.items).filter((item) => item.to && (!item.adminOnly || isAdmin) && (!item.superOnly || isSuperAdmin) && (!item.operationalOnly || company?.atendimento_operacional === true) && !(company?.atendimento_operacional === true && MODULOS_OCULTOS_MODO_OPERACIONAL.includes(item.to)) && isFeatureVisible(item.flag) && isCapacidadeVisible(item.capacidade) && (!(company as any)?.funcoes_individuais || isAdmin || isSuperAdmin || MODULOS_RESTRITOS.includes(item.to) || (company?.atendimento_operacional === true && item.to === "/app/crm")));
+  const width = collapsed ? "w-[72px]" : "w-[320px]";
 
   return (
     <aside
-      className={`hidden lg:flex ${width} h-full min-h-0 flex-col transition-all duration-200 text-white shadow-[0_10px_40px_-20px_rgba(33,74,196,.55)]`}
-      style={{ background: "#214AC4" }}
+      className={`hidden lg:flex ${width} h-full min-h-0 transition-all duration-200 bg-card text-foreground border-r border-border`}
     >
-      {/* Brand + collapse toggle */}
-      <div className="h-16 flex items-center gap-2 px-3 border-b border-white/10" style={{ background: "#214AC4" }}>
-        <div className="flex-1 min-w-0 flex items-center justify-center">
-          <img src={collapsed ? faviconMark.url : logoFull.url} alt={brand.name} className={`${collapsed ? "h-9" : "h-11"} w-auto object-contain`} />
-        </div>
-        {!collapsed && (
-          <button
-            onClick={onToggleCollapsed}
-            title="Recolher menu"
-            className="size-8 grid place-items-center rounded-lg text-white/80 hover:text-white hover:bg-white/10 shrink-0"
-          >
-            <ChevronsLeft className="size-[18px]" />
-          </button>
-        )}
-      </div>
-      {collapsed && (
-        <button
-          onClick={onToggleCollapsed}
-          title="Expandir menu"
-          className="mx-auto mt-2 size-8 grid place-items-center rounded-lg text-white/80 hover:text-white hover:bg-white/10"
-        >
-          <ChevronsRight className="size-[18px]" />
+      <div className="w-[72px] shrink-0 flex flex-col items-center border-r border-border py-4 gap-5">
+        <Link to="/app/dashboard" title="Capi Conversa" className="grid size-11 place-items-center rounded-xl bg-muted overflow-hidden">
+          <img src="/favicon.png" alt="Capi Conversa" className="size-9 object-contain" />
+        </Link>
+        <nav aria-label="Atalhos" className="flex-1 flex flex-col items-center gap-3 overflow-y-auto no-scrollbar">
+          {shortcuts.map((item) => {
+            const Icon = item.icon;
+            const active = activePath.startsWith(item.to ?? "#");
+            return <Link key={item.to} to={item.to} title={item.label} aria-label={item.label} onPointerDown={() => onNavigateStart?.(item.to)} className={`grid size-10 shrink-0 place-items-center rounded-xl transition-colors ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}><Icon className="size-5" strokeWidth={1.8} /></Link>;
+          })}
+        </nav>
+        <button onClick={onToggleCollapsed} title={collapsed ? "Expandir menu" : "Recolher menu"} className="grid size-10 place-items-center rounded-full bg-muted text-foreground hover:bg-accent">
+          {collapsed ? <ChevronsRight className="size-5" /> : <ChevronsLeft className="size-5" />}
         </button>
-      )}
+      </div>
+      {!collapsed && <div className="w-[248px] min-w-0 h-full flex flex-col">
+      {/* Brand + collapse toggle */}
+      <div className="h-[72px] flex items-center gap-2 px-5 border-b border-border">
+        <div className="flex-1 min-w-0 flex items-center justify-center">
+          <img src={logoFull.url} alt={brand.name} className="h-14 w-full object-contain" />
+        </div>
+      </div>
 
 
       <nav className="px-3 py-4 [@media(max-height:820px)]:py-2 flex-1 overflow-y-auto overflow-x-hidden no-scrollbar space-y-4 [@media(max-height:820px)]:space-y-2">
         {sections.map((sec, i) => (
           <div key={sec.label}>
-            {i > 0 && <div className="h-px bg-white/10 mx-2 mb-3" />}
+            {i > 0 && <div className="h-px bg-border mx-2 mb-3" />}
+            <div className="px-3 pb-2 text-[10px] font-bold uppercase text-muted-foreground">{sec.label}</div>
             <div className="flex flex-col gap-[3px]">
               {sec.items.filter((i: any) => (!i.adminOnly || isAdmin) && (!i.superOnly || isSuperAdmin) && (!i.operationalOnly || company?.atendimento_operacional === true) && !(company?.atendimento_operacional === true && i.to && MODULOS_OCULTOS_MODO_OPERACIONAL.includes(i.to)) && isFeatureVisible(i.flag) && isCapacidadeVisible(i.capacidade) && (!(company as any)?.funcoes_individuais || isAdmin || isSuperAdmin || MODULOS_RESTRITOS.includes(i.to) || (company?.atendimento_operacional === true && i.to === "/app/crm"))).map((item: any) => (
                 item.children
@@ -552,13 +549,13 @@ function Sidebar({
         ))}
       </nav>
 
-      <div className="p-3 border-t border-white/10">
+      <div className="p-3 border-t border-border">
         <DropdownMenu>
 
 
           <DropdownMenuTrigger asChild>
             <button
-              className={`w-full flex items-center gap-3 ${collapsed ? "px-0 justify-center" : "px-1"} py-1 rounded-lg hover:bg-white/10 transition-colors outline-none`}
+              className={`w-full flex items-center gap-3 ${collapsed ? "px-0 justify-center" : "px-1"} py-1 rounded-lg hover:bg-muted transition-colors outline-none`}
               title={collapsed ? userName : undefined}
             >
               <div className="relative shrink-0">
@@ -571,8 +568,7 @@ function Sidebar({
                   />
                 ) : (
                   <div
-                    className="size-10 rounded-full grid place-items-center text-[13px] font-bold text-white overflow-hidden ring-2 ring-white/25"
-                    style={{ background: "rgba(255,255,255,.15)" }}
+                    className="size-10 rounded-full grid place-items-center text-[13px] font-bold text-foreground bg-accent overflow-hidden ring-2 ring-border"
                   >
                     {userAvatar ? (
                       <img src={userAvatar} alt={userName} className="size-full object-cover" />
@@ -582,7 +578,7 @@ function Sidebar({
                   </div>
                 )}
                 {unreadConversations > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-[9px] font-bold grid place-items-center ring-2 ring-[#214AC4]">
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold grid place-items-center ring-2 ring-card">
                     {unreadConversations > 9 ? "9+" : unreadConversations}
                   </span>
                 )}
@@ -590,12 +586,12 @@ function Sidebar({
               {!collapsed && (
                 <>
                   <div className="min-w-0 flex-1 text-left">
-                    <div className="text-[13px] font-semibold truncate text-white leading-tight" title={(activePath.startsWith("/app/agente") && activeAgent?.nome_agente) || userName}>
+                    <div className="text-[13px] font-semibold truncate text-foreground leading-tight" title={(activePath.startsWith("/app/agente") && activeAgent?.nome_agente) || userName}>
                       {(activePath.startsWith("/app/agente") && activeAgent?.nome_agente) || userName}
                     </div>
-                    <div className="text-[11px] text-white/65 truncate leading-tight" title={userEmail}>{userEmail}</div>
+                    <div className="text-[11px] text-muted-foreground truncate leading-tight" title={userEmail}>{userEmail}</div>
                   </div>
-                  <ChevronDown className="size-4 text-white/70 shrink-0" />
+                  <ChevronDown className="size-4 text-muted-foreground shrink-0" />
                 </>
               )}
             </button>
@@ -634,7 +630,7 @@ function Sidebar({
 
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
+      </div></div>}
     </aside>
   );
 }
@@ -655,8 +651,8 @@ function NavLink({ item, active, primary, collapsed, badgeCount, onNavigateStart
       title={collapsed ? item.label : undefined}
       className={`group relative flex items-center ${collapsed ? "justify-center px-0 py-2.5 [@media(max-height:820px)]:py-1.5" : "gap-3 px-3 py-2 [@media(max-height:820px)]:py-1.5"} rounded-lg text-[13.5px] font-medium whitespace-nowrap transition-colors ${
         active
-          ? "bg-white text-[color:var(--brand-text)] shadow-sm"
-          : "text-white hover:bg-white/10"
+          ? "bg-primary text-primary-foreground"
+          : "text-foreground hover:bg-muted"
       }`}
     >
       <div className="relative shrink-0">
@@ -674,14 +670,14 @@ function NavLink({ item, active, primary, collapsed, badgeCount, onNavigateStart
         <>
           <span className="flex-1 truncate">{item.label}</span>
           {!!badgeCount && badgeCount > 0 && (
-            <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold grid place-items-center">
+          <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold grid place-items-center">
               {badgeCount > 99 ? "99+" : badgeCount}
             </span>
           )}
           {item.tag && (
             <span
               className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded ${
-                active ? "bg-[color:var(--brand)] text-white" : "bg-white/20 text-white"
+                active ? "bg-card text-foreground" : "bg-muted text-muted-foreground"
               }`}
             >
               {item.tag}
@@ -724,7 +720,7 @@ function NavGroup({ item, activePath, primary, collapsed, isAdmin, onNavigateSta
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={`relative flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] font-medium whitespace-nowrap transition-colors ${
-          anyActive ? "bg-white text-[color:var(--brand-text)] shadow-sm" : "text-white hover:bg-white/10"
+          anyActive ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
         }`}
       >
         <Icon className="size-[17px] shrink-0" strokeWidth={anyActive ? 2.2 : 1.9} />
@@ -732,7 +728,7 @@ function NavGroup({ item, activePath, primary, collapsed, isAdmin, onNavigateSta
         <ChevronDown className={`size-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div className="ml-3 pl-3 mt-0.5 border-l border-white/15 flex flex-col gap-[2px]">
+        <div className="ml-3 pl-3 mt-0.5 border-l border-border flex flex-col gap-[2px]">
           {children.map((c) => (
             <NavLink key={c.to} item={c} active={!!c.to && activePath.startsWith(c.to)} primary={primary} onNavigateStart={onNavigateStart} />
           ))}

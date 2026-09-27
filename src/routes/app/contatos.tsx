@@ -251,7 +251,7 @@ function ContatosPage() {
 
       const ExcelJS = (await import("exceljs")).default;
       const wb = new ExcelJS.Workbook();
-      wb.creator = "Metrix CRM";
+      wb.creator = "Capi Conversa";
       const fmtBR = (n: string) => {
         const d = String(n || "").replace(/\D/g, "");
         if (!d) return "";

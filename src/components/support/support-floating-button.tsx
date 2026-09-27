@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { Send, X, ArrowLeft, Loader2, Plus, Paperclip, Check, CheckCheck, Star } from "lucide-react";
 import { toast } from "sonner";
-import mascotAsset from "@/assets/mascot-support.png.asset.json";
+import mascotAsset from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import {
   listMyTickets, listMessages, sendMessage, createTicket, markRead, submitTicketCsat,
 } from "@/lib/support.functions";
@@ -245,7 +245,7 @@ export function SupportFloatingButton({ companyId }: { companyId: string | null 
         title="Suporte"
         className="fixed z-40 bottom-24 right-4 lg:bottom-6 lg:right-6 h-16 w-16 rounded-full shadow-xl transition-transform hover:scale-110"
       >
-        <img src={mascotAsset.url} alt="Suporte Metrix" className="h-full w-full rounded-full object-cover" />
+        <img src={mascotAsset.url} alt="Suporte Capi Conversa" className="h-full w-full rounded-full object-cover" />
         {totalUnread > 0 && (
           <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-[20px] px-1 rounded-full bg-red-500 text-white text-[11px] font-bold grid place-items-center shadow">
             {totalUnread > 9 ? "9+" : totalUnread}

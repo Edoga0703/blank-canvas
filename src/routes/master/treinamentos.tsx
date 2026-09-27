@@ -26,7 +26,7 @@ export const Route = createRoute("/master/treinamentos")({
   head: () => ({
     meta: [
       { title: `${brand.name} — Gestão de Academia` },
-      { name: "description", content: "Administre o portal de treinamentos Metrix." }
+      { name: "description", content: "Administre o portal de treinamentos Capi Conversa." }
     ]
   }),
   component: MasterTrainingPage,
@@ -92,7 +92,7 @@ function MasterCoursesList({ courses }: { courses: any[] }) {
           <CardHeader className="p-4 pb-2">
             <Badge variant="outline" className="w-fit text-[10px] mb-1">{course.category?.name || 'Sem Categoria'}</Badge>
             <CardTitle className="text-lg">{course.title}</CardTitle>
-            <CardDescription className="text-xs line-clamp-1">{course.instructor || 'Metrix CRM'}</CardDescription>
+            <CardDescription className="text-xs line-clamp-1">{course.instructor || 'Capi Conversa'}</CardDescription>
           </CardHeader>
           <CardFooter className="p-4 pt-2 flex gap-2">
             <Button variant="outline" size="sm" className="flex-1 h-8 text-xs">

@@ -6,10 +6,10 @@ export const Route = createFileRoute("/oauth/drive/return")({
   component: OAuthReturn,
   head: () => ({
     meta: [
-      { title: "Conectando Google Drive | Metrix CRM" },
-      { name: "description", content: "Finalizando a conexão da sua conta do Google Drive com o Metrix CRM." },
-      { property: "og:title", content: "Conectando Google Drive | Metrix CRM" },
-      { property: "og:description", content: "Finalizando a conexão da sua conta do Google Drive com o Metrix CRM." },
+      { title: "Conectando Google Drive | Capi Conversa" },
+      { name: "description", content: "Finalizando a conexão da sua conta do Google Drive com o Capi Conversa." },
+      { property: "og:title", content: "Conectando Google Drive | Capi Conversa" },
+      { property: "og:description", content: "Finalizando a conexão da sua conta do Google Drive com o Capi Conversa." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

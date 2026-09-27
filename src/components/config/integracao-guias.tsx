@@ -158,7 +158,7 @@ export function IntegracaoGuias() {
 
         {/* 5. Meta direto */}
         <Guia value="meta" icon={Facebook} nivel="Avançado" titulo="5. Meta Lead Ads direto (sem Make)"
-          resumo="Webhook oficial da Meta apontando para o Metrix, sem ferramenta intermediária.">
+          resumo="Webhook oficial da Meta apontando para o Capi Conversa, sem ferramenta intermediária.">
           <Passos itens={[
             <>Acesse <strong>developers.facebook.com</strong> e abra (ou crie) o seu App do tipo Empresa.</>,
             <>No menu, adicione o produto <strong>Webhooks</strong> e escolha o objeto <strong>Page</strong>.</>,
@@ -171,11 +171,11 @@ export function IntegracaoGuias() {
         </Guia>
 
         {/* 6. Webhooks de saída */}
-        <Guia value="webhooks" icon={Webhook} nivel="Intermediário" titulo="6. Webhooks de saída (enviar eventos do Metrix para fora)"
+        <Guia value="webhooks" icon={Webhook} nivel="Intermediário" titulo="6. Webhooks de saída (enviar eventos do Capi Conversa para fora)"
           resumo="Avise outro sistema quando chegar mensagem, lead novo, venda ganha ou perdida.">
           <Passos itens={[
             <>Na ferramenta de destino (Make, Zapier, n8n ou seu servidor), crie um webhook de entrada e copie a URL gerada.</>,
-            <>Aqui no Metrix, aba <strong>Webhooks</strong>, clique em <strong>Novo webhook</strong>.</>,
+            <>Aqui no Capi Conversa, aba <strong>Webhooks</strong>, clique em <strong>Novo webhook</strong>.</>,
             <>Preencha o <strong>Nome</strong> e cole a <strong>URL</strong> de destino.</>,
             <>Selecione os <strong>eventos</strong> desejados (deixar vazio envia todos): mensagem recebida/enviada, lead criado, venda ganha, lead perdido, CSAT respondido.</>,
             <>Deixe <strong>Ativo</strong> ligado e clique em Salvar.</>,

@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { LegalShell } from "@/components/legal-shell";
 
 const REEMB_URL = "https://atendzap-board.lovable.app/reembolso";
-const REEMB_TITLE = "Política de Reembolso — Metrix CRM";
-const REEMB_DESC = "Garantia de 30 dias no Metrix CRM. Saiba como solicitar reembolso.";
+const REEMB_TITLE = "Política de Reembolso — Capi Conversa";
+const REEMB_DESC = "Garantia de 30 dias no Capi Conversa. Saiba como solicitar reembolso.";
 
 export const Route = createFileRoute("/reembolso")({
   head: () => ({
@@ -26,7 +26,7 @@ function ReembolsoPage() {
       <section>
         <h2>Garantia de 30 dias</h2>
         <p>
-          O <strong>Metrix CRM</strong> oferece uma garantia de satisfação de
+          O <strong>Capi Conversa</strong> oferece uma garantia de satisfação de
           <strong> 30 dias</strong>. Se você não estiver satisfeito com sua compra, pode
           solicitar reembolso integral em até 30 dias a partir da data do pedido.
         </p>

@@ -529,7 +529,7 @@ export function LeadDetailsPanel({
             className="w-full h-9 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
             onClick={async () => {
               if (!local.id) return toast.error("Lead sem identificador válido");
-              if (!confirm(`Deseja apagar a conversa do lead "${local.nome || local.numero}" apenas no sistema Metrix?\n\nIsso removerá as mensagens e o card da lista de conversas, mas não afetará o seu celular.`)) return;
+              if (!confirm(`Deseja apagar a conversa do lead "${local.nome || local.numero}" apenas no sistema Capi Conversa?\n\nIsso removerá as mensagens e o card da lista de conversas, mas não afetará o seu celular.`)) return;
 
               const { error } = await supabase
                 .from("mensagens")

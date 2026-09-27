@@ -2,12 +2,12 @@ import { useEffect, useState, useCallback } from "react";
 import { Joyride, STATUS, type EventData, type Step } from "react-joyride";
 import confetti from "canvas-confetti";
 import { useNavigate } from "@tanstack/react-router";
-import noxWelcome from "@/assets/nox-welcome.png.asset.json";
-import noxPointing from "@/assets/nox-pointing.png.asset.json";
-import noxPointingLeft from "@/assets/nox-pointing-left.png.asset.json";
-import noxTablet from "@/assets/nox-tablet.png.asset.json";
-import noxPhone from "@/assets/nox-phone.png.asset.json";
-import noxCelebrate from "@/assets/nox-celebrate.png.asset.json";
+import noxWelcome from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
+import noxPointing from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
+import noxPointingLeft from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
+import noxTablet from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
+import noxPhone from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
+import noxCelebrate from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import { brand } from "@/config/brand";
 
 const TOUR_KEY = (userId?: string | null) => `metrix_tour_done_${userId || "anon"}`;
@@ -24,7 +24,7 @@ const rawSteps: TourStep[] = [
   {
     target: "body",
     placement: "center",
-    title: "Oi! Eu sou o NOX, mascote do Metrix 👋",
+    title: "Bem-vindo ao Capi Conversa 👋",
     image: noxWelcome,
     content:
       "Vou te dar um tour rápido pelos módulos principais. É rapidinho — e você pode refazer sempre que quiser pelo menu do usuário.",
@@ -55,7 +55,7 @@ function renderContent(s: TourStep) {
     <div className="flex flex-col sm:flex-row gap-2 items-center text-left">
       <img
         src={(s.image ?? noxWelcome).url}
-        alt="NOX — mascote Metrix"
+        alt="Capi Conversa"
         className="w-24 h-24 sm:w-40 sm:h-40 md:w-48 md:h-48 object-contain shrink-0"
         loading="eager"
       />

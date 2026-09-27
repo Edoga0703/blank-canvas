@@ -76,12 +76,12 @@ const SITE_BADGE: Record<string, { label: string; cls: string }> = {
 export const Route = createFileRoute("/app/prospeccao")({
   head: () => ({
     meta: [
-      { title: "Radar de Prospecção | Metrix CRM" },
+      { title: "Radar de Prospecção | Capi Conversa" },
       {
         name: "description",
         content: "Rastreie empresas no Google Maps e na base pública de CNPJ e envie para o CRM.",
       },
-      { property: "og:title", content: "Radar de Prospecção | Metrix CRM" },
+      { property: "og:title", content: "Radar de Prospecção | Capi Conversa" },
       {
         property: "og:description",
         content: "Rastreie empresas no Google Maps e na base pública de CNPJ e envie para o CRM.",

@@ -46,8 +46,8 @@ function CourseViewerPage() {
           console.log("Using manual mock data for:", courseId);
           const data = {
             id: courseId,
-            title: 'Bem-vindo à Metrix Academy',
-            description: 'Comece sua jornada dominando as principais ferramentas do Metrix CRM.',
+            title: 'Bem-vindo à Capi Conversa Academy',
+            description: 'Comece sua jornada dominando as principais ferramentas do Capi Conversa.',
             modules: [
               {
                 id: 'mock-mod-1',

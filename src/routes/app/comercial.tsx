@@ -32,9 +32,9 @@ export const Route = createFileRoute("/app/comercial")({
   head: () => ({
     meta: [
       { title: `${brand.name} — Comercial` },
-      { name: "description", content: "Gestão de vendas, metas, produtos e relatórios comerciais no Metrix CRM." },
+      { name: "description", content: "Gestão de vendas, metas, produtos e relatórios comerciais no Capi Conversa." },
       { property: "og:title", content: `${brand.name} — Comercial` },
-      { property: "og:description", content: "Gestão de vendas, metas, produtos e relatórios comerciais no Metrix CRM." },
+      { property: "og:description", content: "Gestão de vendas, metas, produtos e relatórios comerciais no Capi Conversa." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -297,7 +297,7 @@ function ComercialPage() {
     setGeneratingPdf(true);
     try {
       await printReport(reportMeta.titulo, reportMeta.subtitulo, reportMeta.headers, reportMeta.rows as any, reportMeta.resumo);
-      toast.success("PDF gerado no padrão Metrix");
+      toast.success("PDF gerado no padrão Capi Conversa");
     } catch (error) {
       console.error("Falha ao gerar PDF comercial", error);
       toast.error("Não foi possível gerar o PDF");
@@ -311,7 +311,7 @@ function ComercialPage() {
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho padrão Metrix */}
+      {/* Cabeçalho padrão Capi Conversa */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="font-display text-[26px] font-extrabold tracking-tight flex items-center gap-2">
