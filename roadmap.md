@@ -1,4 +1,5 @@
 # Sevcon — entregas
+- [x] Unificar menu lateral do CRM: compacto recolhido, completo expandido, sem mudar cores
 - [x] 1. Painel com números do próprio usuário (atendente)
 - [x] 2. Grupos do WhatsApp (aba Grupos, receber e responder)
 - [x] 3. Assinatura do atendente nas mensagens manuais
