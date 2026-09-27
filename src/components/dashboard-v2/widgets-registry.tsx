@@ -9,7 +9,7 @@ import {
   Crown, Bot, Zap
 } from "lucide-react";
 import {
-  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart,
+  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, Line, LineChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import type { DashboardMetrics, Range } from "./widget-data";
@@ -44,7 +44,7 @@ export interface WidgetMeta {
   }) => React.ReactElement;
 }
 
-const PIE_COLORS = ["#0b22fe", "#22d3ee", "#f59e0b", "#10b981", "#ef4444", "#a78bfa"];
+const PIE_COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
 const rangeLabel: Record<Range, string> = {
   today: "hoje", "7d": "últimos 7 dias", "30d": "este mês", "90d": "últimos 90 dias",
 };
@@ -62,8 +62,8 @@ function fmtNum(v: number) { return v.toLocaleString("pt-BR"); }
 
 function Header({ title, Icon }: { title: string; Icon: LucideIcon }) {
   return (
-    <div className="flex items-start justify-between gap-1.5 mb-1">
-      <div className="text-[10.5px] uppercase tracking-[0.1em] text-muted-foreground/80 font-semibold leading-tight break-words min-w-0 flex-1">
+     <div className="flex items-start justify-between gap-1.5 mb-1">
+       <div className="text-[11px] uppercase text-foreground/75 font-bold leading-tight break-words min-w-0 flex-1">
         {title}
       </div>
       <Icon className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 mt-0.5" />
@@ -95,11 +95,11 @@ function KpiBig({
     primary: "text-primary",
   }[color];
   return (
-    <div className="h-full flex flex-col justify-between p-3.5 sm:p-5 bg-card border border-border/60 rounded-2xl overflow-hidden shadow-sm">
+    <div className="h-full flex flex-col justify-between p-3.5 sm:p-5 bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
       <Header title={label} Icon={Icon} />
       <div className="flex-1 flex flex-col justify-center min-w-0">
         <div
-          className={`font-bold leading-none tracking-tight ${colorClass} flex items-baseline gap-1`}
+          className="font-extrabold leading-none text-foreground flex items-baseline gap-1"
           style={{ fontSize: "clamp(1.3rem, 2.6vw, 2.375rem)" }}
         >
           {value.startsWith("R$") ? (
@@ -124,7 +124,7 @@ function ChartCard({
   label, Icon, children,
 }: { label: string; Icon: LucideIcon; children: React.ReactNode }) {
   return (
-    <div className="h-full flex flex-col p-3.5 sm:p-5 bg-card border border-border/60 rounded-2xl min-h-0 shadow-sm">
+    <div className="h-full flex flex-col p-3.5 sm:p-5 bg-card border border-border rounded-2xl min-h-0 shadow-sm">
       <Header title={label} Icon={Icon} />
       <div className="flex-1 min-h-0 mt-1">{children}</div>
     </div>
@@ -134,23 +134,23 @@ function ChartCard({
 function AreaBig({ data }: { data: { date: string; value: number }[] }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={data} margin={{ top: 10, right: 6, left: -20, bottom: 0 }}>
+      <LineChart data={data} margin={{ top: 10, right: 6, left: -20, bottom: 0 }}>
         <defs>
           <linearGradient id="areaG" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#0b22fe" stopOpacity={0.35} />
             <stop offset="100%" stopColor="#0b22fe" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} vertical={false} />
-        <XAxis dataKey="date" fontSize={10} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-        <YAxis fontSize={10} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+        <CartesianGrid stroke="var(--border)" vertical={false} />
+        <XAxis dataKey="date" fontSize={10} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} />
+        <YAxis fontSize={10} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} />
         <Tooltip
-          cursor={{ stroke: "#0b22fe", strokeOpacity: 0.35, strokeWidth: 1 }}
+          cursor={{ stroke: "var(--chart-1)", strokeOpacity: 0.35, strokeWidth: 1 }}
           wrapperStyle={{ zIndex: 50, outline: "none" }}
-          contentStyle={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 10, fontSize: 12, boxShadow: "0 6px 20px -8px rgba(0,0,0,0.25)" }}
+          contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 10, fontSize: 12 }}
         />
-        <Area type="monotone" dataKey="value" stroke="#0b22fe" fill="url(#areaG)" strokeWidth={2.5} />
-      </AreaChart>
+        <Line type="monotone" dataKey="value" stroke="var(--chart-1)" strokeWidth={2.5} dot={{ fill: "var(--chart-2)", strokeWidth: 0, r: 4 }} activeDot={{ fill: "var(--chart-2)", r: 6 }} />
+      </LineChart>
     </ResponsiveContainer>
   );
 }
@@ -167,7 +167,7 @@ function BarBig({ data }: { data: { stage: string; count: number }[] }) {
           wrapperStyle={{ zIndex: 50, outline: "none" }}
           contentStyle={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 10, fontSize: 12, boxShadow: "0 6px 20px -8px rgba(0,0,0,0.25)" }}
         />
-        <Bar dataKey="count" fill="#0b22fe" radius={[8, 8, 0, 0]} maxBarSize={48} />
+         <Bar dataKey="count" fill="var(--chart-1)" radius={[8, 8, 0, 0]} maxBarSize={48} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -181,7 +181,7 @@ function FunnelBig({ data }: { data: { stage: string; count: number }[] }) {
     ? stages
     : DEFAULT_STAGES.map((stage) => ({ stage, count: 0 }));
 
-  const COLORS = ["#0b22fe", "#3b4bff", "#6172ff", "#8a97ff", "#b3bbff", "#d6dbff"];
+   const COLORS = ["#72FF00", "#8EEB6A", "#B1F2A5", "#D9FBD5", "#E9FFE4", "#F3FFF0"];
   const n = rendered.length;
   // Largura vai de 100% no topo até 45% na base — trapézio contínuo.
   const widthAt = (i: number) => 100 - (i / n) * 55;
@@ -204,9 +204,9 @@ function FunnelBig({ data }: { data: { stage: string; count: number }[] }) {
               className="absolute inset-0 flex items-center justify-center px-4"
               style={{ background: color, clipPath: clip }}
             >
-              <div className="flex items-center gap-2 min-w-0 text-white">
+               <div className="flex items-center gap-2 min-w-0 text-foreground">
                 <span className="truncate text-[12px] font-semibold drop-shadow-sm">{s.stage}</span>
-                <span className="shrink-0 text-[11px] font-bold bg-white/25 rounded-md px-1.5 py-0.5">
+                 <span className="shrink-0 text-[11px] font-bold bg-card/60 rounded-md px-1.5 py-0.5">
                   {s.count}
                 </span>
               </div>
@@ -227,7 +227,7 @@ function PieBig({ data }: { data: { name: string; value: number }[] }) {
         </Pie>
         <Tooltip
           wrapperStyle={{ zIndex: 50, outline: "none" }}
-          contentStyle={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 10, fontSize: 12, boxShadow: "0 6px 20px -8px rgba(0,0,0,0.25)" }}
+          contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 10, fontSize: 12 }}
         />
       </PieChart>
     </ResponsiveContainer>
