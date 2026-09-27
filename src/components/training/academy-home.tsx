@@ -43,15 +43,15 @@ export function AcademiaMetricsHome() {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-[#050505] z-[100] flex flex-col items-center justify-center gap-8">
+      <div className="fixed inset-0 bg-[#F2F4F6] z-[100] flex flex-col items-center justify-center gap-8">
         <div className="relative">
           <div className="absolute inset-0 bg-primary/20 blur-3xl animate-pulse" />
           <img src={academyLogo.url} alt="Capi Conversa Academy" className="w-44 h-auto relative z-10 rounded-md bg-white p-2" />
         </div>
-        <div className="w-48 h-1 bg-zinc-900 rounded-full overflow-hidden relative">
+        <div className="w-48 h-1 bg-[#E7EAEE] rounded-full overflow-hidden relative">
           <div className="absolute inset-y-0 left-0 bg-primary w-0 animate-[loading-bar_2s_ease-in-out_infinite]" />
         </div>
-        <span className="text-zinc-500 font-medium tracking-[0.2em] text-xs uppercase">Capi Conversa Academy</span>
+        <span className="text-[#7B8794] font-medium tracking-[0.2em] text-xs uppercase">Capi Conversa Academy</span>
       </div>
     );
   }
@@ -69,7 +69,7 @@ export function AcademiaMetricsHome() {
           {data.categories.map((cat: Category) => (
             <section key={cat.id} className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium tracking-tight text-white/90">{cat.name}</h3>
+                <h3 className="text-lg font-medium tracking-tight text-[#12263A]">{cat.name}</h3>
               </div>
               <CourseShelf courses={cat.courses} />
             </section>

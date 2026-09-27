@@ -33,7 +33,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
 
   return (
     <div className="relative group/banners w-full">
-      <div className="overflow-hidden rounded-[1rem] shadow-2xl border border-white/5" ref={emblaRef}>
+      <div className="overflow-hidden rounded-[20px] shadow-sm border border-[#E7EAEE]" ref={emblaRef}>
         <div className="flex">
           {banners.map((banner) => (
             <div key={banner.id} className="flex-[0_0_100%] min-w-0 relative aspect-[4/1] min-h-[220px]">

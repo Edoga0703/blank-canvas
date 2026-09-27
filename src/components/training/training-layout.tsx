@@ -17,9 +17,9 @@ export function TrainingLayout({ children }: { children: ReactNode }) {
   ];
 
   return (
-    <div className="min-h-screen bg-[#050505] text-zinc-100 flex flex-col font-sans selection:bg-primary/30">
+    <div className="min-h-screen bg-[#F2F4F6] text-[#12263A] flex flex-col font-sans selection:bg-primary/30">
       {/* Sidebar Netflix Style */}
-      <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-[240px] bg-[#0A0A0A] flex-col py-8 z-[70] border-r border-white/5 px-4">
+      <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-[240px] bg-white flex-col py-8 z-[70] border-r border-[#E7EAEE] px-4">
         <div className="mb-12 px-2">
           <img src={academyLogo.url} alt="Capi Conversa Academy" className="h-12 w-auto rounded-md bg-white p-1 object-contain" />
         </div>
@@ -41,7 +41,7 @@ export function TrainingLayout({ children }: { children: ReactNode }) {
                   href={item.to}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 text-zinc-500 hover:text-white hover:bg-white/5"
+                  className="group flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 text-[#7B8794] hover:text-[#12263A] hover:bg-[#F2F4F6]"
                 >
                   {content}
                 </a>
@@ -54,7 +54,7 @@ export function TrainingLayout({ children }: { children: ReactNode }) {
                 to={item.to} 
                 className={cn(
                   "group flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300",
-                  loc.pathname === item.to && idx === 0 ? "bg-primary/10 text-primary" : "text-zinc-500 hover:text-white hover:bg-white/5"
+                  loc.pathname === item.to && idx === 0 ? "bg-primary text-primary-foreground" : "text-[#7B8794] hover:text-[#12263A] hover:bg-[#F2F4F6]"
                 )}
               >
                 {content}
@@ -75,9 +75,9 @@ export function TrainingLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        <div className="pt-6 border-t border-white/5">
+        <div className="pt-6 border-t border-[#E7EAEE]">
           <Link to="/app/dashboard">
-            <Button variant="ghost" className="w-full justify-start gap-4 text-zinc-500 hover:text-white hover:bg-white/5 px-4 h-12 rounded-xl transition-all">
+            <Button variant="ghost" className="w-full justify-start gap-4 text-[#7B8794] hover:text-[#12263A] hover:bg-[#F2F4F6] px-4 h-12 rounded-xl transition-all">
               <LogOut className="size-5" />
               <span className="text-sm font-medium">Retornar</span>
             </Button>
@@ -91,7 +91,7 @@ export function TrainingLayout({ children }: { children: ReactNode }) {
       </main>
 
       {/* Mobile Navigation (Bottom) */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#0A0A0A]/95 backdrop-blur-2xl border-t border-white/5 z-[80] flex items-center justify-around px-2">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-2xl border-t border-[#E7EAEE] z-[80] flex items-center justify-around px-2">
         {navItems.map((item, idx) => {
           const isExternal = 'external' in item && item.external;
           const content = (
@@ -108,7 +108,7 @@ export function TrainingLayout({ children }: { children: ReactNode }) {
                 href={item.to}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex flex-col items-center justify-center gap-1 min-w-[64px] text-zinc-500"
+                className="flex flex-col items-center justify-center gap-1 min-w-[64px] text-[#7B8794]"
               >
                 {content}
               </a>
@@ -121,14 +121,14 @@ export function TrainingLayout({ children }: { children: ReactNode }) {
               to={item.to} 
               className={cn(
                 "flex flex-col items-center justify-center gap-1 min-w-[64px]",
-                loc.pathname === item.to && idx === 0 ? "text-primary" : "text-zinc-500"
+                loc.pathname === item.to && idx === 0 ? "text-primary" : "text-[#7B8794]"
               )}
             >
               {content}
             </Link>
           );
         })}
-        <Link to="/app/dashboard" className="flex flex-col items-center justify-center gap-1 min-w-[64px] text-zinc-500">
+        <Link to="/app/dashboard" className="flex flex-col items-center justify-center gap-1 min-w-[64px] text-[#7B8794]">
            <ChevronLeft className="size-5" />
            <span className="text-[10px] font-medium tracking-tight">Voltar</span>
         </Link>
