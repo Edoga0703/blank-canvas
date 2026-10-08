@@ -1,1 +1,0 @@
-ALTER TABLE public.crm_cards ADD COLUMN IF NOT EXISTS campos_extras jsonb NOT NULL DEFAULT '{}'::jsonb;

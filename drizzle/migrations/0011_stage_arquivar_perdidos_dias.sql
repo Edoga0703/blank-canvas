@@ -1,1 +1,0 @@
-ALTER TABLE public.crm_stage ADD COLUMN IF NOT EXISTS arquivar_perdidos_dias integer;
