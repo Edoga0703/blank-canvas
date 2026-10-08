@@ -1,6 +1,6 @@
 # Design system
 
-Generated: 2026-09-08T18:54:12.877665+00:00
+Generated: 2026-10-08T18:56:19.382649+00:00
 
 ## Tokens
 - --radius-sm: calc(var(--radius) - 4px) (src/styles.css)
@@ -49,61 +49,91 @@ Generated: 2026-09-08T18:54:12.877665+00:00
 - --color-surface: var(--surface) (src/styles.css)
 - --color-panel-2: var(--panel-2) (src/styles.css)
 - --color-sidebar-bg: var(--sidebar-bg) (src/styles.css)
-- --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif (src/styles.css)
-- --font-display: "Montserrat", ui-sans-serif, system-ui, sans-serif (src/styles.css)
-- --radius: 0.9rem (src/styles.css)
-- --brand: #0B22FE (src/styles.css)
-- --brand-strong: #3D50FF (src/styles.css)
+- --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif (src/styles.css)
+- --font-display: "Manrope", ui-sans-serif, system-ui, sans-serif (src/styles.css)
+- --font-prospect-display: "Sora", ui-sans-serif, system-ui, sans-serif (src/styles.css)
+- --font-prospect-body: "Manrope", ui-sans-serif, system-ui, sans-serif (src/styles.css)
+- --color-prospect-success: var(--prospect-success) (src/styles.css)
+- --color-prospect-success-foreground: var(--prospect-success-foreground) (src/styles.css)
+- --color-prospect-warning: var(--prospect-warning) (src/styles.css)
+- --color-prospect-warning-foreground: var(--prospect-warning-foreground) (src/styles.css)
+- --color-prospect-danger: var(--prospect-danger) (src/styles.css)
+- --color-prospect-danger-foreground: var(--prospect-danger-foreground) (src/styles.css)
+- --color-prospect-info: var(--prospect-info) (src/styles.css)
+- --color-prospect-info-foreground: var(--prospect-info-foreground) (src/styles.css)
+- --color-report-background: var(--report-background) (src/styles.css)
+- --color-report-surface: var(--report-surface) (src/styles.css)
+- --color-report-navy: var(--report-navy) (src/styles.css)
+- --color-report-accent: var(--report-accent) (src/styles.css)
+- --color-report-accent-soft: var(--report-accent-soft) (src/styles.css)
+- --font-report-heading: "Sora", ui-sans-serif, system-ui, sans-serif (src/styles.css)
+- --font-report-body: "Manrope", ui-sans-serif, system-ui, sans-serif (src/styles.css)
+- --radius: 1.125rem (src/styles.css)
+- --brand: #2563EB (src/styles.css)
+- --brand-strong: #1D4ED8 (src/styles.css)
 - --brand-master: #DC2626 (src/styles.css)
-- --bg-deep: #F8F9FB (src/styles.css)
+- --bg-deep: #F4F6F8 (src/styles.css)
 - --panel: #FFFFFF (src/styles.css)
-- --panel-2: #F3F5FC (src/styles.css)
-- --hairline: rgba(11,22,64,.11) (src/styles.css)
-- --hairline-strong: rgba(11,22,64,.16) (src/styles.css)
+- --panel-2: #F4F6F8 (src/styles.css)
+- --hairline: #E6EAF0 (src/styles.css)
+- --hairline-strong: #D9DEE5 (src/styles.css)
 - --surface: var(--panel) (src/styles.css)
 - --sidebar-bg: #FFFFFF (src/styles.css)
 - --background: var(--bg-deep) (src/styles.css)
-- --foreground: #0A0F2A (src/styles.css)
+- --foreground: #142B44 (src/styles.css)
 - --card: var(--panel) (src/styles.css)
-- --card-foreground: #0A0F2A (src/styles.css)
+- --card-foreground: #142B44 (src/styles.css)
 - --popover: #FFFFFF (src/styles.css)
-- --popover-foreground: #0A0F2A (src/styles.css)
+- --popover-foreground: #142B44 (src/styles.css)
 - --primary: var(--brand) (src/styles.css)
 - --primary-foreground: #FFFFFF (src/styles.css)
-- --secondary: #E6EAFB (src/styles.css)
-- --secondary-foreground: #0A0F2A (src/styles.css)
-- --muted: #EFF1FA (src/styles.css)
-- --muted-foreground: #3C4670 (src/styles.css)
-- --accent: #E6EAFB (src/styles.css)
-- --accent-foreground: #0A0F2A (src/styles.css)
+- --secondary: #EDF2F5 (src/styles.css)
+- --secondary-foreground: #142B44 (src/styles.css)
+- --muted: #F4F6F8 (src/styles.css)
+- --muted-foreground: #7B8794 (src/styles.css)
+- --accent: #EAF1FF (src/styles.css)
+- --accent-foreground: #142B44 (src/styles.css)
 - --destructive: #DC2626 (src/styles.css)
 - --destructive-foreground: #FFFFFF (src/styles.css)
 - --border: var(--hairline) (src/styles.css)
-- --input: rgba(11,22,64,.13) (src/styles.css)
+- --input: #D9DEE5 (src/styles.css)
 - --ring: var(--brand) (src/styles.css)
-- --chart-1: #0B22FE (src/styles.css)
-- --chart-2: #0EA5E9 (src/styles.css)
-- --chart-3: #7A88FF (src/styles.css)
+- --chart-1: #142B44 (src/styles.css)
+- --chart-2: #2563EB (src/styles.css)
+- --chart-3: #BFEFCF (src/styles.css)
 - --chart-4: #DC2626 (src/styles.css)
 - --chart-5: #F59E0B (src/styles.css)
 - --sidebar: var(--sidebar-bg) (src/styles.css)
-- --sidebar-foreground: #0A0F2A (src/styles.css)
+- --sidebar-foreground: #142B44 (src/styles.css)
 - --sidebar-primary: var(--brand) (src/styles.css)
 - --sidebar-primary-foreground: #FFFFFF (src/styles.css)
-- --sidebar-accent: #EFF1FA (src/styles.css)
-- --sidebar-accent-foreground: #0A0F2A (src/styles.css)
+- --sidebar-accent: #EAF1FF (src/styles.css)
+- --sidebar-accent-foreground: #142B44 (src/styles.css)
 - --sidebar-border: var(--hairline) (src/styles.css)
 - --sidebar-ring: var(--brand) (src/styles.css)
-- --brand-soft: rgba(11,34,254,.10) (src/styles.css)
-- --brand-soft-strong: rgba(11,34,254,.20) (src/styles.css)
-- --brand-text: #0B22FE (src/styles.css)
-- --shadow-card: 0 1px 3px rgba(11,22,64,.07), 0 1px 2px rgba(11,22,64,.04) (src/styles.css)
-- --shadow-glow: 0 0 0 1px rgba(11,34,254,.18), 0 8px 24px -10px rgba(11,34,254,.30) (src/styles.css)
-- --page-gradient: radial-gradient(900px 500px at 100% -10%, rgba(11,34,254,.05), transparent 60%),
-    radial-gradient(700px 400px at -10% 10%, rgba(11,34,254,.04), transparent 60%),
-    var(--bg-deep) (src/styles.css)
-- --brand: #4A5DFF (src/styles.css)
-- --brand-strong: #7A88FF (src/styles.css)
+- --brand-soft: #EAF1FF (src/styles.css)
+- --brand-soft-strong: #DCE8FF (src/styles.css)
+- --brand-text: #1D4ED8 (src/styles.css)
+- --status-soft: #DDF7E7 (src/styles.css)
+- --status-foreground: #166534 (src/styles.css)
+- --prospect-success: oklch(0.95 0.05 160) (src/styles.css)
+- --prospect-success-foreground: oklch(0.36 0.11 160) (src/styles.css)
+- --prospect-warning: oklch(0.96 0.07 85) (src/styles.css)
+- --prospect-warning-foreground: oklch(0.42 0.1 70) (src/styles.css)
+- --prospect-danger: oklch(0.95 0.045 25) (src/styles.css)
+- --prospect-danger-foreground: oklch(0.45 0.16 25) (src/styles.css)
+- --prospect-info: oklch(0.94 0.045 250) (src/styles.css)
+- --prospect-info-foreground: oklch(0.4 0.14 255) (src/styles.css)
+- --report-background: oklch(0.979 0.003 247) (src/styles.css)
+- --report-surface: oklch(1 0 0) (src/styles.css)
+- --report-navy: oklch(0.276 0.087 267) (src/styles.css)
+- --report-accent: oklch(0.685 0.169 237) (src/styles.css)
+- --report-accent-soft: oklch(0.955 0.025 237) (src/styles.css)
+- --shadow-card: 0 1px 4px rgba(18,38,58,.04) (src/styles.css)
+- --shadow-glow: 0 0 0 1px #DCE8FF, 0 6px 20px -10px #2563EB (src/styles.css)
+- --page-gradient: var(--bg-deep) (src/styles.css)
+- --brand: #60A5FA (src/styles.css)
+- --brand-strong: #93C5FD (src/styles.css)
 - --brand-master: #FF5A5A (src/styles.css)
 - --bg-deep: #05081A (src/styles.css)
 - --panel: #0F1330 (src/styles.css)
@@ -144,14 +174,37 @@ Generated: 2026-09-08T18:54:12.877665+00:00
 - --sidebar-accent-foreground: #F1F3FF (src/styles.css)
 - --sidebar-border: var(--hairline) (src/styles.css)
 - --sidebar-ring: var(--brand-strong) (src/styles.css)
-- --brand-soft: rgba(74,93,255,.16) (src/styles.css)
-- --brand-soft-strong: rgba(74,93,255,.26) (src/styles.css)
-- --brand-text: #A3B0FF (src/styles.css)
+- --brand-soft: rgba(96,165,250,.16) (src/styles.css)
+- --brand-soft-strong: rgba(96,165,250,.26) (src/styles.css)
+- --brand-text: #93C5FD (src/styles.css)
+- --status-soft: #163B2B (src/styles.css)
+- --status-foreground: #BFEFCF (src/styles.css)
+- --prospect-success: oklch(0.29 0.055 160) (src/styles.css)
+- --prospect-success-foreground: oklch(0.84 0.1 160) (src/styles.css)
+- --prospect-warning: oklch(0.3 0.06 75) (src/styles.css)
+- --prospect-warning-foreground: oklch(0.86 0.11 85) (src/styles.css)
+- --prospect-danger: oklch(0.3 0.07 25) (src/styles.css)
+- --prospect-danger-foreground: oklch(0.84 0.1 25) (src/styles.css)
+- --prospect-info: oklch(0.3 0.07 255) (src/styles.css)
+- --prospect-info-foreground: oklch(0.83 0.09 250) (src/styles.css)
+- --report-background: var(--background) (src/styles.css)
+- --report-surface: var(--card) (src/styles.css)
+- --report-navy: var(--foreground) (src/styles.css)
+- --report-accent: oklch(0.75 0.13 237) (src/styles.css)
+- --report-accent-soft: oklch(0.25 0.035 237) (src/styles.css)
 - --shadow-card: 0 1px 0 rgba(255,255,255,.02) inset, 0 6px 18px -10px rgba(0,0,0,.5) (src/styles.css)
 - --shadow-glow: 0 0 0 1px rgba(74,93,255,.22), 0 8px 28px -10px rgba(74,93,255,.35) (src/styles.css)
 - --page-gradient: radial-gradient(1200px 600px at 85% -15%, rgba(74,93,255,.09), transparent 60%),
     radial-gradient(900px 500px at -10% 15%, rgba(74,93,255,.06), transparent 60%),
     var(--bg-deep) (src/styles.css)
+- --primary: #334155 (src/styles.css)
+- --primary-foreground: #FFFFFF (src/styles.css)
+- --brand: #334155 (src/styles.css)
+- --brand-strong: #1E293B (src/styles.css)
+- --brand-soft: #E8EEF5 (src/styles.css)
+- --brand-text: #334155 (src/styles.css)
+- --accent: #E8EEF5 (src/styles.css)
+- --ring: #334155 (src/styles.css)
 
 ## UI components
 - accordion
@@ -205,19 +258,43 @@ Generated: 2026-09-08T18:54:12.877665+00:00
 - tooltip
 
 ## Project components
+- src/components/agenda/appointment-form.tsx
+- src/components/agenda/block-dialog.tsx
+- src/components/agenda/contact-picker.tsx
+- src/components/agenda/day-agenda.tsx
+- src/components/agenda/detail-panel.tsx
+- src/components/agenda/horarios-equipe-dialog.tsx
+- src/components/agenda/list-view.tsx
+- src/components/agenda/message-form.tsx
+- src/components/agenda/messages-area.tsx
+- src/components/agenda/month-view.tsx
+- src/components/agenda/option-select.tsx
+- src/components/agenda/overview.tsx
 - src/components/agenda/quick-schedule-dialog.tsx
+- src/components/agenda/settings-area.tsx
+- src/components/agenda/shared.tsx
+- src/components/agenda/time-grid.tsx
 - src/components/agente/agent-avatar.tsx
 - src/components/agente/avatar-builder.tsx
 - src/components/agente/avatar-layers/index.tsx
 - src/components/announcement-manager.tsx
 - src/components/app-shell.tsx
 - src/components/auth-shell.tsx
+- src/components/billing/meu-plano-panel.tsx
 - src/components/brand-mark.tsx
 - src/components/catalogo/produto-edit-dialog.tsx
+- src/components/chat/ai-assist-button.tsx
+- src/components/chat/chat-location.tsx
 - src/components/chat/chat-media.tsx
+- src/components/chat/conversation-media-panel.tsx
+- src/components/chat/drive-panel.tsx
+- src/components/chat/encaminhar-dialog.tsx
+- src/components/chat/forward-message-dialog.tsx
+- src/components/chat/grupo-details-panel.tsx
 - src/components/chat/media-lightbox.tsx
 - src/components/chat/media-preview-dialog.tsx
 - src/components/chat/quick-replies-dialog.tsx
+- src/components/chat/send-contact-dialog.tsx
 - src/components/chat/whatsapp-audio.tsx
 - src/components/comercial/comercial-widgets.tsx
 - src/components/comercial/meta-dialog.tsx
@@ -234,6 +311,8 @@ Generated: 2026-09-08T18:54:12.877665+00:00
 - src/components/config/departamentos-tab.tsx
 - src/components/config/distribuicao-tab.tsx
 - src/components/config/equipe-tab.tsx
+- src/components/config/form-builder-dialog.tsx
+- src/components/config/formularios-tab.tsx
 - src/components/config/funcoes-tab.tsx
 - src/components/config/horarios-tab.tsx
 - src/components/config/integracao-guias.tsx
@@ -243,10 +322,14 @@ Generated: 2026-09-08T18:54:12.877665+00:00
 - src/components/config/tags-tab.tsx
 - src/components/config/templates-tab.tsx
 - src/components/crm/lead-drawer.tsx
+- src/components/crm/olist-pedidos-tab.tsx
 - src/components/dashboard-v2/DashboardGrid.tsx
 - src/components/dashboard-v2/PeriodFilterButton.tsx
 - src/components/dashboard-v2/WidgetPicker.tsx
 - src/components/dashboard-v2/WidgetSettingsDialog.tsx
+- src/components/dashboard-v2/ops-data.tsx
+- src/components/dashboard-v2/ops-widgets.tsx
+- src/components/dashboard-v2/team-widgets.tsx
 - src/components/dashboard-v2/widgets-registry.tsx
 - src/components/dashboard/agent-status-card.tsx
 - src/components/dashboard/kpi-card.tsx
@@ -257,8 +340,19 @@ Generated: 2026-09-08T18:54:12.877665+00:00
 - src/components/master-subtabs.tsx
 - src/components/master/alerts-bell.tsx
 - src/components/master/billing-panel.tsx
+- src/components/master/charges-panel.tsx
 - src/components/master/clientes-lista.tsx
+- src/components/master/crm-admin/automacoes-tab.tsx
+- src/components/master/crm-admin/base-tab.tsx
+- src/components/master/crm-admin/connection-header.tsx
+- src/components/master/crm-admin/disparos-tab.tsx
+- src/components/master/crm-admin/historico-tab.tsx
+- src/components/master/crm-admin/overview-tab.tsx
 - src/components/master/nova-empresa-form.tsx
+- src/components/master/openai-spend-panel.tsx
+- src/components/master/revenue-projection-panel.tsx
+- src/components/master/signup-welcome-card.tsx
+- src/components/master/whatsapp-fleet-panel.tsx
 - src/components/mic-dictate-button.tsx
 - src/components/mobile-app-banner.tsx
 - src/components/mobile-bottom-nav.tsx
@@ -266,10 +360,21 @@ Generated: 2026-09-08T18:54:12.877665+00:00
 - src/components/onboarding-tour.tsx
 - src/components/plan-usage-badge.tsx
 - src/components/plugins/google-calendar-panel.tsx
+- src/components/plugins/google-drive-panel.tsx
+- src/components/plugins/google-marketing-panel.tsx
+- src/components/plugins/google-meet-panel.tsx
+- src/components/plugins/google-sheets-panel.tsx
+- src/components/plugins/ia-resumo-panel.tsx
+- src/components/plugins/ia-sentimento-panel.tsx
+- src/components/plugins/ia-voz-panel.tsx
+- src/components/plugins/integracao-panel.tsx
+- src/components/plugins/olist-panel.tsx
 - src/components/plugins/plugin-banners.tsx
 - src/components/plugins/plugin-detail-dialog.tsx
 - src/components/plugins/plugin-gate.tsx
 - src/components/plugins/plugin-revenue-card.tsx
+- src/components/plugins/webhooks-entrada-panel.tsx
+- src/components/plugins/webhooks-out-panel.tsx
 - src/components/route-fallbacks.tsx
 - src/components/support/support-article.tsx
 - src/components/support/support-config-dialog.tsx
