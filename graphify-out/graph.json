@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-09T17:56:29.124056+00:00",
+  "generated_at": "2026-10-09T18:16:25.893304+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -1451,7 +1451,7 @@
     },
     {
       "path": "src/routes/__root.tsx",
-      "bytes": 9110
+      "bytes": 9321
     },
     {
       "path": "src/routes/master.tsx",
@@ -1487,7 +1487,7 @@
     },
     {
       "path": "src/routes/entrar.tsx",
-      "bytes": 32158
+      "bytes": 32331
     },
     {
       "path": "src/hooks/use-standalone.tsx",
@@ -1543,7 +1543,7 @@
     },
     {
       "path": "src/integrations/supabase/client.ts",
-      "bytes": 3569
+      "bytes": 3947
     },
     {
       "path": "src/integrations/supabase/auth-attacher.ts",
@@ -1551,7 +1551,7 @@
     },
     {
       "path": "src/integrations/supabase/client.server.ts",
-      "bytes": 2753
+      "bytes": 3134
     },
     {
       "path": "src/integrations/lovable/appUserConnector.ts",
