@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-09T20:02:48.097723+00:00",
+  "generated_at": "2026-10-09T21:03:15.772581+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -114,6 +114,10 @@
       "bytes": 1362
     },
     {
+      "path": "docs/VOCALIS_FEATURE_EXTRACTION_MAP.md",
+      "bytes": 7791
+    },
+    {
       "path": "docs/CAPIVERSA_V1_1.md",
       "bytes": 3216
     },
@@ -128,6 +132,10 @@
     {
       "path": "supabase/migrations/20261009070000_company_full_columns.sql",
       "bytes": 2532
+    },
+    {
+      "path": "supabase/migrations/20261009040000_meta_channels_core.sql",
+      "bytes": 1302
     },
     {
       "path": "supabase/migrations/20261009030000_capiversa_v1_1_core.sql",
@@ -775,7 +783,7 @@
     },
     {
       "path": "src/lib/meta-oauth.server.ts",
-      "bytes": 6466
+      "bytes": 6872
     },
     {
       "path": "src/lib/automacao-ai.functions.ts",
@@ -907,7 +915,7 @@
     },
     {
       "path": "src/lib/meta-oauth.functions.ts",
-      "bytes": 8626
+      "bytes": 8825
     },
     {
       "path": "src/lib/master-alerts.server.ts",
@@ -1411,7 +1419,7 @@
     },
     {
       "path": "src/config/beta.ts",
-      "bytes": 473
+      "bytes": 854
     },
     {
       "path": "src/routes/sitemap[.]xml.ts",
@@ -2431,7 +2439,7 @@
     },
     {
       "path": "src/routes/app/conexao.tsx",
-      "bytes": 25690
+      "bytes": 26213
     },
     {
       "path": "src/routes/app/relatorios.tsx",
@@ -2659,7 +2667,7 @@
     },
     {
       "path": "src/routes/api/public/meta-webhook.ts",
-      "bytes": 12148
+      "bytes": 12431
     },
     {
       "path": "src/routes/api/public/v1/$.ts",
