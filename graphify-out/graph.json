@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-09T16:08:34.536977+00:00",
+  "generated_at": "2026-10-09T16:51:15.148457+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -1211,179 +1211,179 @@
     },
     {
       "path": "src/assets/metrix-logo-full.png.asset.json",
-      "bytes": 465
+      "bytes": 419
     },
     {
       "path": "src/assets/nox-welcome.png.asset.json",
-      "bytes": 452
+      "bytes": 406
     },
     {
       "path": "src/assets/android-step-1.png.asset.json",
-      "bytes": 461
+      "bytes": 415
     },
     {
       "path": "src/assets/android-step-4.png.asset.json",
-      "bytes": 461
+      "bytes": 415
     },
     {
       "path": "src/assets/metrix-bubble-v2.png.asset.json",
-      "bytes": 465
+      "bytes": 419
     },
     {
       "path": "src/assets/academy-logo.png.asset.json",
-      "bytes": 453
+      "bytes": 407
     },
     {
       "path": "src/assets/metrix-bubble.png.asset.json",
-      "bytes": 456
+      "bytes": 410
     },
     {
       "path": "src/assets/mascote-login.png.asset.json",
-      "bytes": 458
+      "bytes": 412
     },
     {
       "path": "src/assets/metrix-logo-center.png.asset.json",
-      "bytes": 471
+      "bytes": 425
     },
     {
       "path": "src/assets/iphone-step-1.png.asset.json",
-      "bytes": 458
+      "bytes": 412
     },
     {
       "path": "src/assets/metrix-receipt-white.png.asset.json",
-      "bytes": 477
+      "bytes": 431
     },
     {
       "path": "src/assets/metrix-favicon.png.asset.json",
-      "bytes": 459
+      "bytes": 413
     },
     {
       "path": "src/assets/metrix-logo-new.png.asset.json",
-      "bytes": 463
+      "bytes": 417
     },
     {
       "path": "src/assets/iphone-step-3.png.asset.json",
-      "bytes": 458
+      "bytes": 412
     },
     {
       "path": "src/assets/nox-phone.png.asset.json",
-      "bytes": 446
+      "bytes": 400
     },
     {
       "path": "src/assets/android-step-3.png.asset.json",
-      "bytes": 461
+      "bytes": 415
     },
     {
       "path": "src/assets/iphone-step-5.png.asset.json",
-      "bytes": 458
+      "bytes": 412
     },
     {
       "path": "src/assets/metrix-mascot.png.asset.json",
-      "bytes": 458
+      "bytes": 412
     },
     {
       "path": "src/assets/mascote-notebook.png.asset.json",
-      "bytes": 467
+      "bytes": 421
     },
     {
       "path": "src/assets/metrix-logo.png.asset.json",
-      "bytes": 450
+      "bytes": 404
     },
     {
       "path": "src/assets/mascot-support.png.asset.json",
-      "bytes": 461
+      "bytes": 415
     },
     {
       "path": "src/assets/metrix-icon-new.png.asset.json",
-      "bytes": 462
+      "bytes": 416
     },
     {
       "path": "src/assets/nox-tablet.png.asset.json",
-      "bytes": 449
+      "bytes": 403
     },
     {
       "path": "src/assets/capi-conversa-logo-horizontal-black.png.asset.json",
-      "bytes": 522
+      "bytes": 448
     },
     {
       "path": "src/assets/iphone-step-4.png.asset.json",
-      "bytes": 457
+      "bytes": 411
     },
     {
       "path": "src/assets/apple.svg.asset.json",
-      "bytes": 435
+      "bytes": 389
     },
     {
       "path": "src/assets/metrix-mark.png.asset.json",
-      "bytes": 450
+      "bytes": 404
     },
     {
       "path": "src/assets/mascote-notebook-v2.png.asset.json",
-      "bytes": 476
+      "bytes": 430
     },
     {
       "path": "src/assets/metrix-brand.png.asset.json",
-      "bytes": 452
+      "bytes": 406
     },
     {
       "path": "src/assets/academy-logo-white.png.asset.json",
-      "bytes": 472
+      "bytes": 426
     },
     {
       "path": "src/assets/android2.svg.asset.json",
-      "bytes": 444
+      "bytes": 398
     },
     {
       "path": "src/assets/nox-pointing-left.png.asset.json",
-      "bytes": 470
+      "bytes": 424
     },
     {
       "path": "src/assets/mascot-mobile.png.asset.json",
-      "bytes": 458
+      "bytes": 412
     },
     {
       "path": "src/assets/iphone-step-2.png.asset.json",
-      "bytes": 458
+      "bytes": 412
     },
     {
       "path": "src/assets/academy-fave.png.asset.json",
-      "bytes": 454
+      "bytes": 408
     },
     {
       "path": "src/assets/metrix-bubble-v4.png.asset.json",
-      "bytes": 466
+      "bytes": 420
     },
     {
       "path": "src/assets/sidebar-promo.png.asset.json",
-      "bytes": 456
+      "bytes": 410
     },
     {
       "path": "src/assets/metrix-receipt-blue.png.asset.json",
-      "bytes": 474
+      "bytes": 428
     },
     {
       "path": "src/assets/nox-pointing.png.asset.json",
-      "bytes": 455
+      "bytes": 409
     },
     {
       "path": "src/assets/mascote-oferta.png.asset.json",
-      "bytes": 461
+      "bytes": 415
     },
     {
       "path": "src/assets/metrix-bubble-v3.png.asset.json",
-      "bytes": 466
+      "bytes": 420
     },
     {
       "path": "src/assets/avatar-placeholder.png.asset.json",
-      "bytes": 470
+      "bytes": 424
     },
     {
       "path": "src/assets/nox-celebrate.png.asset.json",
-      "bytes": 458
+      "bytes": 412
     },
     {
       "path": "src/assets/android-step-2.png.asset.json",
-      "bytes": 461
+      "bytes": 415
     },
     {
       "path": "src/config/brand.ts",
