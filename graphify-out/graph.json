@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-09T18:16:25.893304+00:00",
+  "generated_at": "2026-10-09T18:39:19.603601+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -124,6 +124,10 @@
     {
       "path": "drizzle/schema.ts",
       "bytes": 60
+    },
+    {
+      "path": "supabase/migrations/20261009070000_company_full_columns.sql",
+      "bytes": 2532
     },
     {
       "path": "supabase/migrations/20261009030000_capiversa_v1_1_core.sql",
