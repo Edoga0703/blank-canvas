@@ -114,6 +114,11 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <p className="mt-2 text-sm text-muted-foreground">
           Algo deu errado. Tente novamente ou volte para a home.
         </p>
+        {error?.message && (
+          <p className="mt-2 text-xs text-red-600 font-mono break-words bg-red-50 p-2 rounded border border-red-200 text-left">
+            {error.message}
+          </p>
+        )}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {

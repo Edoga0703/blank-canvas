@@ -48,10 +48,15 @@ export const Route = createFileRoute("/entrar")({
     ref: typeof s.ref === "string" ? s.ref : undefined,
   }),
   beforeLoad: async ({ search }) => {
-    const { data } = await supabase.auth.getUser();
-    if (data.user) {
-      const dest = search.next ?? (search.plano ? `/app/checkout?plano=${encodeURIComponent(search.plano)}` : "/app/dashboard");
-      throw redirect({ href: dest });
+    try {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        const dest = search.next ?? (search.plano ? `/app/checkout?plano=${encodeURIComponent(search.plano)}` : "/app/dashboard");
+        throw redirect({ href: dest });
+      }
+    } catch (e: any) {
+      if (e?.status === 307 || e?.to || e?.href || e?.headers) throw e;
+      console.warn("entrar beforeLoad check:", e);
     }
   },
   component: EntrarPage,
