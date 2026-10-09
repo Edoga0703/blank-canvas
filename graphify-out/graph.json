@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-08T18:56:19.382649+00:00",
+  "generated_at": "2026-10-09T15:40:43.193917+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -31,7 +31,7 @@
     },
     {
       "path": "MANUAL.md",
-      "bytes": 7697
+      "bytes": 7970
     },
     {
       "path": "webhooks_security.html",
@@ -47,7 +47,7 @@
     },
     {
       "path": "vite.config.ts",
-      "bytes": 1686
+      "bytes": 2075
     },
     {
       "path": "vite-serverfn-warmup.ts",
@@ -63,11 +63,11 @@
     },
     {
       "path": "README.md",
-      "bytes": 5626
+      "bytes": 2376
     },
     {
       "path": "package.json",
-      "bytes": 4026
+      "bytes": 4126
     },
     {
       "path": "components.json",
@@ -87,7 +87,7 @@
     },
     {
       "path": "src/routeTree.gen.ts",
-      "bytes": 92485
+      "bytes": 93547
     },
     {
       "path": "src/styles.css",
@@ -106,12 +106,32 @@
       "bytes": 1642
     },
     {
+      "path": "docs/LOVABLE_WHATSAPP_HANDOFF.md",
+      "bytes": 2813
+    },
+    {
+      "path": "docs/R2_SETUP.md",
+      "bytes": 1362
+    },
+    {
+      "path": "docs/CAPIVERSA_V1_1.md",
+      "bytes": 3216
+    },
+    {
+      "path": "docs/PRE_LOVABLE_VERIFICATION.md",
+      "bytes": 3617
+    },
+    {
       "path": "drizzle/schema.ts",
       "bytes": 60
     },
     {
+      "path": "supabase/migrations/20261009030000_capiversa_v1_1_core.sql",
+      "bytes": 19763
+    },
+    {
       "path": ".lovable/mcp/manifest.json",
-      "bytes": 3189
+      "bytes": 3140
     },
     {
       "path": ".lovable/plan/corrigir-domínio-do-link-do-formulário-2026-09-09.md",
@@ -971,7 +991,7 @@
     },
     {
       "path": "src/lib/wa-dispatch.server.ts",
-      "bytes": 8725
+      "bytes": 11025
     },
     {
       "path": "src/lib/test-disparo.functions.ts",
@@ -1035,7 +1055,7 @@
     },
     {
       "path": "src/lib/evolution.functions.ts",
-      "bytes": 50265
+      "bytes": 53206
     },
     {
       "path": "src/lib/integrations.functions.ts",
@@ -1123,7 +1143,7 @@
     },
     {
       "path": "src/lib/chat-media.functions.ts",
-      "bytes": 5824
+      "bytes": 6659
     },
     {
       "path": "src/lib/session-persistence.ts",
@@ -1367,7 +1387,11 @@
     },
     {
       "path": "src/config/brand.ts",
-      "bytes": 397
+      "bytes": 408
+    },
+    {
+      "path": "src/config/beta.ts",
+      "bytes": 473
     },
     {
       "path": "src/routes/sitemap[.]xml.ts",
@@ -1415,7 +1439,7 @@
     },
     {
       "path": "src/routes/__root.tsx",
-      "bytes": 9142
+      "bytes": 9110
     },
     {
       "path": "src/routes/master.tsx",
@@ -1427,7 +1451,7 @@
     },
     {
       "path": "src/routes/index.tsx",
-      "bytes": 31176
+      "bytes": 31132
     },
     {
       "path": "src/routes/mobile.tsx",
@@ -1503,7 +1527,7 @@
     },
     {
       "path": "src/integrations/supabase/types.ts",
-      "bytes": 209102
+      "bytes": 209206
     },
     {
       "path": "src/integrations/supabase/client.ts",
@@ -2139,7 +2163,7 @@
     },
     {
       "path": "src/components/master/clientes-lista.tsx",
-      "bytes": 50636
+      "bytes": 50687
     },
     {
       "path": "src/components/master/alerts-bell.tsx",
@@ -2195,7 +2219,39 @@
     },
     {
       "path": "src/lib/mcp/index.ts",
-      "bytes": 753
+      "bytes": 756
+    },
+    {
+      "path": "src/lib/messaging/provider-registry.server.ts",
+      "bytes": 654
+    },
+    {
+      "path": "src/lib/messaging/ingest.server.ts",
+      "bytes": 10002
+    },
+    {
+      "path": "src/lib/messaging/media-archive.server.ts",
+      "bytes": 1239
+    },
+    {
+      "path": "src/lib/messaging/lovable-connection.functions.ts",
+      "bytes": 2671
+    },
+    {
+      "path": "src/lib/messaging/lovable-whatsapp.generated.server.ts",
+      "bytes": 2769
+    },
+    {
+      "path": "src/lib/messaging/contracts.ts",
+      "bytes": 2639
+    },
+    {
+      "path": "src/lib/storage/r2.server.ts",
+      "bytes": 9639
+    },
+    {
+      "path": "src/lib/storage/r2.functions.ts",
+      "bytes": 895
     },
     {
       "path": "src/lib/integracoes/runtime.server.ts",
@@ -2255,7 +2311,7 @@
     },
     {
       "path": "src/lib/mcp/tools/send-whatsapp.ts",
-      "bytes": 1925
+      "bytes": 2377
     },
     {
       "path": "src/lib/mcp/tools/list-conversations.ts",
@@ -2263,7 +2319,11 @@
     },
     {
       "path": "src/lib/mcp/tools/list-leads.ts",
-      "bytes": 1580
+      "bytes": 1591
+    },
+    {
+      "path": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
+      "bytes": 1859
     },
     {
       "path": "src/assets/avatars/av-m4.png.asset.json",
@@ -2303,7 +2363,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 175971
+      "bytes": 175920
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -2351,7 +2411,7 @@
     },
     {
       "path": "src/routes/app/conexao.tsx",
-      "bytes": 23364
+      "bytes": 25690
     },
     {
       "path": "src/routes/app/relatorios.tsx",
@@ -2371,7 +2431,7 @@
     },
     {
       "path": "src/routes/app/campanhas.tsx",
-      "bytes": 33870
+      "bytes": 33941
     },
     {
       "path": "src/routes/app/plugins.tsx",
@@ -2391,7 +2451,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 83839
+      "bytes": 83850
     },
     {
       "path": "src/routes/app/dashboard.tsx",
@@ -2538,6 +2598,10 @@
       "bytes": 1911
     },
     {
+      "path": "src/routes/api/public/lovable-whatsapp.ts",
+      "bytes": 2691
+    },
+    {
       "path": "src/routes/api/public/wablast-webhook.ts",
       "bytes": 8877
     },
@@ -2583,7 +2647,7 @@
     },
     {
       "path": "src/routes/api/public/hooks/process-retry-queue.ts",
-      "bytes": 10120
+      "bytes": 12488
     },
     {
       "path": "src/routes/api/public/hooks/process-kanban-reguas.ts",
@@ -3010,6 +3074,10 @@
     {
       "source": "src/routeTree.gen.ts",
       "target": "./routes/api/public/lead-photo"
+    },
+    {
+      "source": "src/routeTree.gen.ts",
+      "target": "./routes/api/public/lovable-whatsapp"
     },
     {
       "source": "src/routeTree.gen.ts",
@@ -5757,6 +5825,10 @@
     },
     {
       "source": "src/lib/wa-dispatch.server.ts",
+      "target": "@/lib/messaging/provider-registry.server"
+    },
+    {
+      "source": "src/lib/wa-dispatch.server.ts",
       "target": "./uazapi.server"
     },
     {
@@ -6049,6 +6121,10 @@
     },
     {
       "source": "src/lib/evolution.functions.ts",
+      "target": "./wa-dispatch.server"
+    },
+    {
+      "source": "src/lib/evolution.functions.ts",
       "target": "./outbound-queue.server"
     },
     {
@@ -6073,6 +6149,14 @@
     },
     {
       "source": "src/lib/evolution.functions.ts",
+      "target": "./wa-dispatch.server"
+    },
+    {
+      "source": "src/lib/evolution.functions.ts",
+      "target": "node:crypto"
+    },
+    {
+      "source": "src/lib/evolution.functions.ts",
       "target": "./outbound-queue.server"
     },
     {
@@ -6094,6 +6178,10 @@
     {
       "source": "src/lib/evolution.functions.ts",
       "target": "./wa-dispatch.server"
+    },
+    {
+      "source": "src/lib/evolution.functions.ts",
+      "target": "node:crypto"
     },
     {
       "source": "src/lib/evolution.functions.ts",
@@ -6478,6 +6566,10 @@
     {
       "source": "src/lib/chat-media.functions.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/chat-media.functions.ts",
+      "target": "@/lib/storage/r2.server"
     },
     {
       "source": "src/lib/chat-media.functions.ts",
@@ -11976,6 +12068,82 @@
       "target": "./tools/send-whatsapp"
     },
     {
+      "source": "src/lib/messaging/provider-registry.server.ts",
+      "target": "@/lib/messaging/contracts"
+    },
+    {
+      "source": "src/lib/messaging/provider-registry.server.ts",
+      "target": "@/lib/messaging/providers/lovable-whatsapp.server"
+    },
+    {
+      "source": "src/lib/messaging/ingest.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/messaging/ingest.server.ts",
+      "target": "@/lib/messaging/contracts"
+    },
+    {
+      "source": "src/lib/messaging/ingest.server.ts",
+      "target": "@/lib/messaging/provider-registry.server"
+    },
+    {
+      "source": "src/lib/messaging/ingest.server.ts",
+      "target": "node:crypto"
+    },
+    {
+      "source": "src/lib/messaging/ingest.server.ts",
+      "target": "@/lib/messaging/media-archive.server"
+    },
+    {
+      "source": "src/lib/messaging/ingest.server.ts",
+      "target": "@/lib/messaging/lovable-whatsapp.generated.server"
+    },
+    {
+      "source": "src/lib/messaging/media-archive.server.ts",
+      "target": "@/lib/messaging/contracts"
+    },
+    {
+      "source": "src/lib/messaging/media-archive.server.ts",
+      "target": "@/lib/storage/r2.server"
+    },
+    {
+      "source": "src/lib/messaging/lovable-connection.functions.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/messaging/lovable-connection.functions.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/messaging/lovable-connection.functions.ts",
+      "target": "@/lib/evolution-helpers"
+    },
+    {
+      "source": "src/lib/messaging/lovable-connection.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/storage/r2.server.ts",
+      "target": "node:crypto"
+    },
+    {
+      "source": "src/lib/storage/r2.functions.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/storage/r2.functions.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/storage/r2.functions.ts",
+      "target": "@/lib/company-cache"
+    },
+    {
+      "source": "src/lib/storage/r2.functions.ts",
+      "target": "@/lib/storage/r2.server"
+    },
+    {
       "source": "src/lib/integracoes/runtime.server.ts",
       "target": "./adapters.server"
     },
@@ -12073,7 +12241,7 @@
     },
     {
       "source": "src/lib/mcp/tools/send-whatsapp.ts",
-      "target": "@/lib/evolution.server"
+      "target": "@/lib/messaging/provider-registry.server"
     },
     {
       "source": "src/lib/mcp/tools/list-conversations.ts",
@@ -12098,6 +12266,14 @@
     {
       "source": "src/lib/mcp/tools/list-leads.ts",
       "target": "zod"
+    },
+    {
+      "source": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
+      "target": "@/lib/messaging/contracts"
+    },
+    {
+      "source": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
+      "target": "@/lib/messaging/lovable-whatsapp.generated.server"
     },
     {
       "source": "src/routes/[.well-known]/oauth-protected-resource.ts",
@@ -12314,6 +12490,10 @@
     {
       "source": "src/routes/app/conversas.tsx",
       "target": "@/lib/atendimento-relatorios.functions"
+    },
+    {
+      "source": "src/routes/app/conversas.tsx",
+      "target": "@/lib/storage/r2.functions"
     },
     {
       "source": "src/routes/app/conversas.tsx",
@@ -13025,6 +13205,10 @@
     },
     {
       "source": "src/routes/app/conexao.tsx",
+      "target": "@/config/beta"
+    },
+    {
+      "source": "src/routes/app/conexao.tsx",
       "target": "@/lib/evolution.functions"
     },
     {
@@ -13058,6 +13242,10 @@
     {
       "source": "src/routes/app/conexao.tsx",
       "target": "@/components/conexao/meta-connect-dialog"
+    },
+    {
+      "source": "src/routes/app/conexao.tsx",
+      "target": "@/lib/messaging/lovable-connection.functions"
     },
     {
       "source": "src/routes/app/conexao.tsx",
@@ -15036,6 +15224,18 @@
       "target": "@/integrations/supabase/client.server"
     },
     {
+      "source": "src/routes/api/public/lovable-whatsapp.ts",
+      "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/api/public/lovable-whatsapp.ts",
+      "target": "@/lib/messaging/lovable-whatsapp.generated.server"
+    },
+    {
+      "source": "src/routes/api/public/lovable-whatsapp.ts",
+      "target": "@/lib/messaging/ingest.server"
+    },
+    {
       "source": "src/routes/api/public/wablast-webhook.ts",
       "target": "@tanstack/react-router"
     },
@@ -15225,7 +15425,15 @@
     },
     {
       "source": "src/routes/api/public/hooks/process-retry-queue.ts",
+      "target": "@/lib/storage/r2.server"
+    },
+    {
+      "source": "src/routes/api/public/hooks/process-retry-queue.ts",
       "target": "@/lib/jid"
+    },
+    {
+      "source": "src/routes/api/public/hooks/process-retry-queue.ts",
+      "target": "@/lib/wa-dispatch.server"
     },
     {
       "source": "src/routes/api/public/hooks/process-retry-queue.ts",
