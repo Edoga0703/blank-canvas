@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-09T18:39:19.603601+00:00",
+  "generated_at": "2026-10-09T20:02:48.097723+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -140,6 +140,10 @@
     {
       "path": "supabase/migrations/20261009050000_rpc_and_auxiliary.sql",
       "bytes": 7438
+    },
+    {
+      "path": "supabase/migrations/20261009080000_full_119_tables_parity.sql",
+      "bytes": 344509
     },
     {
       "path": "supabase/migrations/20261009060000_full_modules.sql",
