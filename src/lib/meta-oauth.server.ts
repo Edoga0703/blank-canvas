@@ -4,18 +4,34 @@ const GRAPH = "https://graph.facebook.com/v25.0";
 
 export const META_OAUTH_CALLBACK_PATH = "/api/public/meta-oauth/callback";
 
-const ALLOWED_HOST_SUFFIXES = [".lovable.app", ".lovableproject.com", "metrixcrm.com.br"];
+const PLATFORM_HOST_SUFFIXES = [".lovable.app", ".lovableproject.com"];
+
+function configuredOrigins() {
+  return String(process.env["META_ALLOWED_ORIGINS"] || process.env["PUBLIC_APP_URL"] || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .flatMap((value) => {
+      try {
+        return [new URL(value).origin];
+      } catch {
+        return [];
+      }
+    });
+}
 
 /** Só aceita origens conhecidas do próprio app (evita open redirect / redirect_uri forjado). */
 export function sanitizeOrigin(raw: string | null | undefined): string | null {
   if (!raw) return null;
   try {
     const url = new URL(raw);
-    if (url.protocol !== "https:" && url.hostname !== "localhost") return null;
+    const loopback = ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+    if (url.protocol !== "https:" && !loopback) return null;
     const host = url.hostname;
     const ok =
-      host === "localhost" ||
-      ALLOWED_HOST_SUFFIXES.some((s) => host === s.replace(/^\./, "") || host.endsWith(s));
+      loopback ||
+      configuredOrigins().includes(url.origin) ||
+      PLATFORM_HOST_SUFFIXES.some((s) => host === s.replace(/^\./, "") || host.endsWith(s));
     return ok ? url.origin : null;
   } catch {
     return null;

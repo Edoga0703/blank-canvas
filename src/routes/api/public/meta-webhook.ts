@@ -46,6 +46,8 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
           .toLowerCase()
           .replace(/^sha256=/, "") ?? "";
 
+        const allowUnsigned = process.env["META_ALLOW_UNSIGNED_WEBHOOKS"] === "true";
+
         if (secrets.length && signature) {
           let ok = false;
           const expectedList: string[] = [];
@@ -71,8 +73,11 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
             return new Response("Invalid signature", { status: 401 });
           }
 
-        } else if (!secrets.length) {
-          console.warn("[meta-webhook] META_APP_SECRET ausente — seguindo sem verificar assinatura");
+        } else if (!allowUnsigned) {
+          console.error("[meta-webhook] assinatura ausente ou META_APP_SECRET nao configurado");
+          return new Response("Webhook signature required", { status: 503 });
+        } else {
+          console.warn("[meta-webhook] aceitando webhook sem assinatura por configuracao local explicita");
         }
 
 
@@ -93,7 +98,7 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
           const publicOrigin = (
             process.env["PUBLIC_APP_URL"] ||
             process.env["APP_URL"] ||
-            "https://metrixcrm.com.br"
+            new URL(request.url).origin
           ).replace(/\/+$/, "");
 
           for (const entry of payload?.entry ?? []) {
@@ -140,7 +145,7 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
               if (inst.instance_token) {
                 const token = inst.instance_token as string;
                 const isIgToken = /^IG(AA|QV|QW)/.test(token);
-                const base = isIgToken ? "https://graph.instagram.com/v23.0" : "https://graph.facebook.com/v23.0";
+                const base = isIgToken ? "https://graph.instagram.com/v25.0" : "https://graph.facebook.com/v25.0";
                 const fields = isIgToken
                   ? "name,username,profile_pic"
                   : "first_name,last_name,name,profile_pic";
@@ -168,7 +173,7 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                 if (!perfilNome && !isIgToken) {
                   try {
                     const r = await fetch(
-                      `https://graph.facebook.com/v23.0/${encodeURIComponent(pageId)}/conversations?platform=messenger&user_id=${encodeURIComponent(String(senderId))}&fields=participants&limit=1&access_token=${encodeURIComponent(token)}`,
+                      `https://graph.facebook.com/v25.0/${encodeURIComponent(pageId)}/conversations?platform=messenger&user_id=${encodeURIComponent(String(senderId))}&fields=participants&limit=1&access_token=${encodeURIComponent(token)}`,
                     );
                     const j: any = await r.json().catch(() => null);
                     const part = j?.data?.[0]?.participants?.data?.find(

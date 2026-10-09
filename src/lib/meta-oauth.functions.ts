@@ -170,9 +170,12 @@ export const connectMetaOAuthTargets = createServerFn({ method: "POST" })
       await metaSubscribePage(target.pageToken, target.pageId);
     }
 
+    // El token de usuario solo sirve para completar esta seleccion. La cuenta
+    // conectada conserva el Page token correspondiente; eliminamos la sesion
+    // temporal para reducir la exposicion de credenciales.
     await (supabaseAdmin as any)
       .from("meta_oauth_session")
-      .update({ consumed: true })
+      .delete()
       .eq("id", row.id);
 
     if (!connected.length && skipped.length) {

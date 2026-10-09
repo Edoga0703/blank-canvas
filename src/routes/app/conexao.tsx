@@ -13,7 +13,7 @@ import {
   Plus, ChevronDown, ChevronRight, Search, WifiOff,
   Plug,
 } from "lucide-react";
-import { MessengerGlyph, WhatsAppGlyph, TelegramGlyph } from "@/components/ui/channel-icons";
+import { InstagramGlyph, MessengerGlyph, WhatsAppGlyph, TelegramGlyph } from "@/components/ui/channel-icons";
 import { brand } from "@/config/brand";
 import { betaConfig } from "@/config/beta";
 import {
@@ -320,8 +320,24 @@ function ConexoesPage() {
     multi: true,
   });
 
-  // Instagram Business e Facebook temporariamente fora do módulo de Conexões
-  // (canais ainda não liberados para uso pelos clientes).
+  if (betaConfig.metaChannelsEnabled) {
+    channels.push({
+      key: "instagram",
+      title: pluginName("instagram", "Instagram Direct"),
+      icon: <InstagramGlyph className="size-6 text-[#E4405F]" />,
+      match: (i) => i.provider === "meta_instagram",
+      onIntegrate: () => setMetaDialog("instagram"),
+      multi: true,
+    });
+    channels.push({
+      key: "messenger",
+      title: pluginName("messenger", "Facebook Messenger"),
+      icon: <MessengerGlyph className="size-6 text-[#0084FF]" />,
+      match: (i) => i.provider === "meta_messenger",
+      onIntegrate: () => setMetaDialog("facebook"),
+      multi: true,
+    });
+  }
 
 
   if (!betaConfig.lovableWhatsAppOnly && pluginAtivo("meta-official-api")) channels.push({
