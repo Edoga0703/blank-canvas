@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-09T16:51:15.148457+00:00",
+  "generated_at": "2026-10-09T17:56:29.124056+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -128,6 +128,18 @@
     {
       "path": "supabase/migrations/20261009030000_capiversa_v1_1_core.sql",
       "bytes": 19763
+    },
+    {
+      "path": "supabase/migrations/20261009040000_complementary_modules.sql",
+      "bytes": 8980
+    },
+    {
+      "path": "supabase/migrations/20261009050000_rpc_and_auxiliary.sql",
+      "bytes": 7438
+    },
+    {
+      "path": "supabase/migrations/20261009060000_full_modules.sql",
+      "bytes": 23602
     },
     {
       "path": ".lovable/mcp/manifest.json",
