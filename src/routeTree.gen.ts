@@ -10,33 +10,1383 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as EntrarRouteImport } from './routes/entrar'
+import { Route as EsqueciSenhaRouteImport } from './routes/esqueci-senha'
+import { Route as ExclusaoDadosRouteImport } from './routes/exclusao-dados'
+import { Route as MasterRouteImport } from './routes/master'
+import { Route as McpRouteImport } from './routes/mcp'
+import { Route as MobileRouteImport } from './routes/mobile'
+import { Route as PrivacidadeRouteImport } from './routes/privacidade'
+import { Route as ReembolsoRouteImport } from './routes/reembolso'
+import { Route as ResetSenhaRouteImport } from './routes/reset-senha'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as TermosRouteImport } from './routes/termos'
+import { Route as TrocarSenhaRouteImport } from './routes/trocar-senha'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as AppAgendamentosRouteImport } from './routes/app/agendamentos'
+import { Route as AppAgenteRouteImport } from './routes/app/agente'
+import { Route as AppAgenteAvancadoRouteImport } from './routes/app/agente-avancado'
+import { Route as AppCampanhasRouteImport } from './routes/app/campanhas'
+import { Route as AppCatalogoRouteImport } from './routes/app/catalogo'
+import { Route as AppCheckoutRouteImport } from './routes/app/checkout'
+import { Route as AppComercialRouteImport } from './routes/app/comercial'
+import { Route as AppConexaoRouteImport } from './routes/app/conexao'
+import { Route as AppConfiguracoesRouteImport } from './routes/app/configuracoes'
+import { Route as AppContatosRouteImport } from './routes/app/contatos'
+import { Route as AppConversasRouteImport } from './routes/app/conversas'
+import { Route as AppCrmRouteImport } from './routes/app/crm'
+import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
+import { Route as AppIntegracoesRouteImport } from './routes/app/integracoes'
+import { Route as AppMeuPlanoRouteImport } from './routes/app/meu-plano'
+import { Route as AppOnboardingRouteImport } from './routes/app/onboarding'
+import { Route as AppParceiroRouteImport } from './routes/app/parceiro'
+import { Route as AppPluginsRouteImport } from './routes/app/plugins'
+import { Route as AppProspeccaoRouteImport } from './routes/app/prospeccao'
+import { Route as AppRelatoriosRouteImport } from './routes/app/relatorios'
+import { Route as AppRespostasRapidasRouteImport } from './routes/app/respostas-rapidas'
+import { Route as AppTemplatesRouteImport } from './routes/app/templates'
+import { Route as AppTreinamentosRouteImport } from './routes/app/treinamentos'
+import { Route as AppUsuariosRouteImport } from './routes/app/usuarios'
+import { Route as ComparativoMetrixVsBotconversaRouteImport } from './routes/comparativo.metrix-vs-botconversa'
+import { Route as CsatTokenRouteImport } from './routes/csat.$token'
+import { Route as FSlugRouteImport } from './routes/f.$slug'
+import { Route as MasterIndexRouteImport } from './routes/master/index'
+import { Route as MasterAddonsRouteImport } from './routes/master/addons'
+import { Route as MasterAssinaturasRouteImport } from './routes/master/assinaturas'
+import { Route as MasterBillingRouteImport } from './routes/master/billing'
+import { Route as MasterCadastrosRouteImport } from './routes/master/cadastros'
+import { Route as MasterClientesRouteImport } from './routes/master/clientes'
+import { Route as MasterCobrancasRouteImport } from './routes/master/cobrancas'
+import { Route as MasterConfiguracoesRouteImport } from './routes/master/configuracoes'
+import { Route as MasterCrmAdminRouteImport } from './routes/master/crm-admin'
+import { Route as MasterDiagnosticoRouteImport } from './routes/master/diagnostico'
+import { Route as MasterEmpresasRouteImport } from './routes/master/empresas'
+import { Route as MasterFeatureFlagsRouteImport } from './routes/master/feature-flags'
+import { Route as MasterFinanceiroRouteImport } from './routes/master/financeiro'
+import { Route as MasterNotificacoesRouteImport } from './routes/master/notificacoes'
+import { Route as MasterNovaEmpresaRouteImport } from './routes/master/nova-empresa'
+import { Route as MasterPainelRouteImport } from './routes/master/painel'
+import { Route as MasterParceirosRouteImport } from './routes/master/parceiros'
+import { Route as MasterPerfilRouteImport } from './routes/master/perfil'
+import { Route as MasterPlanosRouteImport } from './routes/master/planos'
+import { Route as MasterPluginsRouteImport } from './routes/master/plugins'
+import { Route as MasterSistemaRouteImport } from './routes/master/sistema'
+import { Route as MasterSugestoesRouteImport } from './routes/master/sugestoes'
+import { Route as MasterSuporteRouteImport } from './routes/master/suporte'
+import { Route as MasterTreinamentosRouteImport } from './routes/master/treinamentos'
+import { Route as WaCallbackRouteImport } from './routes/wa.callback'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as ApiPublicAiHealthRouteImport } from './routes/api/public/ai-health'
+import { Route as ApiPublicFormSubmitRouteImport } from './routes/api/public/form-submit'
+import { Route as ApiPublicGoogleCallbackRouteImport } from './routes/api/public/google-callback'
+import { Route as ApiPublicGoogleMarketingCallbackRouteImport } from './routes/api/public/google-marketing-callback'
+import { Route as ApiPublicLeadCaptureRouteImport } from './routes/api/public/lead-capture'
+import { Route as ApiPublicLeadPhotoRouteImport } from './routes/api/public/lead-photo'
+import { Route as ApiPublicLovableWhatsappRouteImport } from './routes/api/public/lovable-whatsapp'
+import { Route as ApiPublicMetaCallbackRouteImport } from './routes/api/public/meta-callback'
+import { Route as ApiPublicMetaHealthRouteImport } from './routes/api/public/meta-health'
+import { Route as ApiPublicMetaLeadsWebhookRouteImport } from './routes/api/public/meta-leads-webhook'
+import { Route as ApiPublicMetaWebhookRouteImport } from './routes/api/public/meta-webhook'
+import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram-webhook'
+import { Route as ApiPublicUazapiWebhookRouteImport } from './routes/api/public/uazapi-webhook'
+import { Route as ApiPublicWablastWebhookRouteImport } from './routes/api/public/wablast-webhook'
+import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp-webhook'
+import { Route as AppTreinamentosIndexRouteImport } from './routes/app/treinamentos.index'
+import { Route as AppTreinamentosCourseIdRouteImport } from './routes/app/treinamentos.$courseId'
+import { Route as OauthDriveReturnRouteImport } from './routes/oauth/drive/return'
+import { Route as OauthSheetsReturnRouteImport } from './routes/oauth/sheets/return'
+import { Route as ApiPublicBillingWebhookRouteImport } from './routes/api/public/billing/webhook'
+import { Route as ApiPublicHooksTokenRouteImport } from './routes/api/public/hooks/$token'
+import { Route as ApiPublicHooksAdminCrmTickRouteImport } from './routes/api/public/hooks/admin-crm-tick'
+import { Route as ApiPublicHooksAgendamentosDispatchRouteImport } from './routes/api/public/hooks/agendamentos-dispatch'
+import { Route as ApiPublicHooksBillingRenewRouteImport } from './routes/api/public/hooks/billing-renew'
+import { Route as ApiPublicHooksGoogleCalendarRouteImport } from './routes/api/public/hooks/google-calendar'
+import { Route as ApiPublicHooksGoogleCalendarRenewRouteImport } from './routes/api/public/hooks/google-calendar-renew'
+import { Route as ApiPublicHooksProcessAgendamentosRouteImport } from './routes/api/public/hooks/process-agendamentos'
+import { Route as ApiPublicHooksProcessCampaignsRouteImport } from './routes/api/public/hooks/process-campaigns'
+import { Route as ApiPublicHooksProcessKanbanReguasRouteImport } from './routes/api/public/hooks/process-kanban-reguas'
+import { Route as ApiPublicHooksProcessRelatorioIaRouteImport } from './routes/api/public/hooks/process-relatorio-ia'
+import { Route as ApiPublicHooksProcessRetryQueueRouteImport } from './routes/api/public/hooks/process-retry-queue'
+import { Route as ApiPublicHooksWhatsappWatchdogRouteImport } from './routes/api/public/hooks/whatsapp-watchdog'
+import { Route as ApiPublicMetaOauthCallbackRouteImport } from './routes/api/public/meta-oauth.callback'
+import { Route as ApiPublicV1SplatRouteImport } from './routes/api/public/v1/$'
+import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
+import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EntrarRoute = EntrarRouteImport.update({
+  id: '/entrar',
+  path: '/entrar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EsqueciSenhaRoute = EsqueciSenhaRouteImport.update({
+  id: '/esqueci-senha',
+  path: '/esqueci-senha',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExclusaoDadosRoute = ExclusaoDadosRouteImport.update({
+  id: '/exclusao-dados',
+  path: '/exclusao-dados',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MasterRoute = MasterRouteImport.update({
+  id: '/master',
+  path: '/master',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MobileRoute = MobileRouteImport.update({
+  id: '/mobile',
+  path: '/mobile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacidadeRoute = PrivacidadeRouteImport.update({
+  id: '/privacidade',
+  path: '/privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReembolsoRoute = ReembolsoRouteImport.update({
+  id: '/reembolso',
+  path: '/reembolso',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetSenhaRoute = ResetSenhaRouteImport.update({
+  id: '/reset-senha',
+  path: '/reset-senha',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermosRoute = TermosRouteImport.update({
+  id: '/termos',
+  path: '/termos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrocarSenhaRoute = TrocarSenhaRouteImport.update({
+  id: '/trocar-senha',
+  path: '/trocar-senha',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AppAgendamentosRoute = AppAgendamentosRouteImport.update({
+  id: '/agendamentos',
+  path: '/agendamentos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAgenteRoute = AppAgenteRouteImport.update({
+  id: '/agente',
+  path: '/agente',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAgenteAvancadoRoute = AppAgenteAvancadoRouteImport.update({
+  id: '/agente-avancado',
+  path: '/agente-avancado',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCampanhasRoute = AppCampanhasRouteImport.update({
+  id: '/campanhas',
+  path: '/campanhas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCatalogoRoute = AppCatalogoRouteImport.update({
+  id: '/catalogo',
+  path: '/catalogo',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCheckoutRoute = AppCheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppComercialRoute = AppComercialRouteImport.update({
+  id: '/comercial',
+  path: '/comercial',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConexaoRoute = AppConexaoRouteImport.update({
+  id: '/conexao',
+  path: '/conexao',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConfiguracoesRoute = AppConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppContatosRoute = AppContatosRouteImport.update({
+  id: '/contatos',
+  path: '/contatos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConversasRoute = AppConversasRouteImport.update({
+  id: '/conversas',
+  path: '/conversas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCrmRoute = AppCrmRouteImport.update({
+  id: '/crm',
+  path: '/crm',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppIntegracoesRoute = AppIntegracoesRouteImport.update({
+  id: '/integracoes',
+  path: '/integracoes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMeuPlanoRoute = AppMeuPlanoRouteImport.update({
+  id: '/meu-plano',
+  path: '/meu-plano',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOnboardingRoute = AppOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppParceiroRoute = AppParceiroRouteImport.update({
+  id: '/parceiro',
+  path: '/parceiro',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPluginsRoute = AppPluginsRouteImport.update({
+  id: '/plugins',
+  path: '/plugins',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProspeccaoRoute = AppProspeccaoRouteImport.update({
+  id: '/prospeccao',
+  path: '/prospeccao',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRespostasRapidasRoute = AppRespostasRapidasRouteImport.update({
+  id: '/respostas-rapidas',
+  path: '/respostas-rapidas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTemplatesRoute = AppTemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTreinamentosRoute = AppTreinamentosRouteImport.update({
+  id: '/treinamentos',
+  path: '/treinamentos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppUsuariosRoute = AppUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => AppRoute,
+} as any)
+const ComparativoMetrixVsBotconversaRoute =
+  ComparativoMetrixVsBotconversaRouteImport.update({
+    id: '/comparativo/metrix-vs-botconversa',
+    path: '/comparativo/metrix-vs-botconversa',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const CsatTokenRoute = CsatTokenRouteImport.update({
+  id: '/csat/$token',
+  path: '/csat/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FSlugRoute = FSlugRouteImport.update({
+  id: '/f/$slug',
+  path: '/f/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MasterIndexRoute = MasterIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterAddonsRoute = MasterAddonsRouteImport.update({
+  id: '/addons',
+  path: '/addons',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterAssinaturasRoute = MasterAssinaturasRouteImport.update({
+  id: '/assinaturas',
+  path: '/assinaturas',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterBillingRoute = MasterBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterCadastrosRoute = MasterCadastrosRouteImport.update({
+  id: '/cadastros',
+  path: '/cadastros',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterClientesRoute = MasterClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterCobrancasRoute = MasterCobrancasRouteImport.update({
+  id: '/cobrancas',
+  path: '/cobrancas',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterConfiguracoesRoute = MasterConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterCrmAdminRoute = MasterCrmAdminRouteImport.update({
+  id: '/crm-admin',
+  path: '/crm-admin',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterDiagnosticoRoute = MasterDiagnosticoRouteImport.update({
+  id: '/diagnostico',
+  path: '/diagnostico',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterEmpresasRoute = MasterEmpresasRouteImport.update({
+  id: '/empresas',
+  path: '/empresas',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterFeatureFlagsRoute = MasterFeatureFlagsRouteImport.update({
+  id: '/feature-flags',
+  path: '/feature-flags',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterFinanceiroRoute = MasterFinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterNotificacoesRoute = MasterNotificacoesRouteImport.update({
+  id: '/notificacoes',
+  path: '/notificacoes',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterNovaEmpresaRoute = MasterNovaEmpresaRouteImport.update({
+  id: '/nova-empresa',
+  path: '/nova-empresa',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterPainelRoute = MasterPainelRouteImport.update({
+  id: '/painel',
+  path: '/painel',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterParceirosRoute = MasterParceirosRouteImport.update({
+  id: '/parceiros',
+  path: '/parceiros',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterPerfilRoute = MasterPerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterPlanosRoute = MasterPlanosRouteImport.update({
+  id: '/planos',
+  path: '/planos',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterPluginsRoute = MasterPluginsRouteImport.update({
+  id: '/plugins',
+  path: '/plugins',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterSistemaRoute = MasterSistemaRouteImport.update({
+  id: '/sistema',
+  path: '/sistema',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterSugestoesRoute = MasterSugestoesRouteImport.update({
+  id: '/sugestoes',
+  path: '/sugestoes',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterSuporteRoute = MasterSuporteRouteImport.update({
+  id: '/suporte',
+  path: '/suporte',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterTreinamentosRoute = MasterTreinamentosRouteImport.update({
+  id: '/treinamentos',
+  path: '/treinamentos',
+  getParentRoute: () => MasterRoute,
+} as any)
+const WaCallbackRoute = WaCallbackRouteImport.update({
+  id: '/wa/callback',
+  path: '/wa/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicAiHealthRoute = ApiPublicAiHealthRouteImport.update({
+  id: '/api/public/ai-health',
+  path: '/api/public/ai-health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicFormSubmitRoute = ApiPublicFormSubmitRouteImport.update({
+  id: '/api/public/form-submit',
+  path: '/api/public/form-submit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicGoogleCallbackRoute = ApiPublicGoogleCallbackRouteImport.update({
+  id: '/api/public/google-callback',
+  path: '/api/public/google-callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicGoogleMarketingCallbackRoute =
+  ApiPublicGoogleMarketingCallbackRouteImport.update({
+    id: '/api/public/google-marketing-callback',
+    path: '/api/public/google-marketing-callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicLeadCaptureRoute = ApiPublicLeadCaptureRouteImport.update({
+  id: '/api/public/lead-capture',
+  path: '/api/public/lead-capture',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicLeadPhotoRoute = ApiPublicLeadPhotoRouteImport.update({
+  id: '/api/public/lead-photo',
+  path: '/api/public/lead-photo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicLovableWhatsappRoute =
+  ApiPublicLovableWhatsappRouteImport.update({
+    id: '/api/public/lovable-whatsapp',
+    path: '/api/public/lovable-whatsapp',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicMetaCallbackRoute = ApiPublicMetaCallbackRouteImport.update({
+  id: '/api/public/meta-callback',
+  path: '/api/public/meta-callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicMetaHealthRoute = ApiPublicMetaHealthRouteImport.update({
+  id: '/api/public/meta-health',
+  path: '/api/public/meta-health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicMetaLeadsWebhookRoute =
+  ApiPublicMetaLeadsWebhookRouteImport.update({
+    id: '/api/public/meta-leads-webhook',
+    path: '/api/public/meta-leads-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicMetaWebhookRoute = ApiPublicMetaWebhookRouteImport.update({
+  id: '/api/public/meta-webhook',
+  path: '/api/public/meta-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicTelegramWebhookRoute =
+  ApiPublicTelegramWebhookRouteImport.update({
+    id: '/api/public/telegram-webhook',
+    path: '/api/public/telegram-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicUazapiWebhookRoute = ApiPublicUazapiWebhookRouteImport.update({
+  id: '/api/public/uazapi-webhook',
+  path: '/api/public/uazapi-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicWablastWebhookRoute = ApiPublicWablastWebhookRouteImport.update({
+  id: '/api/public/wablast-webhook',
+  path: '/api/public/wablast-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicWhatsappWebhookRoute =
+  ApiPublicWhatsappWebhookRouteImport.update({
+    id: '/api/public/whatsapp-webhook',
+    path: '/api/public/whatsapp-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AppTreinamentosIndexRoute = AppTreinamentosIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppTreinamentosRoute,
+} as any)
+const AppTreinamentosCourseIdRoute = AppTreinamentosCourseIdRouteImport.update({
+  id: '/$courseId',
+  path: '/$courseId',
+  getParentRoute: () => AppTreinamentosRoute,
+} as any)
+const OauthDriveReturnRoute = OauthDriveReturnRouteImport.update({
+  id: '/oauth/drive/return',
+  path: '/oauth/drive/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OauthSheetsReturnRoute = OauthSheetsReturnRouteImport.update({
+  id: '/oauth/sheets/return',
+  path: '/oauth/sheets/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicBillingWebhookRoute = ApiPublicBillingWebhookRouteImport.update({
+  id: '/api/public/billing/webhook',
+  path: '/api/public/billing/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicHooksTokenRoute = ApiPublicHooksTokenRouteImport.update({
+  id: '/api/public/hooks/$token',
+  path: '/api/public/hooks/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicHooksAdminCrmTickRoute =
+  ApiPublicHooksAdminCrmTickRouteImport.update({
+    id: '/api/public/hooks/admin-crm-tick',
+    path: '/api/public/hooks/admin-crm-tick',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksAgendamentosDispatchRoute =
+  ApiPublicHooksAgendamentosDispatchRouteImport.update({
+    id: '/api/public/hooks/agendamentos-dispatch',
+    path: '/api/public/hooks/agendamentos-dispatch',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksBillingRenewRoute =
+  ApiPublicHooksBillingRenewRouteImport.update({
+    id: '/api/public/hooks/billing-renew',
+    path: '/api/public/hooks/billing-renew',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksGoogleCalendarRoute =
+  ApiPublicHooksGoogleCalendarRouteImport.update({
+    id: '/api/public/hooks/google-calendar',
+    path: '/api/public/hooks/google-calendar',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksGoogleCalendarRenewRoute =
+  ApiPublicHooksGoogleCalendarRenewRouteImport.update({
+    id: '/api/public/hooks/google-calendar-renew',
+    path: '/api/public/hooks/google-calendar-renew',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksProcessAgendamentosRoute =
+  ApiPublicHooksProcessAgendamentosRouteImport.update({
+    id: '/api/public/hooks/process-agendamentos',
+    path: '/api/public/hooks/process-agendamentos',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksProcessCampaignsRoute =
+  ApiPublicHooksProcessCampaignsRouteImport.update({
+    id: '/api/public/hooks/process-campaigns',
+    path: '/api/public/hooks/process-campaigns',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksProcessKanbanReguasRoute =
+  ApiPublicHooksProcessKanbanReguasRouteImport.update({
+    id: '/api/public/hooks/process-kanban-reguas',
+    path: '/api/public/hooks/process-kanban-reguas',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksProcessRelatorioIaRoute =
+  ApiPublicHooksProcessRelatorioIaRouteImport.update({
+    id: '/api/public/hooks/process-relatorio-ia',
+    path: '/api/public/hooks/process-relatorio-ia',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksProcessRetryQueueRoute =
+  ApiPublicHooksProcessRetryQueueRouteImport.update({
+    id: '/api/public/hooks/process-retry-queue',
+    path: '/api/public/hooks/process-retry-queue',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksWhatsappWatchdogRoute =
+  ApiPublicHooksWhatsappWatchdogRouteImport.update({
+    id: '/api/public/hooks/whatsapp-watchdog',
+    path: '/api/public/hooks/whatsapp-watchdog',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicMetaOauthCallbackRoute =
+  ApiPublicMetaOauthCallbackRouteImport.update({
+    id: '/api/public/meta-oauth/callback',
+    path: '/api/public/meta-oauth/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicV1SplatRoute = ApiPublicV1SplatRouteImport.update({
+  id: '/api/public/v1/$',
+  path: '/api/public/v1/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
+  id: '/lovable/email/auth/preview',
+  path: '/lovable/email/auth/preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
+  id: '/lovable/email/auth/webhook',
+  path: '/lovable/email/auth/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/entrar': typeof EntrarRoute
+  '/esqueci-senha': typeof EsqueciSenhaRoute
+  '/exclusao-dados': typeof ExclusaoDadosRoute
+  '/master': typeof MasterRouteWithChildren
+  '/mcp': typeof McpRoute
+  '/mobile': typeof MobileRoute
+  '/privacidade': typeof PrivacidadeRoute
+  '/reembolso': typeof ReembolsoRoute
+  '/reset-senha': typeof ResetSenhaRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/termos': typeof TermosRoute
+  '/trocar-senha': typeof TrocarSenhaRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/app/agendamentos': typeof AppAgendamentosRoute
+  '/app/agente': typeof AppAgenteRoute
+  '/app/agente-avancado': typeof AppAgenteAvancadoRoute
+  '/app/campanhas': typeof AppCampanhasRoute
+  '/app/catalogo': typeof AppCatalogoRoute
+  '/app/checkout': typeof AppCheckoutRoute
+  '/app/comercial': typeof AppComercialRoute
+  '/app/conexao': typeof AppConexaoRoute
+  '/app/configuracoes': typeof AppConfiguracoesRoute
+  '/app/contatos': typeof AppContatosRoute
+  '/app/conversas': typeof AppConversasRoute
+  '/app/crm': typeof AppCrmRoute
+  '/app/dashboard': typeof AppDashboardRoute
+  '/app/integracoes': typeof AppIntegracoesRoute
+  '/app/meu-plano': typeof AppMeuPlanoRoute
+  '/app/onboarding': typeof AppOnboardingRoute
+  '/app/parceiro': typeof AppParceiroRoute
+  '/app/plugins': typeof AppPluginsRoute
+  '/app/prospeccao': typeof AppProspeccaoRoute
+  '/app/relatorios': typeof AppRelatoriosRoute
+  '/app/respostas-rapidas': typeof AppRespostasRapidasRoute
+  '/app/templates': typeof AppTemplatesRoute
+  '/app/treinamentos': typeof AppTreinamentosRouteWithChildren
+  '/app/usuarios': typeof AppUsuariosRoute
+  '/comparativo/metrix-vs-botconversa': typeof ComparativoMetrixVsBotconversaRoute
+  '/csat/$token': typeof CsatTokenRoute
+  '/f/$slug': typeof FSlugRoute
+  '/master/addons': typeof MasterAddonsRoute
+  '/master/assinaturas': typeof MasterAssinaturasRoute
+  '/master/billing': typeof MasterBillingRoute
+  '/master/cadastros': typeof MasterCadastrosRoute
+  '/master/clientes': typeof MasterClientesRoute
+  '/master/cobrancas': typeof MasterCobrancasRoute
+  '/master/configuracoes': typeof MasterConfiguracoesRoute
+  '/master/crm-admin': typeof MasterCrmAdminRoute
+  '/master/diagnostico': typeof MasterDiagnosticoRoute
+  '/master/empresas': typeof MasterEmpresasRoute
+  '/master/feature-flags': typeof MasterFeatureFlagsRoute
+  '/master/financeiro': typeof MasterFinanceiroRoute
+  '/master/notificacoes': typeof MasterNotificacoesRoute
+  '/master/nova-empresa': typeof MasterNovaEmpresaRoute
+  '/master/painel': typeof MasterPainelRoute
+  '/master/parceiros': typeof MasterParceirosRoute
+  '/master/perfil': typeof MasterPerfilRoute
+  '/master/planos': typeof MasterPlanosRoute
+  '/master/plugins': typeof MasterPluginsRoute
+  '/master/sistema': typeof MasterSistemaRoute
+  '/master/sugestoes': typeof MasterSugestoesRoute
+  '/master/suporte': typeof MasterSuporteRoute
+  '/master/treinamentos': typeof MasterTreinamentosRoute
+  '/wa/callback': typeof WaCallbackRoute
+  '/master/': typeof MasterIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/ai-health': typeof ApiPublicAiHealthRoute
+  '/api/public/form-submit': typeof ApiPublicFormSubmitRoute
+  '/api/public/google-callback': typeof ApiPublicGoogleCallbackRoute
+  '/api/public/google-marketing-callback': typeof ApiPublicGoogleMarketingCallbackRoute
+  '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
+  '/api/public/lead-photo': typeof ApiPublicLeadPhotoRoute
+  '/api/public/lovable-whatsapp': typeof ApiPublicLovableWhatsappRoute
+  '/api/public/meta-callback': typeof ApiPublicMetaCallbackRoute
+  '/api/public/meta-health': typeof ApiPublicMetaHealthRoute
+  '/api/public/meta-leads-webhook': typeof ApiPublicMetaLeadsWebhookRoute
+  '/api/public/meta-webhook': typeof ApiPublicMetaWebhookRoute
+  '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
+  '/api/public/uazapi-webhook': typeof ApiPublicUazapiWebhookRoute
+  '/api/public/wablast-webhook': typeof ApiPublicWablastWebhookRoute
+  '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
+  '/app/treinamentos/$courseId': typeof AppTreinamentosCourseIdRoute
+  '/oauth/drive/return': typeof OauthDriveReturnRoute
+  '/oauth/sheets/return': typeof OauthSheetsReturnRoute
+  '/app/treinamentos/': typeof AppTreinamentosIndexRoute
+  '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
+  '/api/public/hooks/$token': typeof ApiPublicHooksTokenRoute
+  '/api/public/hooks/admin-crm-tick': typeof ApiPublicHooksAdminCrmTickRoute
+  '/api/public/hooks/agendamentos-dispatch': typeof ApiPublicHooksAgendamentosDispatchRoute
+  '/api/public/hooks/billing-renew': typeof ApiPublicHooksBillingRenewRoute
+  '/api/public/hooks/google-calendar': typeof ApiPublicHooksGoogleCalendarRoute
+  '/api/public/hooks/google-calendar-renew': typeof ApiPublicHooksGoogleCalendarRenewRoute
+  '/api/public/hooks/process-agendamentos': typeof ApiPublicHooksProcessAgendamentosRoute
+  '/api/public/hooks/process-campaigns': typeof ApiPublicHooksProcessCampaignsRoute
+  '/api/public/hooks/process-kanban-reguas': typeof ApiPublicHooksProcessKanbanReguasRoute
+  '/api/public/hooks/process-relatorio-ia': typeof ApiPublicHooksProcessRelatorioIaRoute
+  '/api/public/hooks/process-retry-queue': typeof ApiPublicHooksProcessRetryQueueRoute
+  '/api/public/hooks/whatsapp-watchdog': typeof ApiPublicHooksWhatsappWatchdogRoute
+  '/api/public/meta-oauth/callback': typeof ApiPublicMetaOauthCallbackRoute
+  '/api/public/v1/$': typeof ApiPublicV1SplatRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/entrar': typeof EntrarRoute
+  '/esqueci-senha': typeof EsqueciSenhaRoute
+  '/exclusao-dados': typeof ExclusaoDadosRoute
+  '/mcp': typeof McpRoute
+  '/mobile': typeof MobileRoute
+  '/privacidade': typeof PrivacidadeRoute
+  '/reembolso': typeof ReembolsoRoute
+  '/reset-senha': typeof ResetSenhaRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/termos': typeof TermosRoute
+  '/trocar-senha': typeof TrocarSenhaRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/app/agendamentos': typeof AppAgendamentosRoute
+  '/app/agente': typeof AppAgenteRoute
+  '/app/agente-avancado': typeof AppAgenteAvancadoRoute
+  '/app/campanhas': typeof AppCampanhasRoute
+  '/app/catalogo': typeof AppCatalogoRoute
+  '/app/checkout': typeof AppCheckoutRoute
+  '/app/comercial': typeof AppComercialRoute
+  '/app/conexao': typeof AppConexaoRoute
+  '/app/configuracoes': typeof AppConfiguracoesRoute
+  '/app/contatos': typeof AppContatosRoute
+  '/app/conversas': typeof AppConversasRoute
+  '/app/crm': typeof AppCrmRoute
+  '/app/dashboard': typeof AppDashboardRoute
+  '/app/integracoes': typeof AppIntegracoesRoute
+  '/app/meu-plano': typeof AppMeuPlanoRoute
+  '/app/onboarding': typeof AppOnboardingRoute
+  '/app/parceiro': typeof AppParceiroRoute
+  '/app/plugins': typeof AppPluginsRoute
+  '/app/prospeccao': typeof AppProspeccaoRoute
+  '/app/relatorios': typeof AppRelatoriosRoute
+  '/app/respostas-rapidas': typeof AppRespostasRapidasRoute
+  '/app/templates': typeof AppTemplatesRoute
+  '/app/usuarios': typeof AppUsuariosRoute
+  '/comparativo/metrix-vs-botconversa': typeof ComparativoMetrixVsBotconversaRoute
+  '/csat/$token': typeof CsatTokenRoute
+  '/f/$slug': typeof FSlugRoute
+  '/master/addons': typeof MasterAddonsRoute
+  '/master/assinaturas': typeof MasterAssinaturasRoute
+  '/master/billing': typeof MasterBillingRoute
+  '/master/cadastros': typeof MasterCadastrosRoute
+  '/master/clientes': typeof MasterClientesRoute
+  '/master/cobrancas': typeof MasterCobrancasRoute
+  '/master/configuracoes': typeof MasterConfiguracoesRoute
+  '/master/crm-admin': typeof MasterCrmAdminRoute
+  '/master/diagnostico': typeof MasterDiagnosticoRoute
+  '/master/empresas': typeof MasterEmpresasRoute
+  '/master/feature-flags': typeof MasterFeatureFlagsRoute
+  '/master/financeiro': typeof MasterFinanceiroRoute
+  '/master/notificacoes': typeof MasterNotificacoesRoute
+  '/master/nova-empresa': typeof MasterNovaEmpresaRoute
+  '/master/painel': typeof MasterPainelRoute
+  '/master/parceiros': typeof MasterParceirosRoute
+  '/master/perfil': typeof MasterPerfilRoute
+  '/master/planos': typeof MasterPlanosRoute
+  '/master/plugins': typeof MasterPluginsRoute
+  '/master/sistema': typeof MasterSistemaRoute
+  '/master/sugestoes': typeof MasterSugestoesRoute
+  '/master/suporte': typeof MasterSuporteRoute
+  '/master/treinamentos': typeof MasterTreinamentosRoute
+  '/wa/callback': typeof WaCallbackRoute
+  '/master': typeof MasterIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/ai-health': typeof ApiPublicAiHealthRoute
+  '/api/public/form-submit': typeof ApiPublicFormSubmitRoute
+  '/api/public/google-callback': typeof ApiPublicGoogleCallbackRoute
+  '/api/public/google-marketing-callback': typeof ApiPublicGoogleMarketingCallbackRoute
+  '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
+  '/api/public/lead-photo': typeof ApiPublicLeadPhotoRoute
+  '/api/public/lovable-whatsapp': typeof ApiPublicLovableWhatsappRoute
+  '/api/public/meta-callback': typeof ApiPublicMetaCallbackRoute
+  '/api/public/meta-health': typeof ApiPublicMetaHealthRoute
+  '/api/public/meta-leads-webhook': typeof ApiPublicMetaLeadsWebhookRoute
+  '/api/public/meta-webhook': typeof ApiPublicMetaWebhookRoute
+  '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
+  '/api/public/uazapi-webhook': typeof ApiPublicUazapiWebhookRoute
+  '/api/public/wablast-webhook': typeof ApiPublicWablastWebhookRoute
+  '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
+  '/app/treinamentos/$courseId': typeof AppTreinamentosCourseIdRoute
+  '/oauth/drive/return': typeof OauthDriveReturnRoute
+  '/oauth/sheets/return': typeof OauthSheetsReturnRoute
+  '/app/treinamentos': typeof AppTreinamentosIndexRoute
+  '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
+  '/api/public/hooks/$token': typeof ApiPublicHooksTokenRoute
+  '/api/public/hooks/admin-crm-tick': typeof ApiPublicHooksAdminCrmTickRoute
+  '/api/public/hooks/agendamentos-dispatch': typeof ApiPublicHooksAgendamentosDispatchRoute
+  '/api/public/hooks/billing-renew': typeof ApiPublicHooksBillingRenewRoute
+  '/api/public/hooks/google-calendar': typeof ApiPublicHooksGoogleCalendarRoute
+  '/api/public/hooks/google-calendar-renew': typeof ApiPublicHooksGoogleCalendarRenewRoute
+  '/api/public/hooks/process-agendamentos': typeof ApiPublicHooksProcessAgendamentosRoute
+  '/api/public/hooks/process-campaigns': typeof ApiPublicHooksProcessCampaignsRoute
+  '/api/public/hooks/process-kanban-reguas': typeof ApiPublicHooksProcessKanbanReguasRoute
+  '/api/public/hooks/process-relatorio-ia': typeof ApiPublicHooksProcessRelatorioIaRoute
+  '/api/public/hooks/process-retry-queue': typeof ApiPublicHooksProcessRetryQueueRoute
+  '/api/public/hooks/whatsapp-watchdog': typeof ApiPublicHooksWhatsappWatchdogRoute
+  '/api/public/meta-oauth/callback': typeof ApiPublicMetaOauthCallbackRoute
+  '/api/public/v1/$': typeof ApiPublicV1SplatRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/entrar': typeof EntrarRoute
+  '/esqueci-senha': typeof EsqueciSenhaRoute
+  '/exclusao-dados': typeof ExclusaoDadosRoute
+  '/master': typeof MasterRouteWithChildren
+  '/mcp': typeof McpRoute
+  '/mobile': typeof MobileRoute
+  '/privacidade': typeof PrivacidadeRoute
+  '/reembolso': typeof ReembolsoRoute
+  '/reset-senha': typeof ResetSenhaRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/termos': typeof TermosRoute
+  '/trocar-senha': typeof TrocarSenhaRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/app/agendamentos': typeof AppAgendamentosRoute
+  '/app/agente': typeof AppAgenteRoute
+  '/app/agente-avancado': typeof AppAgenteAvancadoRoute
+  '/app/campanhas': typeof AppCampanhasRoute
+  '/app/catalogo': typeof AppCatalogoRoute
+  '/app/checkout': typeof AppCheckoutRoute
+  '/app/comercial': typeof AppComercialRoute
+  '/app/conexao': typeof AppConexaoRoute
+  '/app/configuracoes': typeof AppConfiguracoesRoute
+  '/app/contatos': typeof AppContatosRoute
+  '/app/conversas': typeof AppConversasRoute
+  '/app/crm': typeof AppCrmRoute
+  '/app/dashboard': typeof AppDashboardRoute
+  '/app/integracoes': typeof AppIntegracoesRoute
+  '/app/meu-plano': typeof AppMeuPlanoRoute
+  '/app/onboarding': typeof AppOnboardingRoute
+  '/app/parceiro': typeof AppParceiroRoute
+  '/app/plugins': typeof AppPluginsRoute
+  '/app/prospeccao': typeof AppProspeccaoRoute
+  '/app/relatorios': typeof AppRelatoriosRoute
+  '/app/respostas-rapidas': typeof AppRespostasRapidasRoute
+  '/app/templates': typeof AppTemplatesRoute
+  '/app/treinamentos': typeof AppTreinamentosRouteWithChildren
+  '/app/usuarios': typeof AppUsuariosRoute
+  '/comparativo/metrix-vs-botconversa': typeof ComparativoMetrixVsBotconversaRoute
+  '/csat/$token': typeof CsatTokenRoute
+  '/f/$slug': typeof FSlugRoute
+  '/master/addons': typeof MasterAddonsRoute
+  '/master/assinaturas': typeof MasterAssinaturasRoute
+  '/master/billing': typeof MasterBillingRoute
+  '/master/cadastros': typeof MasterCadastrosRoute
+  '/master/clientes': typeof MasterClientesRoute
+  '/master/cobrancas': typeof MasterCobrancasRoute
+  '/master/configuracoes': typeof MasterConfiguracoesRoute
+  '/master/crm-admin': typeof MasterCrmAdminRoute
+  '/master/diagnostico': typeof MasterDiagnosticoRoute
+  '/master/empresas': typeof MasterEmpresasRoute
+  '/master/feature-flags': typeof MasterFeatureFlagsRoute
+  '/master/financeiro': typeof MasterFinanceiroRoute
+  '/master/notificacoes': typeof MasterNotificacoesRoute
+  '/master/nova-empresa': typeof MasterNovaEmpresaRoute
+  '/master/painel': typeof MasterPainelRoute
+  '/master/parceiros': typeof MasterParceirosRoute
+  '/master/perfil': typeof MasterPerfilRoute
+  '/master/planos': typeof MasterPlanosRoute
+  '/master/plugins': typeof MasterPluginsRoute
+  '/master/sistema': typeof MasterSistemaRoute
+  '/master/sugestoes': typeof MasterSugestoesRoute
+  '/master/suporte': typeof MasterSuporteRoute
+  '/master/treinamentos': typeof MasterTreinamentosRoute
+  '/wa/callback': typeof WaCallbackRoute
+  '/master/': typeof MasterIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/ai-health': typeof ApiPublicAiHealthRoute
+  '/api/public/form-submit': typeof ApiPublicFormSubmitRoute
+  '/api/public/google-callback': typeof ApiPublicGoogleCallbackRoute
+  '/api/public/google-marketing-callback': typeof ApiPublicGoogleMarketingCallbackRoute
+  '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
+  '/api/public/lead-photo': typeof ApiPublicLeadPhotoRoute
+  '/api/public/lovable-whatsapp': typeof ApiPublicLovableWhatsappRoute
+  '/api/public/meta-callback': typeof ApiPublicMetaCallbackRoute
+  '/api/public/meta-health': typeof ApiPublicMetaHealthRoute
+  '/api/public/meta-leads-webhook': typeof ApiPublicMetaLeadsWebhookRoute
+  '/api/public/meta-webhook': typeof ApiPublicMetaWebhookRoute
+  '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
+  '/api/public/uazapi-webhook': typeof ApiPublicUazapiWebhookRoute
+  '/api/public/wablast-webhook': typeof ApiPublicWablastWebhookRoute
+  '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
+  '/app/treinamentos/$courseId': typeof AppTreinamentosCourseIdRoute
+  '/oauth/drive/return': typeof OauthDriveReturnRoute
+  '/oauth/sheets/return': typeof OauthSheetsReturnRoute
+  '/app/treinamentos/': typeof AppTreinamentosIndexRoute
+  '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
+  '/api/public/hooks/$token': typeof ApiPublicHooksTokenRoute
+  '/api/public/hooks/admin-crm-tick': typeof ApiPublicHooksAdminCrmTickRoute
+  '/api/public/hooks/agendamentos-dispatch': typeof ApiPublicHooksAgendamentosDispatchRoute
+  '/api/public/hooks/billing-renew': typeof ApiPublicHooksBillingRenewRoute
+  '/api/public/hooks/google-calendar': typeof ApiPublicHooksGoogleCalendarRoute
+  '/api/public/hooks/google-calendar-renew': typeof ApiPublicHooksGoogleCalendarRenewRoute
+  '/api/public/hooks/process-agendamentos': typeof ApiPublicHooksProcessAgendamentosRoute
+  '/api/public/hooks/process-campaigns': typeof ApiPublicHooksProcessCampaignsRoute
+  '/api/public/hooks/process-kanban-reguas': typeof ApiPublicHooksProcessKanbanReguasRoute
+  '/api/public/hooks/process-relatorio-ia': typeof ApiPublicHooksProcessRelatorioIaRoute
+  '/api/public/hooks/process-retry-queue': typeof ApiPublicHooksProcessRetryQueueRoute
+  '/api/public/hooks/whatsapp-watchdog': typeof ApiPublicHooksWhatsappWatchdogRoute
+  '/api/public/meta-oauth/callback': typeof ApiPublicMetaOauthCallbackRoute
+  '/api/public/v1/$': typeof ApiPublicV1SplatRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/entrar'
+    | '/esqueci-senha'
+    | '/exclusao-dados'
+    | '/master'
+    | '/mcp'
+    | '/mobile'
+    | '/privacidade'
+    | '/reembolso'
+    | '/reset-senha'
+    | '/sitemap.xml'
+    | '/termos'
+    | '/trocar-senha'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
+    | '/app/agendamentos'
+    | '/app/agente'
+    | '/app/agente-avancado'
+    | '/app/campanhas'
+    | '/app/catalogo'
+    | '/app/checkout'
+    | '/app/comercial'
+    | '/app/conexao'
+    | '/app/configuracoes'
+    | '/app/contatos'
+    | '/app/conversas'
+    | '/app/crm'
+    | '/app/dashboard'
+    | '/app/integracoes'
+    | '/app/meu-plano'
+    | '/app/onboarding'
+    | '/app/parceiro'
+    | '/app/plugins'
+    | '/app/prospeccao'
+    | '/app/relatorios'
+    | '/app/respostas-rapidas'
+    | '/app/templates'
+    | '/app/treinamentos'
+    | '/app/usuarios'
+    | '/comparativo/metrix-vs-botconversa'
+    | '/csat/$token'
+    | '/f/$slug'
+    | '/master/addons'
+    | '/master/assinaturas'
+    | '/master/billing'
+    | '/master/cadastros'
+    | '/master/clientes'
+    | '/master/cobrancas'
+    | '/master/configuracoes'
+    | '/master/crm-admin'
+    | '/master/diagnostico'
+    | '/master/empresas'
+    | '/master/feature-flags'
+    | '/master/financeiro'
+    | '/master/notificacoes'
+    | '/master/nova-empresa'
+    | '/master/painel'
+    | '/master/parceiros'
+    | '/master/perfil'
+    | '/master/planos'
+    | '/master/plugins'
+    | '/master/sistema'
+    | '/master/sugestoes'
+    | '/master/suporte'
+    | '/master/treinamentos'
+    | '/wa/callback'
+    | '/master/'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
+    | '/api/public/ai-health'
+    | '/api/public/form-submit'
+    | '/api/public/google-callback'
+    | '/api/public/google-marketing-callback'
+    | '/api/public/lead-capture'
+    | '/api/public/lead-photo'
+    | '/api/public/lovable-whatsapp'
+    | '/api/public/meta-callback'
+    | '/api/public/meta-health'
+    | '/api/public/meta-leads-webhook'
+    | '/api/public/meta-webhook'
+    | '/api/public/telegram-webhook'
+    | '/api/public/uazapi-webhook'
+    | '/api/public/wablast-webhook'
+    | '/api/public/whatsapp-webhook'
+    | '/app/treinamentos/$courseId'
+    | '/oauth/drive/return'
+    | '/oauth/sheets/return'
+    | '/app/treinamentos/'
+    | '/api/public/billing/webhook'
+    | '/api/public/hooks/$token'
+    | '/api/public/hooks/admin-crm-tick'
+    | '/api/public/hooks/agendamentos-dispatch'
+    | '/api/public/hooks/billing-renew'
+    | '/api/public/hooks/google-calendar'
+    | '/api/public/hooks/google-calendar-renew'
+    | '/api/public/hooks/process-agendamentos'
+    | '/api/public/hooks/process-campaigns'
+    | '/api/public/hooks/process-kanban-reguas'
+    | '/api/public/hooks/process-relatorio-ia'
+    | '/api/public/hooks/process-retry-queue'
+    | '/api/public/hooks/whatsapp-watchdog'
+    | '/api/public/meta-oauth/callback'
+    | '/api/public/v1/$'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
+    | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/app'
+    | '/entrar'
+    | '/esqueci-senha'
+    | '/exclusao-dados'
+    | '/mcp'
+    | '/mobile'
+    | '/privacidade'
+    | '/reembolso'
+    | '/reset-senha'
+    | '/sitemap.xml'
+    | '/termos'
+    | '/trocar-senha'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
+    | '/app/agendamentos'
+    | '/app/agente'
+    | '/app/agente-avancado'
+    | '/app/campanhas'
+    | '/app/catalogo'
+    | '/app/checkout'
+    | '/app/comercial'
+    | '/app/conexao'
+    | '/app/configuracoes'
+    | '/app/contatos'
+    | '/app/conversas'
+    | '/app/crm'
+    | '/app/dashboard'
+    | '/app/integracoes'
+    | '/app/meu-plano'
+    | '/app/onboarding'
+    | '/app/parceiro'
+    | '/app/plugins'
+    | '/app/prospeccao'
+    | '/app/relatorios'
+    | '/app/respostas-rapidas'
+    | '/app/templates'
+    | '/app/usuarios'
+    | '/comparativo/metrix-vs-botconversa'
+    | '/csat/$token'
+    | '/f/$slug'
+    | '/master/addons'
+    | '/master/assinaturas'
+    | '/master/billing'
+    | '/master/cadastros'
+    | '/master/clientes'
+    | '/master/cobrancas'
+    | '/master/configuracoes'
+    | '/master/crm-admin'
+    | '/master/diagnostico'
+    | '/master/empresas'
+    | '/master/feature-flags'
+    | '/master/financeiro'
+    | '/master/notificacoes'
+    | '/master/nova-empresa'
+    | '/master/painel'
+    | '/master/parceiros'
+    | '/master/perfil'
+    | '/master/planos'
+    | '/master/plugins'
+    | '/master/sistema'
+    | '/master/sugestoes'
+    | '/master/suporte'
+    | '/master/treinamentos'
+    | '/wa/callback'
+    | '/master'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
+    | '/api/public/ai-health'
+    | '/api/public/form-submit'
+    | '/api/public/google-callback'
+    | '/api/public/google-marketing-callback'
+    | '/api/public/lead-capture'
+    | '/api/public/lead-photo'
+    | '/api/public/lovable-whatsapp'
+    | '/api/public/meta-callback'
+    | '/api/public/meta-health'
+    | '/api/public/meta-leads-webhook'
+    | '/api/public/meta-webhook'
+    | '/api/public/telegram-webhook'
+    | '/api/public/uazapi-webhook'
+    | '/api/public/wablast-webhook'
+    | '/api/public/whatsapp-webhook'
+    | '/app/treinamentos/$courseId'
+    | '/oauth/drive/return'
+    | '/oauth/sheets/return'
+    | '/app/treinamentos'
+    | '/api/public/billing/webhook'
+    | '/api/public/hooks/$token'
+    | '/api/public/hooks/admin-crm-tick'
+    | '/api/public/hooks/agendamentos-dispatch'
+    | '/api/public/hooks/billing-renew'
+    | '/api/public/hooks/google-calendar'
+    | '/api/public/hooks/google-calendar-renew'
+    | '/api/public/hooks/process-agendamentos'
+    | '/api/public/hooks/process-campaigns'
+    | '/api/public/hooks/process-kanban-reguas'
+    | '/api/public/hooks/process-relatorio-ia'
+    | '/api/public/hooks/process-retry-queue'
+    | '/api/public/hooks/whatsapp-watchdog'
+    | '/api/public/meta-oauth/callback'
+    | '/api/public/v1/$'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
+    | '/lovable/email/queue/process'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/entrar'
+    | '/esqueci-senha'
+    | '/exclusao-dados'
+    | '/master'
+    | '/mcp'
+    | '/mobile'
+    | '/privacidade'
+    | '/reembolso'
+    | '/reset-senha'
+    | '/sitemap.xml'
+    | '/termos'
+    | '/trocar-senha'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
+    | '/app/agendamentos'
+    | '/app/agente'
+    | '/app/agente-avancado'
+    | '/app/campanhas'
+    | '/app/catalogo'
+    | '/app/checkout'
+    | '/app/comercial'
+    | '/app/conexao'
+    | '/app/configuracoes'
+    | '/app/contatos'
+    | '/app/conversas'
+    | '/app/crm'
+    | '/app/dashboard'
+    | '/app/integracoes'
+    | '/app/meu-plano'
+    | '/app/onboarding'
+    | '/app/parceiro'
+    | '/app/plugins'
+    | '/app/prospeccao'
+    | '/app/relatorios'
+    | '/app/respostas-rapidas'
+    | '/app/templates'
+    | '/app/treinamentos'
+    | '/app/usuarios'
+    | '/comparativo/metrix-vs-botconversa'
+    | '/csat/$token'
+    | '/f/$slug'
+    | '/master/addons'
+    | '/master/assinaturas'
+    | '/master/billing'
+    | '/master/cadastros'
+    | '/master/clientes'
+    | '/master/cobrancas'
+    | '/master/configuracoes'
+    | '/master/crm-admin'
+    | '/master/diagnostico'
+    | '/master/empresas'
+    | '/master/feature-flags'
+    | '/master/financeiro'
+    | '/master/notificacoes'
+    | '/master/nova-empresa'
+    | '/master/painel'
+    | '/master/parceiros'
+    | '/master/perfil'
+    | '/master/planos'
+    | '/master/plugins'
+    | '/master/sistema'
+    | '/master/sugestoes'
+    | '/master/suporte'
+    | '/master/treinamentos'
+    | '/wa/callback'
+    | '/master/'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
+    | '/api/public/ai-health'
+    | '/api/public/form-submit'
+    | '/api/public/google-callback'
+    | '/api/public/google-marketing-callback'
+    | '/api/public/lead-capture'
+    | '/api/public/lead-photo'
+    | '/api/public/lovable-whatsapp'
+    | '/api/public/meta-callback'
+    | '/api/public/meta-health'
+    | '/api/public/meta-leads-webhook'
+    | '/api/public/meta-webhook'
+    | '/api/public/telegram-webhook'
+    | '/api/public/uazapi-webhook'
+    | '/api/public/wablast-webhook'
+    | '/api/public/whatsapp-webhook'
+    | '/app/treinamentos/$courseId'
+    | '/oauth/drive/return'
+    | '/oauth/sheets/return'
+    | '/app/treinamentos/'
+    | '/api/public/billing/webhook'
+    | '/api/public/hooks/$token'
+    | '/api/public/hooks/admin-crm-tick'
+    | '/api/public/hooks/agendamentos-dispatch'
+    | '/api/public/hooks/billing-renew'
+    | '/api/public/hooks/google-calendar'
+    | '/api/public/hooks/google-calendar-renew'
+    | '/api/public/hooks/process-agendamentos'
+    | '/api/public/hooks/process-campaigns'
+    | '/api/public/hooks/process-kanban-reguas'
+    | '/api/public/hooks/process-relatorio-ia'
+    | '/api/public/hooks/process-retry-queue'
+    | '/api/public/hooks/whatsapp-watchdog'
+    | '/api/public/meta-oauth/callback'
+    | '/api/public/v1/$'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
+    | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  EntrarRoute: typeof EntrarRoute
+  EsqueciSenhaRoute: typeof EsqueciSenhaRoute
+  ExclusaoDadosRoute: typeof ExclusaoDadosRoute
+  MasterRoute: typeof MasterRouteWithChildren
+  McpRoute: typeof McpRoute
+  MobileRoute: typeof MobileRoute
+  PrivacidadeRoute: typeof PrivacidadeRoute
+  ReembolsoRoute: typeof ReembolsoRoute
+  ResetSenhaRoute: typeof ResetSenhaRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  TermosRoute: typeof TermosRoute
+  TrocarSenhaRoute: typeof TrocarSenhaRoute
+  Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  ComparativoMetrixVsBotconversaRoute: typeof ComparativoMetrixVsBotconversaRoute
+  CsatTokenRoute: typeof CsatTokenRoute
+  FSlugRoute: typeof FSlugRoute
+  WaCallbackRoute: typeof WaCallbackRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
+  Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiPublicAiHealthRoute: typeof ApiPublicAiHealthRoute
+  ApiPublicFormSubmitRoute: typeof ApiPublicFormSubmitRoute
+  ApiPublicGoogleCallbackRoute: typeof ApiPublicGoogleCallbackRoute
+  ApiPublicGoogleMarketingCallbackRoute: typeof ApiPublicGoogleMarketingCallbackRoute
+  ApiPublicLeadCaptureRoute: typeof ApiPublicLeadCaptureRoute
+  ApiPublicLeadPhotoRoute: typeof ApiPublicLeadPhotoRoute
+  ApiPublicLovableWhatsappRoute: typeof ApiPublicLovableWhatsappRoute
+  ApiPublicMetaCallbackRoute: typeof ApiPublicMetaCallbackRoute
+  ApiPublicMetaHealthRoute: typeof ApiPublicMetaHealthRoute
+  ApiPublicMetaLeadsWebhookRoute: typeof ApiPublicMetaLeadsWebhookRoute
+  ApiPublicMetaWebhookRoute: typeof ApiPublicMetaWebhookRoute
+  ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
+  ApiPublicUazapiWebhookRoute: typeof ApiPublicUazapiWebhookRoute
+  ApiPublicWablastWebhookRoute: typeof ApiPublicWablastWebhookRoute
+  ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
+  OauthDriveReturnRoute: typeof OauthDriveReturnRoute
+  OauthSheetsReturnRoute: typeof OauthSheetsReturnRoute
+  ApiPublicBillingWebhookRoute: typeof ApiPublicBillingWebhookRoute
+  ApiPublicHooksTokenRoute: typeof ApiPublicHooksTokenRoute
+  ApiPublicHooksAdminCrmTickRoute: typeof ApiPublicHooksAdminCrmTickRoute
+  ApiPublicHooksAgendamentosDispatchRoute: typeof ApiPublicHooksAgendamentosDispatchRoute
+  ApiPublicHooksBillingRenewRoute: typeof ApiPublicHooksBillingRenewRoute
+  ApiPublicHooksGoogleCalendarRoute: typeof ApiPublicHooksGoogleCalendarRoute
+  ApiPublicHooksGoogleCalendarRenewRoute: typeof ApiPublicHooksGoogleCalendarRenewRoute
+  ApiPublicHooksProcessAgendamentosRoute: typeof ApiPublicHooksProcessAgendamentosRoute
+  ApiPublicHooksProcessCampaignsRoute: typeof ApiPublicHooksProcessCampaignsRoute
+  ApiPublicHooksProcessKanbanReguasRoute: typeof ApiPublicHooksProcessKanbanReguasRoute
+  ApiPublicHooksProcessRelatorioIaRoute: typeof ApiPublicHooksProcessRelatorioIaRoute
+  ApiPublicHooksProcessRetryQueueRoute: typeof ApiPublicHooksProcessRetryQueueRoute
+  ApiPublicHooksWhatsappWatchdogRoute: typeof ApiPublicHooksWhatsappWatchdogRoute
+  ApiPublicMetaOauthCallbackRoute: typeof ApiPublicMetaOauthCallbackRoute
+  ApiPublicV1SplatRoute: typeof ApiPublicV1SplatRoute
+  LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
+  LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
+  LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +1398,941 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/entrar': {
+      id: '/entrar'
+      path: '/entrar'
+      fullPath: '/entrar'
+      preLoaderRoute: typeof EntrarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/esqueci-senha': {
+      id: '/esqueci-senha'
+      path: '/esqueci-senha'
+      fullPath: '/esqueci-senha'
+      preLoaderRoute: typeof EsqueciSenhaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/exclusao-dados': {
+      id: '/exclusao-dados'
+      path: '/exclusao-dados'
+      fullPath: '/exclusao-dados'
+      preLoaderRoute: typeof ExclusaoDadosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/master': {
+      id: '/master'
+      path: '/master'
+      fullPath: '/master'
+      preLoaderRoute: typeof MasterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mobile': {
+      id: '/mobile'
+      path: '/mobile'
+      fullPath: '/mobile'
+      preLoaderRoute: typeof MobileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacidade': {
+      id: '/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof PrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reembolso': {
+      id: '/reembolso'
+      path: '/reembolso'
+      fullPath: '/reembolso'
+      preLoaderRoute: typeof ReembolsoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-senha': {
+      id: '/reset-senha'
+      path: '/reset-senha'
+      fullPath: '/reset-senha'
+      preLoaderRoute: typeof ResetSenhaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/termos': {
+      id: '/termos'
+      path: '/termos'
+      fullPath: '/termos'
+      preLoaderRoute: typeof TermosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trocar-senha': {
+      id: '/trocar-senha'
+      path: '/trocar-senha'
+      fullPath: '/trocar-senha'
+      preLoaderRoute: typeof TrocarSenhaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/agendamentos': {
+      id: '/app/agendamentos'
+      path: '/agendamentos'
+      fullPath: '/app/agendamentos'
+      preLoaderRoute: typeof AppAgendamentosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/agente': {
+      id: '/app/agente'
+      path: '/agente'
+      fullPath: '/app/agente'
+      preLoaderRoute: typeof AppAgenteRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/agente-avancado': {
+      id: '/app/agente-avancado'
+      path: '/agente-avancado'
+      fullPath: '/app/agente-avancado'
+      preLoaderRoute: typeof AppAgenteAvancadoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/campanhas': {
+      id: '/app/campanhas'
+      path: '/campanhas'
+      fullPath: '/app/campanhas'
+      preLoaderRoute: typeof AppCampanhasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/catalogo': {
+      id: '/app/catalogo'
+      path: '/catalogo'
+      fullPath: '/app/catalogo'
+      preLoaderRoute: typeof AppCatalogoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/checkout': {
+      id: '/app/checkout'
+      path: '/checkout'
+      fullPath: '/app/checkout'
+      preLoaderRoute: typeof AppCheckoutRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/comercial': {
+      id: '/app/comercial'
+      path: '/comercial'
+      fullPath: '/app/comercial'
+      preLoaderRoute: typeof AppComercialRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/conexao': {
+      id: '/app/conexao'
+      path: '/conexao'
+      fullPath: '/app/conexao'
+      preLoaderRoute: typeof AppConexaoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/configuracoes': {
+      id: '/app/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/app/configuracoes'
+      preLoaderRoute: typeof AppConfiguracoesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/contatos': {
+      id: '/app/contatos'
+      path: '/contatos'
+      fullPath: '/app/contatos'
+      preLoaderRoute: typeof AppContatosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/conversas': {
+      id: '/app/conversas'
+      path: '/conversas'
+      fullPath: '/app/conversas'
+      preLoaderRoute: typeof AppConversasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/crm': {
+      id: '/app/crm'
+      path: '/crm'
+      fullPath: '/app/crm'
+      preLoaderRoute: typeof AppCrmRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/dashboard': {
+      id: '/app/dashboard'
+      path: '/dashboard'
+      fullPath: '/app/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/integracoes': {
+      id: '/app/integracoes'
+      path: '/integracoes'
+      fullPath: '/app/integracoes'
+      preLoaderRoute: typeof AppIntegracoesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/meu-plano': {
+      id: '/app/meu-plano'
+      path: '/meu-plano'
+      fullPath: '/app/meu-plano'
+      preLoaderRoute: typeof AppMeuPlanoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/onboarding': {
+      id: '/app/onboarding'
+      path: '/onboarding'
+      fullPath: '/app/onboarding'
+      preLoaderRoute: typeof AppOnboardingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/parceiro': {
+      id: '/app/parceiro'
+      path: '/parceiro'
+      fullPath: '/app/parceiro'
+      preLoaderRoute: typeof AppParceiroRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/plugins': {
+      id: '/app/plugins'
+      path: '/plugins'
+      fullPath: '/app/plugins'
+      preLoaderRoute: typeof AppPluginsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/prospeccao': {
+      id: '/app/prospeccao'
+      path: '/prospeccao'
+      fullPath: '/app/prospeccao'
+      preLoaderRoute: typeof AppProspeccaoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/relatorios': {
+      id: '/app/relatorios'
+      path: '/relatorios'
+      fullPath: '/app/relatorios'
+      preLoaderRoute: typeof AppRelatoriosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/respostas-rapidas': {
+      id: '/app/respostas-rapidas'
+      path: '/respostas-rapidas'
+      fullPath: '/app/respostas-rapidas'
+      preLoaderRoute: typeof AppRespostasRapidasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/templates': {
+      id: '/app/templates'
+      path: '/templates'
+      fullPath: '/app/templates'
+      preLoaderRoute: typeof AppTemplatesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/treinamentos': {
+      id: '/app/treinamentos'
+      path: '/treinamentos'
+      fullPath: '/app/treinamentos'
+      preLoaderRoute: typeof AppTreinamentosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/usuarios': {
+      id: '/app/usuarios'
+      path: '/usuarios'
+      fullPath: '/app/usuarios'
+      preLoaderRoute: typeof AppUsuariosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/comparativo/metrix-vs-botconversa': {
+      id: '/comparativo/metrix-vs-botconversa'
+      path: '/comparativo/metrix-vs-botconversa'
+      fullPath: '/comparativo/metrix-vs-botconversa'
+      preLoaderRoute: typeof ComparativoMetrixVsBotconversaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/csat/$token': {
+      id: '/csat/$token'
+      path: '/csat/$token'
+      fullPath: '/csat/$token'
+      preLoaderRoute: typeof CsatTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/f/$slug': {
+      id: '/f/$slug'
+      path: '/f/$slug'
+      fullPath: '/f/$slug'
+      preLoaderRoute: typeof FSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/master/': {
+      id: '/master/'
+      path: '/'
+      fullPath: '/master/'
+      preLoaderRoute: typeof MasterIndexRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/addons': {
+      id: '/master/addons'
+      path: '/addons'
+      fullPath: '/master/addons'
+      preLoaderRoute: typeof MasterAddonsRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/assinaturas': {
+      id: '/master/assinaturas'
+      path: '/assinaturas'
+      fullPath: '/master/assinaturas'
+      preLoaderRoute: typeof MasterAssinaturasRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/billing': {
+      id: '/master/billing'
+      path: '/billing'
+      fullPath: '/master/billing'
+      preLoaderRoute: typeof MasterBillingRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/cadastros': {
+      id: '/master/cadastros'
+      path: '/cadastros'
+      fullPath: '/master/cadastros'
+      preLoaderRoute: typeof MasterCadastrosRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/clientes': {
+      id: '/master/clientes'
+      path: '/clientes'
+      fullPath: '/master/clientes'
+      preLoaderRoute: typeof MasterClientesRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/cobrancas': {
+      id: '/master/cobrancas'
+      path: '/cobrancas'
+      fullPath: '/master/cobrancas'
+      preLoaderRoute: typeof MasterCobrancasRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/configuracoes': {
+      id: '/master/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/master/configuracoes'
+      preLoaderRoute: typeof MasterConfiguracoesRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/crm-admin': {
+      id: '/master/crm-admin'
+      path: '/crm-admin'
+      fullPath: '/master/crm-admin'
+      preLoaderRoute: typeof MasterCrmAdminRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/diagnostico': {
+      id: '/master/diagnostico'
+      path: '/diagnostico'
+      fullPath: '/master/diagnostico'
+      preLoaderRoute: typeof MasterDiagnosticoRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/empresas': {
+      id: '/master/empresas'
+      path: '/empresas'
+      fullPath: '/master/empresas'
+      preLoaderRoute: typeof MasterEmpresasRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/feature-flags': {
+      id: '/master/feature-flags'
+      path: '/feature-flags'
+      fullPath: '/master/feature-flags'
+      preLoaderRoute: typeof MasterFeatureFlagsRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/financeiro': {
+      id: '/master/financeiro'
+      path: '/financeiro'
+      fullPath: '/master/financeiro'
+      preLoaderRoute: typeof MasterFinanceiroRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/notificacoes': {
+      id: '/master/notificacoes'
+      path: '/notificacoes'
+      fullPath: '/master/notificacoes'
+      preLoaderRoute: typeof MasterNotificacoesRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/nova-empresa': {
+      id: '/master/nova-empresa'
+      path: '/nova-empresa'
+      fullPath: '/master/nova-empresa'
+      preLoaderRoute: typeof MasterNovaEmpresaRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/painel': {
+      id: '/master/painel'
+      path: '/painel'
+      fullPath: '/master/painel'
+      preLoaderRoute: typeof MasterPainelRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/parceiros': {
+      id: '/master/parceiros'
+      path: '/parceiros'
+      fullPath: '/master/parceiros'
+      preLoaderRoute: typeof MasterParceirosRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/perfil': {
+      id: '/master/perfil'
+      path: '/perfil'
+      fullPath: '/master/perfil'
+      preLoaderRoute: typeof MasterPerfilRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/planos': {
+      id: '/master/planos'
+      path: '/planos'
+      fullPath: '/master/planos'
+      preLoaderRoute: typeof MasterPlanosRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/plugins': {
+      id: '/master/plugins'
+      path: '/plugins'
+      fullPath: '/master/plugins'
+      preLoaderRoute: typeof MasterPluginsRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/sistema': {
+      id: '/master/sistema'
+      path: '/sistema'
+      fullPath: '/master/sistema'
+      preLoaderRoute: typeof MasterSistemaRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/sugestoes': {
+      id: '/master/sugestoes'
+      path: '/sugestoes'
+      fullPath: '/master/sugestoes'
+      preLoaderRoute: typeof MasterSugestoesRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/suporte': {
+      id: '/master/suporte'
+      path: '/suporte'
+      fullPath: '/master/suporte'
+      preLoaderRoute: typeof MasterSuporteRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/treinamentos': {
+      id: '/master/treinamentos'
+      path: '/treinamentos'
+      fullPath: '/master/treinamentos'
+      preLoaderRoute: typeof MasterTreinamentosRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/wa/callback': {
+      id: '/wa/callback'
+      path: '/wa/callback'
+      fullPath: '/wa/callback'
+      preLoaderRoute: typeof WaCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/ai-health': {
+      id: '/api/public/ai-health'
+      path: '/api/public/ai-health'
+      fullPath: '/api/public/ai-health'
+      preLoaderRoute: typeof ApiPublicAiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/form-submit': {
+      id: '/api/public/form-submit'
+      path: '/api/public/form-submit'
+      fullPath: '/api/public/form-submit'
+      preLoaderRoute: typeof ApiPublicFormSubmitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/google-callback': {
+      id: '/api/public/google-callback'
+      path: '/api/public/google-callback'
+      fullPath: '/api/public/google-callback'
+      preLoaderRoute: typeof ApiPublicGoogleCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/google-marketing-callback': {
+      id: '/api/public/google-marketing-callback'
+      path: '/api/public/google-marketing-callback'
+      fullPath: '/api/public/google-marketing-callback'
+      preLoaderRoute: typeof ApiPublicGoogleMarketingCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/lead-capture': {
+      id: '/api/public/lead-capture'
+      path: '/api/public/lead-capture'
+      fullPath: '/api/public/lead-capture'
+      preLoaderRoute: typeof ApiPublicLeadCaptureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/lead-photo': {
+      id: '/api/public/lead-photo'
+      path: '/api/public/lead-photo'
+      fullPath: '/api/public/lead-photo'
+      preLoaderRoute: typeof ApiPublicLeadPhotoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/lovable-whatsapp': {
+      id: '/api/public/lovable-whatsapp'
+      path: '/api/public/lovable-whatsapp'
+      fullPath: '/api/public/lovable-whatsapp'
+      preLoaderRoute: typeof ApiPublicLovableWhatsappRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/meta-callback': {
+      id: '/api/public/meta-callback'
+      path: '/api/public/meta-callback'
+      fullPath: '/api/public/meta-callback'
+      preLoaderRoute: typeof ApiPublicMetaCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/meta-health': {
+      id: '/api/public/meta-health'
+      path: '/api/public/meta-health'
+      fullPath: '/api/public/meta-health'
+      preLoaderRoute: typeof ApiPublicMetaHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/meta-leads-webhook': {
+      id: '/api/public/meta-leads-webhook'
+      path: '/api/public/meta-leads-webhook'
+      fullPath: '/api/public/meta-leads-webhook'
+      preLoaderRoute: typeof ApiPublicMetaLeadsWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/meta-webhook': {
+      id: '/api/public/meta-webhook'
+      path: '/api/public/meta-webhook'
+      fullPath: '/api/public/meta-webhook'
+      preLoaderRoute: typeof ApiPublicMetaWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/telegram-webhook': {
+      id: '/api/public/telegram-webhook'
+      path: '/api/public/telegram-webhook'
+      fullPath: '/api/public/telegram-webhook'
+      preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/uazapi-webhook': {
+      id: '/api/public/uazapi-webhook'
+      path: '/api/public/uazapi-webhook'
+      fullPath: '/api/public/uazapi-webhook'
+      preLoaderRoute: typeof ApiPublicUazapiWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/wablast-webhook': {
+      id: '/api/public/wablast-webhook'
+      path: '/api/public/wablast-webhook'
+      fullPath: '/api/public/wablast-webhook'
+      preLoaderRoute: typeof ApiPublicWablastWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/whatsapp-webhook': {
+      id: '/api/public/whatsapp-webhook'
+      path: '/api/public/whatsapp-webhook'
+      fullPath: '/api/public/whatsapp-webhook'
+      preLoaderRoute: typeof ApiPublicWhatsappWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/treinamentos/': {
+      id: '/app/treinamentos/'
+      path: '/'
+      fullPath: '/app/treinamentos/'
+      preLoaderRoute: typeof AppTreinamentosIndexRouteImport
+      parentRoute: typeof AppTreinamentosRoute
+    }
+    '/app/treinamentos/$courseId': {
+      id: '/app/treinamentos/$courseId'
+      path: '/$courseId'
+      fullPath: '/app/treinamentos/$courseId'
+      preLoaderRoute: typeof AppTreinamentosCourseIdRouteImport
+      parentRoute: typeof AppTreinamentosRoute
+    }
+    '/oauth/drive/return': {
+      id: '/oauth/drive/return'
+      path: '/oauth/drive/return'
+      fullPath: '/oauth/drive/return'
+      preLoaderRoute: typeof OauthDriveReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oauth/sheets/return': {
+      id: '/oauth/sheets/return'
+      path: '/oauth/sheets/return'
+      fullPath: '/oauth/sheets/return'
+      preLoaderRoute: typeof OauthSheetsReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/billing/webhook': {
+      id: '/api/public/billing/webhook'
+      path: '/api/public/billing/webhook'
+      fullPath: '/api/public/billing/webhook'
+      preLoaderRoute: typeof ApiPublicBillingWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/$token': {
+      id: '/api/public/hooks/$token'
+      path: '/api/public/hooks/$token'
+      fullPath: '/api/public/hooks/$token'
+      preLoaderRoute: typeof ApiPublicHooksTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/admin-crm-tick': {
+      id: '/api/public/hooks/admin-crm-tick'
+      path: '/api/public/hooks/admin-crm-tick'
+      fullPath: '/api/public/hooks/admin-crm-tick'
+      preLoaderRoute: typeof ApiPublicHooksAdminCrmTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/agendamentos-dispatch': {
+      id: '/api/public/hooks/agendamentos-dispatch'
+      path: '/api/public/hooks/agendamentos-dispatch'
+      fullPath: '/api/public/hooks/agendamentos-dispatch'
+      preLoaderRoute: typeof ApiPublicHooksAgendamentosDispatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/billing-renew': {
+      id: '/api/public/hooks/billing-renew'
+      path: '/api/public/hooks/billing-renew'
+      fullPath: '/api/public/hooks/billing-renew'
+      preLoaderRoute: typeof ApiPublicHooksBillingRenewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/google-calendar': {
+      id: '/api/public/hooks/google-calendar'
+      path: '/api/public/hooks/google-calendar'
+      fullPath: '/api/public/hooks/google-calendar'
+      preLoaderRoute: typeof ApiPublicHooksGoogleCalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/google-calendar-renew': {
+      id: '/api/public/hooks/google-calendar-renew'
+      path: '/api/public/hooks/google-calendar-renew'
+      fullPath: '/api/public/hooks/google-calendar-renew'
+      preLoaderRoute: typeof ApiPublicHooksGoogleCalendarRenewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/process-agendamentos': {
+      id: '/api/public/hooks/process-agendamentos'
+      path: '/api/public/hooks/process-agendamentos'
+      fullPath: '/api/public/hooks/process-agendamentos'
+      preLoaderRoute: typeof ApiPublicHooksProcessAgendamentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/process-campaigns': {
+      id: '/api/public/hooks/process-campaigns'
+      path: '/api/public/hooks/process-campaigns'
+      fullPath: '/api/public/hooks/process-campaigns'
+      preLoaderRoute: typeof ApiPublicHooksProcessCampaignsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/process-kanban-reguas': {
+      id: '/api/public/hooks/process-kanban-reguas'
+      path: '/api/public/hooks/process-kanban-reguas'
+      fullPath: '/api/public/hooks/process-kanban-reguas'
+      preLoaderRoute: typeof ApiPublicHooksProcessKanbanReguasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/process-relatorio-ia': {
+      id: '/api/public/hooks/process-relatorio-ia'
+      path: '/api/public/hooks/process-relatorio-ia'
+      fullPath: '/api/public/hooks/process-relatorio-ia'
+      preLoaderRoute: typeof ApiPublicHooksProcessRelatorioIaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/process-retry-queue': {
+      id: '/api/public/hooks/process-retry-queue'
+      path: '/api/public/hooks/process-retry-queue'
+      fullPath: '/api/public/hooks/process-retry-queue'
+      preLoaderRoute: typeof ApiPublicHooksProcessRetryQueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/whatsapp-watchdog': {
+      id: '/api/public/hooks/whatsapp-watchdog'
+      path: '/api/public/hooks/whatsapp-watchdog'
+      fullPath: '/api/public/hooks/whatsapp-watchdog'
+      preLoaderRoute: typeof ApiPublicHooksWhatsappWatchdogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/meta-oauth/callback': {
+      id: '/api/public/meta-oauth/callback'
+      path: '/api/public/meta-oauth/callback'
+      fullPath: '/api/public/meta-oauth/callback'
+      preLoaderRoute: typeof ApiPublicMetaOauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/$': {
+      id: '/api/public/v1/$'
+      path: '/api/public/v1/$'
+      fullPath: '/api/public/v1/$'
+      preLoaderRoute: typeof ApiPublicV1SplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/auth/preview': {
+      id: '/lovable/email/auth/preview'
+      path: '/lovable/email/auth/preview'
+      fullPath: '/lovable/email/auth/preview'
+      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/auth/webhook': {
+      id: '/lovable/email/auth/webhook'
+      path: '/lovable/email/auth/webhook'
+      fullPath: '/lovable/email/auth/webhook'
+      preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AppTreinamentosRouteChildren {
+  AppTreinamentosCourseIdRoute: typeof AppTreinamentosCourseIdRoute
+  AppTreinamentosIndexRoute: typeof AppTreinamentosIndexRoute
+}
+
+const AppTreinamentosRouteChildren: AppTreinamentosRouteChildren = {
+  AppTreinamentosCourseIdRoute: AppTreinamentosCourseIdRoute,
+  AppTreinamentosIndexRoute: AppTreinamentosIndexRoute,
+}
+
+const AppTreinamentosRouteWithChildren = AppTreinamentosRoute._addFileChildren(
+  AppTreinamentosRouteChildren,
+)
+
+interface AppRouteChildren {
+  AppAgendamentosRoute: typeof AppAgendamentosRoute
+  AppAgenteRoute: typeof AppAgenteRoute
+  AppAgenteAvancadoRoute: typeof AppAgenteAvancadoRoute
+  AppCampanhasRoute: typeof AppCampanhasRoute
+  AppCatalogoRoute: typeof AppCatalogoRoute
+  AppCheckoutRoute: typeof AppCheckoutRoute
+  AppComercialRoute: typeof AppComercialRoute
+  AppConexaoRoute: typeof AppConexaoRoute
+  AppConfiguracoesRoute: typeof AppConfiguracoesRoute
+  AppContatosRoute: typeof AppContatosRoute
+  AppConversasRoute: typeof AppConversasRoute
+  AppCrmRoute: typeof AppCrmRoute
+  AppDashboardRoute: typeof AppDashboardRoute
+  AppIntegracoesRoute: typeof AppIntegracoesRoute
+  AppMeuPlanoRoute: typeof AppMeuPlanoRoute
+  AppOnboardingRoute: typeof AppOnboardingRoute
+  AppParceiroRoute: typeof AppParceiroRoute
+  AppPluginsRoute: typeof AppPluginsRoute
+  AppProspeccaoRoute: typeof AppProspeccaoRoute
+  AppRelatoriosRoute: typeof AppRelatoriosRoute
+  AppRespostasRapidasRoute: typeof AppRespostasRapidasRoute
+  AppTemplatesRoute: typeof AppTemplatesRoute
+  AppTreinamentosRoute: typeof AppTreinamentosRouteWithChildren
+  AppUsuariosRoute: typeof AppUsuariosRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAgendamentosRoute: AppAgendamentosRoute,
+  AppAgenteRoute: AppAgenteRoute,
+  AppAgenteAvancadoRoute: AppAgenteAvancadoRoute,
+  AppCampanhasRoute: AppCampanhasRoute,
+  AppCatalogoRoute: AppCatalogoRoute,
+  AppCheckoutRoute: AppCheckoutRoute,
+  AppComercialRoute: AppComercialRoute,
+  AppConexaoRoute: AppConexaoRoute,
+  AppConfiguracoesRoute: AppConfiguracoesRoute,
+  AppContatosRoute: AppContatosRoute,
+  AppConversasRoute: AppConversasRoute,
+  AppCrmRoute: AppCrmRoute,
+  AppDashboardRoute: AppDashboardRoute,
+  AppIntegracoesRoute: AppIntegracoesRoute,
+  AppMeuPlanoRoute: AppMeuPlanoRoute,
+  AppOnboardingRoute: AppOnboardingRoute,
+  AppParceiroRoute: AppParceiroRoute,
+  AppPluginsRoute: AppPluginsRoute,
+  AppProspeccaoRoute: AppProspeccaoRoute,
+  AppRelatoriosRoute: AppRelatoriosRoute,
+  AppRespostasRapidasRoute: AppRespostasRapidasRoute,
+  AppTemplatesRoute: AppTemplatesRoute,
+  AppTreinamentosRoute: AppTreinamentosRouteWithChildren,
+  AppUsuariosRoute: AppUsuariosRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
+interface MasterRouteChildren {
+  MasterAddonsRoute: typeof MasterAddonsRoute
+  MasterAssinaturasRoute: typeof MasterAssinaturasRoute
+  MasterBillingRoute: typeof MasterBillingRoute
+  MasterCadastrosRoute: typeof MasterCadastrosRoute
+  MasterClientesRoute: typeof MasterClientesRoute
+  MasterCobrancasRoute: typeof MasterCobrancasRoute
+  MasterConfiguracoesRoute: typeof MasterConfiguracoesRoute
+  MasterCrmAdminRoute: typeof MasterCrmAdminRoute
+  MasterDiagnosticoRoute: typeof MasterDiagnosticoRoute
+  MasterEmpresasRoute: typeof MasterEmpresasRoute
+  MasterFeatureFlagsRoute: typeof MasterFeatureFlagsRoute
+  MasterFinanceiroRoute: typeof MasterFinanceiroRoute
+  MasterNotificacoesRoute: typeof MasterNotificacoesRoute
+  MasterNovaEmpresaRoute: typeof MasterNovaEmpresaRoute
+  MasterPainelRoute: typeof MasterPainelRoute
+  MasterParceirosRoute: typeof MasterParceirosRoute
+  MasterPerfilRoute: typeof MasterPerfilRoute
+  MasterPlanosRoute: typeof MasterPlanosRoute
+  MasterPluginsRoute: typeof MasterPluginsRoute
+  MasterSistemaRoute: typeof MasterSistemaRoute
+  MasterSugestoesRoute: typeof MasterSugestoesRoute
+  MasterSuporteRoute: typeof MasterSuporteRoute
+  MasterTreinamentosRoute: typeof MasterTreinamentosRoute
+  MasterIndexRoute: typeof MasterIndexRoute
+}
+
+const MasterRouteChildren: MasterRouteChildren = {
+  MasterAddonsRoute: MasterAddonsRoute,
+  MasterAssinaturasRoute: MasterAssinaturasRoute,
+  MasterBillingRoute: MasterBillingRoute,
+  MasterCadastrosRoute: MasterCadastrosRoute,
+  MasterClientesRoute: MasterClientesRoute,
+  MasterCobrancasRoute: MasterCobrancasRoute,
+  MasterConfiguracoesRoute: MasterConfiguracoesRoute,
+  MasterCrmAdminRoute: MasterCrmAdminRoute,
+  MasterDiagnosticoRoute: MasterDiagnosticoRoute,
+  MasterEmpresasRoute: MasterEmpresasRoute,
+  MasterFeatureFlagsRoute: MasterFeatureFlagsRoute,
+  MasterFinanceiroRoute: MasterFinanceiroRoute,
+  MasterNotificacoesRoute: MasterNotificacoesRoute,
+  MasterNovaEmpresaRoute: MasterNovaEmpresaRoute,
+  MasterPainelRoute: MasterPainelRoute,
+  MasterParceirosRoute: MasterParceirosRoute,
+  MasterPerfilRoute: MasterPerfilRoute,
+  MasterPlanosRoute: MasterPlanosRoute,
+  MasterPluginsRoute: MasterPluginsRoute,
+  MasterSistemaRoute: MasterSistemaRoute,
+  MasterSugestoesRoute: MasterSugestoesRoute,
+  MasterSuporteRoute: MasterSuporteRoute,
+  MasterTreinamentosRoute: MasterTreinamentosRoute,
+  MasterIndexRoute: MasterIndexRoute,
+}
+
+const MasterRouteWithChildren =
+  MasterRoute._addFileChildren(MasterRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  EntrarRoute: EntrarRoute,
+  EsqueciSenhaRoute: EsqueciSenhaRoute,
+  ExclusaoDadosRoute: ExclusaoDadosRoute,
+  MasterRoute: MasterRouteWithChildren,
+  McpRoute: McpRoute,
+  MobileRoute: MobileRoute,
+  PrivacidadeRoute: PrivacidadeRoute,
+  ReembolsoRoute: ReembolsoRoute,
+  ResetSenhaRoute: ResetSenhaRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
+  TermosRoute: TermosRoute,
+  TrocarSenhaRoute: TrocarSenhaRoute,
+  Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  ComparativoMetrixVsBotconversaRoute: ComparativoMetrixVsBotconversaRoute,
+  CsatTokenRoute: CsatTokenRoute,
+  FSlugRoute: FSlugRoute,
+  WaCallbackRoute: WaCallbackRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
+  Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiPublicAiHealthRoute: ApiPublicAiHealthRoute,
+  ApiPublicFormSubmitRoute: ApiPublicFormSubmitRoute,
+  ApiPublicGoogleCallbackRoute: ApiPublicGoogleCallbackRoute,
+  ApiPublicGoogleMarketingCallbackRoute: ApiPublicGoogleMarketingCallbackRoute,
+  ApiPublicLeadCaptureRoute: ApiPublicLeadCaptureRoute,
+  ApiPublicLeadPhotoRoute: ApiPublicLeadPhotoRoute,
+  ApiPublicLovableWhatsappRoute: ApiPublicLovableWhatsappRoute,
+  ApiPublicMetaCallbackRoute: ApiPublicMetaCallbackRoute,
+  ApiPublicMetaHealthRoute: ApiPublicMetaHealthRoute,
+  ApiPublicMetaLeadsWebhookRoute: ApiPublicMetaLeadsWebhookRoute,
+  ApiPublicMetaWebhookRoute: ApiPublicMetaWebhookRoute,
+  ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
+  ApiPublicUazapiWebhookRoute: ApiPublicUazapiWebhookRoute,
+  ApiPublicWablastWebhookRoute: ApiPublicWablastWebhookRoute,
+  ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
+  OauthDriveReturnRoute: OauthDriveReturnRoute,
+  OauthSheetsReturnRoute: OauthSheetsReturnRoute,
+  ApiPublicBillingWebhookRoute: ApiPublicBillingWebhookRoute,
+  ApiPublicHooksTokenRoute: ApiPublicHooksTokenRoute,
+  ApiPublicHooksAdminCrmTickRoute: ApiPublicHooksAdminCrmTickRoute,
+  ApiPublicHooksAgendamentosDispatchRoute:
+    ApiPublicHooksAgendamentosDispatchRoute,
+  ApiPublicHooksBillingRenewRoute: ApiPublicHooksBillingRenewRoute,
+  ApiPublicHooksGoogleCalendarRoute: ApiPublicHooksGoogleCalendarRoute,
+  ApiPublicHooksGoogleCalendarRenewRoute:
+    ApiPublicHooksGoogleCalendarRenewRoute,
+  ApiPublicHooksProcessAgendamentosRoute:
+    ApiPublicHooksProcessAgendamentosRoute,
+  ApiPublicHooksProcessCampaignsRoute: ApiPublicHooksProcessCampaignsRoute,
+  ApiPublicHooksProcessKanbanReguasRoute:
+    ApiPublicHooksProcessKanbanReguasRoute,
+  ApiPublicHooksProcessRelatorioIaRoute: ApiPublicHooksProcessRelatorioIaRoute,
+  ApiPublicHooksProcessRetryQueueRoute: ApiPublicHooksProcessRetryQueueRoute,
+  ApiPublicHooksWhatsappWatchdogRoute: ApiPublicHooksWhatsappWatchdogRoute,
+  ApiPublicMetaOauthCallbackRoute: ApiPublicMetaOauthCallbackRoute,
+  ApiPublicV1SplatRoute: ApiPublicV1SplatRoute,
+  LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
+  LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
+  LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

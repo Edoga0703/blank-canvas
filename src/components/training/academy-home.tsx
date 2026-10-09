@@ -1,0 +1,81 @@
+import { useState, useEffect } from "react";
+import { TrainingLayout } from "@/components/training/training-layout";
+import { CourseShelf } from "@/components/training/course-shelf";
+import { BannerCarousel } from "@/components/training/banner-carousel";
+import academyLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
+import { useServerFn } from "@tanstack/react-start";
+import { getTrainingHomeData } from "@/lib/training.functions";
+
+interface Course {
+  id: string;
+  title: string;
+  duration: string;
+  lessons: number;
+  thumbnail: string;
+  progress?: number;
+  lesson?: string;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  courses: Course[];
+}
+
+export function AcademiaMetricsHome() {
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(null);
+  const fetchHomeData = useServerFn(getTrainingHomeData);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const result = await fetchHomeData();
+        setData(result);
+      } catch (error) {
+        console.error("Erro ao carregar dados da Academia:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [fetchHomeData]);
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-[#F2F4F6] z-[100] flex flex-col items-center justify-center gap-8">
+        <div className="relative">
+          <div className="absolute inset-0 bg-primary/20 blur-3xl animate-pulse" />
+          <img src={academyLogo.url} alt="Capi Conversa Academy" className="w-44 h-auto relative z-10 rounded-md bg-white p-2" />
+        </div>
+        <div className="w-48 h-1 bg-[#E7EAEE] rounded-full overflow-hidden relative">
+          <div className="absolute inset-y-0 left-0 bg-primary w-0 animate-[loading-bar_2s_ease-in-out_infinite]" />
+        </div>
+        <span className="text-[#7B8794] font-medium tracking-[0.2em] text-xs uppercase">Capi Conversa Academy</span>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  return (
+    <TrainingLayout>
+      <div className="animate-in fade-in duration-1000 pb-20">
+        <section className="relative w-full px-6 md:px-8 pt-8">
+          <BannerCarousel banners={data.banners} />
+        </section>
+
+        <div className="px-6 md:px-8 space-y-12 mt-8 relative z-20">
+          {data.categories.map((cat: Category) => (
+            <section key={cat.id} className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium tracking-tight text-[#12263A]">{cat.name}</h3>
+              </div>
+              <CourseShelf courses={cat.courses} />
+            </section>
+          ))}
+        </div>
+      </div>
+    </TrainingLayout>
+  );
+}

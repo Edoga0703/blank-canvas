@@ -20,28 +20,45 @@ async function getServerEntry(): Promise<ServerEntry> {
 
 // h3 swallows in-handler throws into a normal 500 Response with body
 // {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
-async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
+function isRequestAbort(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+
+  const cause = error.cause;
+  const causeCode =
+    cause != null && typeof cause === "object" && "code" in cause
+      ? String(cause.code)
+      : "";
+  const message = `${error.name} ${error.message}`.toLowerCase();
+
+  return error.name === "AbortError" || causeCode === "ECONNRESET" || message.includes("aborted");
+}
+
+async function normalizeCatastrophicSsrResponse(
+  response: Response,
+  request: Request,
+): Promise<Response> {
   if (response.status < 500) return response;
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) return response;
 
   const body = await response.clone().text();
-  if (!isH3SwallowedErrorBody(body)) return response;
+  if (!body.includes('"unhandled":true') || !body.includes('"message":"HTTPError"')) {
+    return response;
+  }
 
-  console.error(consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`));
+  const capturedError = consumeLastCapturedError();
+
+  // A closed browser socket can be swallowed by h3 and normalized to its
+  // generic HTTPError response. It is a cancelled request, not an SSR crash.
+  if (request.signal.aborted || isRequestAbort(capturedError)) {
+    return new Response(null, { status: 499 });
+  }
+
+  console.error(capturedError ?? new Error(`h3 swallowed SSR error: ${body}`));
   return new Response(renderErrorPage(), {
     status: 500,
     headers: { "content-type": "text/html; charset=utf-8" },
   });
-}
-
-function isH3SwallowedErrorBody(body: string): boolean {
-  try {
-    const payload = JSON.parse(body) as { unhandled?: unknown; message?: unknown };
-    return payload.unhandled === true && payload.message === "HTTPError";
-  } catch {
-    return false;
-  }
 }
 
 export default {
@@ -49,8 +66,11 @@ export default {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return await normalizeCatastrophicSsrResponse(response, request);
     } catch (error) {
+      if (request.signal.aborted || isRequestAbort(error)) {
+        return new Response(null, { status: 499 });
+      }
       console.error(error);
       return new Response(renderErrorPage(), {
         status: 500,
