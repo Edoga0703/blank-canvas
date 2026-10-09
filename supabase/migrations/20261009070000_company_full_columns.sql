@@ -1,0 +1,33 @@
+-- Add all missing company profile, tax, address and configuration columns
+
+alter table public.company add column if not exists admin_bloqueado boolean not null default false;
+alter table public.company add column if not exists admin_bloqueado_motivo text;
+alter table public.company add column if not exists bairro text;
+alter table public.company add column if not exists cep text;
+alter table public.company add column if not exists cidade text;
+alter table public.company add column if not exists cnpj_cpf text;
+alter table public.company add column if not exists complemento text;
+alter table public.company add column if not exists creditos_resetam_em timestamptz;
+alter table public.company add column if not exists csat_ativo boolean;
+alter table public.company add column if not exists csat_auto_ganho boolean not null default false;
+alter table public.company add column if not exists csat_destino_pipeline_id text;
+alter table public.company add column if not exists csat_destino_stage_id text;
+alter table public.company add column if not exists csat_enviar_ao_finalizar boolean not null default false;
+alter table public.company add column if not exists csat_formato text;
+alter table public.company add column if not exists csat_move_para_posvenda boolean;
+alter table public.company add column if not exists csat_pedir_comentario boolean not null default false;
+alter table public.company add column if not exists csat_pergunta text;
+alter table public.company add column if not exists csat_texto_agradecimento text;
+alter table public.company add column if not exists csat_texto_comentario text;
+alter table public.company add column if not exists estado text;
+alter table public.company add column if not exists financeiro_ativo boolean not null default false;
+alter table public.company add column if not exists financeiro_dias_vencimento_padrao numeric not null default 0;
+alter table public.company add column if not exists inscricao_estadual text;
+alter table public.company add column if not exists is_internal boolean not null default false;
+alter table public.company add column if not exists nome_fantasia text;
+alter table public.company add column if not exists numero text;
+alter table public.company add column if not exists pais text;
+alter table public.company add column if not exists porte text;
+alter table public.company add column if not exists razao_social text;
+alter table public.company add column if not exists rua text;
+alter table public.company add column if not exists tipo_pessoa text;
