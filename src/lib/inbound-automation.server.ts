@@ -14,11 +14,33 @@ export async function processInboundAutomation(
     inboundMessageId: string;
     stageId?: string | null;
     responderEmAudio?: boolean;
+    isAudioMessage?: boolean;
   },
 ) {
   const { companyId, numero, texto, inboundMessageId } = params;
 
-  // 0) Pesquisa de satisfação respondida no próprio chat (quando ativa para este contato).
+  // 0) Se a mensagem recebida for áudio, a IA não deve responder ou alucinar.
+  // Pausa a IA para este contato e encaminha para atenção humana.
+  if (params.isAudioMessage || texto === "[ÁUDIO]") {
+    console.log(`[inbound] Áudio recebido de ${numero}. Pausando IA e encaminhando para atendimento humano.`);
+    try {
+      await admin.from("contact_pause").upsert(
+        {
+          company_id: companyId,
+          numero: numero,
+          pausado: true,
+          pausado_por: "audio_inbound",
+          pausado_em: new Date().toISOString(),
+        },
+        { onConflict: "company_id,numero" },
+      );
+    } catch (e: any) {
+      console.warn("[inbound] erro ao pausar contato para áudio:", e?.message);
+    }
+    return { engine: "none", reason: "audio_inbound_human_attention" };
+  }
+
+  // 0b) Pesquisa de satisfação respondida no próprio chat (quando ativa para este contato).
   try {
     const csat = await processCsatChatReply(admin, { companyId, numero, texto, inboundMessageId });
     if (csat?.handled) return { engine: "csat_chat", result: csat };

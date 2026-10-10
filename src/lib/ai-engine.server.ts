@@ -4,7 +4,7 @@ import { isWithinBusinessHours } from "@/lib/business-hours";
 import { getStagesBrief } from "@/lib/crm-engine.server";
 import { buildSystemPrompt, parseAiOutput } from "@/lib/ai-prompt";
 import { lovableAiChat, type ChatMsg } from "@/lib/lovable-ai.server";
-import { waSendText, waPresenceTyping, getActiveInstance } from "@/lib/wa-dispatch.server";
+import { waSendText, waPresenceTyping, getActiveInstance, getActiveInstanceForContact } from "@/lib/wa-dispatch.server";
 
 export async function processAiResponse(
   companyId: string,
@@ -33,6 +33,31 @@ export async function processAiResponse(
   }
   if (processingError || !processing?.id) {
     throw processingError || new Error("Não foi possível registrar o processamento da mensagem");
+  }
+
+  // Se a mensagem recebida for áudio, a IA não deve responder ou alucinar.
+  // Pausa a IA para este contato e encaminha para atenção humana.
+  if (incomingText === "[ÁUDIO]" || incomingText.startsWith("[ÁUDIO]")) {
+    console.log(`[ai-engine] Mensagem de áudio recebida para ${number}. IA ignorando áudio e marcando para atenção humana.`);
+    try {
+      await supabaseAdmin.from("contact_pause").upsert(
+        {
+          company_id: companyId,
+          numero: number,
+          pausado: true,
+          pausado_por: "audio_inbound",
+          pausado_em: new Date().toISOString(),
+        } as any,
+        { onConflict: "company_id,numero" },
+      );
+    } catch (e: any) {
+      console.warn("[ai-engine] erro ao pausar contato para áudio:", e?.message);
+    }
+    await (supabaseAdmin as any)
+      .from("ai_message_processing")
+      .update({ status: "completed", error_message: "Audio inbound skipped for human attention" })
+      .eq("id", processing.id);
+    return;
   }
   
   try {
@@ -108,7 +133,7 @@ export async function processAiResponse(
            
            const umaHoraAtras = new Date(Date.now() - 60 * 60 * 1000).toISOString();
            if (!lastMsg || lastMsg.created_at < umaHoraAtras) {
-              const inst = await getActiveInstance(companyId);
+              const inst = await getActiveInstanceForContact(companyId, number);
               if (inst) {
                 await waSendText(inst, number, msgFora);
                 const { data: cardFora } = await supabaseAdmin
@@ -232,9 +257,9 @@ export async function processAiResponse(
         .limit(1);
 
       if (!previousOutgoing?.length) {
-        const inst = await getActiveInstance(companyId);
+        const inst = await getActiveInstanceForContact(companyId, number, card?.owner_id || card?.user_id);
         if (!inst) {
-          throw new Error("Nenhuma instância de WhatsApp ativa encontrada para enviar a mensagem inicial.");
+          throw new Error("Nenhuma instância ativa encontrada para enviar a mensagem inicial.");
         }
         await waSendText(inst, number, initialMessage);
         const { error: initialInsertError } = await supabaseAdmin.from("mensagens").insert({
@@ -363,14 +388,14 @@ export async function processAiResponse(
     const qualified = parsed.qualified;
 
     // 7. Enviar resposta(s)
-    console.log(`[ai-engine] Loading active instance for company ${companyId}...`);
-    const inst = await getActiveInstance(companyId);
+    console.log(`[ai-engine] Loading active instance for contact ${number} (company ${companyId})...`);
+    const inst = await getActiveInstanceForContact(companyId, number, card?.owner_id || card?.user_id);
     if (!inst) {
       console.error("[ai-engine] No active instance found to reply");
       await (supabaseAdmin as any).from("audit_log").insert({
         company_id: companyId,
         acao: "ai_error",
-        detalhes: { error: "Nenhuma instância de WhatsApp ativa encontrada para responder.", number }
+        detalhes: { error: "Nenhuma instância ativa encontrada para responder.", number }
       });
       return;
     }

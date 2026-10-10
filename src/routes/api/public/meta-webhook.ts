@@ -217,6 +217,7 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
               const mid = ev?.message?.mid || ev?.value?.message?.mid || `meta_${Date.now()}`;
               const midiaUrl = attachment?.payload?.url || null;
               const midiaTipo = attachment?.type || null;
+              const isAudio = midiaTipo === "audio";
 
               // 1. Inserção direta e resiliente em mensagens
               try {
@@ -229,7 +230,7 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                     contato_nome: perfilNome || null,
                     direcao: "entrada",
                     autor: "contato",
-                    texto: texto || (midiaTipo ? `[${midiaTipo}]` : ""),
+                    texto: texto || (isAudio ? "[ÁUDIO]" : midiaTipo ? `[${midiaTipo}]` : ""),
                     whatsapp_message_id: mid,
                     created_at: new Date().toISOString(),
                     midia_url: midiaUrl,
@@ -241,12 +242,13 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
               }
 
               // 2. Criação/atualização do lead no CRM
+              let currentCard: any = null;
               try {
-                const { upsertCard, getStagesBrief } = await import("@/lib/crm-engine.server");
+                const { upsertCard, getStagesBrief, pickLeadOwner } = await import("@/lib/crm-engine.server");
                 const stages = await getStagesBrief(supabaseAdmin, inst.company_id);
-                await upsertCard(supabaseAdmin, inst.company_id, inst.user_id, String(senderId), perfilNome || null, texto || "", stages, canal as any);
+                currentCard = await upsertCard(supabaseAdmin, inst.company_id, inst.user_id, String(senderId), perfilNome || null, texto || (isAudio ? "[ÁUDIO]" : ""), stages, canal as any);
 
-                const patch: any = { canal_chat: canal };
+                const patch: any = { canal_chat: canal, canal_entrada: canal };
                 if (perfilNome) patch.nome = perfilNome;
                 if (perfilFoto) patch.foto_url = perfilFoto;
                 await (supabaseAdmin as any)
@@ -254,28 +256,40 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                   .update(patch)
                   .eq("company_id", inst.company_id)
                   .eq("numero", String(senderId));
+
+                if (currentCard) {
+                  const { data: stageConfig } = await (supabaseAdmin as any)
+                    .from("crm_stage")
+                    .select("modo_atendimento")
+                    .eq("id", currentCard.stage_id)
+                    .maybeSingle();
+
+                  const isManualMode = stageConfig?.modo_atendimento === "manual";
+                  if (isManualMode && !currentCard.owner_id) {
+                    const ownerId = await pickLeadOwner(supabaseAdmin, inst.company_id, currentCard.stage_id);
+                    if (ownerId) {
+                      await (supabaseAdmin as any).from("crm_cards").update({ owner_id: ownerId }).eq("id", currentCard.id);
+                    }
+                  }
+                }
               } catch (e: any) {
                 console.warn("[meta-webhook] upsertCard error:", e?.message);
               }
 
-              // 3. Encaminha também para o webhook interno (para disparar IA Drael e automações)
-              const normalized = {
-                event: "messages.upsert",
-                instance: inst.instance_name,
-                data: {
-                  key: { remoteJid: `${senderId}@s.whatsapp.net`, fromMe: false, id: mid },
-                  message,
-                  pushName: perfilNome,
-                  messageTimestamp: Math.floor((ev?.timestamp ?? Date.now()) / 1000),
-                },
-              };
-
-              const forwardUrl = `${publicOrigin}/api/public/whatsapp-webhook?t=${encodeURIComponent(inst.webhook_token)}`;
-              fetch(forwardUrl, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "x-webhook-token": inst.webhook_token },
-                body: JSON.stringify(normalized),
-              }).catch(() => {});
+              // 3. Automação / Atendimento de IA direto (sem loopback HTTP)
+              try {
+                const { processInboundAutomation } = await import("@/lib/inbound-automation.server");
+                await processInboundAutomation(supabaseAdmin, {
+                  companyId: inst.company_id,
+                  numero: String(senderId),
+                  texto: texto || (isAudio ? "[ÁUDIO]" : ""),
+                  inboundMessageId: mid,
+                  stageId: currentCard?.stage_id,
+                  isAudioMessage: isAudio,
+                });
+              } catch (e: any) {
+                console.warn("[meta-webhook] processInboundAutomation error:", e?.message);
+              }
             }
           }
         } catch (e: any) {

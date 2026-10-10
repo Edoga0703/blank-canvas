@@ -14,7 +14,17 @@ import {
 } from "@/lib/wablast.server";
 import { getMessagingProvider } from "@/lib/messaging/provider-registry.server";
 
-export type WaProvider = "lovable_whatsapp" | "evolution" | "uazapi" | "wablast";
+export type WaProvider =
+  | "lovable_whatsapp"
+  | "meta_instagram"
+  | "meta_messenger"
+  | "evolution"
+  | "uazapi"
+  | "wablast";
+
+export function isMetaProvider(provider?: string | null): boolean {
+  return provider === "meta_instagram" || provider === "meta_messenger";
+}
 
 export type WaInstance = {
   instance_name: string;
@@ -42,6 +52,8 @@ export async function getActiveInstance(companyId: string): Promise<WaInstance |
   const providerName = String((inst as any).provider || providerType || "evolution");
   let provider: WaProvider = "evolution";
   if (providerName === "lovable_whatsapp") provider = "lovable_whatsapp";
+  else if (providerName === "meta_instagram" || providerType === "meta_instagram") provider = "meta_instagram";
+  else if (providerName === "meta_messenger" || providerType === "meta_messenger") provider = "meta_messenger";
   else if (providerType === "wablast") provider = "wablast";
   else if (providerType === "uazapi") provider = "uazapi";
   else {
@@ -62,9 +74,54 @@ export async function getActiveInstance(companyId: string): Promise<WaInstance |
   };
 }
 
+export async function getActiveInstanceForContact(
+  companyId: string,
+  numero: string,
+  userId?: string,
+): Promise<WaInstance | null> {
+  try {
+    const { getInstanceForContact } = await import("@/lib/evolution-helpers");
+    const inst = await getInstanceForContact(
+      supabaseAdmin,
+      companyId,
+      numero,
+      "instance_name,instance_token,status,provider,provider_type,phone_number_id,waba_id,paused",
+      userId,
+    );
+    if (!inst?.instance_name) return null;
+
+    const providerType = (inst as any).provider_type as string | null;
+    const providerName = String((inst as any).provider || providerType || "evolution");
+    let provider: WaProvider = "evolution";
+    if (providerName === "lovable_whatsapp") provider = "lovable_whatsapp";
+    else if (providerName === "meta_instagram" || providerType === "meta_instagram") provider = "meta_instagram";
+    else if (providerName === "meta_messenger" || providerType === "meta_messenger") provider = "meta_messenger";
+    else if (providerType === "wablast") provider = "wablast";
+    else if (providerType === "uazapi") provider = "uazapi";
+
+    return {
+      instance_name: (inst as any).instance_name,
+      instance_token: (inst as any).instance_token ?? null,
+      provider,
+      status: (inst as any).status,
+      paused: !!(inst as any).paused,
+      phone_number_id: (inst as any).phone_number_id ?? null,
+      waba_id: (inst as any).waba_id ?? null,
+    };
+  } catch (e: any) {
+    console.warn(`[getActiveInstanceForContact] Falha ao resolver instância para ${numero}, usando fallback:`, e?.message);
+    return getActiveInstance(companyId);
+  }
+}
+
 export async function waPresenceTyping(inst: WaInstance, numero: string, ms: number) {
   try {
     if (inst.provider === "wablast" || inst.provider === "lovable_whatsapp") return;
+    if (isMetaProvider(inst.provider) && inst.instance_token) {
+      const { metaSendPresence } = await import("./meta.server");
+      await metaSendPresence(inst.instance_token, numero, "composing");
+      return;
+    }
     if (inst.provider === "uazapi" && inst.instance_token) {
       await uazSendPresence(inst.instance_token, numero, "composing", ms);
     } else {
@@ -81,6 +138,11 @@ export async function waPresenceTyping(inst: WaInstance, numero: string, ms: num
 export function assertSendableNumber(numero: string, provider?: WaProvider): string {
   const raw = String(numero || "").trim();
   if (!raw) throw new Error("Destinatário vazio: envio ignorado.");
+  if (provider && isMetaProvider(provider)) {
+    const clean = raw.replace(/^@/, "").trim();
+    if (!clean) throw new Error("Destinatário Meta inválido.");
+    return clean;
+  }
   if (raw.includes("@g.us")) throw new Error("Destinatário é um grupo: envio ignorado.");
   // JID individual válido (…@s.whatsapp.net / @c.us): usa só a parte numérica
   const base = raw.includes("@") ? raw.split("@")[0] : raw;
@@ -105,9 +167,14 @@ export async function waSendText(
   inst: WaInstance,
   numero: string,
   texto: string,
-  options?: { replyToExternalMessageId?: string | null },
+  options?: { replyToExternalMessageId?: string | null; quoted?: any },
 ) {
   numero = assertSendableNumber(numero, inst.provider);
+  if (isMetaProvider(inst.provider)) {
+    if (!inst.instance_token) throw new Error(`Token da Meta ausente para conexão ${inst.instance_name}`);
+    const { metaSendText } = await import("./meta.server");
+    return metaSendText(inst.instance_token, numero, texto);
+  }
   if (inst.provider === "lovable_whatsapp") {
     const result = await getMessagingProvider("lovable_whatsapp").sendText({
       connectionExternalId: inst.instance_name,
@@ -124,7 +191,7 @@ export async function waSendText(
   if (inst.provider === "uazapi" && inst.instance_token) {
     return uazSendText(inst.instance_token, numero, texto);
   }
-  return evoSendText(inst.instance_name, numero, texto);
+  return evoSendText(inst.instance_name, numero, texto, options?.quoted);
 }
 
 export async function waSendMedia(
@@ -133,6 +200,15 @@ export async function waSendMedia(
   media: { url: string; type: "image" | "video" | "document" | "audio"; caption?: string; fileName?: string; mime?: string },
 ) {
   numero = assertSendableNumber(numero, inst.provider);
+  if (isMetaProvider(inst.provider)) {
+    if (!inst.instance_token) throw new Error(`Token da Meta ausente para conexão ${inst.instance_name}`);
+    const { metaSendMedia } = await import("./meta.server");
+    return metaSendMedia(inst.instance_token, numero, {
+      mediatype: media.type,
+      media: media.url,
+      caption: media.caption,
+    });
+  }
   if (inst.provider === "lovable_whatsapp") {
     const result = await getMessagingProvider("lovable_whatsapp").sendMedia({
       connectionExternalId: inst.instance_name,
@@ -169,6 +245,14 @@ export async function waSendMedia(
 
 export async function waSendAudio(inst: WaInstance, numero: string, audioBase64OrUrl: string) {
   numero = assertSendableNumber(numero, inst.provider);
+  if (isMetaProvider(inst.provider)) {
+    if (!inst.instance_token) throw new Error(`Token da Meta ausente para conexão ${inst.instance_name}`);
+    const { metaSendMedia } = await import("./meta.server");
+    return metaSendMedia(inst.instance_token, numero, {
+      mediatype: "audio",
+      media: audioBase64OrUrl,
+    });
+  }
   if (inst.provider === "lovable_whatsapp") {
     const result = await getMessagingProvider("lovable_whatsapp").sendMedia({
       connectionExternalId: inst.instance_name,

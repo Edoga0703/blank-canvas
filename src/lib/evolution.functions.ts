@@ -561,31 +561,33 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
     let waId: string | null = null;
     let sendError: string | null = null;
     try {
-      const isLovable = inst.provider === "lovable_whatsapp";
-      sendError = isLovable
+      const { isMetaProvider, waSendText } = await import("./wa-dispatch.server");
+      const skipInstanceOpen = inst.provider === "lovable_whatsapp" || isMetaProvider(inst.provider);
+      sendError = skipInstanceOpen
         ? null
         : await assertInstanceOpen(evoState, evoFetchInstance, inst.instance_name, inst.provider);
 
       if (!sendError) {
         console.log("[sendWhatsappText] Enviando por", inst.provider, inst.instance_name);
-        const resp: any = isLovable
-          ? await (await import("./wa-dispatch.server")).waSendText(
-              {
-                instance_name: inst.instance_name,
-                instance_token: inst.instance_token,
-                provider: "lovable_whatsapp",
-                status: inst.status,
-                paused: false,
-              },
-              data.numero,
-              data.texto,
-              { replyToExternalMessageId: quoted?.key?.id ?? null },
-            )
-          : await evoSendText(inst.instance_name, data.numero, data.texto, quoted ? { quoted } : undefined);
+        const resp: any = await waSendText(
+          {
+            instance_name: inst.instance_name,
+            instance_token: inst.instance_token,
+            provider: inst.provider as any,
+            status: inst.status,
+            paused: false,
+          },
+          data.numero,
+          data.texto,
+          {
+            replyToExternalMessageId: quoted?.key?.id ?? null,
+            quoted: quoted ? { quoted } : undefined,
+          },
+        );
         console.log("[sendWhatsappText] Resposta bruta:", JSON.stringify(resp));
         waId = extractWhatsappMessageId(resp);
         if (!waId) {
-          console.warn("[sendWhatsappText] Evolution não retornou ID válido. Resposta:", JSON.stringify(resp));
+          console.warn("[sendWhatsappText] Provedor não retornou ID válido. Resposta:", JSON.stringify(resp));
         }
       }
     } catch (e: any) {
@@ -697,39 +699,35 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
     let waId: string | null = null;
     let sendError: string | null = null;
     try {
-      const isLovable = inst.provider === "lovable_whatsapp";
-      sendError = isLovable
+      const { isMetaProvider, waSendMedia } = await import("./wa-dispatch.server");
+      const skipInstanceOpen = inst.provider === "lovable_whatsapp" || isMetaProvider(inst.provider);
+      sendError = skipInstanceOpen
         ? null
         : await assertInstanceOpen(evoState, evoFetchInstance, inst.instance_name, inst.provider);
 
       if (!sendError) {
         console.log("[sendWhatsappMedia] Enviando por", inst.provider);
-        const resp: any = isLovable
-          ? await (await import("./wa-dispatch.server")).waSendMedia(
-              {
-                instance_name: inst.instance_name,
-                instance_token: inst.instance_token,
-                provider: "lovable_whatsapp",
-                status: inst.status,
-                paused: false,
-              },
-              data.numero,
-              {
-                type: data.mediatype,
-                url: data.media,
-                mime: data.mimetype,
-                fileName: data.fileName,
-                caption: data.caption,
-              },
-            )
-          : await evoSendMedia(inst.instance_name, data.numero, {
-              mediatype: data.mediatype, media: data.media, mimetype: data.mimetype,
-              fileName: data.fileName, caption: data.caption,
-            });
+        const resp: any = await waSendMedia(
+          {
+            instance_name: inst.instance_name,
+            instance_token: inst.instance_token,
+            provider: inst.provider as any,
+            status: inst.status,
+            paused: false,
+          },
+          data.numero,
+          {
+            type: data.mediatype,
+            url: data.media,
+            mime: data.mimetype,
+            fileName: data.fileName,
+            caption: data.caption,
+          },
+        );
         console.log("[sendWhatsappMedia] Resposta bruta:", JSON.stringify(resp));
         waId = extractWhatsappMessageId(resp);
         if (!waId) {
-          console.warn("[sendWhatsappMedia] Evolution não retornou ID válido. Resposta:", JSON.stringify(resp));
+          console.warn("[sendWhatsappMedia] Provedor não retornou ID válido. Resposta:", JSON.stringify(resp));
         }
       }
     } catch (e: any) {
@@ -813,12 +811,13 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
     let waId: string | null = null;
     let sendError: string | null = null;
     try {
-      sendError = inst.provider === "lovable_whatsapp"
+      const { isMetaProvider, waSendAudio } = await import("./wa-dispatch.server");
+      const skipInstanceOpen = inst.provider === "lovable_whatsapp" || isMetaProvider(inst.provider);
+      sendError = skipInstanceOpen
         ? null
         : await assertInstanceOpen(evoState, evoFetchInstance, inst.instance_name, inst.provider);
       if (!sendError) {
         console.log("[sendWhatsappAudio] Chamando dispatcher de áudio...");
-        const { waSendAudio } = await import("./wa-dispatch.server");
         const waInst = {
           instance_name: inst.instance_name,
           instance_token: inst.instance_token,

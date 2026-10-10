@@ -196,6 +196,7 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
               texto: text,
               inboundMessageId: stableMessageId,
               stageId: currentCard?.stage_id,
+              isAudioMessage: midiaTipo === "audio",
             });
           }
 
