@@ -8,7 +8,7 @@ import {
   Inbox, Users, BarChart3, Settings, Contact, Megaphone, Webhook, Wallet,
   ChevronsLeft, ChevronsRight, Zap, ChevronDown, CalendarClock, Zap as Bolt, Bell, Volume2, VolumeX,
   PanelLeft, User as UserIcon, Package, Puzzle, MoreHorizontal, Workflow, TrendingUp, FileText,
-  GraduationCap, CreditCard, Radar, Share2
+  GraduationCap, CreditCard, Radar, Share2, Images
 } from "lucide-react";
 import { AgentAvatar } from "@/components/agente/agent-avatar";
 
@@ -63,6 +63,7 @@ const sections: { label: string; items: (NavItem & { flag?: string })[] }[] = [
       { to: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard, flag: "module.dashboard" },
       { to: "/app/conversas", label: "Conversas", icon: Inbox, badge: true, flag: "module.conversas" },
       { to: "/app/publicacoes", label: "Publicações", icon: Share2, tag: "Meta", flag: "module.publicacoes" },
+      { to: "/app/conteudo", label: "Conteúdo", icon: Images, tag: "Meta" },
       { to: "/app/crm", label: "CRM Kanban", icon: KanbanSquare, flag: "module.crm" },
       { to: "/app/comercial", label: "Comercial", icon: TrendingUp, flag: "module.comercial" },
       { to: "/app/contatos", label: "Contatos", icon: Contact, flag: "module.contatos" },
@@ -120,6 +121,7 @@ const routeSubtitles: Record<string, string> = {
   "/app/dashboard": "Visão geral do atendimento",
   "/app/conversas": "Central de mensagens",
   "/app/publicacoes": "Crie e gerencie postagens no Instagram e Facebook",
+  "/app/conteudo": "Publicações e interações da Meta",
   "/app/crm": "Pipeline de oportunidades",
   "/app/comercial": "Resultados, metas e desempenho da equipe",
   "/app/contatos": "Sua base de leads e clientes",
@@ -271,6 +273,7 @@ export function AppShell({
     { to: "/app/agente", label: "Agente IA", icon: Bot, mobileHidden: true },
     
     { to: "/app/campanhas", label: "Campanhas", icon: Megaphone, mobileHidden: true },
+    { to: "/app/conteudo", label: "Conteúdo", icon: Images },
     { to: "/app/templates", label: "Templates", icon: FileText, adminOnly: true, mobileHidden: true },
     { to: "/app/catalogo", label: "Catálogo", icon: Package, mobileHidden: true },
 

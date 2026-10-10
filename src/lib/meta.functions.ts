@@ -70,8 +70,10 @@ export const connectMetaChannel = createServerFn({ method: "POST" })
     if (!page.id) throw new Error("Não foi possível validar o token na Meta.");
 
     const provider = data.canal === "instagram" ? "meta_instagram" : "meta_messenger";
-    const instanceName = `${provider}_${page.id}`;
-    const displayName = data.displayName || page.name || (data.canal === "instagram" ? "Instagram Direct" : "Messenger");
+    const channelId = data.canal === "instagram" ? (page.instagramId || (/^(IGAA|IGQV|IGQW)/.test(data.pageToken) ? page.id : null)) : page.id;
+    if (!channelId) return { ok: false as const, error: "Este token não expõe uma conta Instagram profissional vinculada. Conecte pelo login oficial da Meta ou informe uma Página com Instagram vinculado." };
+    const instanceName = `${provider}_${channelId}`;
+    const displayName = data.displayName || (data.canal === "instagram" ? page.instagramName || "Instagram Direct" : page.name || "Messenger");
 
     const { supabaseAdmin: sbAdminTok } = await import("@/integrations/supabase/client.server");
     const { data: existing } = await (sbAdminTok as any)
@@ -88,7 +90,7 @@ export const connectMetaChannel = createServerFn({ method: "POST" })
       display_name: displayName,
       provider,
       provider_type: "oficial_meta",
-      phone_number_id: page.id,
+      phone_number_id: channelId,
       instance_token: page.token || data.pageToken,
       status: "connected",
       webhook_token: existing?.webhook_token || crypto.randomUUID(),
@@ -108,12 +110,12 @@ export const connectMetaChannel = createServerFn({ method: "POST" })
     }
 
     const { metaSubscribePage } = await import("./meta.server");
-    const sub = await metaSubscribePage(page.token || data.pageToken, page.id);
+    const sub = await metaSubscribePage(page.token || data.pageToken, channelId, { instagram: data.canal === "instagram" });
 
     return {
       ok: true as const,
       instanceName,
-      pageId: page.id,
+      pageId: channelId,
       displayName,
       canal: data.canal,
       subscribed: sub.ok,
