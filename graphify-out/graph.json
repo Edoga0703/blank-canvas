@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T21:02:44.011526+00:00",
+  "generated_at": "2026-10-10T21:10:40.713436+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -76,10 +76,6 @@
     {
       "path": "query.sql",
       "bytes": 126
-    },
-    {
-      "path": ".lovable/plan.md",
-      "bytes": 8291
     },
     {
       "path": ".lovable/project.json",
@@ -172,6 +168,10 @@
     {
       "path": ".lovable/plan/corrigir-domínio-do-link-do-formulário-2026-09-09.md",
       "bytes": 874
+    },
+    {
+      "path": ".lovable/plan/informe-de-análisis-capiversa-y-conexión-whatsapp-de-lovable-2026-10-10.md",
+      "bytes": 8291
     },
     {
       "path": ".lovable/plan/leads-parados-na-qualificação-quando-o-cliente-não-responde-2026-09-15.md",
