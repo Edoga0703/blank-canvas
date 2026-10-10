@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T20:50:38.014350+00:00",
+  "generated_at": "2026-10-10T21:02:44.011526+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -76,6 +76,10 @@
     {
       "path": "query.sql",
       "bytes": 126
+    },
+    {
+      "path": ".lovable/plan.md",
+      "bytes": 8291
     },
     {
       "path": ".lovable/project.json",
@@ -163,7 +167,7 @@
     },
     {
       "path": ".lovable/mcp/manifest.json",
-      "bytes": 3143
+      "bytes": 3164
     },
     {
       "path": ".lovable/plan/corrigir-domínio-do-link-do-formulário-2026-09-09.md",
