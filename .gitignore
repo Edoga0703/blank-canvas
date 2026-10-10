@@ -29,4 +29,9 @@ dist-ssr
 *.ntvs*
 *.njsproj
 *.sln
+
+# Local environment and deployment secrets
+.env
+.env.local
+.env.*.local
 *.sw?

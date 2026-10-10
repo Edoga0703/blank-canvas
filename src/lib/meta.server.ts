@@ -1,8 +1,9 @@
 // Adapter Meta (Messenger + Instagram Direct) via Graph API.
 // Server-only. Usa o Page Access Token salvo em whatsapp_instances.instance_token.
-const GRAPH = "https://graph.facebook.com/v25.0";
+export const META_GRAPH_VERSION = "v25.0";
+const GRAPH = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
 // Tokens da "Instagram API com login do Instagram" (IGAA...) usam outro host.
-const GRAPH_IG = "https://graph.instagram.com/v25.0";
+const GRAPH_IG = `https://graph.instagram.com/${META_GRAPH_VERSION}`;
 
 function normalizeToken(value: string) {
   return value
@@ -32,10 +33,12 @@ export class MetaApiError extends Error {
 async function graph(path: string, token: string, init?: RequestInit) {
   const cleanToken = normalizeToken(token);
   const instagramLogin = isInstagramToken(cleanToken);
-  const rawUrl = `${baseFor(cleanToken)}${path.startsWith("/") ? path : `/${path}`}`;
+  const rawUrl = /^https?:\/\//i.test(path)
+    ? path
+    : `${baseFor(cleanToken)}${path.startsWith("/") ? path : `/${path}`}`;
   // A Instagram API with Instagram Login documenta o token como query param;
   // o Graph do Facebook aceita Authorization Bearer.
-  const url = instagramLogin
+  const url = instagramLogin && !/[?&]access_token=/i.test(rawUrl)
     ? `${rawUrl}${rawUrl.includes("?") ? "&" : "?"}access_token=${encodeURIComponent(cleanToken)}`
     : rawUrl;
   const res = await fetch(url, {
@@ -72,6 +75,142 @@ async function graph(path: string, token: string, init?: RequestInit) {
     throw new MetaApiError(`Meta API [${res.status}]: ${msg}`, res.status);
   }
   return json;
+}
+
+/** Cliente Graph server-only. Mantém tokens fora do navegador e centraliza a versão da API. */
+export async function metaGraphRequest(path: string, token: string, init?: RequestInit) {
+  return graph(path, token, init);
+}
+
+async function graphCollection(path: string, token: string, maxPages = 5) {
+  const rows: any[] = [];
+  let next: string | null = path;
+  let pages = 0;
+  while (next && pages < maxPages) {
+    const json = await graph(next, token, { method: "GET" });
+    if (Array.isArray(json?.data)) rows.push(...json.data);
+    next = typeof json?.paging?.next === "string" ? json.paging.next : null;
+    pages += 1;
+  }
+  return { data: rows, pages, next };
+}
+
+function qs(values: Record<string, string | number | boolean | null | undefined>) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(values)) {
+    if (value !== undefined && value !== null && value !== "") params.set(key, String(value));
+  }
+  const text = params.toString();
+  return text ? `?${text}` : "";
+}
+
+/** Conversas e mensagens do Messenger/Instagram para sincronização inicial e reconciliação. */
+export async function metaListConversations(token: string, pageId: string, options?: { since?: string; until?: string; limit?: number }) {
+  return graphCollection(`/${encodeURIComponent(pageId)}/conversations${qs({
+    platform: isInstagramToken(normalizeToken(token)) ? "instagram" : "messenger",
+    fields: "id,updated_time,participants,snippet,messages.limit(100){id,created_time,from,to,message,attachments,sticker}",
+    since: options?.since,
+    until: options?.until,
+    limit: options?.limit ?? 25,
+  })}`, token, 5);
+}
+
+export async function metaListConversationMessages(token: string, conversationId: string, options?: { since?: string; until?: string; limit?: number }) {
+  return graphCollection(`/${encodeURIComponent(conversationId)}/messages${qs({
+    fields: "id,created_time,from,to,message,attachments,sticker",
+    since: options?.since,
+    until: options?.until,
+    limit: options?.limit ?? 100,
+  })}`, token, 10);
+}
+
+/** Feed, comentários e métricas de uma Página. As permissões dependem do modo do app e da revisão Meta. */
+export async function metaListPagePosts(token: string, pageId: string, options?: { since?: string; until?: string; limit?: number }) {
+  const instagram = isInstagramToken(normalizeToken(token));
+  return graphCollection(`/${encodeURIComponent(pageId)}/${instagram ? "media" : "feed"}${qs({
+    fields: instagram ? "id,caption,media_type,media_url,permalink,timestamp,comments.limit(100){id,text,timestamp,username,from}" : "id,message,created_time,permalink_url,attachments,comments.limit(100){id,message,created_time,from,like_count}",
+    since: options?.since,
+    until: options?.until,
+    limit: options?.limit ?? 25,
+  })}`, token, 5);
+}
+
+export async function metaListPostComments(token: string, postId: string, options?: { limit?: number }) {
+  return graphCollection(`/${encodeURIComponent(postId)}/comments${qs({
+    fields: "id,message,created_time,from,like_count,parent",
+    limit: options?.limit ?? 100,
+  })}`, token, 10);
+}
+
+export async function metaReplyToComment(token: string, commentId: string, message: string) {
+  return graph(`/${encodeURIComponent(commentId)}/comments`, token, {
+    method: "POST",
+    body: JSON.stringify({ message }),
+  });
+}
+
+export async function metaPublishPagePost(token: string, pageId: string, input: { message?: string; link?: string; photoUrl?: string }) {
+  const body: Record<string, string> = {};
+  if (input.message?.trim()) body.message = input.message.trim();
+  if (input.link?.trim()) body.link = input.link.trim();
+  if (input.photoUrl?.trim()) body.url = input.photoUrl.trim();
+  return graph(`/${encodeURIComponent(pageId)}/${input.photoUrl ? "photos" : "feed"}`, token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+/** Publicação de imagem no perfil profissional do Instagram (contêiner + publicação). */
+export async function metaPublishInstagramImage(token: string, instagramUserId: string, input: { imageUrl: string; caption?: string }) {
+  const container = await graph(`/${encodeURIComponent(instagramUserId)}/media`, token, {
+    method: "POST",
+    body: JSON.stringify({ image_url: input.imageUrl, caption: input.caption?.trim() || undefined }),
+  });
+  if (!container?.id) throw new MetaApiError("A Meta não devolveu o contêiner do Instagram.", 502);
+  return graph(`/${encodeURIComponent(instagramUserId)}/media_publish`, token, {
+    method: "POST",
+    body: JSON.stringify({ creation_id: container.id }),
+  });
+}
+
+export async function metaListPageInsights(token: string, pageId: string, metrics: string[], options?: { since?: string; until?: string }) {
+  return graph(`/${encodeURIComponent(pageId)}/insights${qs({
+    metric: metrics.join(","),
+    since: options?.since,
+    until: options?.until,
+  })}`, token, { method: "GET" });
+}
+
+export async function metaListLeadForms(token: string, pageId: string, options?: { limit?: number }) {
+  return graphCollection(`/${encodeURIComponent(pageId)}/leadgen_forms${qs({ limit: options?.limit ?? 50 })}`, token, 5);
+}
+
+export async function metaListFormLeads(token: string, formId: string, options?: { since?: string; until?: string; limit?: number }) {
+  return graphCollection(`/${encodeURIComponent(formId)}/leads${qs({
+    fields: "id,created_time,field_data,ad_id,form_id",
+    since: options?.since,
+    until: options?.until,
+    limit: options?.limit ?? 100,
+  })}`, token, 10);
+}
+
+/** Recursos de anúncios. Requer token de sistema/usuário com ads_read ou ads_management. */
+export async function metaListAdAccounts(token: string) {
+  return graphCollection(`/me/adaccounts${qs({ fields: "id,name,account_status,currency", limit: 50 })}`, token, 5);
+}
+
+export async function metaListAdCampaigns(token: string, adAccountId: string, options?: { limit?: number }) {
+  const account = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  return graphCollection(`/${encodeURIComponent(account)}/campaigns${qs({ fields: "id,name,status,effective_status,objective,updated_time", limit: options?.limit ?? 100 })}`, token, 10);
+}
+
+export async function metaListAdInsights(token: string, adAccountId: string, options?: { datePreset?: string; since?: string; until?: string; level?: string }) {
+  const account = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  return graph(`/${encodeURIComponent(account)}/insights${qs({ fields: "campaign_id,campaign_name,impressions,reach,clicks,spend,actions,ctr,cpc", date_preset: options?.datePreset ?? "last_7d", since: options?.since, until: options?.until, level: options?.level ?? "campaign" })}`, token, { method: "GET" });
+}
+
+export async function metaUpdateCampaignStatus(token: string, campaignId: string, status: "ACTIVE" | "PAUSED" | "ARCHIVED") {
+  return graph(`/${encodeURIComponent(campaignId)}`, token, { method: "POST", body: JSON.stringify({ status }) });
 }
 
 /** Envia texto para um PSID (Messenger) ou IGSID (Instagram Direct). */
@@ -251,8 +390,8 @@ export async function metaSubscribePage(token: string, pageId: string) {
   const cleanToken = normalizeToken(token);
   const ig = isInstagramToken(cleanToken);
   const fields = ig
-    ? "messages,messaging_postbacks"
-    : "messages,messaging_postbacks,messaging_optins,message_deliveries,message_reads";
+    ? "messages,messaging_postbacks,comments,mentions"
+    : "messages,messaging_postbacks,messaging_optins,message_deliveries,message_reads,feed,leadgen";
   const path = ig
     ? `/me/subscribed_apps?subscribed_fields=${fields}`
     : `/${encodeURIComponent(pageId)}/subscribed_apps?subscribed_fields=${fields}`;

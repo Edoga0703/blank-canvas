@@ -109,6 +109,7 @@ import { Route as ApiPublicHooksProcessCampaignsRouteImport } from './routes/api
 import { Route as ApiPublicHooksProcessKanbanReguasRouteImport } from './routes/api/public/hooks/process-kanban-reguas'
 import { Route as ApiPublicHooksProcessRelatorioIaRouteImport } from './routes/api/public/hooks/process-relatorio-ia'
 import { Route as ApiPublicHooksProcessRetryQueueRouteImport } from './routes/api/public/hooks/process-retry-queue'
+import { Route as ApiPublicHooksMetaSyncRouteImport } from './routes/api/public/hooks/meta-sync'
 import { Route as ApiPublicHooksWhatsappWatchdogRouteImport } from './routes/api/public/hooks/whatsapp-watchdog'
 import { Route as ApiPublicMetaOauthCallbackRouteImport } from './routes/api/public/meta-oauth.callback'
 import { Route as ApiPublicV1SplatRouteImport } from './routes/api/public/v1/$'
@@ -634,6 +635,11 @@ const ApiPublicHooksProcessRetryQueueRoute =
     path: '/api/public/hooks/process-retry-queue',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksMetaSyncRoute = ApiPublicHooksMetaSyncRouteImport.update({
+  id: '/api/public/hooks/meta-sync',
+  path: '/api/public/hooks/meta-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksWhatsappWatchdogRoute =
   ApiPublicHooksWhatsappWatchdogRouteImport.update({
     id: '/api/public/hooks/whatsapp-watchdog',
@@ -769,6 +775,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/process-kanban-reguas': typeof ApiPublicHooksProcessKanbanReguasRoute
   '/api/public/hooks/process-relatorio-ia': typeof ApiPublicHooksProcessRelatorioIaRoute
   '/api/public/hooks/process-retry-queue': typeof ApiPublicHooksProcessRetryQueueRoute
+  '/api/public/hooks/meta-sync': typeof ApiPublicHooksMetaSyncRoute
   '/api/public/hooks/whatsapp-watchdog': typeof ApiPublicHooksWhatsappWatchdogRoute
   '/api/public/meta-oauth/callback': typeof ApiPublicMetaOauthCallbackRoute
   '/api/public/v1/$': typeof ApiPublicV1SplatRoute
@@ -875,6 +882,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/process-kanban-reguas': typeof ApiPublicHooksProcessKanbanReguasRoute
   '/api/public/hooks/process-relatorio-ia': typeof ApiPublicHooksProcessRelatorioIaRoute
   '/api/public/hooks/process-retry-queue': typeof ApiPublicHooksProcessRetryQueueRoute
+  '/api/public/hooks/meta-sync': typeof ApiPublicHooksMetaSyncRoute
   '/api/public/hooks/whatsapp-watchdog': typeof ApiPublicHooksWhatsappWatchdogRoute
   '/api/public/meta-oauth/callback': typeof ApiPublicMetaOauthCallbackRoute
   '/api/public/v1/$': typeof ApiPublicV1SplatRoute
@@ -984,6 +992,7 @@ export interface FileRoutesById {
   '/api/public/hooks/process-kanban-reguas': typeof ApiPublicHooksProcessKanbanReguasRoute
   '/api/public/hooks/process-relatorio-ia': typeof ApiPublicHooksProcessRelatorioIaRoute
   '/api/public/hooks/process-retry-queue': typeof ApiPublicHooksProcessRetryQueueRoute
+  '/api/public/hooks/meta-sync': typeof ApiPublicHooksMetaSyncRoute
   '/api/public/hooks/whatsapp-watchdog': typeof ApiPublicHooksWhatsappWatchdogRoute
   '/api/public/meta-oauth/callback': typeof ApiPublicMetaOauthCallbackRoute
   '/api/public/v1/$': typeof ApiPublicV1SplatRoute
@@ -1367,6 +1376,7 @@ export interface RootRouteChildren {
   ApiPublicHooksProcessKanbanReguasRoute: typeof ApiPublicHooksProcessKanbanReguasRoute
   ApiPublicHooksProcessRelatorioIaRoute: typeof ApiPublicHooksProcessRelatorioIaRoute
   ApiPublicHooksProcessRetryQueueRoute: typeof ApiPublicHooksProcessRetryQueueRoute
+  ApiPublicHooksMetaSyncRoute: typeof ApiPublicHooksMetaSyncRoute
   ApiPublicHooksWhatsappWatchdogRoute: typeof ApiPublicHooksWhatsappWatchdogRoute
   ApiPublicMetaOauthCallbackRoute: typeof ApiPublicMetaOauthCallbackRoute
   ApiPublicV1SplatRoute: typeof ApiPublicV1SplatRoute
@@ -2077,6 +2087,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksProcessRetryQueueRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/meta-sync': {
+      id: '/api/public/hooks/meta-sync'
+      path: '/api/public/hooks/meta-sync'
+      fullPath: '/api/public/hooks/meta-sync'
+      preLoaderRoute: typeof ApiPublicHooksMetaSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/whatsapp-watchdog': {
       id: '/api/public/hooks/whatsapp-watchdog'
       path: '/api/public/hooks/whatsapp-watchdog'
@@ -2305,6 +2322,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksProcessKanbanReguasRoute,
   ApiPublicHooksProcessRelatorioIaRoute: ApiPublicHooksProcessRelatorioIaRoute,
   ApiPublicHooksProcessRetryQueueRoute: ApiPublicHooksProcessRetryQueueRoute,
+  ApiPublicHooksMetaSyncRoute: ApiPublicHooksMetaSyncRoute,
   ApiPublicHooksWhatsappWatchdogRoute: ApiPublicHooksWhatsappWatchdogRoute,
   ApiPublicMetaOauthCallbackRoute: ApiPublicMetaOauthCallbackRoute,
   ApiPublicV1SplatRoute: ApiPublicV1SplatRoute,

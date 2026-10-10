@@ -66,6 +66,24 @@ export async function storeIncomingUazapiMedia(params: {
   const rawBase64 = downloaded.base64.replace(/^data:[^;]+;base64,/, "");
   const bytes = Uint8Array.from(Buffer.from(rawBase64, "base64"));
 
+  // R2 is opt-in until the first production upload is validated. The current
+  // Supabase bucket remains the fallback so old installations keep working.
+  if (process.env.MEDIA_STORAGE_BACKEND?.trim().toLowerCase() === "r2") {
+    const { createR2DownloadUrl, isR2Configured, storeMediaObject } = await import("@/lib/storage/r2.server");
+    if (!isR2Configured()) throw new Error("MEDIA_STORAGE_BACKEND=r2, mas as credenciais R2 estão incompletas.");
+    const stored = await storeMediaObject({
+      companyId: params.companyId,
+      bytes,
+      mimeType: mime,
+      fileName: downloaded.fileName || `${safeMessageId}.${extension}`,
+    });
+    return {
+      url: stored.storageUrl || createR2DownloadUrl(stored.storageKey),
+      mime,
+      name: stored.fileName,
+    };
+  }
+
   const { error: uploadError } = await supabaseAdmin.storage
     .from("chat-media")
     .upload(path, bytes, { contentType: mime, upsert: true });

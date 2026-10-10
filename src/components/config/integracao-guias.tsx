@@ -163,7 +163,7 @@ export function IntegracaoGuias() {
             <>Acesse <strong>developers.facebook.com</strong> e abra (ou crie) o seu App do tipo Empresa.</>,
             <>No menu, adicione o produto <strong>Webhooks</strong> e escolha o objeto <strong>Page</strong>.</>,
             <>Em <strong>Callback URL</strong>, cole: <code className="break-all">{metaWebhook}</code></>,
-            <>Em <strong>Verify Token</strong>, informe: <code>metrix_crm_leads_verify</code> e clique em Verificar e salvar.</>,
+            <>Em <strong>Verify Token</strong>, informe o mesmo valor de <code>META_WEBHOOK_VERIFY_TOKEN</code> configurado no servidor e clique em Verificar e salvar.</>,
             <>Assine o campo <strong>leadgen</strong>.</>,
             <>Em <strong>Permissões</strong>, solicite <code>leads_retrieval</code>, <code>pages_show_list</code> e <code>pages_manage_metadata</code>.</>,
             <>Conecte a página do cliente e teste pelo <strong>Lead Ads Testing Tool</strong> da Meta.</>,

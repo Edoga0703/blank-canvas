@@ -4632,6 +4632,138 @@ export type Database = {
           },
         ]
       }
+      message_attachments: {
+        Row: {
+          attachment_key: string
+          company_id: string
+          created_at: string
+          file_name: string | null
+          id: string
+          kind: string
+          mensagem_id: string
+          mime_type: string | null
+          provider_attachment_id: string | null
+          provider_url: string | null
+          sha256: string | null
+          size_bytes: number | null
+          storage_key: string | null
+          storage_url: string | null
+        }
+        Insert: {
+          attachment_key: string
+          company_id: string
+          created_at?: string
+          file_name?: string | null
+          id?: string
+          kind: string
+          mensagem_id: string
+          mime_type?: string | null
+          provider_attachment_id?: string | null
+          provider_url?: string | null
+          sha256?: string | null
+          size_bytes?: number | null
+          storage_key?: string | null
+          storage_url?: string | null
+        }
+        Update: {
+          attachment_key?: string
+          company_id?: string
+          created_at?: string
+          file_name?: string | null
+          id?: string
+          kind?: string
+          mensagem_id?: string
+          mime_type?: string | null
+          provider_attachment_id?: string | null
+          provider_url?: string | null
+          sha256?: string | null
+          size_bytes?: number | null
+          storage_key?: string | null
+          storage_url?: string | null
+        }
+        Relationships: []
+      }
+      message_status_events: {
+        Row: {
+          company_id: string
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          external_message_id: string
+          id: string
+          mensagem_id: string | null
+          occurred_at: string
+          raw_payload: Json | null
+          status: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          external_message_id: string
+          id?: string
+          mensagem_id?: string | null
+          occurred_at?: string
+          raw_payload?: Json | null
+          status: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          external_message_id?: string
+          id?: string
+          mensagem_id?: string | null
+          occurred_at?: string
+          raw_payload?: Json | null
+          status?: string
+        }
+        Relationships: []
+      }
+      messaging_inbox_events: {
+        Row: {
+          company_id: string | null
+          error_message: string | null
+          external_connection_id: string | null
+          external_event_id: string
+          id: string
+          normalized_count: number
+          processed_at: string | null
+          provider: string
+          raw_payload: Json
+          received_at: string
+          status: string
+        }
+        Insert: {
+          company_id?: string | null
+          error_message?: string | null
+          external_connection_id?: string | null
+          external_event_id: string
+          id?: string
+          normalized_count?: number
+          processed_at?: string | null
+          provider: string
+          raw_payload: Json
+          received_at?: string
+          status?: string
+        }
+        Update: {
+          company_id?: string | null
+          error_message?: string | null
+          external_connection_id?: string | null
+          external_event_id?: string
+          id?: string
+          normalized_count?: number
+          processed_at?: string | null
+          provider?: string
+          raw_payload?: Json
+          received_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       message_hsm_template: {
         Row: {
           botoes: Json

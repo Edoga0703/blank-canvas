@@ -227,10 +227,10 @@ export function IntegracoesTab() {
             </TabsContent>
             <TabsContent value="meta" className="mt-3">
               <SnippetBox code={origin + "/api/public/meta-leads-webhook"} onCopy={() => copy(origin + "/api/public/meta-leads-webhook")} />
-              <p className="text-xs text-muted-foreground mt-2">Use esta URL como Webhook nas configurações do seu App na Meta (campo "leadgen"). O Token de Verificação padrão é <code>metrix_crm_leads_verify</code>.</p>
+              <p className="text-xs text-muted-foreground mt-2">Use esta URL como Webhook nas configurações do seu App na Meta (campo "leadgen"). O Token de Verificação deve ser exatamente o valor configurado em <code>META_WEBHOOK_VERIFY_TOKEN</code> no servidor.</p>
               <Passos itens={[
                 <>Acesse <strong>developers.facebook.com</strong>, abra (ou crie) um App do tipo Empresa e adicione o produto <strong>Webhooks</strong> (objeto <em>Page</em>).</>,
-                <>Em <strong>Callback URL</strong> cole a URL acima; em <strong>Verify Token</strong> informe <code>metrix_crm_leads_verify</code> e salve.</>,
+                <>Em <strong>Callback URL</strong> cole a URL acima; em <strong>Verify Token</strong> informe o mesmo valor de <code>META_WEBHOOK_VERIFY_TOKEN</code> e salve.</>,
                 <>Assine o campo <code>leadgen</code> e solicite as permissões <code>leads_retrieval</code>, <code>pages_show_list</code> e <code>pages_manage_metadata</code>.</>,
                 <>Conecte a página e teste pelo <strong>Lead Ads Testing Tool</strong> da Meta.</>,
               ]} />
