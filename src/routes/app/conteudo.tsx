@@ -35,6 +35,7 @@ function ConteudoPage() {
           void navigate({
             search: { channel: channel || undefined, post: post || undefined },
             replace: true,
+            resetScroll: false,
           });
         }}
       />

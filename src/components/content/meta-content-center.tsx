@@ -179,7 +179,14 @@ export function MetaContentCenter({ requestedChannel, requestedPost, onRouteSele
     } finally {
       setLoading(false);
     }
-  }, [loadChannels, requestedChannel]);
+  }, [loadChannels]);
+
+  // Sincroniza canal se a rota ou requestedChannel mudar externamente
+  useEffect(() => {
+    if (requestedChannel && channels.some((item) => item.instanceName === requestedChannel)) {
+      setSelected((current) => (current !== requestedChannel ? requestedChannel : current));
+    }
+  }, [requestedChannel, channels]);
 
   const refreshContent = useCallback(
     async (instanceName: string) => {
@@ -236,9 +243,6 @@ export function MetaContentCenter({ requestedChannel, requestedPost, onRouteSele
     if (!selected) return;
     handledRequest.current = "";
     void refreshContent(selected);
-    onRouteSelection?.(selected, requestedPost);
-    // A rota é sincronizada ao trocar o canal; requestedPost não deve reiniciar a carga.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, refreshContent]);
 
   useEffect(() => {
@@ -340,26 +344,44 @@ export function MetaContentCenter({ requestedChannel, requestedPost, onRouteSele
     <div className="space-y-5">
       <Card>
         <CardContent className="grid gap-3 pt-6 lg:grid-cols-[minmax(240px,1fr)_minmax(260px,1fr)_auto] lg:items-end">
-          <div>
-            <Label htmlFor="content-channel">Canal</Label>
-            <select
-              id="content-channel"
-              value={selected}
-              onChange={(event) => {
-                setOpenedPost(null);
-                const next = event.target.value;
-                setSelected(next);
-                onRouteSelection?.(next);
-              }}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              {channels.map((channel) => (
-                <option key={channel.instanceName} value={channel.instanceName}>
-                  {channel.displayName || channel.instanceName} ·{" "}
-                  {channel.canal === "instagram" ? "Instagram" : "Facebook"}
-                </option>
-              ))}
-            </select>
+          <div className="space-y-1.5">
+            <Label>Canal</Label>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {channels.map((channel) => {
+                const isSelected = channel.instanceName === selected;
+                const isInsta = channel.canal === "instagram";
+                return (
+                  <button
+                    key={channel.instanceName}
+                    type="button"
+                    onClick={() => {
+                      if (channel.instanceName === selected) return;
+                      setOpenedPost(null);
+                      setOpenedComments([]);
+                      setSelected(channel.instanceName);
+                      onRouteSelection?.(channel.instanceName);
+                    }}
+                    className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-all ${
+                      isSelected
+                        ? isInsta
+                          ? "border-pink-500 bg-pink-50 text-pink-700 shadow-xs dark:bg-pink-950/40 dark:text-pink-300"
+                          : "border-blue-600 bg-blue-50 text-blue-700 shadow-xs dark:bg-blue-950/40 dark:text-blue-300"
+                        : "border-border bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    }`}
+                  >
+                    {isInsta ? (
+                      <Instagram className={`size-4 ${isSelected ? "text-pink-600" : ""}`} />
+                    ) : (
+                      <Facebook className={`size-4 ${isSelected ? "text-blue-600" : ""}`} />
+                    )}
+                    <span>{channel.displayName || channel.instanceName}</span>
+                    <Badge variant={isSelected ? "default" : "outline"} className="text-[10px] px-1 py-0">
+                      {isInsta ? "Instagram" : "Facebook"}
+                    </Badge>
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div>
             <Label htmlFor="content-search">Buscar publicação</Label>
@@ -456,11 +478,22 @@ export function MetaContentCenter({ requestedChannel, requestedPost, onRouteSele
       </div>
 
       {contentLoading ? (
-        <Loader2 className="mx-auto my-16 size-7 animate-spin" />
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i} className="animate-pulse overflow-hidden">
+              <div className="h-48 w-full bg-muted/60" />
+              <CardContent className="space-y-3 pt-4">
+                <div className="h-4 w-3/4 rounded bg-muted/60" />
+                <div className="h-4 w-1/2 rounded bg-muted/60" />
+                <div className="h-8 w-full rounded bg-muted/60" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       ) : filteredPosts.length === 0 ? (
         <Card>
           <CardContent className="py-14 text-center text-sm text-muted-foreground">
-            Nenhuma publicação encontrada.
+            Nenhuma publicação encontrada para este canal.
           </CardContent>
         </Card>
       ) : (
