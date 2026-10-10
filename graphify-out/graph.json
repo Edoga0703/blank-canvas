@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T03:59:33.178247+00:00",
+  "generated_at": "2026-10-10T04:54:44.628910+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -1567,7 +1567,7 @@
     },
     {
       "path": "src/integrations/supabase/client.ts",
-      "bytes": 3947
+      "bytes": 3785
     },
     {
       "path": "src/integrations/supabase/auth-attacher.ts",
