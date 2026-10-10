@@ -88,13 +88,13 @@ async function pushMetaNotification(admin: Admin, input: {
     .eq("company_id", input.companyId).eq("tipo", input.tipo).eq("ref_id", input.refId).limit(1).maybeSingle();
   if (lookupError) throw lookupError;
   if (existing?.id) return false;
-  const { error } = await admin.from("notificacao").insert({
-    company_id: input.companyId,
-    tipo: input.tipo,
-    titulo: input.titulo,
-    descricao: input.descricao,
-    link: input.link,
-    ref_id: input.refId,
+  const { error } = await admin.rpc("push_notificacao", {
+    _company_id: input.companyId,
+    _tipo: input.tipo,
+    _titulo: input.titulo,
+    _descricao: input.descricao,
+    _link: input.link,
+    _ref_id: input.refId,
   });
   if (error) throw error;
   return true;
@@ -228,7 +228,7 @@ export async function syncMetaChannel(admin: Admin, instance: MetaInstance, opti
   const currentEngagement: EngagementSnapshot = { ...previousEngagement };
 
   try {
-    const conversations = await metaListConversations(instance.instance_token, instance.phone_number_id, { since, until, limit: maxConversations });
+    const conversations = await metaListConversations(instance.instance_token, instance.phone_number_id, { since, until, limit: maxConversations, instagram: channel === "instagram" });
     for (const conversation of conversations.data.slice(0, maxConversations)) {
       const messages = Array.isArray(conversation?.messages?.data)
         ? conversation.messages.data
@@ -244,7 +244,7 @@ export async function syncMetaChannel(admin: Admin, instance: MetaInstance, opti
   try {
     // Sempre revisitamos as publicações recentes. Filtrar pela data de criação da
     // publicação faria perder um comentário novo feito em um post mais antigo.
-    const posts = await metaListPagePosts(instance.instance_token, instance.phone_number_id, { limit: maxPosts });
+    const posts = await metaListPagePosts(instance.instance_token, instance.phone_number_id, { limit: maxPosts, instagram: channel === "instagram" });
     result.postsSeen = posts.data.length;
     for (const post of posts.data.slice(0, maxPosts)) {
       const postId = String(post?.id ?? "");
@@ -276,7 +276,7 @@ export async function syncMetaChannel(admin: Admin, instance: MetaInstance, opti
 
       const comments = Array.isArray(post?.comments?.data)
         ? post.comments.data
-        : (await metaListPostComments(instance.instance_token, String(post.id), { limit: 100 })).data;
+        : (await metaListPostComments(instance.instance_token, String(post.id), { limit: 100, instagram: channel === "instagram" })).data;
       const commentsAndReplies = comments.flatMap((comment: any) => [comment, ...commentReplies(comment)]);
       for (const comment of commentsAndReplies) {
         const inserted = await persistComment(admin, instance, comment, channel);

@@ -61,13 +61,19 @@ async function pushMetaNotification(admin: any, input: {
   link: string;
   refId: string;
 }) {
-  const { data: existing } = await admin.from("notificacao").select("id")
+  const { data: existing, error: lookupError } = await admin.from("notificacao").select("id")
     .eq("company_id", input.companyId).eq("tipo", input.tipo).eq("ref_id", input.refId).limit(1).maybeSingle();
+  if (lookupError) throw lookupError;
   if (existing?.id) return;
-  await admin.from("notificacao").insert({
-    company_id: input.companyId, tipo: input.tipo, titulo: input.titulo,
-    descricao: input.descricao, link: input.link, ref_id: input.refId,
+  const { error } = await admin.rpc("push_notificacao", {
+    _company_id: input.companyId,
+    _tipo: input.tipo,
+    _titulo: input.titulo,
+    _descricao: input.descricao,
+    _link: input.link,
+    _ref_id: input.refId,
   });
+  if (error) throw error;
 }
 
 export const Route = createFileRoute("/api/public/meta-webhook")({

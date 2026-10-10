@@ -167,7 +167,10 @@ export const connectMetaOAuthTargets = createServerFn({ method: "POST" })
       }
 
       // Assina o app nos eventos de mensagem da Página (cobre Messenger + IG vinculado).
-      await metaSubscribePage(target.pageToken, target.pageId);
+      await metaSubscribePage(target.pageToken, target.pageId, { instagram: false });
+      if (data.withInstagram && target.igId) {
+        await metaSubscribePage(target.pageToken, target.igId, { instagram: true });
+      }
     }
 
     await (supabaseAdmin as any)

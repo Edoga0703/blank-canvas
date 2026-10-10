@@ -105,9 +105,10 @@ function qs(values: Record<string, string | number | boolean | null | undefined>
 }
 
 /** Conversas e mensagens do Messenger/Instagram para sincronização inicial e reconciliação. */
-export async function metaListConversations(token: string, pageId: string, options?: { since?: string; until?: string; limit?: number }) {
+export async function metaListConversations(token: string, pageId: string, options?: { since?: string; until?: string; limit?: number; instagram?: boolean }) {
+  const instagram = options?.instagram ?? isInstagramToken(normalizeToken(token));
   return graphCollection(`/${encodeURIComponent(pageId)}/conversations${qs({
-    platform: isInstagramToken(normalizeToken(token)) ? "instagram" : "messenger",
+    platform: instagram ? "instagram" : "messenger",
     fields: "id,updated_time,participants,snippet,messages.limit(100){id,created_time,from,to,message,attachments,sticker}",
     since: options?.since,
     until: options?.until,
@@ -131,8 +132,8 @@ function metaPostFields(instagram: boolean) {
 }
 
 /** Feed, comentários e métricas de uma Página. As permissões dependem do modo do app e da revisão Meta. */
-export async function metaListPagePosts(token: string, pageId: string, options?: { since?: string; until?: string; limit?: number }) {
-  const instagram = isInstagramToken(normalizeToken(token));
+export async function metaListPagePosts(token: string, pageId: string, options?: { since?: string; until?: string; limit?: number; instagram?: boolean }) {
+  const instagram = options?.instagram ?? isInstagramToken(normalizeToken(token));
   return graphCollection(`/${encodeURIComponent(pageId)}/${instagram ? "media" : "feed"}${qs({
     fields: metaPostFields(instagram),
     since: options?.since,
@@ -142,13 +143,13 @@ export async function metaListPagePosts(token: string, pageId: string, options?:
 }
 
 /** Recupera uma publicação específica para abrir links vindos da notificação. */
-export async function metaGetPost(token: string, postId: string) {
-  const instagram = isInstagramToken(normalizeToken(token));
+export async function metaGetPost(token: string, postId: string, options?: { instagram?: boolean }) {
+  const instagram = options?.instagram ?? isInstagramToken(normalizeToken(token));
   return graph(`/${encodeURIComponent(postId)}${qs({ fields: metaPostFields(instagram) })}`, token, { method: "GET" });
 }
 
-export async function metaListPostComments(token: string, postId: string, options?: { limit?: number }) {
-  const instagram = isInstagramToken(normalizeToken(token));
+export async function metaListPostComments(token: string, postId: string, options?: { limit?: number; instagram?: boolean }) {
+  const instagram = options?.instagram ?? isInstagramToken(normalizeToken(token));
   return graphCollection(`/${encodeURIComponent(postId)}/comments${qs({
     fields: instagram
       ? "id,text,timestamp,username,from,like_count,replies.limit(100){id,text,timestamp,username,from}"
@@ -336,6 +337,8 @@ export async function metaFetchPage(token: string, pageId?: string | null) {
       id: String(json?.user_id ?? json?.id ?? ""),
       name: (json?.name || json?.username || null) as string | null,
       token: cleanToken,
+      instagramId: String(json?.user_id ?? json?.id ?? ""),
+      instagramName: (json?.username || json?.name || null) as string | null,
     };
   }
 
@@ -350,10 +353,22 @@ export async function metaFetchPage(token: string, pageId?: string | null) {
       throw new MetaApiError("A Página selecionada não está disponível neste token.", 400);
     }
     if (page?.id) {
+      const pageToken = String(page.access_token || cleanToken);
+      let instagramId: string | null = null;
+      let instagramName: string | null = null;
+      try {
+        const linked = await graph(`/${encodeURIComponent(page.id)}?fields=instagram_business_account{id,username}`, pageToken, { method: "GET" });
+        instagramId = linked?.instagram_business_account?.id ? String(linked.instagram_business_account.id) : null;
+        instagramName = (linked?.instagram_business_account?.username || null) as string | null;
+      } catch {
+        // A Página sem Instagram vinculado ou sem permissão continua válida para Messenger.
+      }
       return {
         id: String(page.id),
         name: (page.name || null) as string | null,
-        token: String(page.access_token || cleanToken),
+        token: pageToken,
+        instagramId,
+        instagramName,
       };
     }
     throw new MetaApiError(
@@ -396,14 +411,16 @@ export async function metaFetchPage(token: string, pageId?: string | null) {
     id: String(json?.id ?? ""),
     name: (json?.name || null) as string | null,
     token: cleanToken,
+    instagramId: null,
+    instagramName: null,
   };
 }
 
 
 /** Assina o app nos eventos de mensagem da Página / conta IG. Sem isso a Meta não envia webhooks. */
-export async function metaSubscribePage(token: string, pageId: string) {
+export async function metaSubscribePage(token: string, pageId: string, options?: { instagram?: boolean }) {
   const cleanToken = normalizeToken(token);
-  const ig = isInstagramToken(cleanToken);
+  const ig = options?.instagram ?? isInstagramToken(cleanToken);
   const fields = ig
     ? "messages,messaging_postbacks,message_reactions,comments,mentions"
     : "messages,messaging_postbacks,messaging_optins,message_deliveries,message_reads,message_reactions,feed,leadgen";

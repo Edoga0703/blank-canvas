@@ -24,7 +24,7 @@ export const listMetaContent = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const channel = await channelFor(supabaseAdmin, companyId, data.instanceName);
     const { metaListPagePosts } = await import("./meta.server");
-    const posts = await metaListPagePosts(channel.instance_token, channel.phone_number_id, { since: data.since, until: data.until, limit: 50 });
+    const posts = await metaListPagePosts(channel.instance_token, channel.phone_number_id, { since: data.since, until: data.until, limit: 50, instagram: channel.provider === "meta_instagram" });
     return { posts: posts.data, pages: posts.pages };
   });
 
@@ -42,7 +42,7 @@ export const listMetaPostComments = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const channel = await channelFor(supabaseAdmin, companyId, data.instanceName);
     const { metaListPostComments } = await import("./meta.server");
-    const comments = await metaListPostComments(channel.instance_token, data.postId, { limit: 100 });
+    const comments = await metaListPostComments(channel.instance_token, data.postId, { limit: 100, instagram: channel.provider === "meta_instagram" });
     return { comments: comments.data, pages: comments.pages };
   });
 
@@ -60,7 +60,7 @@ export const getMetaContentPost = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const channel = await channelFor(supabaseAdmin, companyId, data.instanceName);
     const { metaGetPost } = await import("./meta.server");
-    return { post: await metaGetPost(channel.instance_token, data.postId) };
+    return { post: await metaGetPost(channel.instance_token, data.postId, { instagram: channel.provider === "meta_instagram" }) };
   });
 
 /** Consulta métricas de Página mantendo o token exclusivamente no servidor. */
