@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T03:14:18.933424+00:00",
+  "generated_at": "2026-10-10T03:32:53.432396+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -731,7 +731,7 @@
     },
     {
       "path": "src/lib/meta-publish.functions.ts",
-      "bytes": 5053
+      "bytes": 6160
     },
     {
       "path": "src/lib/billing-checkout.functions.ts",
@@ -1051,7 +1051,7 @@
     },
     {
       "path": "src/lib/meta-publish.server.ts",
-      "bytes": 6990
+      "bytes": 6872
     },
     {
       "path": "src/lib/dashboard-layout.functions.ts",
@@ -2435,7 +2435,7 @@
     },
     {
       "path": "src/routes/app/publicacoes.tsx",
-      "bytes": 22485
+      "bytes": 22658
     },
     {
       "path": "src/routes/app/treinamentos.index.tsx",
@@ -4622,6 +4622,10 @@
     {
       "source": "src/lib/meta-publish.functions.ts",
       "target": "./meta-publish.server"
+    },
+    {
+      "source": "src/lib/meta-publish.functions.ts",
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/billing-checkout.functions.ts",
@@ -13058,10 +13062,6 @@
     {
       "source": "src/routes/app/publicacoes.tsx",
       "target": "@/lib/meta-publish.functions"
-    },
-    {
-      "source": "src/routes/app/publicacoes.tsx",
-      "target": "@/lib/storage/r2.functions"
     },
     {
       "source": "src/routes/app/publicacoes.tsx",
