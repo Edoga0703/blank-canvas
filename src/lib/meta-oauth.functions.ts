@@ -9,10 +9,10 @@ export const startMetaOAuth = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
-    const { sanitizeOrigin, signState, buildAuthUrl } = await import("./meta-oauth.server");
+    const { ensureMetaSecrets, sanitizeOrigin, signState, buildAuthUrl } = await import("./meta-oauth.server");
 
-    const origin = sanitizeOrigin(data.origin);
-    if (!origin) return { ok: false as const, error: "Origem inválida." };
+    await ensureMetaSecrets();
+    const origin = sanitizeOrigin(data.origin) || "https://capiconversa.com";
 
     const nonce = crypto.randomUUID();
     const state = await signState({ c: companyId, u: userId, n: nonce, o: origin, t: Date.now() });

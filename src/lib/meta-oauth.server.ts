@@ -21,26 +21,45 @@ function configuredOrigins() {
 }
 
 /** Só aceita origens conhecidas do próprio app (evita open redirect / redirect_uri forjado). */
-export function sanitizeOrigin(raw: string | null | undefined): string | null {
-  if (!raw) return null;
+export function sanitizeOrigin(raw: string | null | undefined): string {
+  if (!raw) return "https://capiconversa.com";
   try {
-    const url = new URL(raw);
+    let clean = raw.trim();
+    if (!clean.startsWith("http://") && !clean.startsWith("https://")) {
+      clean = `https://${clean}`;
+    }
+    const url = new URL(clean);
     const loopback = ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
-    if (url.protocol !== "https:" && !loopback) return null;
-    const host = url.hostname;
+    const host = url.hostname.toLowerCase();
+
+    // Se é capiconversa.com ou subdomínio
+    if (host === "capiconversa.com" || host.endsWith(".capiconversa.com")) {
+      return `https://${host}`;
+    }
+
+    // Se é plataforma Lovable
+    if (PLATFORM_HOST_SUFFIXES.some((s) => host === s.replace(/^\./, "") || host.endsWith(s))) {
+      return `https://${host}`;
+    }
+
+    if (loopback) {
+      return url.origin;
+    }
+
     const allOrigins = [
       ...configuredOrigins(),
       ...(cachedMetaConfig?.allowedOrigins || []),
       "https://capiconversa.com",
       "https://www.capiconversa.com",
     ];
-    const ok =
-      loopback ||
-      allOrigins.includes(url.origin) ||
-      PLATFORM_HOST_SUFFIXES.some((s) => host === s.replace(/^\./, "") || host.endsWith(s));
-    return ok ? url.origin : null;
+
+    if (allOrigins.includes(url.origin)) {
+      return url.origin;
+    }
+
+    return "https://capiconversa.com";
   } catch {
-    return null;
+    return "https://capiconversa.com";
   }
 }
 
