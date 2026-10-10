@@ -26,7 +26,24 @@ Se `META_WEBHOOK_VERIFY_TOKEN` ou os App Secrets não estiverem no ambiente de e
 3. Mensagens e comentários são normalizados para `whatsapp-webhook`; por isso continuam usando cards, pipeline, régua e motor de IA/Drael quando esse motor estiver configurado.
 4. Entregas e leituras são gravadas em `message_status_events` e refletem o status local da mensagem (`enviado`, `recebido`, `visto`).
 5. Reações atualizam `mensagens.reacao` pela mensagem original (`mid`) e não abrem uma nova resposta da IA.
-6. O job periódico usa cursores em `messaging_inbox_events` e só avança o cursor quando o bloco terminou sem erros.
+6. O job periódico revisita as publicações recentes, recupera comentários e respostas perdidos e cria notificações deduplicadas pelo ID do comentário.
+7. Como o Instagram não oferece um evento individual confiável para cada curtida em publicação, o job compara `like_count` com o checkpoint anterior e avisa quando o total aumenta. A primeira execução apenas cria a base de comparação.
+8. O job usa cursores em `messaging_inbox_events` e só avança o cursor quando todos os blocos terminam sem erros.
+
+## Agendamento do respaldo
+
+O workflow `.github/workflows/meta-sync.yml` chama o endpoint a cada 10 minutos. Para ativá-lo no GitHub, configure:
+
+- Secret de Actions `CRON_SECRET`: o mesmo valor do servidor.
+- Variable de Actions `PUBLIC_APP_URL`: opcional; por padrão usa `https://capiconversa.com`.
+
+O endpoint também pode ser chamado por qualquer cron da VPS:
+
+```bash
+curl --fail-with-body --request POST \
+  --header "x-cron-secret: $CRON_SECRET" \
+  "https://capiconversa.com/api/public/hooks/meta-sync?limit=50"
+```
 
 As chamadas de publicação, resposta de comentários, insights, anúncios e sincronização manual estão em `src/lib/meta-content.functions.ts` e mantêm os tokens somente no servidor.
 

@@ -127,7 +127,7 @@ export async function metaListConversationMessages(token: string, conversationId
 function metaPostFields(instagram: boolean) {
   return instagram
     ? "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,comments.limit(100){id,text,timestamp,username,from,like_count,replies.limit(100){id,text,timestamp,username,from}}"
-    : "id,message,created_time,permalink_url,attachments,reactions.limit(0).summary(true),comments.limit(100).summary(true){id,message,created_time,from,like_count,parent}";
+    : "id,message,created_time,permalink_url,attachments,reactions.limit(0).summary(true),comments.limit(100).summary(true){id,message,created_time,from,like_count,parent,comments.limit(100){id,message,created_time,from,like_count,parent}}";
 }
 
 /** Feed, comentários e métricas de uma Página. As permissões dependem do modo do app e da revisão Meta. */
@@ -152,7 +152,7 @@ export async function metaListPostComments(token: string, postId: string, option
   return graphCollection(`/${encodeURIComponent(postId)}/comments${qs({
     fields: instagram
       ? "id,text,timestamp,username,from,like_count,replies.limit(100){id,text,timestamp,username,from}"
-      : "id,message,created_time,from,like_count,parent",
+      : "id,message,created_time,from,like_count,parent,comments.limit(100){id,message,created_time,from,like_count,parent}",
     limit: options?.limit ?? 100,
   })}`, token, 10);
 }

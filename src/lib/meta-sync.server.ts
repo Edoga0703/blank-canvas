@@ -27,15 +27,77 @@ type SyncResult = {
   comments: number;
   postsSeen: number;
   leads: number;
+  notifications: number;
+  reactionAlerts: number;
   errors: string[];
 };
+
+type EngagementSnapshot = Record<string, {
+  reactions: number;
+  comments: number;
+  checkedAt: string;
+}>;
 
 function textOf(value: any) {
   return String(value?.message ?? value?.text ?? value?.caption ?? "").trim();
 }
 
 function participantId(value: any) {
-  return String(value?.from?.id ?? value?.sender?.id ?? value?.from?.[0]?.id ?? "");
+  return String(value?.from?.id ?? value?.sender?.id ?? value?.from?.[0]?.id ?? value?.sender_id ?? value?.username ?? "");
+}
+
+function compactText(value: unknown, max = 180) {
+  const text = String(value ?? "").replace(/\s+/g, " ").trim();
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+function contentLink(instanceName: string, postId?: string | null) {
+  const params = new URLSearchParams({ channel: instanceName });
+  if (postId) params.set("post", postId);
+  return `/app/conteudo?${params.toString()}`;
+}
+
+function commentTimestamp(item: any) {
+  const raw = item?.timestamp ?? item?.created_time;
+  if (!raw) return null;
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function commentReplies(item: any) {
+  const replies = item?.replies?.data ?? item?.comments?.data ?? [];
+  return Array.isArray(replies) ? replies : [];
+}
+
+function engagementOf(post: any) {
+  return {
+    reactions: Math.max(0, Number(post?.like_count ?? post?.reactions?.summary?.total_count ?? 0) || 0),
+    comments: Math.max(0, Number(post?.comments_count ?? post?.comments?.summary?.total_count ?? 0) || 0),
+  };
+}
+
+async function pushMetaNotification(admin: Admin, input: {
+  companyId: string;
+  tipo: "comentario_meta" | "reacao_meta";
+  titulo: string;
+  descricao: string;
+  link: string;
+  refId: string;
+}) {
+  const { data: existing, error: lookupError } = await admin.from("notificacao").select("id")
+    .eq("company_id", input.companyId).eq("tipo", input.tipo).eq("ref_id", input.refId).limit(1).maybeSingle();
+  if (lookupError) throw lookupError;
+  if (existing?.id) return false;
+  const { error } = await admin.from("notificacao").insert({
+    company_id: input.companyId,
+    tipo: input.tipo,
+    titulo: input.titulo,
+    descricao: input.descricao,
+    link: input.link,
+    ref_id: input.refId,
+  });
+  if (error) throw error;
+  return true;
 }
 
 function mediaOf(value: any) {
@@ -131,7 +193,7 @@ async function persistMessage(admin: Admin, instance: MetaInstance, item: any, c
 async function persistComment(admin: Admin, instance: MetaInstance, item: any, channel: "instagram" | "messenger") {
   const synthetic = {
     ...item,
-    from: item?.from ?? { id: item?.sender_id, name: item?.from?.name },
+    from: item?.from ?? { id: item?.sender_id ?? item?.username, name: item?.username ?? null },
     message: item?.message ?? item?.text ?? "",
   };
   return persistMessage(admin, instance, synthetic, channel);
@@ -139,7 +201,17 @@ async function persistComment(admin: Admin, instance: MetaInstance, item: any, c
 
 /** Sincroniza histórico e conteúdo público com paginação limitada e checkpoint idempotente. */
 export async function syncMetaChannel(admin: Admin, instance: MetaInstance, options?: { full?: boolean; maxConversations?: number; maxPosts?: number }): Promise<SyncResult> {
-  const result: SyncResult = { instanceId: instance.id, provider: instance.provider, messages: 0, comments: 0, postsSeen: 0, leads: 0, errors: [] };
+  const result: SyncResult = {
+    instanceId: instance.id,
+    provider: instance.provider,
+    messages: 0,
+    comments: 0,
+    postsSeen: 0,
+    leads: 0,
+    notifications: 0,
+    reactionAlerts: 0,
+    errors: [],
+  };
   if (!instance.instance_token || !instance.phone_number_id) {
     result.errors.push("Canal sem token ou page/account id");
     return result;
@@ -148,10 +220,16 @@ export async function syncMetaChannel(admin: Admin, instance: MetaInstance, opti
   const previous = await readCheckpoint(admin, instance.id);
   const since = options?.full ? undefined : (previous.since as string | undefined);
   const until = new Date().toISOString();
+  const maxConversations = options?.maxConversations ?? (options?.full ? 250 : 25);
+  const maxPosts = options?.maxPosts ?? (options?.full ? 100 : 25);
+  const previousEngagement = (previous.engagement && typeof previous.engagement === "object"
+    ? previous.engagement
+    : {}) as EngagementSnapshot;
+  const currentEngagement: EngagementSnapshot = { ...previousEngagement };
 
   try {
-    const conversations = await metaListConversations(instance.instance_token, instance.phone_number_id, { since, until, limit: options?.maxConversations ?? 25 });
-    for (const conversation of conversations.data.slice(0, options?.maxConversations ?? 25)) {
+    const conversations = await metaListConversations(instance.instance_token, instance.phone_number_id, { since, until, limit: maxConversations });
+    for (const conversation of conversations.data.slice(0, maxConversations)) {
       const messages = Array.isArray(conversation?.messages?.data)
         ? conversation.messages.data
         : (await metaListConversationMessages(instance.instance_token, String(conversation.id), { since, until, limit: 100 })).data;
@@ -164,14 +242,69 @@ export async function syncMetaChannel(admin: Admin, instance: MetaInstance, opti
   }
 
   try {
-    const posts = await metaListPagePosts(instance.instance_token, instance.phone_number_id, { since, until, limit: options?.maxPosts ?? 25 });
+    // Sempre revisitamos as publicações recentes. Filtrar pela data de criação da
+    // publicação faria perder um comentário novo feito em um post mais antigo.
+    const posts = await metaListPagePosts(instance.instance_token, instance.phone_number_id, { limit: maxPosts });
     result.postsSeen = posts.data.length;
-    for (const post of posts.data.slice(0, options?.maxPosts ?? 25)) {
+    for (const post of posts.data.slice(0, maxPosts)) {
+      const postId = String(post?.id ?? "");
+      const engagement = engagementOf(post);
+      const previousPost = postId ? previousEngagement[postId] : undefined;
+      if (postId) currentEngagement[postId] = { ...engagement, checkedAt: until };
+
+      // A API do Instagram não entrega um webhook individual confiável para cada
+      // curtida. O aumento do contador funciona como recuperação periódica.
+      if (!options?.full && channel === "instagram" && previousPost && engagement.reactions > previousPost.reactions) {
+        const delta = engagement.reactions - previousPost.reactions;
+        try {
+          const inserted = await pushMetaNotification(admin, {
+            companyId: instance.company_id,
+            tipo: "reacao_meta",
+            titulo: delta === 1 ? "Nova curtida na publicação" : `${delta} novas curtidas na publicação`,
+            descricao: `O total de curtidas aumentou de ${previousPost.reactions} para ${engagement.reactions}.`,
+            link: contentLink(instance.instance_name, postId),
+            refId: `meta:engagement:${postId}:${previousPost.reactions}:${engagement.reactions}:${String(previous.completedAt ?? previous.since ?? "baseline")}`,
+          });
+          if (inserted) {
+            result.notifications += 1;
+            result.reactionAlerts += 1;
+          }
+        } catch (error) {
+          result.errors.push(`notificação de reação ${postId}: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+
       const comments = Array.isArray(post?.comments?.data)
         ? post.comments.data
         : (await metaListPostComments(instance.instance_token, String(post.id), { limit: 100 })).data;
-      for (const comment of comments) {
-        if (await persistComment(admin, instance, comment, channel)) result.comments += 1;
+      const commentsAndReplies = comments.flatMap((comment: any) => [comment, ...commentReplies(comment)]);
+      for (const comment of commentsAndReplies) {
+        const inserted = await persistComment(admin, instance, comment, channel);
+        if (inserted) result.comments += 1;
+
+        const commentId = String(comment?.id ?? "");
+        const authorId = participantId(comment);
+        const createdAt = commentTimestamp(comment);
+        const cursorDate = since ? new Date(since) : null;
+        const happenedAfterCursor = Boolean(createdAt && cursorDate && !Number.isNaN(cursorDate.getTime()) && createdAt >= cursorDate);
+        const shouldNotify = !options?.full && Boolean(since) && authorId !== instance.phone_number_id && (happenedAfterCursor || (!createdAt && inserted));
+        if (!shouldNotify || !commentId) continue;
+
+        const author = compactText(comment?.from?.name ?? comment?.from?.username ?? comment?.username ?? "Alguém", 80);
+        const commentText = compactText(comment?.message ?? comment?.text ?? "", 180);
+        try {
+          const notified = await pushMetaNotification(admin, {
+            companyId: instance.company_id,
+            tipo: "comentario_meta",
+            titulo: "Novo comentário recuperado",
+            descricao: commentText ? `${author}: ${commentText}` : `${author} comentou em uma publicação.`,
+            link: contentLink(instance.instance_name, postId),
+            refId: `meta:comment:${commentId}`,
+          });
+          if (notified) result.notifications += 1;
+        } catch (error) {
+          result.errors.push(`notificação de comentário ${commentId}: ${error instanceof Error ? error.message : String(error)}`);
+        }
       }
     }
   } catch (e) {
@@ -200,7 +333,16 @@ export async function syncMetaChannel(admin: Admin, instance: MetaInstance, opti
 
   // Se algum bloco falhou, não avançamos o cursor além do último ponto confirmado;
   // a próxima execução repete o intervalo e os IDs tornam a gravação idempotente.
-  await checkpoint(admin, instance, { since: result.errors.length ? since : until, normalizedCount: result.messages + result.comments + result.leads, result, completedAt: until });
+  const engagementEntries = Object.entries(result.errors.length ? previousEngagement : currentEngagement)
+    .sort(([, a], [, b]) => b.checkedAt.localeCompare(a.checkedAt))
+    .slice(0, 200);
+  await checkpoint(admin, instance, {
+    since: result.errors.length ? since : until,
+    engagement: Object.fromEntries(engagementEntries),
+    normalizedCount: result.messages + result.comments + result.leads,
+    result,
+    completedAt: result.errors.length ? previous.completedAt : until,
+  });
   return result;
 }
 

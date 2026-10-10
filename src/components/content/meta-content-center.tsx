@@ -55,6 +55,7 @@ type MetaComment = {
   like_count?: number;
   from?: { name?: string; username?: string };
   replies?: { data?: MetaComment[] };
+  comments?: { data?: MetaComment[] };
 };
 
 type MetaPost = {
@@ -602,7 +603,9 @@ export function MetaContentCenter({ requestedChannel, requestedPost, onRouteSele
                         const commentId = String(comment.id ?? "");
                         const replies = Array.isArray(comment.replies?.data)
                           ? comment.replies.data
-                          : [];
+                          : Array.isArray(comment.comments?.data)
+                            ? comment.comments.data
+                            : [];
                         return (
                           <div key={commentId} className="rounded-lg border p-3">
                             <div className="flex items-start justify-between gap-2">
