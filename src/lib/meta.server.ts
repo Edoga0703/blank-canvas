@@ -125,37 +125,74 @@ export async function metaListConversationMessages(token: string, conversationId
   })}`, token, 10);
 }
 
-function metaPostFields(instagram: boolean) {
-  return instagram
-    ? "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,comments.limit(100){id,text,timestamp,username,from,like_count,replies.limit(100){id,text,timestamp,username,from}}"
-    : "id,message,created_time,permalink_url,attachments,reactions.limit(0).summary(true),comments.limit(100).summary(true){id,message,created_time,from,like_count,parent,comments.limit(100){id,message,created_time,from,like_count,parent}}";
+function metaPostFields(instagram: boolean, withEngagement = true) {
+  if (instagram) {
+    return "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,comments.limit(100){id,text,timestamp,username,from,like_count,replies.limit(100){id,text,timestamp,username,from}}";
+  }
+  if (!withEngagement) {
+    return "id,message,created_time,permalink_url,attachments,shares";
+  }
+  return "id,message,created_time,permalink_url,attachments,shares,reactions.limit(0).summary(true),comments.limit(100).summary(true){id,message,created_time,from,like_count,parent,comments.limit(100){id,message,created_time,from,like_count,parent}}";
 }
 
 /** Feed, comentários e métricas de uma Página. As permissões dependem do modo do app e da revisão Meta. */
 export async function metaListPagePosts(token: string, pageId: string, options?: { since?: string; until?: string; limit?: number; instagram?: boolean }) {
   const instagram = options?.instagram ?? isInstagramToken(normalizeToken(token));
-  return graphCollection(`/${encodeURIComponent(pageId)}/${instagram ? "media" : "feed"}${qs({
-    fields: metaPostFields(instagram),
-    since: options?.since,
-    until: options?.until,
-    limit: options?.limit ?? 25,
-  })}`, token, 5);
+  const endpoint = instagram ? "media" : "published_posts";
+
+  try {
+    return await graphCollection(`/${encodeURIComponent(pageId)}/${endpoint}${qs({
+      fields: metaPostFields(instagram, true),
+      since: options?.since,
+      until: options?.until,
+      limit: options?.limit ?? 25,
+    })}`, token, 5);
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (!instagram && (msg.includes("pages_read_engagement") || msg.includes("pages_read_user_content") || msg.includes("(#10)"))) {
+      console.warn("[metaListPagePosts] Permissões de engajamento limitadas pela Meta. Carregando publicações em modo básico.");
+      return await graphCollection(`/${encodeURIComponent(pageId)}/published_posts${qs({
+        fields: metaPostFields(false, false),
+        since: options?.since,
+        until: options?.until,
+        limit: options?.limit ?? 25,
+      })}`, token, 5);
+    }
+    throw error;
+  }
 }
 
 /** Recupera uma publicação específica para abrir links vindos da notificação. */
 export async function metaGetPost(token: string, postId: string, options?: { instagram?: boolean }) {
   const instagram = options?.instagram ?? isInstagramToken(normalizeToken(token));
-  return graph(`/${encodeURIComponent(postId)}${qs({ fields: metaPostFields(instagram) })}`, token, { method: "GET" });
+  try {
+    return await graph(`/${encodeURIComponent(postId)}${qs({ fields: metaPostFields(instagram, true) })}`, token, { method: "GET" });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (!instagram && (msg.includes("pages_read_engagement") || msg.includes("pages_read_user_content") || msg.includes("(#10)"))) {
+      return await graph(`/${encodeURIComponent(postId)}${qs({ fields: metaPostFields(false, false) })}`, token, { method: "GET" });
+    }
+    throw error;
+  }
 }
 
 export async function metaListPostComments(token: string, postId: string, options?: { limit?: number; instagram?: boolean }) {
   const instagram = options?.instagram ?? isInstagramToken(normalizeToken(token));
-  return graphCollection(`/${encodeURIComponent(postId)}/comments${qs({
-    fields: instagram
-      ? "id,text,timestamp,username,from,like_count,replies.limit(100){id,text,timestamp,username,from}"
-      : "id,message,created_time,from,like_count,parent,comments.limit(100){id,message,created_time,from,like_count,parent}",
-    limit: options?.limit ?? 100,
-  })}`, token, 10);
+  try {
+    return await graphCollection(`/${encodeURIComponent(postId)}/comments${qs({
+      fields: instagram
+        ? "id,text,timestamp,username,from,like_count,replies.limit(100){id,text,timestamp,username,from}"
+        : "id,message,created_time,from,like_count,parent,comments.limit(100){id,message,created_time,from,like_count,parent}",
+      limit: options?.limit ?? 100,
+    })}`, token, 10);
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (!instagram && (msg.includes("pages_read_user_content") || msg.includes("pages_read_engagement") || msg.includes("(#10)"))) {
+      console.warn("[metaListPostComments] Acesso a comentários de terceiros no Facebook restrito por permissões Meta (#10).");
+      return { data: [], pages: {} };
+    }
+    throw error;
+  }
 }
 
 export async function metaReplyToComment(token: string, commentId: string, message: string) {
