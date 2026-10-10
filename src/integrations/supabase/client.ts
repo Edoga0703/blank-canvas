@@ -58,19 +58,12 @@ function createSupabaseClient() {
     (typeof process !== 'undefined' ? process.env['SUPABASE_PUBLISHABLE_KEY'] : undefined) ||
     'sb_publishable_AWtQzPmKl_MS9OWWmSkoZg_-vHK23d5';
 
-  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-    const missing = [
-      ...(!SUPABASE_URL ? ['SUPABASE_URL'] : []),
-      ...(!SUPABASE_PUBLISHABLE_KEY ? ['SUPABASE_PUBLISHABLE_KEY'] : []),
-    ];
-    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Connect Supabase in Lovable Cloud.`;
-    console.error(`[Supabase] ${message}`);
-    throw new Error(message);
-  }
+  const finalUrl = SUPABASE_URL || 'https://llnfjhqdeeuscyqzoqfz.supabase.co';
+  const finalKey = SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_AWtQzPmKl_MS9OWWmSkoZg_-vHK23d5';
 
-  return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  return createClient<Database>(finalUrl, finalKey, {
     global: {
-      fetch: createSupabaseFetch(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY),
+      fetch: createSupabaseFetch(finalUrl, finalKey),
     },
     auth: {
       storage: brokeredPreviewStorage(),
