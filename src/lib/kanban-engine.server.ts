@@ -9,6 +9,7 @@ type KanbanCardRow = {
   id: string;
   company_id: string;
   user_id?: string | null;
+  owner_id?: string | null;
   numero: string;
   nome?: string | null;
   valor?: number | string | null;
@@ -250,7 +251,7 @@ export async function processKanbanReguas(admin: Admin): Promise<{ processed: nu
 
   const { data: cards, error } = await admin
     .from("crm_cards")
-    .select("id, company_id, user_id, numero, nome, valor, stage_id, entrou_stage_em, regua_ultimo_disparo_em")
+    .select("id, company_id, user_id, owner_id, numero, nome, valor, stage_id, entrou_stage_em, regua_ultimo_disparo_em")
     .eq("regua_status", "ativa")
     .in("stage_id", stageIds)
     // Prioriza quem ainda não recebeu nada e quem entrou há mais tempo.
@@ -275,7 +276,7 @@ export async function processKanbanReguas(admin: Admin): Promise<{ processed: nu
 export async function processKanbanReguaForNumero(admin: Admin, companyId: string, numero: string) {
   const { data: card, error } = await admin
     .from("crm_cards")
-    .select("id, company_id, user_id, numero, nome, valor, stage_id, entrou_stage_em, regua_ultimo_disparo_em")
+    .select("id, company_id, user_id, owner_id, numero, nome, valor, stage_id, entrou_stage_em, regua_ultimo_disparo_em")
     .eq("company_id", companyId)
     .eq("numero", numero)
     .not("stage_id", "is", null)
