@@ -45,6 +45,7 @@ import { Route as AppOnboardingRouteImport } from './routes/app/onboarding'
 import { Route as AppParceiroRouteImport } from './routes/app/parceiro'
 import { Route as AppPluginsRouteImport } from './routes/app/plugins'
 import { Route as AppProspeccaoRouteImport } from './routes/app/prospeccao'
+import { Route as AppPublicacoesRouteImport } from './routes/app/publicacoes'
 import { Route as AppRelatoriosRouteImport } from './routes/app/relatorios'
 import { Route as AppRespostasRapidasRouteImport } from './routes/app/respostas-rapidas'
 import { Route as AppTemplatesRouteImport } from './routes/app/templates'
@@ -86,6 +87,7 @@ import { Route as ApiPublicGoogleCallbackRouteImport } from './routes/api/public
 import { Route as ApiPublicGoogleMarketingCallbackRouteImport } from './routes/api/public/google-marketing-callback'
 import { Route as ApiPublicLeadCaptureRouteImport } from './routes/api/public/lead-capture'
 import { Route as ApiPublicLeadPhotoRouteImport } from './routes/api/public/lead-photo'
+import { Route as ApiPublicLovableWhatsappRouteImport } from './routes/api/public/lovable-whatsapp'
 import { Route as ApiPublicMetaCallbackRouteImport } from './routes/api/public/meta-callback'
 import { Route as ApiPublicMetaHealthRouteImport } from './routes/api/public/meta-health'
 import { Route as ApiPublicMetaLeadsWebhookRouteImport } from './routes/api/public/meta-leads-webhook'
@@ -300,6 +302,11 @@ const AppProspeccaoRoute = AppProspeccaoRouteImport.update({
   path: '/prospeccao',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPublicacoesRoute = AppPublicacoesRouteImport.update({
+  id: '/publicacoes',
+  path: '/publicacoes',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
   id: '/relatorios',
   path: '/relatorios',
@@ -508,6 +515,12 @@ const ApiPublicLeadPhotoRoute = ApiPublicLeadPhotoRouteImport.update({
   path: '/api/public/lead-photo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicLovableWhatsappRoute =
+  ApiPublicLovableWhatsappRouteImport.update({
+    id: '/api/public/lovable-whatsapp',
+    path: '/api/public/lovable-whatsapp',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicMetaCallbackRoute = ApiPublicMetaCallbackRouteImport.update({
   id: '/api/public/meta-callback',
   path: '/api/public/meta-callback',
@@ -717,6 +730,7 @@ export interface FileRoutesByFullPath {
   '/app/parceiro': typeof AppParceiroRoute
   '/app/plugins': typeof AppPluginsRoute
   '/app/prospeccao': typeof AppProspeccaoRoute
+  '/app/publicacoes': typeof AppPublicacoesRoute
   '/app/relatorios': typeof AppRelatoriosRoute
   '/app/respostas-rapidas': typeof AppRespostasRapidasRoute
   '/app/templates': typeof AppTemplatesRoute
@@ -758,6 +772,7 @@ export interface FileRoutesByFullPath {
   '/api/public/google-marketing-callback': typeof ApiPublicGoogleMarketingCallbackRoute
   '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
   '/api/public/lead-photo': typeof ApiPublicLeadPhotoRoute
+  '/api/public/lovable-whatsapp': typeof ApiPublicLovableWhatsappRoute
   '/api/public/meta-callback': typeof ApiPublicMetaCallbackRoute
   '/api/public/meta-health': typeof ApiPublicMetaHealthRoute
   '/api/public/meta-leads-webhook': typeof ApiPublicMetaLeadsWebhookRoute
@@ -826,6 +841,7 @@ export interface FileRoutesByTo {
   '/app/parceiro': typeof AppParceiroRoute
   '/app/plugins': typeof AppPluginsRoute
   '/app/prospeccao': typeof AppProspeccaoRoute
+  '/app/publicacoes': typeof AppPublicacoesRoute
   '/app/relatorios': typeof AppRelatoriosRoute
   '/app/respostas-rapidas': typeof AppRespostasRapidasRoute
   '/app/templates': typeof AppTemplatesRoute
@@ -866,6 +882,7 @@ export interface FileRoutesByTo {
   '/api/public/google-marketing-callback': typeof ApiPublicGoogleMarketingCallbackRoute
   '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
   '/api/public/lead-photo': typeof ApiPublicLeadPhotoRoute
+  '/api/public/lovable-whatsapp': typeof ApiPublicLovableWhatsappRoute
   '/api/public/meta-callback': typeof ApiPublicMetaCallbackRoute
   '/api/public/meta-health': typeof ApiPublicMetaHealthRoute
   '/api/public/meta-leads-webhook': typeof ApiPublicMetaLeadsWebhookRoute
@@ -936,6 +953,7 @@ export interface FileRoutesById {
   '/app/parceiro': typeof AppParceiroRoute
   '/app/plugins': typeof AppPluginsRoute
   '/app/prospeccao': typeof AppProspeccaoRoute
+  '/app/publicacoes': typeof AppPublicacoesRoute
   '/app/relatorios': typeof AppRelatoriosRoute
   '/app/respostas-rapidas': typeof AppRespostasRapidasRoute
   '/app/templates': typeof AppTemplatesRoute
@@ -977,6 +995,7 @@ export interface FileRoutesById {
   '/api/public/google-marketing-callback': typeof ApiPublicGoogleMarketingCallbackRoute
   '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
   '/api/public/lead-photo': typeof ApiPublicLeadPhotoRoute
+  '/api/public/lovable-whatsapp': typeof ApiPublicLovableWhatsappRoute
   '/api/public/meta-callback': typeof ApiPublicMetaCallbackRoute
   '/api/public/meta-health': typeof ApiPublicMetaHealthRoute
   '/api/public/meta-leads-webhook': typeof ApiPublicMetaLeadsWebhookRoute
@@ -1048,6 +1067,7 @@ export interface FileRouteTypes {
     | '/app/parceiro'
     | '/app/plugins'
     | '/app/prospeccao'
+    | '/app/publicacoes'
     | '/app/relatorios'
     | '/app/respostas-rapidas'
     | '/app/templates'
@@ -1089,6 +1109,7 @@ export interface FileRouteTypes {
     | '/api/public/google-marketing-callback'
     | '/api/public/lead-capture'
     | '/api/public/lead-photo'
+    | '/api/public/lovable-whatsapp'
     | '/api/public/meta-callback'
     | '/api/public/meta-health'
     | '/api/public/meta-leads-webhook'
@@ -1157,6 +1178,7 @@ export interface FileRouteTypes {
     | '/app/parceiro'
     | '/app/plugins'
     | '/app/prospeccao'
+    | '/app/publicacoes'
     | '/app/relatorios'
     | '/app/respostas-rapidas'
     | '/app/templates'
@@ -1197,6 +1219,7 @@ export interface FileRouteTypes {
     | '/api/public/google-marketing-callback'
     | '/api/public/lead-capture'
     | '/api/public/lead-photo'
+    | '/api/public/lovable-whatsapp'
     | '/api/public/meta-callback'
     | '/api/public/meta-health'
     | '/api/public/meta-leads-webhook'
@@ -1266,6 +1289,7 @@ export interface FileRouteTypes {
     | '/app/parceiro'
     | '/app/plugins'
     | '/app/prospeccao'
+    | '/app/publicacoes'
     | '/app/relatorios'
     | '/app/respostas-rapidas'
     | '/app/templates'
@@ -1307,6 +1331,7 @@ export interface FileRouteTypes {
     | '/api/public/google-marketing-callback'
     | '/api/public/lead-capture'
     | '/api/public/lead-photo'
+    | '/api/public/lovable-whatsapp'
     | '/api/public/meta-callback'
     | '/api/public/meta-health'
     | '/api/public/meta-leads-webhook'
@@ -1369,6 +1394,7 @@ export interface RootRouteChildren {
   ApiPublicGoogleMarketingCallbackRoute: typeof ApiPublicGoogleMarketingCallbackRoute
   ApiPublicLeadCaptureRoute: typeof ApiPublicLeadCaptureRoute
   ApiPublicLeadPhotoRoute: typeof ApiPublicLeadPhotoRoute
+  ApiPublicLovableWhatsappRoute: typeof ApiPublicLovableWhatsappRoute
   ApiPublicMetaCallbackRoute: typeof ApiPublicMetaCallbackRoute
   ApiPublicMetaHealthRoute: typeof ApiPublicMetaHealthRoute
   ApiPublicMetaLeadsWebhookRoute: typeof ApiPublicMetaLeadsWebhookRoute
@@ -1652,6 +1678,13 @@ declare module '@tanstack/react-router' {
       path: '/prospeccao'
       fullPath: '/app/prospeccao'
       preLoaderRoute: typeof AppProspeccaoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/publicacoes': {
+      id: '/app/publicacoes'
+      path: '/publicacoes'
+      fullPath: '/app/publicacoes'
+      preLoaderRoute: typeof AppPublicacoesRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/relatorios': {
@@ -1941,6 +1974,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicLeadPhotoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/lovable-whatsapp': {
+      id: '/api/public/lovable-whatsapp'
+      path: '/api/public/lovable-whatsapp'
+      fullPath: '/api/public/lovable-whatsapp'
+      preLoaderRoute: typeof ApiPublicLovableWhatsappRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/meta-callback': {
       id: '/api/public/meta-callback'
       path: '/api/public/meta-callback'
@@ -2196,6 +2236,7 @@ interface AppRouteChildren {
   AppParceiroRoute: typeof AppParceiroRoute
   AppPluginsRoute: typeof AppPluginsRoute
   AppProspeccaoRoute: typeof AppProspeccaoRoute
+  AppPublicacoesRoute: typeof AppPublicacoesRoute
   AppRelatoriosRoute: typeof AppRelatoriosRoute
   AppRespostasRapidasRoute: typeof AppRespostasRapidasRoute
   AppTemplatesRoute: typeof AppTemplatesRoute
@@ -2224,6 +2265,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppParceiroRoute: AppParceiroRoute,
   AppPluginsRoute: AppPluginsRoute,
   AppProspeccaoRoute: AppProspeccaoRoute,
+  AppPublicacoesRoute: AppPublicacoesRoute,
   AppRelatoriosRoute: AppRelatoriosRoute,
   AppRespostasRapidasRoute: AppRespostasRapidasRoute,
   AppTemplatesRoute: AppTemplatesRoute,
@@ -2320,6 +2362,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicGoogleMarketingCallbackRoute: ApiPublicGoogleMarketingCallbackRoute,
   ApiPublicLeadCaptureRoute: ApiPublicLeadCaptureRoute,
   ApiPublicLeadPhotoRoute: ApiPublicLeadPhotoRoute,
+  ApiPublicLovableWhatsappRoute: ApiPublicLovableWhatsappRoute,
   ApiPublicMetaCallbackRoute: ApiPublicMetaCallbackRoute,
   ApiPublicMetaHealthRoute: ApiPublicMetaHealthRoute,
   ApiPublicMetaLeadsWebhookRoute: ApiPublicMetaLeadsWebhookRoute,
