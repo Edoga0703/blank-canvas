@@ -4,9 +4,9 @@ import { LegalShell } from "@/components/legal-shell";
 // ============================================================================
 // CONFIGURACIÓN DE IDENTIDAD Y MARCA (Actualizar con los datos definitivos)
 // ============================================================================
-const BRAND_NAME = "TuSaaS CRM";
-const SITE_URL = "https://tudominio.com";
-const SUPPORT_EMAIL = "soporte@tudominio.com";
+const BRAND_NAME = "Capiversa";
+const SITE_URL = "https://capiconversa.com";
+const SUPPORT_EMAIL = "soporte@capiconversa.com";
 const TERMOS_URL = `${SITE_URL}/termos`;
 const TERMOS_TITLE = `Términos y Condiciones de Servicio — ${BRAND_NAME}`;
 const TERMOS_DESC = `Condiciones de contratación y uso del software CRM y servicios de automatización de ${BRAND_NAME}, incluyendo políticas de uso de WhatsApp Business.`;
