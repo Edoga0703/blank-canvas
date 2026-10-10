@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T03:00:01.082454+00:00",
+  "generated_at": "2026-10-10T03:14:18.933424+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -2399,7 +2399,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 175920
+      "bytes": 179457
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -2679,7 +2679,7 @@
     },
     {
       "path": "src/routes/api/public/meta-webhook.ts",
-      "bytes": 12784
+      "bytes": 13743
     },
     {
       "path": "src/routes/api/public/v1/$.ts",
@@ -15526,6 +15526,10 @@
     {
       "source": "src/routes/api/public/meta-webhook.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/routes/api/public/meta-webhook.ts",
+      "target": "@/lib/crm-engine.server"
     },
     {
       "source": "src/routes/api/public/v1/$.ts",
