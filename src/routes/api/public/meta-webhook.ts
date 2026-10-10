@@ -30,7 +30,8 @@ function attachmentFor(value: any) {
 }
 
 function reactionFor(value: any) {
-  return value?.message?.reaction ?? value?.reaction ?? null;
+  const reaction = value?.message?.reaction ?? value?.reaction ?? null;
+  return reaction && typeof reaction === "object" ? reaction : null;
 }
 
 function statusEvents(value: any) {
@@ -39,6 +40,34 @@ function statusEvents(value: any) {
   if (value?.read?.watermark) result.push({ id: `read:${String(value.read.watermark)}`, status: "read", occurredAt: value.read.watermark });
   if (value?.message_id) result.push({ id: String(value.message_id), status: String(value.status ?? "updated"), occurredAt: value?.timestamp });
   return result;
+}
+
+function compactText(value: unknown, max = 180) {
+  const text = String(value ?? "").replace(/\s+/g, " ").trim();
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+function contentLink(instanceName: string, postId?: string | null) {
+  const params = new URLSearchParams({ channel: instanceName });
+  if (postId) params.set("post", postId);
+  return `/app/conteudo?${params.toString()}`;
+}
+
+async function pushMetaNotification(admin: any, input: {
+  companyId: string;
+  tipo: "comentario_meta" | "mencion_meta" | "reacao_meta";
+  titulo: string;
+  descricao: string;
+  link: string;
+  refId: string;
+}) {
+  const { data: existing } = await admin.from("notificacao").select("id")
+    .eq("company_id", input.companyId).eq("tipo", input.tipo).eq("ref_id", input.refId).limit(1).maybeSingle();
+  if (existing?.id) return;
+  await admin.from("notificacao").insert({
+    company_id: input.companyId, tipo: input.tipo, titulo: input.titulo,
+    descricao: input.descricao, link: input.link, ref_id: input.refId,
+  });
 }
 
 export const Route = createFileRoute("/api/public/meta-webhook")({
@@ -146,6 +175,47 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                       .update({ reacao: emoji })
                       .eq("company_id", reactionInst.company_id)
                       .eq("whatsapp_message_id", targetMessageId);
+                    if (emoji) {
+                      const senderId = String(ev?.sender?.id ?? value?.from?.id ?? value?.sender_id ?? "");
+                      await pushMetaNotification(supabaseAdmin, {
+                        companyId: reactionInst.company_id,
+                        tipo: "reacao_meta",
+                        titulo: "Nova reação em uma mensagem",
+                        descricao: `${emoji} recebido${senderId ? ` do contato ${senderId}` : ""}.`,
+                        link: "/app/conversas",
+                        refId: `meta:message-reaction:${targetMessageId}:${senderId}:${emoji}:${receivedEventId}`,
+                      });
+                    }
+                    normalizedCount += 1;
+                  }
+                }
+                continue;
+              }
+
+              // Likes e reações em publicações geram aviso, mas não abrem conversa nem chamam a IA.
+              const itemKind = String(value?.item ?? "").toLowerCase();
+              const contentReaction = field !== "messaging" && (
+                /reaction|like/i.test(field) || /reaction|like/.test(itemKind) || Boolean(value?.reaction_type)
+              );
+              if (contentReaction) {
+                const action = String(value?.verb ?? value?.action ?? "add").toLowerCase();
+                const { data: reactionInst } = await (supabaseAdmin as any).from("whatsapp_instances")
+                  .select("company_id,instance_name").eq("phone_number_id", pageId).like("provider", "meta%").maybeSingle();
+                if (reactionInst?.company_id) {
+                  companyId = reactionInst.company_id;
+                  if (!/remove|delete|unlike|unreact/.test(action)) {
+                    const postId = String(value?.post_id ?? value?.media?.id ?? value?.media_id ?? value?.parent_id ?? "");
+                    const actor = compactText(value?.sender_name ?? value?.from?.name ?? value?.from?.username ?? "Alguém", 80);
+                    const reactionName = compactText(value?.reaction_type ?? value?.reaction ?? "curtida", 40).toLowerCase();
+                    const actorId = String(value?.sender_id ?? value?.from?.id ?? "");
+                    await pushMetaNotification(supabaseAdmin, {
+                      companyId: reactionInst.company_id,
+                      tipo: "reacao_meta",
+                      titulo: "Nova interação na publicação",
+                      descricao: `${actor} enviou ${reactionName}.`,
+                      link: contentLink(String(reactionInst.instance_name), postId),
+                      refId: `meta:content-reaction:${postId || pageId}:${actorId}:${reactionName}:${receivedEventId}`,
+                    });
                     normalizedCount += 1;
                   }
                 }
@@ -154,9 +224,10 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
 
               const senderId = String(ev?.sender?.id ?? value?.from?.id ?? value?.sender_id ?? value?.commenter_id ?? "");
               const isEcho = ev?.message?.is_echo === true;
-              const isComment = /comment|mention/i.test(field) || (field === "feed" && /comment|mention/i.test(String(value?.item ?? "")));
+              const isMention = /mention|tag/i.test(field) || (field === "feed" && /mention|tag/i.test(String(value?.item ?? "")));
+              const isComment = /comment/i.test(field) || (field === "feed" && /comment/i.test(String(value?.item ?? "")));
               const shouldForwardToAttention = field === "messaging" || isComment;
-              if (!shouldForwardToAttention || !senderId || !pageId || isEcho || (isComment && senderId === pageId)) continue;
+              if ((!shouldForwardToAttention && !isMention) || !senderId || !pageId || isEcho || ((isComment || isMention) && senderId === pageId)) continue;
 
               const { data: inst } = await (supabaseAdmin as any).from("whatsapp_instances").select("id,instance_name,webhook_token,provider,company_id,instance_token").eq("phone_number_id", pageId).like("provider", "meta%").maybeSingle();
               if (!inst?.webhook_token) continue;
@@ -164,6 +235,19 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
               const { metaFetchProfile } = await import("@/lib/meta.server");
               const profile = inst.instance_token ? await metaFetchProfile(inst.instance_token, senderId) : { name: null, picture: null };
               const text = textFor(value);
+              if (isComment || isMention) {
+                const objectId = String(value?.comment_id ?? value?.id ?? value?.mention_id ?? `meta_${receivedEventId}_${senderId}`);
+                const postId = String(value?.post_id ?? value?.media?.id ?? value?.media_id ?? value?.parent_id ?? "");
+                const author = compactText(value?.sender_name ?? value?.from?.name ?? value?.from?.username ?? profile.name ?? "Alguém", 80);
+                await pushMetaNotification(supabaseAdmin, {
+                  companyId: inst.company_id,
+                  tipo: isMention ? "mencion_meta" : "comentario_meta",
+                  titulo: isMention ? "Nova menção ou etiqueta" : "Novo comentário",
+                  descricao: compactText(text ? `${author}: ${text}` : `${author} interagiu com a publicação.`),
+                  link: contentLink(inst.instance_name, postId),
+                  refId: `meta:${isMention ? "mention" : "comment"}:${objectId}`,
+                });
+              }
               const attachment = attachmentFor(value);
               const mediaType = String(attachment?.type ?? "").toLowerCase();
               const message = attachment?.payload?.url
@@ -171,8 +255,8 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                   : mediaType === "video" ? { videoMessage: { mimetype: "video/mp4", url: attachment.payload.url, caption: text || undefined } }
                     : mediaType === "audio" ? { audioMessage: { mimetype: "audio/mp4", url: attachment.payload.url } }
                       : { documentMessage: { mimetype: "application/octet-stream", url: attachment.payload.url, fileName: "arquivo", caption: text || undefined } }
-                : { conversation: text || (isComment ? `[${field}]` : "") };
-              if (!text && !attachment && !isComment) continue;
+                : { conversation: text || (isComment || isMention ? `[${field}]` : "") };
+              if (!text && !attachment && !isComment && !isMention) continue;
 
               const externalId = String(ev?.message?.mid ?? value?.comment_id ?? value?.id ?? `meta_${receivedEventId}_${senderId}`);
               const sourceTimestamp = ev?.timestamp ?? value?.created_time;

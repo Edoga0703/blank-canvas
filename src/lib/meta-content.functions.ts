@@ -28,6 +28,41 @@ export const listMetaContent = createServerFn({ method: "POST" })
     return { posts: posts.data, pages: posts.pages };
   });
 
+/** Carrega o tópico completo de uma publicação aberta no módulo Conteúdo. */
+export const listMetaPostComments = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { instanceName?: string; postId?: string }) => {
+    const instanceName = String(d?.instanceName ?? "").trim();
+    const postId = String(d?.postId ?? "").trim();
+    if (!instanceName || !postId) throw new Error("Canal e publicação são obrigatórios.");
+    return { instanceName, postId };
+  })
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const channel = await channelFor(supabaseAdmin, companyId, data.instanceName);
+    const { metaListPostComments } = await import("./meta.server");
+    const comments = await metaListPostComments(channel.instance_token, data.postId, { limit: 100 });
+    return { comments: comments.data, pages: comments.pages };
+  });
+
+/** Abre uma publicação específica apontada por uma notificação. */
+export const getMetaContentPost = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { instanceName?: string; postId?: string }) => {
+    const instanceName = String(d?.instanceName ?? "").trim();
+    const postId = String(d?.postId ?? "").trim();
+    if (!instanceName || !postId) throw new Error("Canal e publicação são obrigatórios.");
+    return { instanceName, postId };
+  })
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const channel = await channelFor(supabaseAdmin, companyId, data.instanceName);
+    const { metaGetPost } = await import("./meta.server");
+    return { post: await metaGetPost(channel.instance_token, data.postId) };
+  });
+
 /** Consulta métricas de Página mantendo o token exclusivamente no servidor. */
 export const getMetaInsights = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

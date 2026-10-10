@@ -8,7 +8,7 @@ import {
   Inbox, Users, BarChart3, Settings, Contact, Megaphone, Webhook, Wallet,
   ChevronsLeft, ChevronsRight, Zap, ChevronDown, CalendarClock, Zap as Bolt, Bell, Volume2, VolumeX,
   PanelLeft, User as UserIcon, Package, Puzzle, MoreHorizontal, Workflow, TrendingUp, FileText,
-  GraduationCap, CreditCard, Radar
+  GraduationCap, CreditCard, Radar, Images
 } from "lucide-react";
 import { AgentAvatar } from "@/components/agente/agent-avatar";
 
@@ -72,6 +72,7 @@ const sections: { label: string; items: (NavItem & { flag?: string })[] }[] = [
       { to: "/app/respostas-rapidas", label: "Respostas Rápidas", icon: Bolt, flag: "module.respostas" },
       { to: "/app/agendamentos", label: "Agendamentos", icon: CalendarClock, flag: "module.agendamentos" },
       { to: "/app/campanhas", label: "Campanhas", icon: Megaphone, flag: "module.campanhas" },
+      { to: "/app/conteudo", label: "Conteúdo", icon: Images },
       { to: "/app/templates", label: "Templates", icon: FileText, adminOnly: true, tag: "Meta", flag: "module.templates" },
       { to: "/app/catalogo", label: "Catálogo", icon: Package, flag: "module.catalogo" },
       { to: "/app/treinamentos", label: "Capi Conversa Academy", icon: GraduationCap, tag: "Interno", superOnly: true, flag: "module.treinamentos" },
@@ -126,6 +127,7 @@ const routeSubtitles: Record<string, string> = {
   "/app/respostas-rapidas": "Mensagens prontas para a equipe",
   "/app/agendamentos": "Agenda e compromissos",
   "/app/campanhas": "Disparos em massa",
+  "/app/conteudo": "Publicações e interações da Meta",
   "/app/templates": "Modelos HSM aprovados pela Meta",
   "/app/catalogo": "Produtos e serviços",
   "/app/treinamentos": "Centro de treinamento e vídeo aulas do Capi Conversa Academy",
@@ -269,6 +271,7 @@ export function AppShell({
     { to: "/app/agente", label: "Agente IA", icon: Bot, mobileHidden: true },
     
     { to: "/app/campanhas", label: "Campanhas", icon: Megaphone, mobileHidden: true },
+    { to: "/app/conteudo", label: "Conteúdo", icon: Images },
     { to: "/app/templates", label: "Templates", icon: FileText, adminOnly: true, mobileHidden: true },
     { to: "/app/catalogo", label: "Catálogo", icon: Package, mobileHidden: true },
 

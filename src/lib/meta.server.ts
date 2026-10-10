@@ -124,20 +124,35 @@ export async function metaListConversationMessages(token: string, conversationId
   })}`, token, 10);
 }
 
+function metaPostFields(instagram: boolean) {
+  return instagram
+    ? "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,comments.limit(100){id,text,timestamp,username,from,like_count,replies.limit(100){id,text,timestamp,username,from}}"
+    : "id,message,created_time,permalink_url,attachments,reactions.limit(0).summary(true),comments.limit(100).summary(true){id,message,created_time,from,like_count,parent}";
+}
+
 /** Feed, comentários e métricas de uma Página. As permissões dependem do modo do app e da revisão Meta. */
 export async function metaListPagePosts(token: string, pageId: string, options?: { since?: string; until?: string; limit?: number }) {
   const instagram = isInstagramToken(normalizeToken(token));
   return graphCollection(`/${encodeURIComponent(pageId)}/${instagram ? "media" : "feed"}${qs({
-    fields: instagram ? "id,caption,media_type,media_url,permalink,timestamp,comments.limit(100){id,text,timestamp,username,from}" : "id,message,created_time,permalink_url,attachments,comments.limit(100){id,message,created_time,from,like_count}",
+    fields: metaPostFields(instagram),
     since: options?.since,
     until: options?.until,
     limit: options?.limit ?? 25,
   })}`, token, 5);
 }
 
+/** Recupera uma publicação específica para abrir links vindos da notificação. */
+export async function metaGetPost(token: string, postId: string) {
+  const instagram = isInstagramToken(normalizeToken(token));
+  return graph(`/${encodeURIComponent(postId)}${qs({ fields: metaPostFields(instagram) })}`, token, { method: "GET" });
+}
+
 export async function metaListPostComments(token: string, postId: string, options?: { limit?: number }) {
+  const instagram = isInstagramToken(normalizeToken(token));
   return graphCollection(`/${encodeURIComponent(postId)}/comments${qs({
-    fields: "id,message,created_time,from,like_count,parent",
+    fields: instagram
+      ? "id,text,timestamp,username,from,like_count,replies.limit(100){id,text,timestamp,username,from}"
+      : "id,message,created_time,from,like_count,parent",
     limit: options?.limit ?? 100,
   })}`, token, 10);
 }
@@ -390,8 +405,8 @@ export async function metaSubscribePage(token: string, pageId: string) {
   const cleanToken = normalizeToken(token);
   const ig = isInstagramToken(cleanToken);
   const fields = ig
-    ? "messages,messaging_postbacks,comments,mentions"
-    : "messages,messaging_postbacks,messaging_optins,message_deliveries,message_reads,feed,leadgen";
+    ? "messages,messaging_postbacks,message_reactions,comments,mentions"
+    : "messages,messaging_postbacks,messaging_optins,message_deliveries,message_reads,message_reactions,feed,leadgen";
   const path = ig
     ? `/me/subscribed_apps?subscribed_fields=${fields}`
     : `/${encodeURIComponent(pageId)}/subscribed_apps?subscribed_fields=${fields}`;
