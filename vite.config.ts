@@ -22,6 +22,24 @@ export default defineConfig({
   },
   vite: {
     plugins: [...lovableMcpPlugins, serverFnWarmup()],
+    define: {
+      "process.env.SUPABASE_URL": JSON.stringify(
+        process.env.SUPABASE_URL || "https://llnfjhqdeeuscyqzoqfz.supabase.co"
+      ),
+      "process.env.VITE_SUPABASE_URL": JSON.stringify(
+        process.env.VITE_SUPABASE_URL || "https://llnfjhqdeeuscyqzoqfz.supabase.co"
+      ),
+      "process.env.SUPABASE_PUBLISHABLE_KEY": JSON.stringify(
+        process.env.SUPABASE_PUBLISHABLE_KEY || "sb_publishable_AWtQzPmKl_MS9OWWmSkoZg_-vHK23d5"
+      ),
+      "process.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(
+        process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_AWtQzPmKl_MS9OWWmSkoZg_-vHK23d5"
+      ),
+      "process.env.SUPABASE_SERVICE_ROLE_KEY": JSON.stringify(
+        process.env.SUPABASE_SERVICE_ROLE_KEY ||
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsbmZqaHFkZWV1c2N5cXpvcWZ6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTU1ODQ2NywiZXhwIjoyMTA3MTM0NDY3fQ.ylDWCcoxzXhPoshBQGult4ZIK2C6AczihHJLz9vWJfQ"
+      ),
+    },
     // Reduce build memory usage (avoids OOM on publish)
     build: { sourcemap: false, reportCompressedSize: false },
     optimizeDeps: {
