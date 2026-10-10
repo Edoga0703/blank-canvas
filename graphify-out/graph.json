@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T21:39:07.834716+00:00",
+  "generated_at": "2026-10-10T22:58:20.944019+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -959,7 +959,7 @@
     },
     {
       "path": "src/lib/meta.server.ts",
-      "bytes": 19655
+      "bytes": 21366
     },
     {
       "path": "src/lib/wa-interactive.ts",
@@ -2191,7 +2191,7 @@
     },
     {
       "path": "src/components/content/meta-content-center.tsx",
-      "bytes": 26029
+      "bytes": 27802
     },
     {
       "path": "src/components/master/signup-welcome-card.tsx",
@@ -2431,7 +2431,7 @@
     },
     {
       "path": "src/routes/app/conteudo.tsx",
-      "bytes": 1460
+      "bytes": 1492
     },
     {
       "path": "src/routes/app/checkout.tsx",
