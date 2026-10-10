@@ -145,3 +145,33 @@ export const getChannelFeed = createServerFn({ method: "GET" })
       return { posts };
     }
   });
+
+/** Faz upload direto para o bucket público do Supabase, sem depender de R2. */
+export const uploadPublicMedia = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { fileName: string; mimeType: string; base64Data: string }) => input)
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const cleanName = data.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `uploads/${Date.now()}_${cleanName}`;
+    const buffer = Buffer.from(data.base64Data, "base64");
+
+    const { error } = await supabaseAdmin.storage
+      .from("public-media")
+      .upload(path, buffer, {
+        contentType: data.mimeType || "image/jpeg",
+        upsert: true,
+      });
+
+    if (error) {
+      console.error("[uploadPublicMedia] Erro upload:", error.message);
+      throw new Error("Falha ao salvar arquivo no servidor: " + error.message);
+    }
+
+    const { data: pub } = supabaseAdmin.storage
+      .from("public-media")
+      .getPublicUrl(path);
+
+    return { publicUrl: pub.publicUrl };
+  });
+

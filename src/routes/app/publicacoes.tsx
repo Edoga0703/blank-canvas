@@ -5,9 +5,9 @@ import {
   getConnectedPublishChannels,
   publishPostToMeta,
   getChannelFeed,
+  uploadPublicMedia,
   type PublishChannel,
 } from "@/lib/meta-publish.functions";
-import { prepareR2Upload } from "@/lib/storage/r2.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -41,7 +41,7 @@ export function PublicacoesPage() {
   const getChannelsFn = useServerFn(getConnectedPublishChannels);
   const publishFn = useServerFn(publishPostToMeta);
   const getFeedFn = useServerFn(getChannelFeed);
-  const prepareUploadFn = useServerFn(prepareR2Upload);
+  const uploadMediaFn = useServerFn(uploadPublicMedia);
 
   const [channels, setChannels] = useState<PublishChannel[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<string>("");
@@ -98,32 +98,41 @@ export function PublicacoesPage() {
     }
   }
 
-  // Upload de arquivo
+  // Upload de arquivo direto para armazenamento público
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error("O arquivo deve ter no máximo 25MB.");
+      return;
+    }
+
     setUploading(true);
     try {
-      // Prepara upload
-      const target = await prepareUploadFn({
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onload = () => {
+          const res = reader.result as string;
+          const base64 = res.split(",")[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+      });
+      reader.readAsDataURL(file);
+      const base64Data = await base64Promise;
+
+      const res = await uploadMediaFn({
         data: {
           fileName: file.name,
-          mimeType: file.type,
-          sizeBytes: file.size,
+          mimeType: file.type || "image/jpeg",
+          base64Data,
         },
       });
 
-      // Faz upload direto
-      const uploadRes = await fetch(target.uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
+      if (!res?.publicUrl) throw new Error("Servidor não retornou a URL pública.");
 
-      if (!uploadRes.ok) throw new Error("Falha no upload para o servidor.");
-
-      setMediaUrl(target.downloadUrl);
+      setMediaUrl(res.publicUrl);
       if (file.type.startsWith("video/")) {
         setMediaType("video");
       } else {
@@ -131,8 +140,7 @@ export function PublicacoesPage() {
       }
       toast.success("Mídia carregada com sucesso!");
     } catch (err: any) {
-      // Fallback: se R2 não estiver configurado, pode usar URL pública direta
-      toast.error(err.message || "Erro no upload. Você também pode colar a URL direta da imagem.");
+      toast.error(err.message || "Erro no upload.");
     } finally {
       setUploading(false);
     }

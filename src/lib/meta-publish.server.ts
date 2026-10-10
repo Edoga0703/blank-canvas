@@ -182,11 +182,11 @@ export async function metaFetchInstagramFeed(
 export async function metaFetchFacebookFeed(
   token: string,
   pageId: string,
-  limit = 20,
+  limit = 25,
 ) {
   try {
-    const json = await graphGet(`${pageId}/feed`, token, {
-      fields: "id,message,created_time,permalink_url,full_picture,shares,comments.summary(true),likes.summary(true)",
+    const json = await graphGet(`${pageId}/posts`, token, {
+      fields: "id,message,created_time,permalink_url,full_picture",
       limit: String(limit),
     });
     return (json?.data || []).map((p: any) => ({
@@ -196,8 +196,8 @@ export async function metaFetchFacebookFeed(
       media_url: p.full_picture || null,
       permalink: p.permalink_url || null,
       timestamp: p.created_time || null,
-      like_count: p.likes?.summary?.total_count || 0,
-      comments_count: p.comments?.summary?.total_count || 0,
+      like_count: 0,
+      comments_count: 0,
     })) as FeedPost[];
   } catch (e: any) {
     console.warn("[meta-publish] Erro ao buscar feed do Facebook:", e?.message);
