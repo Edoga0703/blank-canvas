@@ -38,25 +38,7 @@ export const resolveChatMediaUrl = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // 1) Capiversa v1.1: los adjuntos privados viven en R2. La URL firmada se
-    // genera al abrir el archivo y nunca se persiste porque caduca.
-    const { data: attachment } = await (supabaseAdmin as any)
-      .from("message_attachments")
-      .select("kind,storage_key,storage_url,provider_url")
-      .eq("company_id", companyId)
-      .eq("mensagem_id", msg.id)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    if (attachment?.storage_key) {
-      const { createR2DownloadUrl } = await import("@/lib/storage/r2.server");
-      return { url: createR2DownloadUrl(attachment.storage_key), tipo: attachment.kind || msg.midia_tipo };
-    }
-    if (attachment?.storage_url) {
-      return { url: attachment.storage_url, tipo: attachment.kind || msg.midia_tipo };
-    }
-
-    // 2) Mídia legada no Supabase Storage: basta reassinar
+    // 1) Já está no storage: basta reassinar
     const path = storagePathFromUrl(msg.midia_url);
     if (path) {
       const { data: signed } = await supabaseAdmin.storage.from(BUCKET).createSignedUrl(path, SIGN_TTL);
@@ -67,7 +49,7 @@ export const resolveChatMediaUrl = createServerFn({ method: "POST" })
       return { url: null as string | null, tipo: msg.midia_tipo };
     }
 
-    // 3) Sem mídia salva: tenta rebaixar do provedor legado (Uazapi)
+    // 2) Sem mídia salva: tenta rebaixar do provedor (Uazapi)
     if (!msg.whatsapp_message_id) return { url: null as string | null, tipo: msg.midia_tipo };
 
     const { data: inst } = await supabaseAdmin

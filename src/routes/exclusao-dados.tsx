@@ -4,10 +4,10 @@ import { LegalShell } from "@/components/legal-shell";
 // ============================================================================
 // CONFIGURACIÓN DE IDENTIDAD Y MARCA (Actualizar con los datos definitivos)
 // ============================================================================
-const BRAND_NAME = "Capiversa";
-const SITE_URL = "https://capiconversa.com";
-const SUPPORT_EMAIL = "soporte@capiconversa.com";
-const LEGAL_ENTITY = "Capiversa CRM";
+const BRAND_NAME = "TuSaaS CRM";
+const SITE_URL = "https://tudominio.com";
+const SUPPORT_EMAIL = "soporte@tudominio.com";
+const LEGAL_ENTITY = "[Razón Social o Titular de la Empresa]";
 const URL_PAGE = `${SITE_URL}/exclusao-dados`;
 const TITLE = `Instrucciones de Eliminación de Datos del Usuario — ${BRAND_NAME}`;
 const DESC = `Guía detallada para solicitar la eliminación definitiva de sus datos y revocar los accesos de Meta (WhatsApp, Facebook e Instagram) en ${BRAND_NAME}.`;

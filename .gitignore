@@ -8,7 +8,6 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-.npm-cache/
 dist
 dist-ssr
 .output
@@ -16,11 +15,6 @@ dist-ssr
 .tanstack/**
 .nitro
 *.local
-.env
-.env.*
-!.env.example
-.secrets/
-infra.env
 
 # Wrangler / Cloudflare
 .wrangler/
@@ -35,4 +29,13 @@ infra.env
 *.ntvs*
 *.njsproj
 *.sln
+
+# Local environment and deployment secrets
+.env
+.env.*
+!.env.example
+.env.local
+.env.*.local
+.secrets/
+infra.env
 *.sw?

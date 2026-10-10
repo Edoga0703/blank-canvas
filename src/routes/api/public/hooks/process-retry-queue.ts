@@ -24,7 +24,7 @@ async function processOne(admin: any, item: any): Promise<{ ok: boolean; erro?: 
 
   const { data: inst } = await admin
     .from("whatsapp_instances")
-    .select("instance_name,instance_token,status,updated_at,provider,provider_type,phone_number_id,waba_id")
+    .select("instance_name,status,updated_at,provider_type,phone_number_id")
     .eq("company_id", item.company_id)
     .order("updated_at", { ascending: false })
     .limit(1)
@@ -34,27 +34,14 @@ async function processOne(admin: any, item: any): Promise<{ ok: boolean; erro?: 
     return { ok: false, erro: `Instância não conectada (${inst.status})` };
   }
 
-  const provider = String((inst as any).provider || (inst as any).provider_type || "evolution");
+  const provider = (inst as any).provider_type;
   const p = item.payload || {};
-  if (p.storageKey && (item.kind === "media" || item.kind === "audio")) {
-    const { createR2DownloadUrl } = await import("@/lib/storage/r2.server");
-    const freshUrl = createR2DownloadUrl(String(p.storageKey));
-    if (item.kind === "media") p.media = freshUrl;
-    else p.audio = freshUrl;
-  }
 
   // Valida/normaliza o destino antes de tentar enviar (evita queimar reputação do número).
   // Exceções: provedores Meta (PSID) e contatos WhatsApp com ID oculto (LID) — não são telefones.
   const { isLidNumber } = await import("@/lib/jid");
   const isMetaProvider = /meta|instagram|messenger/i.test(String(provider ?? ""));
-  const isLovableProvider = provider === "lovable_whatsapp";
-  if (isLovableProvider) {
-    const digits = rawNumero.replace(/\D/g, "");
-    if (!/^[1-9]\d{7,14}$/.test(digits)) {
-      return { ok: false, erro: "Número inválido: use DDI + número, somente dígitos", permanent: true };
-    }
-    p.numero = digits;
-  } else if (!isMetaProvider && !isLidNumber(rawNumero)) {
+  if (!isMetaProvider && !isLidNumber(rawNumero)) {
     const parsed = parseBrPhone(rawNumero);
     if (!parsed.valid) {
       return { ok: false, erro: `Número inválido: ${parsed.reason ?? "formato desconhecido"}`, permanent: true };
@@ -64,46 +51,6 @@ async function processOne(admin: any, item: any): Promise<{ ok: boolean; erro?: 
 
 
 
-
-
-  if (isLovableProvider) {
-    try {
-      const { waSendText, waSendMedia, waSendAudio } = await import("@/lib/wa-dispatch.server");
-      const waInst = {
-        instance_name: inst.instance_name,
-        instance_token: null,
-        provider: "lovable_whatsapp" as const,
-        status: inst.status,
-        paused: false,
-      };
-      let resp: any;
-      if (item.kind === "text") {
-        resp = await waSendText(waInst, p.numero, p.texto, {
-          replyToExternalMessageId: p.quoted?.key?.id ?? null,
-        });
-      } else if (item.kind === "media") {
-        resp = await waSendMedia(waInst, p.numero, {
-          type: p.mediatype,
-          url: p.media,
-          mime: p.mimetype,
-          fileName: p.fileName,
-          caption: p.caption,
-        });
-      } else if (item.kind === "audio") {
-        resp = await waSendAudio(waInst, p.numero, p.audio);
-      } else {
-        return { ok: false, erro: `Tipo desconhecido: ${item.kind}`, permanent: true };
-      }
-      return { ok: true, waId: resp?.id ?? null };
-    } catch (e: any) {
-      const msg = e?.message ?? String(e);
-      return {
-        ok: false,
-        erro: msg,
-        permanent: /invalid|forbidden|blocked|24h|window|template|recipient|não autorizado/i.test(msg),
-      };
-    }
-  }
 
   // WaBlast (Cloud API): não valida via evoState; usa helpers próprios
   if (provider === "wablast") {
@@ -169,10 +116,9 @@ async function processOne(admin: any, item: any): Promise<{ ok: boolean; erro?: 
 }
 
 
-function payloadFromMessage(m: any, attachment?: any) {
-  const storageKey = attachment?.storage_key ?? null;
-  if (m.midia_tipo === "audio" && (m.midia_url || storageKey)) return { kind: "audio", payload: { numero: m.numero, audio: m.midia_url, storageKey } };
-  if (["image", "video", "document"].includes(m.midia_tipo) && (m.midia_url || storageKey)) {
+function payloadFromMessage(m: any) {
+  if (m.midia_tipo === "audio" && m.midia_url) return { kind: "audio", payload: { numero: m.numero, audio: m.midia_url } };
+  if (["image", "video", "document"].includes(m.midia_tipo) && m.midia_url) {
     return {
       kind: "media",
       payload: {
@@ -182,7 +128,6 @@ function payloadFromMessage(m: any, attachment?: any) {
         mimetype: m.midia_mime || "application/octet-stream",
         fileName: m.midia_nome || undefined,
         caption: m.texto || undefined,
-        storageKey,
       },
     };
   }
@@ -209,14 +154,7 @@ async function enqueueStalePendingAcceptedMessages(admin: any) {
       .limit(1)
       .maybeSingle();
     if (existing) continue;
-    const { data: attachment } = await admin
-      .from("message_attachments")
-      .select("storage_key")
-      .eq("mensagem_id", m.id)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    const built = payloadFromMessage(m, attachment);
+    const built = payloadFromMessage(m);
     await admin.from("outbound_queue").insert({
       company_id: m.company_id,
       mensagem_id: m.id,

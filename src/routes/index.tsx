@@ -1,4 +1,4 @@
-// Capiversa - Premium Visual Identity.
+// Capi Conversa - Premium Visual Identity.
 import { createFileRoute } from "@tanstack/react-router";
 import { brand } from "@/config/brand";
 import metrixLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
@@ -28,9 +28,9 @@ import {
 } from "lucide-react";
 
 
-const HOME_TITLE = "Capiversa — IA que atende WhatsApp e organiza o CRM";
+const HOME_TITLE = "Capi Conversa — IA que atende WhatsApp e organiza o CRM";
 const HOME_DESC =
-  "Capiversa é uma plataforma de atendimento, vendas e CRM com IA, integrada ao Google Agenda para criar e gerenciar compromissos autorizados pelo usuário.";
+  "Capi Conversa é uma plataforma de atendimento, vendas e CRM com IA, integrada ao Google Agenda para criar e gerenciar compromissos autorizados pelo usuário.";
 const SITE_URL = "https://metrixcrm.com.br";
 
 const FAQ_QA = [
@@ -176,7 +176,7 @@ function Header() {
     >
       <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-3">
         <a href="/" className="flex items-center min-w-0 shrink">
-          <img src={metrixLogo.url} alt="Capiversa" className="h-7 sm:h-8 md:h-9 w-auto" />
+          <img src={metrixLogo.url} alt="Capi Conversa" className="h-7 sm:h-8 md:h-9 w-auto" />
         </a>
         <nav className="hidden lg:flex items-center gap-8 text-sm font-medium text-[#12263A]/70">
           <a href="#como-funciona" className="hover:text-[#334155] transition-colors">Como funciona</a>
@@ -234,7 +234,7 @@ function Hero() {
           Tenha o controle da sua operação. <span className="text-[#334155]">E transforme mais oportunidades em vendas.</span>
         </h1>
         <p className="text-base sm:text-lg md:text-xl text-[#12263A]/70 max-w-xl mx-auto lg:mx-0 mb-4 leading-relaxed">
-          Não perca mais clientes por demora no atendimento. A Capiversa captura seus leads, qualifica em segundos e organiza tudo em um funil visual perfeito. Seu único trabalho será entregar o produto.
+          Não perca mais clientes por demora no atendimento. A Capi Conversa captura seus leads, qualifica em segundos e organiza tudo em um funil visual perfeito. Seu único trabalho será entregar o produto.
         </p>
 
         <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 md:gap-6">
@@ -258,7 +258,7 @@ function Hero() {
 
         <img
           src={mascoteNotebook.url}
-          alt="Logo Capiversa"
+          alt="Logo Capi Conversa"
           className="relative w-[75%] sm:w-[70%] lg:w-full max-w-md lg:max-w-full rounded-3xl bg-white p-5 h-auto object-contain drop-shadow-2xl lg:scale-115"
           loading="eager"
           decoding="async"
@@ -347,7 +347,7 @@ function Metrics() {
 function HowItWorks() {
   const steps = [
     { n: "01", t: "Conecte seu WhatsApp", d: "Em 30 segundos sua conta está pronta. Sem configurações complexas ou APIs oficiais caras." },
-    { n: "02", t: "Treine a IA em 1 clique", d: "Suba seu PDF ou cole seu site. A Capiversa aprende tudo sobre seu negócio instantaneamente." },
+    { n: "02", t: "Treine a IA em 1 clique", d: "Suba seu PDF ou cole seu site. A Capi Conversa aprende tudo sobre seu negócio instantaneamente." },
     { n: "03", t: "Veja a mágica no CRM", d: "Contatos salvos, leads qualificados e agenda cheia sem que você precise digitar uma palavra." },
   ];
   return (
@@ -367,7 +367,7 @@ function HowItWorks() {
           <div className="absolute inset-0 bg-[#334155]/10 blur-3xl rounded-full" aria-hidden />
           <img
             src={mascoteNotebook.url}
-            alt="Logo Capiversa"
+            alt="Logo Capi Conversa"
             className="relative w-full h-auto max-w-xl mx-auto rounded-3xl bg-white p-6 shadow-sm"
           />
         </div>
@@ -543,7 +543,7 @@ function Pricing() {
         {/* Mascote pequeno no canto */}
         <img
           src={mascoteOferta.url}
-          alt="Logo Capiversa"
+          alt="Logo Capi Conversa"
           className="hidden lg:block absolute right-4 xl:right-16 -bottom-4 w-40 xl:w-48 h-auto rounded-lg bg-white p-2 shadow-sm animate-float pointer-events-none select-none"
         />
 
@@ -641,7 +641,7 @@ function CtaImpacto() {
           Enquanto você lê isso, um lead seu está sendo <span className="text-white/60">ignorado</span>.
         </h2>
         <p className="text-base sm:text-lg md:text-xl text-white/80 max-w-2xl leading-relaxed">
-          A Capiversa responde, qualifica e agenda no automático — 24 horas por dia. Você entra na conversa só quando o cliente está pronto para comprar.
+          A Capi Conversa responde, qualifica e agenda no automático — 24 horas por dia. Você entra na conversa só quando o cliente está pronto para comprar.
         </p>
         <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 pt-2 w-full sm:w-auto">
           <button onClick={() => goCta("#planos")} className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl bg-white text-[#334155] font-bold text-sm sm:text-base shadow-2xl shadow-black/30 hover:scale-[1.03] transition-transform">
@@ -660,7 +660,7 @@ function Footer() {
     <footer className="border-t border-black/5 bg-white">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="flex items-center gap-3">
-          <img src={metrixLogo.url} alt="Capiversa" className="h-7 w-auto" />
+          <img src={metrixLogo.url} alt="Capi Conversa" className="h-7 w-auto" />
           <span className="text-sm text-[#12263A]/40">© {new Date().getFullYear()}</span>
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#12263A]/60">

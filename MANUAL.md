@@ -1,9 +1,3 @@
-# Manual legado del proyecto original
-
-> Este documento se conserva solamente como referencia histórica. Sus pasos,
-> nombres, secretos y afirmaciones sobre migraciones no describen Capiversa
-> v1.1. Utilice `README.md` y la documentación de `docs/` para la nueva base.
-
 # 📘 Manual do Clonador — AtendeZap AI
 
 Guia passo a passo para colocar sua cópia no ar. **Siga na ordem.** Onde tiver bloco `> PROMPT`, **copie e cole no chat do Lovable** exatamente como está.

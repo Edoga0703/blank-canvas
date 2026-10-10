@@ -9,10 +9,10 @@ export const startMetaOAuth = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
-    const { ensureMetaSecrets, sanitizeOrigin, signState, buildAuthUrl } = await import("./meta-oauth.server");
+    const { sanitizeOrigin, signState, buildAuthUrl } = await import("./meta-oauth.server");
 
-    await ensureMetaSecrets();
-    const origin = sanitizeOrigin(data.origin) || "https://capiconversa.com";
+    const origin = sanitizeOrigin(data.origin);
+    if (!origin) return { ok: false as const, error: "Origem inválida." };
 
     const nonce = crypto.randomUUID();
     const state = await signState({ c: companyId, u: userId, n: nonce, o: origin, t: Date.now() });
@@ -167,15 +167,15 @@ export const connectMetaOAuthTargets = createServerFn({ method: "POST" })
       }
 
       // Assina o app nos eventos de mensagem da Página (cobre Messenger + IG vinculado).
-      await metaSubscribePage(target.pageToken, target.pageId);
+      await metaSubscribePage(target.pageToken, target.pageId, { instagram: false });
+      if (data.withInstagram && target.igId) {
+        await metaSubscribePage(target.pageToken, target.igId, { instagram: true });
+      }
     }
 
-    // El token de usuario solo sirve para completar esta seleccion. La cuenta
-    // conectada conserva el Page token correspondiente; eliminamos la sesion
-    // temporal para reducir la exposicion de credenciales.
     await (supabaseAdmin as any)
       .from("meta_oauth_session")
-      .delete()
+      .update({ consumed: true })
       .eq("id", row.id);
 
     if (!connected.length && skipped.length) {

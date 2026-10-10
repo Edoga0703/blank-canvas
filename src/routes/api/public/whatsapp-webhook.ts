@@ -13,7 +13,6 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
           if (!token) return new Response("missing token", { status: 400 });
 
           const rawText = await request.text();
-          console.log(`[webhook] PROCESSING:`, rawText.slice(0, 300));
           const payload = JSON.parse(rawText || "{}");
           
           // Helper para busca profunda
@@ -29,7 +28,18 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
 
           const findMessage = (obj: any): any => {
             if (!obj || typeof obj !== 'object') return null;
-            if (obj.conversation || obj.extendedTextMessage || obj.text || obj.audioMessage) return obj;
+            if (
+              obj.conversation ||
+              obj.extendedTextMessage ||
+              obj.text ||
+              obj.audioMessage ||
+              obj.imageMessage ||
+              obj.videoMessage ||
+              obj.documentMessage ||
+              obj.stickerMessage ||
+              obj.buttonsResponseMessage ||
+              obj.listResponseMessage
+            ) return obj;
             for (const k in obj) {
               if (k === 'key') continue;
               const res = findMessage(obj[k]);
@@ -50,6 +60,7 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
           const mImage = message?.imageMessage || null;
           const mVideo = message?.videoMessage || null;
           const mDoc = message?.documentMessage || null;
+          const mSticker = message?.stickerMessage || null;
           const innerMsg = message?.extendedTextMessage || mImage || mVideo || mDoc || mAudio || message;
           let text = innerMsg?.text || innerMsg?.caption || message?.conversation || (typeof message === 'string' ? message : "");
 
@@ -72,6 +83,10 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
           } else if (mDoc) {
             midiaTipo = "document";
             midiaUrl = midiaUrl || mDoc.url || mDoc.directPath || null;
+          } else if (mSticker) {
+            midiaTipo = "sticker";
+            midiaUrl = midiaUrl || mSticker.url || mSticker.directPath || null;
+            midiaMime = midiaMime || mSticker.mimetype || "image/webp";
           }
 
           // Fallbacks para payloads de diferentes providers
@@ -84,6 +99,7 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
             else if (t.includes("image")) midiaTipo = "image";
             else if (t.includes("video")) midiaTipo = "video";
             else if (t.includes("document")) midiaTipo = "document";
+            else if (t.includes("sticker")) midiaTipo = "sticker";
           }
           if (midiaTipo === "audio" && !text) text = "[ÁUDIO]";
 
@@ -114,10 +130,30 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
           const fromMe = key ? !!key.fromMe : !!payload.fromMe;
           const direcao = fromMe ? "saida" : "entrada";
           const autor = fromMe ? "humano" : "contato";
+          const channel = ["instagram", "messenger", "whatsapp"].includes(String(payload?.channel ?? payload?.canal))
+            ? String(payload.channel ?? payload.canal)
+            : "whatsapp";
           // pushName em mensagens enviadas por nós é o nome do perfil da EMPRESA — nunca usar como nome do lead.
           const pushName = fromMe ? null : (rawPushName || null);
           const eventTimestamp = payload?.messageTimestamp || payload?.timestamp || payload?.data?.messageTimestamp || payload?.data?.timestamp || "sem-timestamp";
           const stableMessageId = String(providerMessageId || `evo:${inst.id}:${number}:${eventTimestamp}:${text || midiaTipo || "mensagem"}`);
+
+          // Webhook providers retry deliveries. Do not duplicate the message or
+          // trigger the AI/automations again when the external id is repeated.
+          if (providerMessageId) {
+            const { data: existingMessage, error: duplicateCheckError } = await (supabaseAdmin as any)
+              .from("mensagens")
+              .select("id")
+              .eq("company_id", companyId)
+              .eq("whatsapp_message_id", stableMessageId)
+              .maybeSingle();
+
+            if (duplicateCheckError) {
+              console.error("[webhook] Duplicate check failed:", duplicateCheckError);
+            } else if (existingMessage) {
+              return new Response("duplicate", { status: 200 });
+            }
+          }
 
           console.log(`[webhook] DEEP DETECTED: fromMe=${fromMe}, number=${number}, autor=${autor}`);
 
@@ -147,9 +183,28 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
           }
           console.log("[webhook] DB SUCCESS:", insertedMsg?.id);
 
+          if (insertedMsg?.id && midiaUrl && midiaTipo) {
+            const { error: attachmentError } = await (supabaseAdmin as any)
+              .from("message_attachments")
+              .insert({
+                company_id: companyId,
+                mensagem_id: insertedMsg.id,
+                attachment_key: stableMessageId,
+                kind: midiaTipo,
+                provider_attachment_id: providerMessageId || null,
+                provider_url: midiaUrl,
+                mime_type: midiaMime,
+                file_name: midiaNome,
+              });
+
+            if (attachmentError) {
+              console.error("[webhook] Attachment index error:", attachmentError);
+            }
+          }
+
           const { upsertCard, getStagesBrief, pickLeadOwner } = await import("@/lib/crm-engine.server");
           const stages = await getStagesBrief(supabaseAdmin, companyId);
-          const currentCard = await upsertCard(supabaseAdmin, companyId, userId, number, pushName || null, text || "", stages, "whatsapp");
+          const currentCard = await upsertCard(supabaseAdmin, companyId, userId, number, pushName || null, text || "", stages, channel as any);
 
           if (currentCard && !fromMe) {
             // PERSISTÊNCIA DE DONO: O upsertCard preserva o dono se ele já existir.
@@ -196,14 +251,13 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
               texto: text,
               inboundMessageId: stableMessageId,
               stageId: currentCard?.stage_id,
-              isAudioMessage: midiaTipo === "audio",
             });
           }
 
           return new Response("ok", { status: 200 });
         } catch (e: any) {
           console.error("[webhook] FATAL ERROR:", e);
-          return new Response("error: " + e.message, { status: 200 });
+          return new Response("webhook processing failed", { status: 500 });
         }
       },
     },

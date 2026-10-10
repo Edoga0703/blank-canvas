@@ -57,7 +57,6 @@ export type ClienteRow = {
 };
 
 const PROVIDER_LABEL: Record<string, string> = {
-  lovable_whatsapp: "WhatsApp oficial · Lovable",
   evolution: "Evolution API",
   uazapi: "Uazapi",
   official: "WhatsApp Oficial",

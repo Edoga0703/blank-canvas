@@ -1361,7 +1361,7 @@ function AgentePage() {
                             </div>
                             <div>
                               <h4 className="text-sm font-bold">WhatsApp</h4>
-                              <p className="text-[10px] text-muted-foreground">WhatsApp Business oficial · Lovable</p>
+                              <p className="text-[10px] text-muted-foreground">Instância Evolution API</p>
                             </div>
                           </div>
                           <Switch checked={true} />
@@ -1796,4 +1796,3 @@ type ChatMsg = {
   content: string;
   parts?: string[];
 };
-

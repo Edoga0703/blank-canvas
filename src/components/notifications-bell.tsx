@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Bell, UserPlus, PlugZap, Megaphone, LifeBuoy, CalendarClock, CheckCheck,
+  MessageCircle, AtSign, Heart,
 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -13,7 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 type Tipo =
   | "lead_novo" | "conexao_caiu" | "campanha_finalizada"
-  | "chamado_respondido" | "agendamento_proximo";
+  | "chamado_respondido" | "agendamento_proximo"
+  | "comentario_meta" | "mencion_meta" | "reacao_meta";
 
 type Notif = {
   id: string;
@@ -31,6 +33,9 @@ const META: Record<Tipo, { icon: typeof Bell; label: string; tone: string }> = {
   campanha_finalizada: { icon: Megaphone, label: "Campanha", tone: "text-emerald-600 bg-emerald-600/10" },
   chamado_respondido: { icon: LifeBuoy, label: "Suporte", tone: "text-amber-600 bg-amber-600/10" },
   agendamento_proximo: { icon: CalendarClock, label: "Agendamento", tone: "text-violet-600 bg-violet-600/10" },
+  comentario_meta: { icon: MessageCircle, label: "Comentário", tone: "text-blue-600 bg-blue-600/10" },
+  mencion_meta: { icon: AtSign, label: "Menção", tone: "text-fuchsia-600 bg-fuchsia-600/10" },
+  reacao_meta: { icon: Heart, label: "Reação", tone: "text-rose-600 bg-rose-600/10" },
 };
 
 function timeAgo(iso: string) {

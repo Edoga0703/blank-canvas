@@ -14,8 +14,9 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Copy, Webhook, KeyRound, Link2, BookOpen } from "lucide-react";
+import { Loader2, Plus, Trash2, Copy, Webhook, KeyRound, Link2, BookOpen, RadioTower } from "lucide-react";
 import { IntegracaoGuias } from "@/components/config/integracao-guias";
+import { MetaOperationsTab } from "@/components/config/meta-operations-tab";
 import { useCapacidadeAtiva } from "@/hooks/use-capacidades";
 import { Link } from "@tanstack/react-router";
 
@@ -53,12 +54,14 @@ export function IntegracoesContent({ company }: { company: any }) {
       <Tabs defaultValue="guias">
         <TabsList>
           <TabsTrigger value="guias"><BookOpen className="size-4 mr-1.5" /> Guias</TabsTrigger>
+          <TabsTrigger value="meta"><RadioTower className="size-4 mr-1.5" /> Meta</TabsTrigger>
           <TabsTrigger value="webhooks"><Webhook className="size-4 mr-1.5" /> Webhooks</TabsTrigger>
           <TabsTrigger value="api"><KeyRound className="size-4 mr-1.5" /> API pública</TabsTrigger>
           <TabsTrigger value="utm"><Link2 className="size-4 mr-1.5" /> Links UTM</TabsTrigger>
         </TabsList>
 
         <TabsContent value="guias" className="mt-4"><IntegracaoGuias /></TabsContent>
+        <TabsContent value="meta" className="mt-4"><MetaOperationsTab /></TabsContent>
         <TabsContent value="webhooks" className="mt-4"><WebhooksTab /></TabsContent>
         <TabsContent value="api" className="mt-4"><ApiTab isBusiness={isBusiness} /></TabsContent>
         <TabsContent value="utm" className="mt-4"><UtmTab company={company} /></TabsContent>

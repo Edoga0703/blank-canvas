@@ -4,14 +4,16 @@
   "path": "/mcp",
   "auth": {
     "type": "oauth",
-    "issuer": "https://llnfjhqdeeuscyqzoqfz.supabase.co/auth/v1",
-    "accepted_audiences": ["authenticated"]
+    "issuer": "https://rboflrriannlrjreatxb.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
   },
   "mcp": {
     "server": {
-      "name": "capiversa-mcp",
+      "name": "atendzap-mcp",
       "version": "0.1.0",
-      "title": "Capiversa"
+      "title": "AtendZap"
     },
     "tools": [
       {
@@ -91,7 +93,10 @@
               "description": "Texto da mensagem."
             }
           },
-          "required": ["numero", "texto"]
+          "required": [
+            "numero",
+            "texto"
+          ]
         },
         "outputSchema": null
       }

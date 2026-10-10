@@ -8,11 +8,10 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
 import { serverFnWarmup } from "./vite-serverfn-warmup";
 
-// @lovable.dev/mcp-js 0.28.0 compara la raiz normalizada de Vite (con `/`)
-// contra rutas nativas de Windows (con `\\`) y aborta antes de compilar.
-// Lovable publica en Linux, donde el plugin sigue activo. Las rutas MCP ya
-// generadas permanecen disponibles durante la validacion local en Windows.
-const lovableMcpPlugins = process.platform === "win32" ? [] : [mcpPlugin()];
+// @lovable.dev/mcp-js 0.28.0 compara caminhos com barras diferentes no
+// Windows e interrompe o build antes do Vite compilar a aplicação. As rotas
+// MCP já estão versionadas; em Linux o plugin continua regenerando-as.
+const mcpPlugins = process.platform === "win32" ? [] : [mcpPlugin()];
 
 export default defineConfig({
   tanstackStart: {
@@ -21,7 +20,7 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    plugins: [...lovableMcpPlugins, serverFnWarmup()],
+    plugins: [...mcpPlugins, serverFnWarmup()],
     // Reduce build memory usage (avoids OOM on publish)
     build: { sourcemap: false, reportCompressedSize: false },
     optimizeDeps: {

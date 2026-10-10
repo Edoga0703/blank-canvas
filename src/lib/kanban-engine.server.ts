@@ -40,7 +40,7 @@ function isPastHoraDoDia(hora?: string | null): boolean {
 }
 
 async function processKanbanReguaCard(admin: Admin, card: KanbanCardRow): Promise<any | null> {
-  const { getActiveInstanceForContact, waSendText, waSendMedia, waSendAudio } = await import("@/lib/wa-dispatch.server");
+  const { getActiveInstance, waSendText, waSendMedia, waSendAudio } = await import("@/lib/wa-dispatch.server");
 
   const nowIso = new Date().toISOString();
   const { data: stage } = await admin
@@ -136,9 +136,9 @@ async function processKanbanReguaCard(admin: Admin, card: KanbanCardRow): Promis
   }
 
 
-  const inst = await getActiveInstanceForContact(card.company_id, card.numero, card.owner_id || (card as any).user_id);
+  const inst = await getActiveInstance(card.company_id);
   if (!inst || inst.status !== "connected" || inst.paused) {
-    return { id: card.id, status: "canal_desconectado" };
+    return { id: card.id, status: "whatsapp_desconectado" };
   }
 
 

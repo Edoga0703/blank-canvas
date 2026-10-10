@@ -65,7 +65,6 @@ import { Forward } from "lucide-react";
 import { useFeatureEnabled } from "@/hooks/use-feature-flags";
 import { canTransferConversation } from "@/lib/tenant";
 import { salvarRelatorioAtendimento, sugerirRelatorioAtendimento, type AtendimentoSituacao } from "@/lib/atendimento-relatorios.functions";
-import { prepareR2Upload } from "@/lib/storage/r2.functions";
 
 
 export const Route = createFileRoute("/app/conversas")({
@@ -309,7 +308,6 @@ function ConversasPage() {
     return localStorage.getItem("conv:setor") || null;
   });
   const [agentFilter, setAgentFilter] = useState<string | null>(null);
-  const [channelFilter, setChannelFilter] = useState<string | null>(null);
   const loadSectorsFn = useServerFn(getInboxSectors);
   const setoresOn = useFeatureEnabled("feature.setores");
   useEffect(() => {
@@ -865,10 +863,6 @@ function ConversasPage() {
 
       if (sectorFilter && (card as any)?.department_id !== sectorFilter) return false;
       if (agentFilter && card?.owner_id !== agentFilter) return false;
-      if (channelFilter) {
-        const canal = (card as any)?.canal_chat || "whatsapp";
-        if (canal !== channelFilter) return false;
-      }
 
 
       const iaAtiva = !(pauses[c.numero] ?? false);
@@ -885,7 +879,7 @@ function ConversasPage() {
     });
     // ordena SEMPRE pela última mensagem (mais recente no topo)
     return list.sort((a, b) => +new Date(b.last.created_at) - +new Date(a.last.created_at));
-  }, [msgs, search, filter, sectorFilter, agentFilter, channelFilter, mySectorIds, unread, cards, pauses, stages, userId, ctx, grupos, operationalMode]);
+  }, [msgs, search, filter, sectorFilter, agentFilter, mySectorIds, unread, cards, pauses, stages, userId, ctx, grupos, operationalMode]);
 
 
   const thread = useMemo(() =>
@@ -1350,54 +1344,6 @@ function ConversasPage() {
                       ))}
                     </>
                   )}
-
-                  <div className="my-1 h-px bg-[color:var(--hairline)]" />
-                  <p className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Canal / Aplicativo
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => { setChannelFilter(null); setFilterOpen(false); }}
-                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-                      !channelFilter ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)]" : "hover:bg-muted text-foreground"
-                    }`}
-                  >
-                    <Check className={`size-3.5 shrink-0 ${!channelFilter ? "opacity-100" : "opacity-0"}`} />
-                    <span className="flex-1 text-left truncate">Todos os canais</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setChannelFilter("whatsapp"); setFilterOpen(false); }}
-                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-                      channelFilter === "whatsapp" ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)]" : "hover:bg-muted text-foreground"
-                    }`}
-                  >
-                    <Check className={`size-3.5 shrink-0 ${channelFilter === "whatsapp" ? "opacity-100" : "opacity-0"}`} />
-                    <WhatsAppGlyph className="size-4 shrink-0 text-[#25D366]" />
-                    <span className="flex-1 text-left truncate">WhatsApp</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setChannelFilter("instagram"); setFilterOpen(false); }}
-                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-                      channelFilter === "instagram" ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)]" : "hover:bg-muted text-foreground"
-                    }`}
-                  >
-                    <Check className={`size-3.5 shrink-0 ${channelFilter === "instagram" ? "opacity-100" : "opacity-0"}`} />
-                    <InstagramGlyph className="size-4 shrink-0 text-[#E4405F]" />
-                    <span className="flex-1 text-left truncate">Instagram Direct</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setChannelFilter("messenger"); setFilterOpen(false); }}
-                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-                      channelFilter === "messenger" ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)]" : "hover:bg-muted text-foreground"
-                    }`}
-                  >
-                    <Check className={`size-3.5 shrink-0 ${channelFilter === "messenger" ? "opacity-100" : "opacity-0"}`} />
-                    <MessengerGlyph className="size-4 shrink-0 text-[#0084FF]" />
-                    <span className="flex-1 text-left truncate">Facebook Messenger</span>
-                  </button>
                 </PopoverContent>
 
               </Popover>
@@ -2576,7 +2522,6 @@ function Composer({
 
   const sendMediaFn = useServerFn(sendWhatsappMedia);
   const sendAudioFn = useServerFn(sendWhatsappAudio);
-  const prepareUploadFn = useServerFn(prepareR2Upload);
   const fetchProdutos = useServerFn(listProdutos);
   const toggleFavFn = useServerFn(toggleQuickReplyFavorito);
   const deleteQrFn = useServerFn(deleteQuickReply);
@@ -2816,20 +2761,24 @@ function Composer({
     setTimeout(() => inputRef.current?.focus(), 80);
   }
 
-  async function uploadToStorage(file: Blob, ext: string, originalName?: string, mimeOverride?: string): Promise<{ url: string; storageKey: string }> {
-    const mimeType = mimeOverride || file.type || "application/octet-stream";
-    const target = await prepareUploadFn({ data: {
-      fileName: originalName || `archivo.${ext}`,
-      mimeType,
-      sizeBytes: file.size,
-    } });
-    const response = await fetch(target.uploadUrl, {
-      method: "PUT",
-      headers: { "Content-Type": target.mimeType },
-      body: file,
+  async function uploadToStorage(file: Blob, ext: string): Promise<string | null> {
+    const path = `${companyId}/${active}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await supabase.storage.from("chat-media").upload(path, file, { contentType: (file as any).type || "application/octet-stream" });
+    if (error) { toast.error("Falha no upload: " + error.message); return null; }
+    const { data } = await supabase.storage.from("chat-media").createSignedUrl(path, 60 * 60 * 24 * 365);
+    return data?.signedUrl ?? null;
+  }
+
+  async function fileToBase64(file: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => {
+        const s = String(r.result || "");
+        resolve(s.split(",")[1] ?? s);
+      };
+      r.onerror = reject;
+      r.readAsDataURL(file);
     });
-    if (!response.ok) throw new Error(`R2 rechazó el archivo (${response.status}).`);
-    return { url: target.downloadUrl, storageKey: target.storageKey };
   }
 
   /** Reduz fotos grandes (câmera de celular) antes de subir. */
@@ -2871,18 +2820,17 @@ function Composer({
         ? (mimetype === "image/jpeg" ? "jpg" : (file.name.split(".").pop() || "jpg"))
         : (file.name.split(".").pop() || (isVid ? "mp4" : "bin"));
 
-      const uploaded = await uploadToStorage(payload, ext, file.name, mimetype);
-      // El proveedor descarga una URL corta; Capiversa conserva storageKey para
-      // renovar el acceso desde R2 en la bandeja y en cada reintento.
-      const media = uploaded.url;
+      const signedUrl = await uploadToStorage(payload, ext);
+      // Evita enviar arquivos grandes em base64 para o servidor (falhava em
+      // fotos de celular). Quando o upload deu certo, mandamos apenas a URL.
+      const media = signedUrl ?? (await fileToBase64(payload));
 
       await sendMediaFn({
         data: {
           numero: active, contatoNome: activeName,
           mediatype, media, mimetype,
           fileName: file.name, caption: (caption ?? text).trim() || undefined,
-          midiaUrl: null,
-          storageKey: uploaded.storageKey,
+          midiaUrl: signedUrl,
         },
       });
       if (caption === undefined) setText("");
@@ -2980,8 +2928,9 @@ function Composer({
     const tmpId = onLocalMedia?.(localUrl, "audio", type.split(";")[0]) ?? null;
     void (async () => {
       try {
-        const uploaded = await uploadToStorage(blob, ext, `audio.${ext}`, type.split(";")[0]);
-        await sendAudioFn({ data: { numero: active, contatoNome: activeName, audio: uploaded.url, midiaUrl: null, storageKey: uploaded.storageKey, mimetype: type.split(";")[0] } });
+        const signedUrl = await uploadToStorage(blob, ext);
+        if (!signedUrl) throw new Error("Falha ao subir áudio");
+        await sendAudioFn({ data: { numero: active, contatoNome: activeName, audio: signedUrl, midiaUrl: signedUrl, mimetype: type.split(";")[0] } });
         // O áudio real já foi gravado no servidor: remove a prévia local
         // para não ficar duplicado (a cópia local não tem duração).
         if (tmpId) setTimeout(() => onLocalMediaFail?.(tmpId), 400);

@@ -13,9 +13,8 @@ import {
   Plus, ChevronDown, ChevronRight, Search, WifiOff,
   Plug,
 } from "lucide-react";
-import { InstagramGlyph, MessengerGlyph, WhatsAppGlyph, TelegramGlyph } from "@/components/ui/channel-icons";
+import { MessengerGlyph, WhatsAppGlyph, TelegramGlyph } from "@/components/ui/channel-icons";
 import { brand } from "@/config/brand";
-import { betaConfig } from "@/config/beta";
 import {
   connectWhatsapp, checkWhatsappStatus, disconnectWhatsapp, deleteWhatsapp,
   reconfigureWebhook, listWhatsappInstances,
@@ -29,7 +28,6 @@ import { MetaOAuthHandler } from "@/components/conexao/meta-oauth-handler";
 import { listStorePlugins } from "@/lib/plugin-store.functions";
 import { TelegramConnectDialog } from "@/components/conexao/telegram-connect-dialog";
 import { MetaConnectDialog } from "@/components/conexao/meta-connect-dialog";
-import { registerLovableWhatsappConnection } from "@/lib/messaging/lovable-connection.functions";
 
 
 export const Route = createFileRoute("/app/conexao")({
@@ -50,7 +48,6 @@ type Instance = {
 };
 
 const PROVIDER_LABEL: Record<string, string> = {
-  lovable_whatsapp: "WhatsApp Business oficial",
   evolution: "WhatsApp Web",
   uazapi: "WhatsApp Premium",
   official: "WhatsApp Oficial",
@@ -68,7 +65,6 @@ function ConexoesPage() {
   const [metaDialog, setMetaDialog] = useState<"facebook" | "instagram" | null>(null);
   const setPaused = useServerFn(setWhatsappPaused);
   const listInstances = useServerFn(listWhatsappInstances);
-  const registerLovable = useServerFn(registerLovableWhatsappConnection);
   
 
   const plan = usePlanFeatures();
@@ -94,9 +90,7 @@ function ConexoesPage() {
   }, []);
 
   useEffect(() => {
-    const anyPending = instances.some(
-      (i) => i.status !== "connected" && i.provider !== "lovable_whatsapp",
-    );
+    const anyPending = instances.some((i) => i.status !== "connected");
     if (anyPending) {
       if (!pollRef.current) pollRef.current = setInterval(() => { void refresh(true); }, 5000);
     } else {
@@ -124,7 +118,6 @@ function ConexoesPage() {
       });
       setInstances(list);
       for (const inst of list) {
-        if (inst.provider === "lovable_whatsapp") continue;
         if (inst.status !== "connected") {
           try {
             const r: any = await check({ data: { instanceName: inst.instance_name } });
@@ -225,7 +218,6 @@ function ConexoesPage() {
     return plugins.find((p) => p.slug === slug)?.nome || fallback;
   }
   const PROVIDER_SLUG: Record<string, string> = {
-    lovable_whatsapp: "lovable-whatsapp",
     evolution: "whatsapp-evolution",
     uazapi: "whatsapp-uazapi",
     telegram: "telegram",
@@ -240,7 +232,7 @@ function ConexoesPage() {
   }
 
   const FREE_KEYS = ["instagram", "messenger", "telegram", "uazapi"];
-  const WA_KEYS = ["lovable_whatsapp", "evolution", "uazapi", "official"];
+  const WA_KEYS = ["evolution", "uazapi", "official"];
   const waInstances = instances.filter((i) => WA_KEYS.includes((i.provider ?? "evolution") as string) || i.provider_type === "oficial_meta");
   const waUsed = waInstances.length;
   const waLimit = plan.limites.instancias;
@@ -253,10 +245,7 @@ function ConexoesPage() {
     exclusivo && WA_KEYS.includes(key) && waProviderAtivo && waProviderAtivo !== key
       ? waProviderAtivo === "uazapi" ? "WhatsApp Premium" : waProviderAtivo === "evolution" ? "WhatsApp Web" : "outra conexão"
       : null;
-  const canAddChannel = (key: string) =>
-    key === "lovable_whatsapp" || FREE_KEYS.includes(key)
-      ? true
-      : canAddWa && !bloqueadoPor(key);
+  const canAddChannel = (key: string) => (FREE_KEYS.includes(key) ? true : canAddWa && !bloqueadoPor(key));
   const canAdd = canAddWa;
 
 
@@ -275,43 +264,20 @@ function ConexoesPage() {
     multi?: boolean;
   };
 
-  const channels: Channel[] = betaConfig.lovableWhatsAppOnly
-    ? [
-        {
-          key: "lovable_whatsapp",
-          title: "WhatsApp Business oficial",
-          icon: <WhatsAppGlyph className="size-6 text-[#25D366]" />,
-          match: (i) => i.provider === "lovable_whatsapp",
-          onIntegrate: async () => {
-            setCreating(true);
-            try {
-              await registerLovable({ data: {} });
-              await refresh(true);
-              window.open("https://lovable.dev/connectors", "_blank", "noopener,noreferrer");
-              toast.info("Conecta WhatsApp Business en Lovable. El primer evento confirmará la conexión en Capiversa.");
-            } catch (error: any) {
-              toast.error(error?.message || "No se pudo preparar la conexión oficial");
-            } finally {
-              setCreating(false);
-            }
-          },
-          multi: false,
-        },
-      ]
-    : [
-        {
-          key: "uazapi",
-          title: pluginName("whatsapp-uazapi", "WhatsApp"),
-          icon: <WhatsAppGlyph className="size-6 text-emerald-500" />,
-          // Incluye conexiones antiguas para conservar compatibilidad futura.
-          match: (i) => (i.provider ?? "uazapi") === "uazapi" || i.provider === "evolution",
-          onIntegrate: () => { setInitialProvider("uazapi"); setNewConnOpen(true); },
-          multi: true,
-        },
-      ];
+  const channels: Channel[] = [
+    {
+      key: "uazapi",
+      title: pluginName("whatsapp-uazapi", "WhatsApp"),
+      icon: <WhatsAppGlyph className="size-6 text-emerald-500" />,
+      // inclui conexões antigas (evolution) para não sumirem da lista
+      match: (i) => (i.provider ?? "uazapi") === "uazapi" || i.provider === "evolution",
+      onIntegrate: () => { setInitialProvider("uazapi"); setNewConnOpen(true); },
+      multi: true,
+    },
+  ];
 
 
-  if (!betaConfig.lovableWhatsAppOnly && pluginAtivo("telegram")) channels.push({
+  if (pluginAtivo("telegram")) channels.push({
     key: "telegram",
     title: pluginName("telegram", "Telegram"),
     icon: <TelegramGlyph className="size-6 text-[#229ED9]" />,
@@ -320,27 +286,11 @@ function ConexoesPage() {
     multi: true,
   });
 
-  if (betaConfig.metaChannelsEnabled) {
-    channels.push({
-      key: "instagram",
-      title: pluginName("instagram", "Instagram Direct"),
-      icon: <InstagramGlyph className="size-6 text-[#E4405F]" />,
-      match: (i) => i.provider === "meta_instagram",
-      onIntegrate: () => setMetaDialog("instagram"),
-      multi: true,
-    });
-    channels.push({
-      key: "messenger",
-      title: pluginName("messenger", "Facebook Messenger"),
-      icon: <MessengerGlyph className="size-6 text-[#0084FF]" />,
-      match: (i) => i.provider === "meta_messenger",
-      onIntegrate: () => setMetaDialog("facebook"),
-      multi: true,
-    });
-  }
+  // Instagram Business e Facebook temporariamente fora do módulo de Conexões
+  // (canais ainda não liberados para uso pelos clientes).
 
 
-  if (!betaConfig.lovableWhatsAppOnly && pluginAtivo("meta-official-api")) channels.push({
+  if (pluginAtivo("meta-official-api")) channels.push({
     key: "official",
     title: pluginName("meta-official-api", "WhatsApp API Oficial (Meta)"),
     icon: <WhatsAppGlyph className="size-6 text-[#25D366]" />,
@@ -428,7 +378,6 @@ function ConexoesPage() {
                     {accounts.map((inst) => {
                       const isBusy = busy === inst.instance_name;
                       const isOpen = expanded === inst.instance_name;
-                      const managedByLovable = inst.provider === "lovable_whatsapp";
                       return (
                         <div key={inst.instance_name} className="bg-muted/20">
                           <div className="flex flex-wrap items-center gap-2 px-4 py-2.5">
@@ -437,32 +386,20 @@ function ConexoesPage() {
                               <StatusBadge status={inst.status} paused={inst.paused} />
                             </button>
                             <div className="flex items-center gap-0.5 shrink-0">
-                              {managedByLovable ? (
-                                <IconAction
-                                  tip="Administrar en Lovable"
-                                  onClick={() => window.open("https://lovable.dev/connectors", "_blank", "noopener,noreferrer")}
-                                  disabled={isBusy}
-                                >
-                                  <Plug className="size-4" />
-                                </IconAction>
-                              ) : (
-                                <IconAction tip="Reconectar / Gerar QR" onClick={() => doReconnect(inst)} disabled={isBusy}>
-                                  <QrCode className="size-4" />
-                                </IconAction>
-                              )}
+                              <IconAction tip="Reconectar / Gerar QR" onClick={() => doReconnect(inst)} disabled={isBusy}>
+                                <QrCode className="size-4" />
+                              </IconAction>
                               <IconAction tip={inst.paused ? "Retomar" : "Pausar"} onClick={() => doTogglePause(inst)} disabled={isBusy || inst.status !== "connected"}>
                                 {inst.paused ? <Play className="size-4" /> : <Pause className="size-4" />}
                               </IconAction>
-                              {!managedByLovable && inst.status === "connected" && (
+                              {inst.status === "connected" && (
                                 <IconAction tip="Desconectar" onClick={() => doDisconnect(inst)} disabled={isBusy}>
                                   <Power className="size-4" />
                                 </IconAction>
                               )}
-                              {!managedByLovable && (
-                                <IconAction tip="Excluir conexão" onClick={() => doDelete(inst)} disabled={isBusy} destructive>
-                                  <Trash2 className="size-4" />
-                                </IconAction>
-                              )}
+                              <IconAction tip="Excluir conexão" onClick={() => doDelete(inst)} disabled={isBusy} destructive>
+                                <Trash2 className="size-4" />
+                              </IconAction>
                               <Button variant="ghost" size="icon" className="size-8" onClick={() => setExpanded(isOpen ? null : inst.instance_name)}>
                                 {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                               </Button>
@@ -558,7 +495,7 @@ function ConexoesPage() {
 function StatusBadge({ status, paused }: { status: string; paused?: boolean }) {
   if (paused) return <Badge variant="outline" className="bg-amber-500/15 text-amber-700 border-amber-500/30 gap-1.5"><Pause className="size-3" /> Pausada</Badge>;
   if (status === "connected") return <Badge className="bg-emerald-600 hover:bg-emerald-600 gap-1.5"><span className="size-1.5 rounded-full bg-white animate-pulse" /> Conectado</Badge>;
-  if (status === "connecting" || status === "pending") return <Badge variant="secondary" className="bg-amber-500/15 text-amber-700 gap-1.5"><Loader2 className="size-3 animate-spin" /> {status === "pending" ? "Esperando evento" : "Conectando"}</Badge>;
+  if (status === "connecting") return <Badge variant="secondary" className="bg-amber-500/15 text-amber-700 gap-1.5"><Loader2 className="size-3 animate-spin" /> Conectando</Badge>;
   return <Badge variant="outline" className="gap-1.5"><WifiOff className="size-3" /> Desconectado</Badge>;
 }
 

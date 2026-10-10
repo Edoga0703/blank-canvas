@@ -1,6 +1,6 @@
 {
-  "name": "Capiversa",
-  "short_name": "Capiversa",
+  "name": "Capi Conversa",
+  "short_name": "Capi Conversa",
   "description": "WhatsApp com IA + CRM Kanban para o seu negócio.",
   "start_url": "/app/dashboard",
   "scope": "/",

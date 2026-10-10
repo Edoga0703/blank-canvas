@@ -6,11 +6,11 @@ import sendWhatsapp from "./tools/send-whatsapp";
 const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID ?? "project-ref-unset";
 
 export default defineMcp({
-  name: "capiversa-mcp",
-  title: "Capiversa",
+  name: "atendzap-mcp",
+  title: "AtendZap",
   version: "0.1.0",
   instructions:
-    "Ferramentas do Capiversa para consultar leads do CRM, conversas recentes do WhatsApp e enviar mensagens pela instância conectada da empresa do usuário.",
+    "Ferramentas do AtendZap para consultar leads do CRM, conversas recentes do WhatsApp e enviar mensagens pela instância conectada da empresa do usuário.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T14:18:26.184030+00:00",
+  "generated_at": "2026-10-08T18:56:19.382649+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -31,7 +31,7 @@
     },
     {
       "path": "MANUAL.md",
-      "bytes": 7970
+      "bytes": 7697
     },
     {
       "path": "webhooks_security.html",
@@ -47,7 +47,7 @@
     },
     {
       "path": "vite.config.ts",
-      "bytes": 2075
+      "bytes": 1686
     },
     {
       "path": "vite-serverfn-warmup.ts",
@@ -63,11 +63,11 @@
     },
     {
       "path": "README.md",
-      "bytes": 2376
+      "bytes": 5626
     },
     {
       "path": "package.json",
-      "bytes": 4126
+      "bytes": 4026
     },
     {
       "path": "components.json",
@@ -87,7 +87,7 @@
     },
     {
       "path": "src/routeTree.gen.ts",
-      "bytes": 94307
+      "bytes": 92485
     },
     {
       "path": "src/styles.css",
@@ -106,60 +106,12 @@
       "bytes": 1642
     },
     {
-      "path": "docs/LOVABLE_WHATSAPP_HANDOFF.md",
-      "bytes": 2813
-    },
-    {
-      "path": "docs/R2_SETUP.md",
-      "bytes": 1362
-    },
-    {
-      "path": "docs/VOCALIS_FEATURE_EXTRACTION_MAP.md",
-      "bytes": 7791
-    },
-    {
-      "path": "docs/CAPIVERSA_V1_1.md",
-      "bytes": 3216
-    },
-    {
-      "path": "docs/PRE_LOVABLE_VERIFICATION.md",
-      "bytes": 3617
-    },
-    {
       "path": "drizzle/schema.ts",
       "bytes": 60
     },
     {
-      "path": "supabase/migrations/20261009070000_company_full_columns.sql",
-      "bytes": 2532
-    },
-    {
-      "path": "supabase/migrations/20261009040000_meta_channels_core.sql",
-      "bytes": 1302
-    },
-    {
-      "path": "supabase/migrations/20261009030000_capiversa_v1_1_core.sql",
-      "bytes": 19763
-    },
-    {
-      "path": "supabase/migrations/20261009040000_complementary_modules.sql",
-      "bytes": 8980
-    },
-    {
-      "path": "supabase/migrations/20261009050000_rpc_and_auxiliary.sql",
-      "bytes": 7438
-    },
-    {
-      "path": "supabase/migrations/20261009080000_full_119_tables_parity.sql",
-      "bytes": 344509
-    },
-    {
-      "path": "supabase/migrations/20261009060000_full_modules.sql",
-      "bytes": 23602
-    },
-    {
       "path": ".lovable/mcp/manifest.json",
-      "bytes": 3143
+      "bytes": 3189
     },
     {
       "path": ".lovable/plan/corrigir-domínio-do-link-do-formulário-2026-09-09.md",
@@ -539,7 +491,7 @@
     },
     {
       "path": "src/components/app-shell.tsx",
-      "bytes": 34618
+      "bytes": 34422
     },
     {
       "path": "src/components/mobile-app-banner.tsx",
@@ -615,7 +567,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 28338
+      "bytes": 27190
     },
     {
       "path": "src/lib/tracking.functions.ts",
@@ -730,10 +682,6 @@
       "bytes": 25983
     },
     {
-      "path": "src/lib/meta-publish.functions.ts",
-      "bytes": 6160
-    },
-    {
       "path": "src/lib/billing-checkout.functions.ts",
       "bytes": 17401
     },
@@ -763,7 +711,7 @@
     },
     {
       "path": "src/lib/inbound-automation.server.ts",
-      "bytes": 3593
+      "bytes": 2753
     },
     {
       "path": "src/lib/quick-replies.functions.ts",
@@ -787,7 +735,7 @@
     },
     {
       "path": "src/lib/meta-oauth.server.ts",
-      "bytes": 10314
+      "bytes": 6466
     },
     {
       "path": "src/lib/automacao-ai.functions.ts",
@@ -919,7 +867,7 @@
     },
     {
       "path": "src/lib/meta-oauth.functions.ts",
-      "bytes": 8829
+      "bytes": 8626
     },
     {
       "path": "src/lib/master-alerts.server.ts",
@@ -1023,7 +971,7 @@
     },
     {
       "path": "src/lib/wa-dispatch.server.ts",
-      "bytes": 14488
+      "bytes": 8725
     },
     {
       "path": "src/lib/test-disparo.functions.ts",
@@ -1048,10 +996,6 @@
     {
       "path": "src/lib/master-overview.server.ts",
       "bytes": 7325
-    },
-    {
-      "path": "src/lib/meta-publish.server.ts",
-      "bytes": 6872
     },
     {
       "path": "src/lib/dashboard-layout.functions.ts",
@@ -1091,7 +1035,7 @@
     },
     {
       "path": "src/lib/evolution.functions.ts",
-      "bytes": 53075
+      "bytes": 50265
     },
     {
       "path": "src/lib/integrations.functions.ts",
@@ -1123,7 +1067,7 @@
     },
     {
       "path": "src/lib/kanban-engine.server.ts",
-      "bytes": 14862
+      "bytes": 14792
     },
     {
       "path": "src/lib/lead-coach.functions.ts",
@@ -1179,7 +1123,7 @@
     },
     {
       "path": "src/lib/chat-media.functions.ts",
-      "bytes": 6659
+      "bytes": 5824
     },
     {
       "path": "src/lib/session-persistence.ts",
@@ -1247,187 +1191,183 @@
     },
     {
       "path": "src/assets/metrix-logo-full.png.asset.json",
-      "bytes": 419
+      "bytes": 465
     },
     {
       "path": "src/assets/nox-welcome.png.asset.json",
-      "bytes": 406
+      "bytes": 452
     },
     {
       "path": "src/assets/android-step-1.png.asset.json",
-      "bytes": 415
+      "bytes": 461
     },
     {
       "path": "src/assets/android-step-4.png.asset.json",
-      "bytes": 415
+      "bytes": 461
     },
     {
       "path": "src/assets/metrix-bubble-v2.png.asset.json",
-      "bytes": 419
+      "bytes": 465
     },
     {
       "path": "src/assets/academy-logo.png.asset.json",
-      "bytes": 407
+      "bytes": 453
     },
     {
       "path": "src/assets/metrix-bubble.png.asset.json",
-      "bytes": 410
+      "bytes": 456
     },
     {
       "path": "src/assets/mascote-login.png.asset.json",
-      "bytes": 412
+      "bytes": 458
     },
     {
       "path": "src/assets/metrix-logo-center.png.asset.json",
-      "bytes": 425
+      "bytes": 471
     },
     {
       "path": "src/assets/iphone-step-1.png.asset.json",
-      "bytes": 412
+      "bytes": 458
     },
     {
       "path": "src/assets/metrix-receipt-white.png.asset.json",
-      "bytes": 431
+      "bytes": 477
     },
     {
       "path": "src/assets/metrix-favicon.png.asset.json",
-      "bytes": 413
+      "bytes": 459
     },
     {
       "path": "src/assets/metrix-logo-new.png.asset.json",
-      "bytes": 417
+      "bytes": 463
     },
     {
       "path": "src/assets/iphone-step-3.png.asset.json",
-      "bytes": 412
+      "bytes": 458
     },
     {
       "path": "src/assets/nox-phone.png.asset.json",
-      "bytes": 400
+      "bytes": 446
     },
     {
       "path": "src/assets/android-step-3.png.asset.json",
-      "bytes": 415
+      "bytes": 461
     },
     {
       "path": "src/assets/iphone-step-5.png.asset.json",
-      "bytes": 412
+      "bytes": 458
     },
     {
       "path": "src/assets/metrix-mascot.png.asset.json",
-      "bytes": 412
+      "bytes": 458
     },
     {
       "path": "src/assets/mascote-notebook.png.asset.json",
-      "bytes": 421
+      "bytes": 467
     },
     {
       "path": "src/assets/metrix-logo.png.asset.json",
-      "bytes": 404
+      "bytes": 450
     },
     {
       "path": "src/assets/mascot-support.png.asset.json",
-      "bytes": 415
+      "bytes": 461
     },
     {
       "path": "src/assets/metrix-icon-new.png.asset.json",
-      "bytes": 416
+      "bytes": 462
     },
     {
       "path": "src/assets/nox-tablet.png.asset.json",
-      "bytes": 403
+      "bytes": 449
     },
     {
       "path": "src/assets/capi-conversa-logo-horizontal-black.png.asset.json",
-      "bytes": 448
+      "bytes": 522
     },
     {
       "path": "src/assets/iphone-step-4.png.asset.json",
-      "bytes": 411
+      "bytes": 457
     },
     {
       "path": "src/assets/apple.svg.asset.json",
-      "bytes": 389
+      "bytes": 435
     },
     {
       "path": "src/assets/metrix-mark.png.asset.json",
-      "bytes": 404
+      "bytes": 450
     },
     {
       "path": "src/assets/mascote-notebook-v2.png.asset.json",
-      "bytes": 430
+      "bytes": 476
     },
     {
       "path": "src/assets/metrix-brand.png.asset.json",
-      "bytes": 406
+      "bytes": 452
     },
     {
       "path": "src/assets/academy-logo-white.png.asset.json",
-      "bytes": 426
+      "bytes": 472
     },
     {
       "path": "src/assets/android2.svg.asset.json",
-      "bytes": 398
+      "bytes": 444
     },
     {
       "path": "src/assets/nox-pointing-left.png.asset.json",
-      "bytes": 424
+      "bytes": 470
     },
     {
       "path": "src/assets/mascot-mobile.png.asset.json",
-      "bytes": 412
+      "bytes": 458
     },
     {
       "path": "src/assets/iphone-step-2.png.asset.json",
-      "bytes": 412
+      "bytes": 458
     },
     {
       "path": "src/assets/academy-fave.png.asset.json",
-      "bytes": 408
+      "bytes": 454
     },
     {
       "path": "src/assets/metrix-bubble-v4.png.asset.json",
-      "bytes": 420
+      "bytes": 466
     },
     {
       "path": "src/assets/sidebar-promo.png.asset.json",
-      "bytes": 410
+      "bytes": 456
     },
     {
       "path": "src/assets/metrix-receipt-blue.png.asset.json",
-      "bytes": 428
+      "bytes": 474
     },
     {
       "path": "src/assets/nox-pointing.png.asset.json",
-      "bytes": 409
+      "bytes": 455
     },
     {
       "path": "src/assets/mascote-oferta.png.asset.json",
-      "bytes": 415
+      "bytes": 461
     },
     {
       "path": "src/assets/metrix-bubble-v3.png.asset.json",
-      "bytes": 420
+      "bytes": 466
     },
     {
       "path": "src/assets/avatar-placeholder.png.asset.json",
-      "bytes": 424
+      "bytes": 470
     },
     {
       "path": "src/assets/nox-celebrate.png.asset.json",
-      "bytes": 412
+      "bytes": 458
     },
     {
       "path": "src/assets/android-step-2.png.asset.json",
-      "bytes": 415
+      "bytes": 461
     },
     {
       "path": "src/config/brand.ts",
-      "bytes": 408
-    },
-    {
-      "path": "src/config/beta.ts",
-      "bytes": 854
+      "bytes": 397
     },
     {
       "path": "src/routes/sitemap[.]xml.ts",
@@ -1443,7 +1383,7 @@
     },
     {
       "path": "src/routes/termos.tsx",
-      "bytes": 13068
+      "bytes": 13063
     },
     {
       "path": "src/routes/app.tsx",
@@ -1451,7 +1391,7 @@
     },
     {
       "path": "src/routes/privacidade.tsx",
-      "bytes": 12875
+      "bytes": 12870
     },
     {
       "path": "src/routes/csat.$token.tsx",
@@ -1471,11 +1411,11 @@
     },
     {
       "path": "src/routes/exclusao-dados.tsx",
-      "bytes": 9107
+      "bytes": 9128
     },
     {
       "path": "src/routes/__root.tsx",
-      "bytes": 9321
+      "bytes": 9142
     },
     {
       "path": "src/routes/master.tsx",
@@ -1487,7 +1427,7 @@
     },
     {
       "path": "src/routes/index.tsx",
-      "bytes": 31132
+      "bytes": 31176
     },
     {
       "path": "src/routes/mobile.tsx",
@@ -1511,7 +1451,7 @@
     },
     {
       "path": "src/routes/entrar.tsx",
-      "bytes": 32331
+      "bytes": 32158
     },
     {
       "path": "src/hooks/use-standalone.tsx",
@@ -1563,11 +1503,11 @@
     },
     {
       "path": "src/integrations/supabase/types.ts",
-      "bytes": 209206
+      "bytes": 209102
     },
     {
       "path": "src/integrations/supabase/client.ts",
-      "bytes": 3785
+      "bytes": 3569
     },
     {
       "path": "src/integrations/supabase/auth-attacher.ts",
@@ -1575,7 +1515,7 @@
     },
     {
       "path": "src/integrations/supabase/client.server.ts",
-      "bytes": 3014
+      "bytes": 2753
     },
     {
       "path": "src/integrations/lovable/appUserConnector.ts",
@@ -2199,7 +2139,7 @@
     },
     {
       "path": "src/components/master/clientes-lista.tsx",
-      "bytes": 50687
+      "bytes": 50636
     },
     {
       "path": "src/components/master/alerts-bell.tsx",
@@ -2255,39 +2195,7 @@
     },
     {
       "path": "src/lib/mcp/index.ts",
-      "bytes": 756
-    },
-    {
-      "path": "src/lib/messaging/provider-registry.server.ts",
-      "bytes": 654
-    },
-    {
-      "path": "src/lib/messaging/ingest.server.ts",
-      "bytes": 10002
-    },
-    {
-      "path": "src/lib/messaging/media-archive.server.ts",
-      "bytes": 1239
-    },
-    {
-      "path": "src/lib/messaging/lovable-connection.functions.ts",
-      "bytes": 2671
-    },
-    {
-      "path": "src/lib/messaging/lovable-whatsapp.generated.server.ts",
-      "bytes": 2769
-    },
-    {
-      "path": "src/lib/messaging/contracts.ts",
-      "bytes": 2639
-    },
-    {
-      "path": "src/lib/storage/r2.server.ts",
-      "bytes": 9639
-    },
-    {
-      "path": "src/lib/storage/r2.functions.ts",
-      "bytes": 895
+      "bytes": 753
     },
     {
       "path": "src/lib/integracoes/runtime.server.ts",
@@ -2347,7 +2255,7 @@
     },
     {
       "path": "src/lib/mcp/tools/send-whatsapp.ts",
-      "bytes": 2377
+      "bytes": 1925
     },
     {
       "path": "src/lib/mcp/tools/list-conversations.ts",
@@ -2355,11 +2263,7 @@
     },
     {
       "path": "src/lib/mcp/tools/list-leads.ts",
-      "bytes": 1591
-    },
-    {
-      "path": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
-      "bytes": 1859
+      "bytes": 1580
     },
     {
       "path": "src/assets/avatars/av-m4.png.asset.json",
@@ -2399,7 +2303,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 179457
+      "bytes": 175971
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -2434,10 +2338,6 @@
       "bytes": 48371
     },
     {
-      "path": "src/routes/app/publicacoes.tsx",
-      "bytes": 22658
-    },
-    {
       "path": "src/routes/app/treinamentos.index.tsx",
       "bytes": 232
     },
@@ -2451,7 +2351,7 @@
     },
     {
       "path": "src/routes/app/conexao.tsx",
-      "bytes": 26213
+      "bytes": 23364
     },
     {
       "path": "src/routes/app/relatorios.tsx",
@@ -2471,7 +2371,7 @@
     },
     {
       "path": "src/routes/app/campanhas.tsx",
-      "bytes": 33941
+      "bytes": 33870
     },
     {
       "path": "src/routes/app/plugins.tsx",
@@ -2491,7 +2391,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 83850
+      "bytes": 83839
     },
     {
       "path": "src/routes/app/dashboard.tsx",
@@ -2638,10 +2538,6 @@
       "bytes": 1911
     },
     {
-      "path": "src/routes/api/public/lovable-whatsapp.ts",
-      "bytes": 2691
-    },
-    {
       "path": "src/routes/api/public/wablast-webhook.ts",
       "bytes": 8877
     },
@@ -2675,11 +2571,11 @@
     },
     {
       "path": "src/routes/api/public/whatsapp-webhook.ts",
-      "bytes": 9959
+      "bytes": 9906
     },
     {
       "path": "src/routes/api/public/meta-webhook.ts",
-      "bytes": 14509
+      "bytes": 12148
     },
     {
       "path": "src/routes/api/public/v1/$.ts",
@@ -2687,7 +2583,7 @@
     },
     {
       "path": "src/routes/api/public/hooks/process-retry-queue.ts",
-      "bytes": 12488
+      "bytes": 10120
     },
     {
       "path": "src/routes/api/public/hooks/process-kanban-reguas.ts",
@@ -2953,10 +2849,6 @@
     },
     {
       "source": "src/routeTree.gen.ts",
-      "target": "./routes/app/publicacoes"
-    },
-    {
-      "source": "src/routeTree.gen.ts",
       "target": "./routes/app/relatorios"
     },
     {
@@ -3118,10 +3010,6 @@
     {
       "source": "src/routeTree.gen.ts",
       "target": "./routes/api/public/lead-photo"
-    },
-    {
-      "source": "src/routeTree.gen.ts",
-      "target": "./routes/api/public/lovable-whatsapp"
     },
     {
       "source": "src/routeTree.gen.ts",
@@ -4592,42 +4480,6 @@
       "target": "@/integrations/supabase/client.server"
     },
     {
-      "source": "src/lib/meta-publish.functions.ts",
-      "target": "@tanstack/react-start"
-    },
-    {
-      "source": "src/lib/meta-publish.functions.ts",
-      "target": "@/integrations/supabase/auth-middleware"
-    },
-    {
-      "source": "src/lib/meta-publish.functions.ts",
-      "target": "@/lib/company-cache"
-    },
-    {
-      "source": "src/lib/meta-publish.functions.ts",
-      "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/lib/meta-publish.functions.ts",
-      "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/lib/meta-publish.functions.ts",
-      "target": "./meta-publish.server"
-    },
-    {
-      "source": "src/lib/meta-publish.functions.ts",
-      "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/lib/meta-publish.functions.ts",
-      "target": "./meta-publish.server"
-    },
-    {
-      "source": "src/lib/meta-publish.functions.ts",
-      "target": "@/integrations/supabase/client.server"
-    },
-    {
       "source": "src/lib/billing-checkout.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -4906,10 +4758,6 @@
     {
       "source": "src/lib/handoff-summary.server.ts",
       "target": "./lovable-ai.server"
-    },
-    {
-      "source": "src/lib/meta-oauth.server.ts",
-      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/automacao-ai.functions.ts",
@@ -5909,30 +5757,6 @@
     },
     {
       "source": "src/lib/wa-dispatch.server.ts",
-      "target": "@/lib/messaging/provider-registry.server"
-    },
-    {
-      "source": "src/lib/wa-dispatch.server.ts",
-      "target": "@/lib/evolution-helpers"
-    },
-    {
-      "source": "src/lib/wa-dispatch.server.ts",
-      "target": "./meta.server"
-    },
-    {
-      "source": "src/lib/wa-dispatch.server.ts",
-      "target": "./meta.server"
-    },
-    {
-      "source": "src/lib/wa-dispatch.server.ts",
-      "target": "./meta.server"
-    },
-    {
-      "source": "src/lib/wa-dispatch.server.ts",
-      "target": "./meta.server"
-    },
-    {
-      "source": "src/lib/wa-dispatch.server.ts",
       "target": "./uazapi.server"
     },
     {
@@ -6225,10 +6049,6 @@
     },
     {
       "source": "src/lib/evolution.functions.ts",
-      "target": "./wa-dispatch.server"
-    },
-    {
-      "source": "src/lib/evolution.functions.ts",
       "target": "./outbound-queue.server"
     },
     {
@@ -6253,14 +6073,6 @@
     },
     {
       "source": "src/lib/evolution.functions.ts",
-      "target": "./wa-dispatch.server"
-    },
-    {
-      "source": "src/lib/evolution.functions.ts",
-      "target": "node:crypto"
-    },
-    {
-      "source": "src/lib/evolution.functions.ts",
       "target": "./outbound-queue.server"
     },
     {
@@ -6282,10 +6094,6 @@
     {
       "source": "src/lib/evolution.functions.ts",
       "target": "./wa-dispatch.server"
-    },
-    {
-      "source": "src/lib/evolution.functions.ts",
-      "target": "node:crypto"
     },
     {
       "source": "src/lib/evolution.functions.ts",
@@ -6670,10 +6478,6 @@
     {
       "source": "src/lib/chat-media.functions.ts",
       "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/lib/chat-media.functions.ts",
-      "target": "@/lib/storage/r2.server"
     },
     {
       "source": "src/lib/chat-media.functions.ts",
@@ -12172,82 +11976,6 @@
       "target": "./tools/send-whatsapp"
     },
     {
-      "source": "src/lib/messaging/provider-registry.server.ts",
-      "target": "@/lib/messaging/contracts"
-    },
-    {
-      "source": "src/lib/messaging/provider-registry.server.ts",
-      "target": "@/lib/messaging/providers/lovable-whatsapp.server"
-    },
-    {
-      "source": "src/lib/messaging/ingest.server.ts",
-      "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/lib/messaging/ingest.server.ts",
-      "target": "@/lib/messaging/contracts"
-    },
-    {
-      "source": "src/lib/messaging/ingest.server.ts",
-      "target": "@/lib/messaging/provider-registry.server"
-    },
-    {
-      "source": "src/lib/messaging/ingest.server.ts",
-      "target": "node:crypto"
-    },
-    {
-      "source": "src/lib/messaging/ingest.server.ts",
-      "target": "@/lib/messaging/media-archive.server"
-    },
-    {
-      "source": "src/lib/messaging/ingest.server.ts",
-      "target": "@/lib/messaging/lovable-whatsapp.generated.server"
-    },
-    {
-      "source": "src/lib/messaging/media-archive.server.ts",
-      "target": "@/lib/messaging/contracts"
-    },
-    {
-      "source": "src/lib/messaging/media-archive.server.ts",
-      "target": "@/lib/storage/r2.server"
-    },
-    {
-      "source": "src/lib/messaging/lovable-connection.functions.ts",
-      "target": "@tanstack/react-start"
-    },
-    {
-      "source": "src/lib/messaging/lovable-connection.functions.ts",
-      "target": "@/integrations/supabase/auth-middleware"
-    },
-    {
-      "source": "src/lib/messaging/lovable-connection.functions.ts",
-      "target": "@/lib/evolution-helpers"
-    },
-    {
-      "source": "src/lib/messaging/lovable-connection.functions.ts",
-      "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/lib/storage/r2.server.ts",
-      "target": "node:crypto"
-    },
-    {
-      "source": "src/lib/storage/r2.functions.ts",
-      "target": "@tanstack/react-start"
-    },
-    {
-      "source": "src/lib/storage/r2.functions.ts",
-      "target": "@/integrations/supabase/auth-middleware"
-    },
-    {
-      "source": "src/lib/storage/r2.functions.ts",
-      "target": "@/lib/company-cache"
-    },
-    {
-      "source": "src/lib/storage/r2.functions.ts",
-      "target": "@/lib/storage/r2.server"
-    },
-    {
       "source": "src/lib/integracoes/runtime.server.ts",
       "target": "./adapters.server"
     },
@@ -12345,7 +12073,7 @@
     },
     {
       "source": "src/lib/mcp/tools/send-whatsapp.ts",
-      "target": "@/lib/messaging/provider-registry.server"
+      "target": "@/lib/evolution.server"
     },
     {
       "source": "src/lib/mcp/tools/list-conversations.ts",
@@ -12370,14 +12098,6 @@
     {
       "source": "src/lib/mcp/tools/list-leads.ts",
       "target": "zod"
-    },
-    {
-      "source": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
-      "target": "@/lib/messaging/contracts"
-    },
-    {
-      "source": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
-      "target": "@/lib/messaging/lovable-whatsapp.generated.server"
     },
     {
       "source": "src/routes/[.well-known]/oauth-protected-resource.ts",
@@ -12594,10 +12314,6 @@
     {
       "source": "src/routes/app/conversas.tsx",
       "target": "@/lib/atendimento-relatorios.functions"
-    },
-    {
-      "source": "src/routes/app/conversas.tsx",
-      "target": "@/lib/storage/r2.functions"
     },
     {
       "source": "src/routes/app/conversas.tsx",
@@ -13068,54 +12784,6 @@
       "target": "@/hooks/use-capacidades"
     },
     {
-      "source": "src/routes/app/publicacoes.tsx",
-      "target": "@tanstack/react-router"
-    },
-    {
-      "source": "src/routes/app/publicacoes.tsx",
-      "target": "react"
-    },
-    {
-      "source": "src/routes/app/publicacoes.tsx",
-      "target": "@tanstack/react-start"
-    },
-    {
-      "source": "src/routes/app/publicacoes.tsx",
-      "target": "@/lib/meta-publish.functions"
-    },
-    {
-      "source": "src/routes/app/publicacoes.tsx",
-      "target": "@/components/ui/button"
-    },
-    {
-      "source": "src/routes/app/publicacoes.tsx",
-      "target": "@/components/ui/card"
-    },
-    {
-      "source": "src/routes/app/publicacoes.tsx",
-      "target": "@/components/ui/input"
-    },
-    {
-      "source": "src/routes/app/publicacoes.tsx",
-      "target": "@/components/ui/textarea"
-    },
-    {
-      "source": "src/routes/app/publicacoes.tsx",
-      "target": "@/components/ui/badge"
-    },
-    {
-      "source": "src/routes/app/publicacoes.tsx",
-      "target": "@/components/ui/tabs"
-    },
-    {
-      "source": "src/routes/app/publicacoes.tsx",
-      "target": "sonner"
-    },
-    {
-      "source": "src/routes/app/publicacoes.tsx",
-      "target": "lucide-react"
-    },
-    {
       "source": "src/routes/app/treinamentos.index.tsx",
       "target": "@tanstack/react-router"
     },
@@ -13357,10 +13025,6 @@
     },
     {
       "source": "src/routes/app/conexao.tsx",
-      "target": "@/config/beta"
-    },
-    {
-      "source": "src/routes/app/conexao.tsx",
       "target": "@/lib/evolution.functions"
     },
     {
@@ -13394,10 +13058,6 @@
     {
       "source": "src/routes/app/conexao.tsx",
       "target": "@/components/conexao/meta-connect-dialog"
-    },
-    {
-      "source": "src/routes/app/conexao.tsx",
-      "target": "@/lib/messaging/lovable-connection.functions"
     },
     {
       "source": "src/routes/app/conexao.tsx",
@@ -15376,18 +15036,6 @@
       "target": "@/integrations/supabase/client.server"
     },
     {
-      "source": "src/routes/api/public/lovable-whatsapp.ts",
-      "target": "@tanstack/react-router"
-    },
-    {
-      "source": "src/routes/api/public/lovable-whatsapp.ts",
-      "target": "@/lib/messaging/lovable-whatsapp.generated.server"
-    },
-    {
-      "source": "src/routes/api/public/lovable-whatsapp.ts",
-      "target": "@/lib/messaging/ingest.server"
-    },
-    {
       "source": "src/routes/api/public/wablast-webhook.ts",
       "target": "@tanstack/react-router"
     },
@@ -15537,23 +15185,7 @@
     },
     {
       "source": "src/routes/api/public/meta-webhook.ts",
-      "target": "@/lib/meta-oauth.server"
-    },
-    {
-      "source": "src/routes/api/public/meta-webhook.ts",
-      "target": "@/lib/meta-oauth.server"
-    },
-    {
-      "source": "src/routes/api/public/meta-webhook.ts",
       "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/routes/api/public/meta-webhook.ts",
-      "target": "@/lib/crm-engine.server"
-    },
-    {
-      "source": "src/routes/api/public/meta-webhook.ts",
-      "target": "@/lib/inbound-automation.server"
     },
     {
       "source": "src/routes/api/public/v1/$.ts",
@@ -15593,15 +15225,7 @@
     },
     {
       "source": "src/routes/api/public/hooks/process-retry-queue.ts",
-      "target": "@/lib/storage/r2.server"
-    },
-    {
-      "source": "src/routes/api/public/hooks/process-retry-queue.ts",
       "target": "@/lib/jid"
-    },
-    {
-      "source": "src/routes/api/public/hooks/process-retry-queue.ts",
-      "target": "@/lib/wa-dispatch.server"
     },
     {
       "source": "src/routes/api/public/hooks/process-retry-queue.ts",

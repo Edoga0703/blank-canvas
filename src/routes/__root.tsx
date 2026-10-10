@@ -6,6 +6,7 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
@@ -44,7 +45,7 @@ function NotFoundComponent() {
 
       <header className="relative z-10 px-5 sm:px-8 py-5">
         <Link to="/" className="inline-flex items-center">
-           <img src={metrixLogo.url} alt="Capiversa" className="h-8 sm:h-9 w-auto" />
+           <img src={metrixLogo.url} alt="Capi Conversa" className="h-8 sm:h-9 w-auto" />
         </Link>
       </header>
 
@@ -87,7 +88,7 @@ function NotFoundComponent() {
               />
               <img
                 src={mascotLogin.url}
-                alt="Capiversa"
+                alt="Capi Conversa"
                 className="relative h-56 sm:h-72 lg:h-80 w-auto drop-shadow-2xl"
               />
             </div>
@@ -98,7 +99,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
@@ -114,11 +115,6 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <p className="mt-2 text-sm text-muted-foreground">
           Algo deu errado. Tente novamente ou volte para a home.
         </p>
-        {error?.message && (
-          <p className="mt-2 text-xs text-red-600 font-mono break-words bg-red-50 p-2 rounded border border-red-200 text-left">
-            {error.message}
-          </p>
-        )}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -149,21 +145,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-       { title: "Capiversa — WhatsApp com IA + CRM Kanban" },
+       { title: "Capi Conversa — WhatsApp com IA + CRM Kanban" },
       { name: "description", content: "Conecte o WhatsApp, deixe a IA atender e organize seus leads em um kanban arrastável." },
-       { name: "author", content: "Capiversa" },
+       { name: "author", content: "Capi Conversa" },
       { name: "google-site-verification", content: "hsdXT_bpeecFPBeT-jTzjGHxswmPzR4o7aR-JfLkIoU" },
        { name: "theme-color", content: "#334155" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
-       { name: "apple-mobile-web-app-title", content: "Capiversa" },
-       { name: "application-name", content: "Capiversa" },
-       { property: "og:title", content: "Capiversa — WhatsApp com IA + CRM Kanban" },
+       { name: "apple-mobile-web-app-title", content: "Capi Conversa" },
+       { name: "application-name", content: "Capi Conversa" },
+       { property: "og:title", content: "Capi Conversa — WhatsApp com IA + CRM Kanban" },
       { property: "og:description", content: "Conecte o WhatsApp, deixe a IA atender e organize seus leads em um kanban arrastável." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-       { name: "twitter:title", content: "Capiversa — WhatsApp com IA + CRM Kanban" },
+       { name: "twitter:title", content: "Capi Conversa — WhatsApp com IA + CRM Kanban" },
       { name: "twitter:description", content: "Conecte o WhatsApp, deixe a IA atender e organize seus leads em um kanban arrastável." },
     ],
     links: [

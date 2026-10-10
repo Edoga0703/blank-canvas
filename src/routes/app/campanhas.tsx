@@ -69,7 +69,6 @@ type Connection = {
 type Template = { id: string; atalho: string; texto: string };
 
 function providerLabel(pt: string) {
-  if (pt === "lovable_whatsapp") return "WhatsApp oficial · Lovable";
   if (pt === "oficial_meta" || pt === "official") return "API Oficial";
   if (pt === "uazapi") return "Uazapi";
   return "Evolution";

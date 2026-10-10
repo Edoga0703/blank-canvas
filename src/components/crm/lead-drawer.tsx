@@ -24,6 +24,7 @@ import { CANAL_LABEL, CANAL_COLOR, type CanalEntrada } from "@/lib/tracking-util
 import { ConversationMediaTab } from "@/components/chat/conversation-media-panel";
 import { OlistPedidosTab } from "@/components/crm/olist-pedidos-tab";
 import { useCapacidadeAtiva } from "@/hooks/use-capacidades";
+import { processKanbanReguaForContact } from "@/lib/kanban.functions";
 
 
 export interface LeadCard {
@@ -116,6 +117,7 @@ export function LeadDetailsPanel({
   const [local, setLocal] = useState<LeadCard & { pipeline_id?: string | null }>(card as any);
   const [encaminharOpen, setEncaminharOpen] = useState(false);
   const chatActionFn = useServerFn(handleChatAction);
+  const processKanbanRegua = useServerFn(processKanbanReguaForContact);
   const [tab, setTab] = useState("dados");
   const [editValor, setEditValor] = useState(false);
   const [funilOpen, setFunilOpen] = useState(false);
@@ -226,9 +228,7 @@ export function LeadDetailsPanel({
       console.log("[LeadDetails] Stage changed, automation will pick it up.");
       // Dispara o motor de régua para o número de forma imediata
       try {
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { processKanbanReguaForNumero } = await import("@/lib/kanban-engine.server");
-        await processKanbanReguaForNumero(supabaseAdmin, companyId, local.numero);
+        await processKanbanRegua({ data: { companyId, numero: local.numero } });
       } catch (e) {
         console.error("[LeadDetails] Failed to trigger immediate automation:", e);
       }

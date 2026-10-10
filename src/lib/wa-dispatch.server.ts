@@ -1,6 +1,6 @@
-// Despachador neutral usado por atención, IA y campañas.
-// La beta prioriza WhatsApp Business de Lovable; los adaptadores heredados se
-// conservan para una futura oferta SaaS.
+// Provider-agnostic WhatsApp dispatch used by mass campaigns.
+// Reads company.wa_provider e whatsapp_instances.provider_type; roteia para
+// Evolution, Uazapi ou WaBlast (Cloud API oficial via BSP).
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { normalizeBrPhone, parseBrPhone } from "@/lib/br-phone";
 import {
@@ -12,19 +12,8 @@ import {
 import {
   wablastSendText, wablastSendMedia, wablastSendTemplate,
 } from "@/lib/wablast.server";
-import { getMessagingProvider } from "@/lib/messaging/provider-registry.server";
 
-export type WaProvider =
-  | "lovable_whatsapp"
-  | "meta_instagram"
-  | "meta_messenger"
-  | "evolution"
-  | "uazapi"
-  | "wablast";
-
-export function isMetaProvider(provider?: string | null): boolean {
-  return provider === "meta_instagram" || provider === "meta_messenger";
-}
+export type WaProvider = "evolution" | "uazapi" | "wablast";
 
 export type WaInstance = {
   instance_name: string;
@@ -39,7 +28,7 @@ export type WaInstance = {
 export async function getActiveInstance(companyId: string): Promise<WaInstance | null> {
   const { data: inst } = await supabaseAdmin
     .from("whatsapp_instances")
-    .select("instance_name, instance_token, status, paused, provider, provider_type, phone_number_id, waba_id")
+    .select("instance_name, instance_token, status, paused, provider_type, phone_number_id, waba_id")
     .eq("company_id", companyId)
     .in("status", ["connected", "open"])
     .or("paused.is.null,paused.eq.false")
@@ -49,12 +38,8 @@ export async function getActiveInstance(companyId: string): Promise<WaInstance |
   if (!inst) return null;
 
   const providerType = (inst as any).provider_type as string | null;
-  const providerName = String((inst as any).provider || providerType || "evolution");
   let provider: WaProvider = "evolution";
-  if (providerName === "lovable_whatsapp") provider = "lovable_whatsapp";
-  else if (providerName === "meta_instagram" || providerType === "meta_instagram") provider = "meta_instagram";
-  else if (providerName === "meta_messenger" || providerType === "meta_messenger") provider = "meta_messenger";
-  else if (providerType === "wablast") provider = "wablast";
+  if (providerType === "wablast") provider = "wablast";
   else if (providerType === "uazapi") provider = "uazapi";
   else {
     // Fallback: company.wa_provider (legacy)
@@ -74,54 +59,9 @@ export async function getActiveInstance(companyId: string): Promise<WaInstance |
   };
 }
 
-export async function getActiveInstanceForContact(
-  companyId: string,
-  numero: string,
-  userId?: string,
-): Promise<WaInstance | null> {
-  try {
-    const { getInstanceForContact } = await import("@/lib/evolution-helpers");
-    const inst = await getInstanceForContact(
-      supabaseAdmin,
-      companyId,
-      numero,
-      "instance_name,instance_token,status,provider,provider_type,phone_number_id,waba_id,paused",
-      userId,
-    );
-    if (!inst?.instance_name) return null;
-
-    const providerType = (inst as any).provider_type as string | null;
-    const providerName = String((inst as any).provider || providerType || "evolution");
-    let provider: WaProvider = "evolution";
-    if (providerName === "lovable_whatsapp") provider = "lovable_whatsapp";
-    else if (providerName === "meta_instagram" || providerType === "meta_instagram") provider = "meta_instagram";
-    else if (providerName === "meta_messenger" || providerType === "meta_messenger") provider = "meta_messenger";
-    else if (providerType === "wablast") provider = "wablast";
-    else if (providerType === "uazapi") provider = "uazapi";
-
-    return {
-      instance_name: (inst as any).instance_name,
-      instance_token: (inst as any).instance_token ?? null,
-      provider,
-      status: (inst as any).status,
-      paused: !!(inst as any).paused,
-      phone_number_id: (inst as any).phone_number_id ?? null,
-      waba_id: (inst as any).waba_id ?? null,
-    };
-  } catch (e: any) {
-    console.warn(`[getActiveInstanceForContact] Falha ao resolver instância para ${numero}, usando fallback:`, e?.message);
-    return getActiveInstance(companyId);
-  }
-}
-
 export async function waPresenceTyping(inst: WaInstance, numero: string, ms: number) {
   try {
-    if (inst.provider === "wablast" || inst.provider === "lovable_whatsapp") return;
-    if (isMetaProvider(inst.provider) && inst.instance_token) {
-      const { metaSendPresence } = await import("./meta.server");
-      await metaSendPresence(inst.instance_token, numero, "composing");
-      return;
-    }
+    if (inst.provider === "wablast") return; // Cloud API não suporta presença
     if (inst.provider === "uazapi" && inst.instance_token) {
       await uazSendPresence(inst.instance_token, numero, "composing", ms);
     } else {
@@ -135,26 +75,14 @@ export async function waPresenceTyping(inst: WaInstance, numero: string, ms: num
  * Evita rajadas de erro "the number ... is not on WhatsApp" (e-mails, números
  * truncados, DDD inválido) que sobrecarregam a instância.
  */
-export function assertSendableNumber(numero: string, provider?: WaProvider): string {
+export function assertSendableNumber(numero: string): string {
   const raw = String(numero || "").trim();
   if (!raw) throw new Error("Destinatário vazio: envio ignorado.");
-  if (provider && isMetaProvider(provider)) {
-    const clean = raw.replace(/^@/, "").trim();
-    if (!clean) throw new Error("Destinatário Meta inválido.");
-    return clean;
-  }
   if (raw.includes("@g.us")) throw new Error("Destinatário é um grupo: envio ignorado.");
   // JID individual válido (…@s.whatsapp.net / @c.us): usa só a parte numérica
   const base = raw.includes("@") ? raw.split("@")[0] : raw;
   if (/[a-zA-Z]/.test(base)) {
     throw new Error(`Destinatário inválido (não é um número): ${raw}`);
-  }
-  if (provider === "lovable_whatsapp") {
-    const digits = base.replace(/\D/g, "");
-    if (!/^[1-9]\d{7,14}$/.test(digits)) {
-      throw new Error(`Número inválido para WhatsApp Business: ${raw}. Use DDI + número, somente dígitos.`);
-    }
-    return digits;
   }
   const parsed = parseBrPhone(base);
   if (!parsed.valid || !parsed.numero) {
@@ -163,27 +91,8 @@ export function assertSendableNumber(numero: string, provider?: WaProvider): str
   return parsed.numero;
 }
 
-export async function waSendText(
-  inst: WaInstance,
-  numero: string,
-  texto: string,
-  options?: { replyToExternalMessageId?: string | null; quoted?: any },
-) {
-  numero = assertSendableNumber(numero, inst.provider);
-  if (isMetaProvider(inst.provider)) {
-    if (!inst.instance_token) throw new Error(`Token da Meta ausente para conexão ${inst.instance_name}`);
-    const { metaSendText } = await import("./meta.server");
-    return metaSendText(inst.instance_token, numero, texto);
-  }
-  if (inst.provider === "lovable_whatsapp") {
-    const result = await getMessagingProvider("lovable_whatsapp").sendText({
-      connectionExternalId: inst.instance_name,
-      to: numero,
-      text: texto,
-      replyToExternalMessageId: options?.replyToExternalMessageId,
-    });
-    return { id: result.externalMessageId, provider: result.provider, raw: result.raw };
-  }
+export async function waSendText(inst: WaInstance, numero: string, texto: string) {
+  numero = assertSendableNumber(numero);
   if (inst.provider === "wablast") {
     if (!inst.instance_token) throw new Error("WaBlast: API key ausente na conexão");
     return wablastSendText(inst.instance_token, inst.waba_id ?? null, numero, texto);
@@ -191,7 +100,7 @@ export async function waSendText(
   if (inst.provider === "uazapi" && inst.instance_token) {
     return uazSendText(inst.instance_token, numero, texto);
   }
-  return evoSendText(inst.instance_name, numero, texto, options?.quoted);
+  return evoSendText(inst.instance_name, numero, texto);
 }
 
 export async function waSendMedia(
@@ -199,28 +108,7 @@ export async function waSendMedia(
   numero: string,
   media: { url: string; type: "image" | "video" | "document" | "audio"; caption?: string; fileName?: string; mime?: string },
 ) {
-  numero = assertSendableNumber(numero, inst.provider);
-  if (isMetaProvider(inst.provider)) {
-    if (!inst.instance_token) throw new Error(`Token da Meta ausente para conexão ${inst.instance_name}`);
-    const { metaSendMedia } = await import("./meta.server");
-    return metaSendMedia(inst.instance_token, numero, {
-      mediatype: media.type,
-      media: media.url,
-      caption: media.caption,
-    });
-  }
-  if (inst.provider === "lovable_whatsapp") {
-    const result = await getMessagingProvider("lovable_whatsapp").sendMedia({
-      connectionExternalId: inst.instance_name,
-      to: numero,
-      kind: media.type,
-      mediaUrl: media.url,
-      mimeType: media.mime,
-      fileName: media.fileName,
-      caption: media.caption,
-    });
-    return { id: result.externalMessageId, provider: result.provider, raw: result.raw };
-  }
+  numero = assertSendableNumber(numero);
   if (inst.provider === "wablast") {
     if (!inst.instance_token) throw new Error("WaBlast: API key ausente na conexão");
     return wablastSendMedia(inst.instance_token, inst.waba_id ?? null, numero, media);
@@ -244,25 +132,7 @@ export async function waSendMedia(
 }
 
 export async function waSendAudio(inst: WaInstance, numero: string, audioBase64OrUrl: string) {
-  numero = assertSendableNumber(numero, inst.provider);
-  if (isMetaProvider(inst.provider)) {
-    if (!inst.instance_token) throw new Error(`Token da Meta ausente para conexão ${inst.instance_name}`);
-    const { metaSendMedia } = await import("./meta.server");
-    return metaSendMedia(inst.instance_token, numero, {
-      mediatype: "audio",
-      media: audioBase64OrUrl,
-    });
-  }
-  if (inst.provider === "lovable_whatsapp") {
-    const result = await getMessagingProvider("lovable_whatsapp").sendMedia({
-      connectionExternalId: inst.instance_name,
-      to: numero,
-      kind: "audio",
-      mediaUrl: audioBase64OrUrl,
-      mimeType: "audio/ogg",
-    });
-    return { id: result.externalMessageId, provider: result.provider, raw: result.raw };
-  }
+  numero = assertSendableNumber(numero);
   if (inst.provider === "wablast") {
     if (!inst.instance_token) throw new Error("WaBlast: API key ausente na conexão");
     return wablastSendMedia(inst.instance_token, inst.waba_id ?? null, numero, {
@@ -284,17 +154,6 @@ export async function waSendTemplate(
   numero: string,
   template: { name: string; language: string; components?: any[] },
 ) {
-  numero = assertSendableNumber(numero, inst.provider);
-  if (inst.provider === "lovable_whatsapp") {
-    const result = await getMessagingProvider("lovable_whatsapp").sendTemplate({
-      connectionExternalId: inst.instance_name,
-      to: numero,
-      name: template.name,
-      language: template.language,
-      components: template.components,
-    });
-    return { id: result.externalMessageId, provider: result.provider, raw: result.raw };
-  }
   if (inst.provider !== "wablast") {
     throw new Error("HSM template só é suportado no provider WaBlast (Cloud API).");
   }

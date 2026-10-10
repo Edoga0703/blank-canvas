@@ -19,11 +19,9 @@ export default defineTool({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ limit, stage_id }, ctx) => {
-    if (!ctx.isAuthenticated())
-      return { content: [{ type: "text", text: "Não autenticado." }], isError: true };
-    let q = sb(ctx)
-      .from("crm_cards")
-      .select("id, nome, numero, valor, stage_id, created_at, updated_at")
+    if (!ctx.isAuthenticated()) return { content: [{ type: "text", text: "Não autenticado." }], isError: true };
+    let q = sb(ctx).from("crm_cards")
+      .select("id, nome, telefone, valor, stage_id, created_at, updated_at")
       .order("updated_at", { ascending: false })
       .limit(limit ?? 20);
     if (stage_id) q = q.eq("stage_id", stage_id);

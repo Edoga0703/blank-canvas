@@ -1,8 +1,7 @@
 // Identidade visual centralizada do produto.
 export const brand = {
-  name: "Capiversa",
-  version: "1.1.0",
-  tagline: "Atención, ventas e IA en un solo lugar",
+  name: "Capi Conversa",
+  tagline: "IA que atende seu WhatsApp 24/7 + CRM Kanban",
   primary: "#2563EB",
   primaryOklch: "0.55 0.23 264",
 };

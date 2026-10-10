@@ -4,9 +4,9 @@ import { LegalShell } from "@/components/legal-shell";
 // ============================================================================
 // CONFIGURACIÓN DE IDENTIDAD Y MARCA (Actualizar con los datos definitivos)
 // ============================================================================
-const BRAND_NAME = "Capiversa";
-const SITE_URL = "https://capiconversa.com";
-const SUPPORT_EMAIL = "soporte@capiconversa.com";
+const BRAND_NAME = "TuSaaS CRM";
+const SITE_URL = "https://tudominio.com";
+const SUPPORT_EMAIL = "soporte@tudominio.com";
 const PRIV_URL = `${SITE_URL}/privacidade`;
 const PRIV_TITLE = `Política de Privacidad — ${BRAND_NAME}`;
 const PRIV_DESC = `Conozca cómo ${BRAND_NAME} recopila, utiliza y protege sus datos personales, garantizando el estricto cumplimiento con las directrices de Meta WhatsApp Business y normativas de privacidad.`;

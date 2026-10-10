@@ -561,33 +561,15 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
     let waId: string | null = null;
     let sendError: string | null = null;
     try {
-      const { isMetaProvider, waSendText } = await import("./wa-dispatch.server");
-      const skipInstanceOpen = inst.provider === "lovable_whatsapp" || isMetaProvider(inst.provider);
-      sendError = skipInstanceOpen
-        ? null
-        : await assertInstanceOpen(evoState, evoFetchInstance, inst.instance_name, inst.provider);
+      sendError = await assertInstanceOpen(evoState, evoFetchInstance, inst.instance_name, inst.provider);
 
       if (!sendError) {
-        console.log("[sendWhatsappText] Enviando por", inst.provider, inst.instance_name);
-        const resp: any = await waSendText(
-          {
-            instance_name: inst.instance_name,
-            instance_token: inst.instance_token,
-            provider: inst.provider as any,
-            status: inst.status,
-            paused: false,
-          },
-          data.numero,
-          data.texto,
-          {
-            replyToExternalMessageId: quoted?.key?.id ?? null,
-            quoted: quoted ? { quoted } : undefined,
-          },
-        );
+        console.log("[sendWhatsappText] Chamando evoSendText para", inst.instance_name);
+        const resp: any = await evoSendText(inst.instance_name, data.numero, data.texto, quoted ? { quoted } : undefined);
         console.log("[sendWhatsappText] Resposta bruta:", JSON.stringify(resp));
         waId = extractWhatsappMessageId(resp);
         if (!waId) {
-          console.warn("[sendWhatsappText] Provedor não retornou ID válido. Resposta:", JSON.stringify(resp));
+          console.warn("[sendWhatsappText] Evolution não retornou ID válido. Resposta:", JSON.stringify(resp));
         }
       }
     } catch (e: any) {
@@ -665,7 +647,7 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
     numero: string; contatoNome?: string | null;
     mediatype: "image" | "video" | "document";
     media: string; mimetype: string; fileName?: string; caption?: string;
-    midiaUrl?: string | null; storageKey?: string | null;
+    midiaUrl?: string | null;
   }) => d)
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
@@ -699,35 +681,18 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
     let waId: string | null = null;
     let sendError: string | null = null;
     try {
-      const { isMetaProvider, waSendMedia } = await import("./wa-dispatch.server");
-      const skipInstanceOpen = inst.provider === "lovable_whatsapp" || isMetaProvider(inst.provider);
-      sendError = skipInstanceOpen
-        ? null
-        : await assertInstanceOpen(evoState, evoFetchInstance, inst.instance_name, inst.provider);
+      sendError = await assertInstanceOpen(evoState, evoFetchInstance, inst.instance_name, inst.provider);
 
       if (!sendError) {
-        console.log("[sendWhatsappMedia] Enviando por", inst.provider);
-        const resp: any = await waSendMedia(
-          {
-            instance_name: inst.instance_name,
-            instance_token: inst.instance_token,
-            provider: inst.provider as any,
-            status: inst.status,
-            paused: false,
-          },
-          data.numero,
-          {
-            type: data.mediatype,
-            url: data.media,
-            mime: data.mimetype,
-            fileName: data.fileName,
-            caption: data.caption,
-          },
-        );
+        console.log("[sendWhatsappMedia] Chamando evoSendMedia...");
+        const resp: any = await evoSendMedia(inst.instance_name, data.numero, {
+          mediatype: data.mediatype, media: data.media, mimetype: data.mimetype,
+          fileName: data.fileName, caption: data.caption,
+        });
         console.log("[sendWhatsappMedia] Resposta bruta:", JSON.stringify(resp));
         waId = extractWhatsappMessageId(resp);
         if (!waId) {
-          console.warn("[sendWhatsappMedia] Provedor não retornou ID válido. Resposta:", JSON.stringify(resp));
+          console.warn("[sendWhatsappMedia] Evolution não retornou ID válido. Resposta:", JSON.stringify(resp));
         }
       }
     } catch (e: any) {
@@ -742,27 +707,12 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
       direcao: "saida", autor: "humano",
       texto: data.caption ?? (data.mediatype === "image" ? "📷 Foto" : data.mediatype === "video" ? "🎥 Vídeo" : `📎 ${data.fileName ?? "Documento"}`),
       whatsapp_message_id: waId,
-      midia_url: data.storageKey ? null : data.midiaUrl ?? null, midia_tipo: data.mediatype, midia_mime: data.mimetype, midia_nome: data.fileName ?? null,
+      midia_url: data.midiaUrl ?? null, midia_tipo: data.mediatype, midia_mime: data.mimetype, midia_nome: data.fileName ?? null,
       status_envio: permanentFailure ? "falha" : sendError ? "pendente" : waId ? "enviado" : "pendente",
     } as any).select("id").single();
     if (error) {
       console.error("[sendWhatsappMedia] Erro ao inserir no banco:", error.message);
       throw new Error(error.message);
-    }
-
-    if (inserted?.id && data.storageKey) {
-      const { createHash } = await import("node:crypto");
-      const attachmentKey = createHash("sha256").update(data.storageKey).digest("hex");
-      const { error: attachmentError } = await (sbAdmin as any).from("message_attachments").upsert({
-        company_id: companyId,
-        mensagem_id: inserted.id,
-        attachment_key: attachmentKey,
-        kind: data.mediatype,
-        storage_key: data.storageKey,
-        mime_type: data.mimetype,
-        file_name: data.fileName ?? null,
-      }, { onConflict: "mensagem_id,attachment_key" });
-      if (attachmentError) throw new Error(`No se pudo registrar el archivo enviado: ${attachmentError.message}`);
     }
 
     if (!permanentFailure && (sendError || !waId)) {
@@ -772,7 +722,6 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
         payload: {
           numero: data.numero, mediatype: data.mediatype, media: data.media,
           mimetype: data.mimetype, fileName: data.fileName, caption: data.caption,
-          storageKey: data.storageKey ?? null,
         },
         erro: sendError ?? "Evolution não retornou ID da mensagem; reenfileirando.",
       });
@@ -787,7 +736,7 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
 
 export const sendWhatsappAudio = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { numero: string; contatoNome?: string | null; audio: string; midiaUrl?: string | null; storageKey?: string | null; mimetype?: string | null }) => d)
+  .inputValidator((d: { numero: string; contatoNome?: string | null; audio: string; midiaUrl?: string | null; mimetype?: string | null }) => d)
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
@@ -811,13 +760,10 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
     let waId: string | null = null;
     let sendError: string | null = null;
     try {
-      const { isMetaProvider, waSendAudio } = await import("./wa-dispatch.server");
-      const skipInstanceOpen = inst.provider === "lovable_whatsapp" || isMetaProvider(inst.provider);
-      sendError = skipInstanceOpen
-        ? null
-        : await assertInstanceOpen(evoState, evoFetchInstance, inst.instance_name, inst.provider);
+      sendError = await assertInstanceOpen(evoState, evoFetchInstance, inst.instance_name, inst.provider);
       if (!sendError) {
         console.log("[sendWhatsappAudio] Chamando dispatcher de áudio...");
+        const { waSendAudio } = await import("./wa-dispatch.server");
         const waInst = {
           instance_name: inst.instance_name,
           instance_token: inst.instance_token,
@@ -846,7 +792,7 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
       direcao: "saida", autor: "humano",
       texto: "🎤 Áudio",
       whatsapp_message_id: waId,
-      midia_url: data.storageKey ? null : data.midiaUrl ?? null, midia_tipo: "audio", midia_mime: data.mimetype || "audio/ogg", midia_nome: null,
+      midia_url: data.midiaUrl ?? null, midia_tipo: "audio", midia_mime: data.mimetype || "audio/ogg", midia_nome: null,
       status_envio: permanentFailure ? "falha" : sendError ? "pendente" : waId ? "enviado" : "pendente",
     } as any).select("id").single();
     if (error) {
@@ -854,25 +800,11 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
       throw new Error(error.message);
     }
 
-    if (inserted?.id && data.storageKey) {
-      const { createHash } = await import("node:crypto");
-      const attachmentKey = createHash("sha256").update(data.storageKey).digest("hex");
-      const { error: attachmentError } = await (sbAdmin as any).from("message_attachments").upsert({
-        company_id: companyId,
-        mensagem_id: inserted.id,
-        attachment_key: attachmentKey,
-        kind: "audio",
-        storage_key: data.storageKey,
-        mime_type: data.mimetype || "audio/ogg",
-      }, { onConflict: "mensagem_id,attachment_key" });
-      if (attachmentError) throw new Error(`No se pudo registrar el audio enviado: ${attachmentError.message}`);
-    }
-
     if (!permanentFailure && (sendError || !waId)) {
       const { enqueueOutbound } = await import("./outbound-queue.server");
       await enqueueOutbound({
         companyId, mensagemId: inserted?.id ?? null, kind: "audio",
-        payload: { numero: data.numero, audio: data.audio, storageKey: data.storageKey ?? null },
+        payload: { numero: data.numero, audio: data.audio },
         erro: sendError ?? "Evolution não retornou ID da mensagem; reenfileirando.",
       });
     }

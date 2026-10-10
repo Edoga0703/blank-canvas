@@ -35,6 +35,7 @@ import { Route as AppComercialRouteImport } from './routes/app/comercial'
 import { Route as AppConexaoRouteImport } from './routes/app/conexao'
 import { Route as AppConfiguracoesRouteImport } from './routes/app/configuracoes'
 import { Route as AppContatosRouteImport } from './routes/app/contatos'
+import { Route as AppConteudoRouteImport } from './routes/app/conteudo'
 import { Route as AppConversasRouteImport } from './routes/app/conversas'
 import { Route as AppCrmRouteImport } from './routes/app/crm'
 import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
@@ -44,7 +45,6 @@ import { Route as AppOnboardingRouteImport } from './routes/app/onboarding'
 import { Route as AppParceiroRouteImport } from './routes/app/parceiro'
 import { Route as AppPluginsRouteImport } from './routes/app/plugins'
 import { Route as AppProspeccaoRouteImport } from './routes/app/prospeccao'
-import { Route as AppPublicacoesRouteImport } from './routes/app/publicacoes'
 import { Route as AppRelatoriosRouteImport } from './routes/app/relatorios'
 import { Route as AppRespostasRapidasRouteImport } from './routes/app/respostas-rapidas'
 import { Route as AppTemplatesRouteImport } from './routes/app/templates'
@@ -86,7 +86,6 @@ import { Route as ApiPublicGoogleCallbackRouteImport } from './routes/api/public
 import { Route as ApiPublicGoogleMarketingCallbackRouteImport } from './routes/api/public/google-marketing-callback'
 import { Route as ApiPublicLeadCaptureRouteImport } from './routes/api/public/lead-capture'
 import { Route as ApiPublicLeadPhotoRouteImport } from './routes/api/public/lead-photo'
-import { Route as ApiPublicLovableWhatsappRouteImport } from './routes/api/public/lovable-whatsapp'
 import { Route as ApiPublicMetaCallbackRouteImport } from './routes/api/public/meta-callback'
 import { Route as ApiPublicMetaHealthRouteImport } from './routes/api/public/meta-health'
 import { Route as ApiPublicMetaLeadsWebhookRouteImport } from './routes/api/public/meta-leads-webhook'
@@ -106,6 +105,7 @@ import { Route as ApiPublicHooksAgendamentosDispatchRouteImport } from './routes
 import { Route as ApiPublicHooksBillingRenewRouteImport } from './routes/api/public/hooks/billing-renew'
 import { Route as ApiPublicHooksGoogleCalendarRouteImport } from './routes/api/public/hooks/google-calendar'
 import { Route as ApiPublicHooksGoogleCalendarRenewRouteImport } from './routes/api/public/hooks/google-calendar-renew'
+import { Route as ApiPublicHooksMetaSyncRouteImport } from './routes/api/public/hooks/meta-sync'
 import { Route as ApiPublicHooksProcessAgendamentosRouteImport } from './routes/api/public/hooks/process-agendamentos'
 import { Route as ApiPublicHooksProcessCampaignsRouteImport } from './routes/api/public/hooks/process-campaigns'
 import { Route as ApiPublicHooksProcessKanbanReguasRouteImport } from './routes/api/public/hooks/process-kanban-reguas'
@@ -250,6 +250,11 @@ const AppContatosRoute = AppContatosRouteImport.update({
   path: '/contatos',
   getParentRoute: () => AppRoute,
 } as any)
+const AppConteudoRoute = AppConteudoRouteImport.update({
+  id: '/conteudo',
+  path: '/conteudo',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppConversasRoute = AppConversasRouteImport.update({
   id: '/conversas',
   path: '/conversas',
@@ -293,11 +298,6 @@ const AppPluginsRoute = AppPluginsRouteImport.update({
 const AppProspeccaoRoute = AppProspeccaoRouteImport.update({
   id: '/prospeccao',
   path: '/prospeccao',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPublicacoesRoute = AppPublicacoesRouteImport.update({
-  id: '/publicacoes',
-  path: '/publicacoes',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
@@ -508,12 +508,6 @@ const ApiPublicLeadPhotoRoute = ApiPublicLeadPhotoRouteImport.update({
   path: '/api/public/lead-photo',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicLovableWhatsappRoute =
-  ApiPublicLovableWhatsappRouteImport.update({
-    id: '/api/public/lovable-whatsapp',
-    path: '/api/public/lovable-whatsapp',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiPublicMetaCallbackRoute = ApiPublicMetaCallbackRouteImport.update({
   id: '/api/public/meta-callback',
   path: '/api/public/meta-callback',
@@ -617,6 +611,11 @@ const ApiPublicHooksGoogleCalendarRenewRoute =
     path: '/api/public/hooks/google-calendar-renew',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksMetaSyncRoute = ApiPublicHooksMetaSyncRouteImport.update({
+  id: '/api/public/hooks/meta-sync',
+  path: '/api/public/hooks/meta-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksProcessAgendamentosRoute =
   ApiPublicHooksProcessAgendamentosRouteImport.update({
     id: '/api/public/hooks/process-agendamentos',
@@ -708,6 +707,7 @@ export interface FileRoutesByFullPath {
   '/app/conexao': typeof AppConexaoRoute
   '/app/configuracoes': typeof AppConfiguracoesRoute
   '/app/contatos': typeof AppContatosRoute
+  '/app/conteudo': typeof AppConteudoRoute
   '/app/conversas': typeof AppConversasRoute
   '/app/crm': typeof AppCrmRoute
   '/app/dashboard': typeof AppDashboardRoute
@@ -717,7 +717,6 @@ export interface FileRoutesByFullPath {
   '/app/parceiro': typeof AppParceiroRoute
   '/app/plugins': typeof AppPluginsRoute
   '/app/prospeccao': typeof AppProspeccaoRoute
-  '/app/publicacoes': typeof AppPublicacoesRoute
   '/app/relatorios': typeof AppRelatoriosRoute
   '/app/respostas-rapidas': typeof AppRespostasRapidasRoute
   '/app/templates': typeof AppTemplatesRoute
@@ -759,7 +758,6 @@ export interface FileRoutesByFullPath {
   '/api/public/google-marketing-callback': typeof ApiPublicGoogleMarketingCallbackRoute
   '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
   '/api/public/lead-photo': typeof ApiPublicLeadPhotoRoute
-  '/api/public/lovable-whatsapp': typeof ApiPublicLovableWhatsappRoute
   '/api/public/meta-callback': typeof ApiPublicMetaCallbackRoute
   '/api/public/meta-health': typeof ApiPublicMetaHealthRoute
   '/api/public/meta-leads-webhook': typeof ApiPublicMetaLeadsWebhookRoute
@@ -779,6 +777,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/billing-renew': typeof ApiPublicHooksBillingRenewRoute
   '/api/public/hooks/google-calendar': typeof ApiPublicHooksGoogleCalendarRoute
   '/api/public/hooks/google-calendar-renew': typeof ApiPublicHooksGoogleCalendarRenewRoute
+  '/api/public/hooks/meta-sync': typeof ApiPublicHooksMetaSyncRoute
   '/api/public/hooks/process-agendamentos': typeof ApiPublicHooksProcessAgendamentosRoute
   '/api/public/hooks/process-campaigns': typeof ApiPublicHooksProcessCampaignsRoute
   '/api/public/hooks/process-kanban-reguas': typeof ApiPublicHooksProcessKanbanReguasRoute
@@ -817,6 +816,7 @@ export interface FileRoutesByTo {
   '/app/conexao': typeof AppConexaoRoute
   '/app/configuracoes': typeof AppConfiguracoesRoute
   '/app/contatos': typeof AppContatosRoute
+  '/app/conteudo': typeof AppConteudoRoute
   '/app/conversas': typeof AppConversasRoute
   '/app/crm': typeof AppCrmRoute
   '/app/dashboard': typeof AppDashboardRoute
@@ -826,7 +826,6 @@ export interface FileRoutesByTo {
   '/app/parceiro': typeof AppParceiroRoute
   '/app/plugins': typeof AppPluginsRoute
   '/app/prospeccao': typeof AppProspeccaoRoute
-  '/app/publicacoes': typeof AppPublicacoesRoute
   '/app/relatorios': typeof AppRelatoriosRoute
   '/app/respostas-rapidas': typeof AppRespostasRapidasRoute
   '/app/templates': typeof AppTemplatesRoute
@@ -867,7 +866,6 @@ export interface FileRoutesByTo {
   '/api/public/google-marketing-callback': typeof ApiPublicGoogleMarketingCallbackRoute
   '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
   '/api/public/lead-photo': typeof ApiPublicLeadPhotoRoute
-  '/api/public/lovable-whatsapp': typeof ApiPublicLovableWhatsappRoute
   '/api/public/meta-callback': typeof ApiPublicMetaCallbackRoute
   '/api/public/meta-health': typeof ApiPublicMetaHealthRoute
   '/api/public/meta-leads-webhook': typeof ApiPublicMetaLeadsWebhookRoute
@@ -887,6 +885,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/billing-renew': typeof ApiPublicHooksBillingRenewRoute
   '/api/public/hooks/google-calendar': typeof ApiPublicHooksGoogleCalendarRoute
   '/api/public/hooks/google-calendar-renew': typeof ApiPublicHooksGoogleCalendarRenewRoute
+  '/api/public/hooks/meta-sync': typeof ApiPublicHooksMetaSyncRoute
   '/api/public/hooks/process-agendamentos': typeof ApiPublicHooksProcessAgendamentosRoute
   '/api/public/hooks/process-campaigns': typeof ApiPublicHooksProcessCampaignsRoute
   '/api/public/hooks/process-kanban-reguas': typeof ApiPublicHooksProcessKanbanReguasRoute
@@ -927,6 +926,7 @@ export interface FileRoutesById {
   '/app/conexao': typeof AppConexaoRoute
   '/app/configuracoes': typeof AppConfiguracoesRoute
   '/app/contatos': typeof AppContatosRoute
+  '/app/conteudo': typeof AppConteudoRoute
   '/app/conversas': typeof AppConversasRoute
   '/app/crm': typeof AppCrmRoute
   '/app/dashboard': typeof AppDashboardRoute
@@ -936,7 +936,6 @@ export interface FileRoutesById {
   '/app/parceiro': typeof AppParceiroRoute
   '/app/plugins': typeof AppPluginsRoute
   '/app/prospeccao': typeof AppProspeccaoRoute
-  '/app/publicacoes': typeof AppPublicacoesRoute
   '/app/relatorios': typeof AppRelatoriosRoute
   '/app/respostas-rapidas': typeof AppRespostasRapidasRoute
   '/app/templates': typeof AppTemplatesRoute
@@ -978,7 +977,6 @@ export interface FileRoutesById {
   '/api/public/google-marketing-callback': typeof ApiPublicGoogleMarketingCallbackRoute
   '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
   '/api/public/lead-photo': typeof ApiPublicLeadPhotoRoute
-  '/api/public/lovable-whatsapp': typeof ApiPublicLovableWhatsappRoute
   '/api/public/meta-callback': typeof ApiPublicMetaCallbackRoute
   '/api/public/meta-health': typeof ApiPublicMetaHealthRoute
   '/api/public/meta-leads-webhook': typeof ApiPublicMetaLeadsWebhookRoute
@@ -998,6 +996,7 @@ export interface FileRoutesById {
   '/api/public/hooks/billing-renew': typeof ApiPublicHooksBillingRenewRoute
   '/api/public/hooks/google-calendar': typeof ApiPublicHooksGoogleCalendarRoute
   '/api/public/hooks/google-calendar-renew': typeof ApiPublicHooksGoogleCalendarRenewRoute
+  '/api/public/hooks/meta-sync': typeof ApiPublicHooksMetaSyncRoute
   '/api/public/hooks/process-agendamentos': typeof ApiPublicHooksProcessAgendamentosRoute
   '/api/public/hooks/process-campaigns': typeof ApiPublicHooksProcessCampaignsRoute
   '/api/public/hooks/process-kanban-reguas': typeof ApiPublicHooksProcessKanbanReguasRoute
@@ -1039,6 +1038,7 @@ export interface FileRouteTypes {
     | '/app/conexao'
     | '/app/configuracoes'
     | '/app/contatos'
+    | '/app/conteudo'
     | '/app/conversas'
     | '/app/crm'
     | '/app/dashboard'
@@ -1048,7 +1048,6 @@ export interface FileRouteTypes {
     | '/app/parceiro'
     | '/app/plugins'
     | '/app/prospeccao'
-    | '/app/publicacoes'
     | '/app/relatorios'
     | '/app/respostas-rapidas'
     | '/app/templates'
@@ -1090,7 +1089,6 @@ export interface FileRouteTypes {
     | '/api/public/google-marketing-callback'
     | '/api/public/lead-capture'
     | '/api/public/lead-photo'
-    | '/api/public/lovable-whatsapp'
     | '/api/public/meta-callback'
     | '/api/public/meta-health'
     | '/api/public/meta-leads-webhook'
@@ -1110,6 +1108,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/billing-renew'
     | '/api/public/hooks/google-calendar'
     | '/api/public/hooks/google-calendar-renew'
+    | '/api/public/hooks/meta-sync'
     | '/api/public/hooks/process-agendamentos'
     | '/api/public/hooks/process-campaigns'
     | '/api/public/hooks/process-kanban-reguas'
@@ -1148,6 +1147,7 @@ export interface FileRouteTypes {
     | '/app/conexao'
     | '/app/configuracoes'
     | '/app/contatos'
+    | '/app/conteudo'
     | '/app/conversas'
     | '/app/crm'
     | '/app/dashboard'
@@ -1157,7 +1157,6 @@ export interface FileRouteTypes {
     | '/app/parceiro'
     | '/app/plugins'
     | '/app/prospeccao'
-    | '/app/publicacoes'
     | '/app/relatorios'
     | '/app/respostas-rapidas'
     | '/app/templates'
@@ -1198,7 +1197,6 @@ export interface FileRouteTypes {
     | '/api/public/google-marketing-callback'
     | '/api/public/lead-capture'
     | '/api/public/lead-photo'
-    | '/api/public/lovable-whatsapp'
     | '/api/public/meta-callback'
     | '/api/public/meta-health'
     | '/api/public/meta-leads-webhook'
@@ -1218,6 +1216,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/billing-renew'
     | '/api/public/hooks/google-calendar'
     | '/api/public/hooks/google-calendar-renew'
+    | '/api/public/hooks/meta-sync'
     | '/api/public/hooks/process-agendamentos'
     | '/api/public/hooks/process-campaigns'
     | '/api/public/hooks/process-kanban-reguas'
@@ -1257,6 +1256,7 @@ export interface FileRouteTypes {
     | '/app/conexao'
     | '/app/configuracoes'
     | '/app/contatos'
+    | '/app/conteudo'
     | '/app/conversas'
     | '/app/crm'
     | '/app/dashboard'
@@ -1266,7 +1266,6 @@ export interface FileRouteTypes {
     | '/app/parceiro'
     | '/app/plugins'
     | '/app/prospeccao'
-    | '/app/publicacoes'
     | '/app/relatorios'
     | '/app/respostas-rapidas'
     | '/app/templates'
@@ -1308,7 +1307,6 @@ export interface FileRouteTypes {
     | '/api/public/google-marketing-callback'
     | '/api/public/lead-capture'
     | '/api/public/lead-photo'
-    | '/api/public/lovable-whatsapp'
     | '/api/public/meta-callback'
     | '/api/public/meta-health'
     | '/api/public/meta-leads-webhook'
@@ -1328,6 +1326,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/billing-renew'
     | '/api/public/hooks/google-calendar'
     | '/api/public/hooks/google-calendar-renew'
+    | '/api/public/hooks/meta-sync'
     | '/api/public/hooks/process-agendamentos'
     | '/api/public/hooks/process-campaigns'
     | '/api/public/hooks/process-kanban-reguas'
@@ -1370,7 +1369,6 @@ export interface RootRouteChildren {
   ApiPublicGoogleMarketingCallbackRoute: typeof ApiPublicGoogleMarketingCallbackRoute
   ApiPublicLeadCaptureRoute: typeof ApiPublicLeadCaptureRoute
   ApiPublicLeadPhotoRoute: typeof ApiPublicLeadPhotoRoute
-  ApiPublicLovableWhatsappRoute: typeof ApiPublicLovableWhatsappRoute
   ApiPublicMetaCallbackRoute: typeof ApiPublicMetaCallbackRoute
   ApiPublicMetaHealthRoute: typeof ApiPublicMetaHealthRoute
   ApiPublicMetaLeadsWebhookRoute: typeof ApiPublicMetaLeadsWebhookRoute
@@ -1388,6 +1386,7 @@ export interface RootRouteChildren {
   ApiPublicHooksBillingRenewRoute: typeof ApiPublicHooksBillingRenewRoute
   ApiPublicHooksGoogleCalendarRoute: typeof ApiPublicHooksGoogleCalendarRoute
   ApiPublicHooksGoogleCalendarRenewRoute: typeof ApiPublicHooksGoogleCalendarRenewRoute
+  ApiPublicHooksMetaSyncRoute: typeof ApiPublicHooksMetaSyncRoute
   ApiPublicHooksProcessAgendamentosRoute: typeof ApiPublicHooksProcessAgendamentosRoute
   ApiPublicHooksProcessCampaignsRoute: typeof ApiPublicHooksProcessCampaignsRoute
   ApiPublicHooksProcessKanbanReguasRoute: typeof ApiPublicHooksProcessKanbanReguasRoute
@@ -1585,6 +1584,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppContatosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/conteudo': {
+      id: '/app/conteudo'
+      path: '/conteudo'
+      fullPath: '/app/conteudo'
+      preLoaderRoute: typeof AppConteudoRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/conversas': {
       id: '/app/conversas'
       path: '/conversas'
@@ -1646,13 +1652,6 @@ declare module '@tanstack/react-router' {
       path: '/prospeccao'
       fullPath: '/app/prospeccao'
       preLoaderRoute: typeof AppProspeccaoRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/publicacoes': {
-      id: '/app/publicacoes'
-      path: '/publicacoes'
-      fullPath: '/app/publicacoes'
-      preLoaderRoute: typeof AppPublicacoesRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/relatorios': {
@@ -1942,13 +1941,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicLeadPhotoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/lovable-whatsapp': {
-      id: '/api/public/lovable-whatsapp'
-      path: '/api/public/lovable-whatsapp'
-      fullPath: '/api/public/lovable-whatsapp'
-      preLoaderRoute: typeof ApiPublicLovableWhatsappRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/meta-callback': {
       id: '/api/public/meta-callback'
       path: '/api/public/meta-callback'
@@ -2082,6 +2074,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksGoogleCalendarRenewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/meta-sync': {
+      id: '/api/public/hooks/meta-sync'
+      path: '/api/public/hooks/meta-sync'
+      fullPath: '/api/public/hooks/meta-sync'
+      preLoaderRoute: typeof ApiPublicHooksMetaSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/process-agendamentos': {
       id: '/api/public/hooks/process-agendamentos'
       path: '/api/public/hooks/process-agendamentos'
@@ -2187,6 +2186,7 @@ interface AppRouteChildren {
   AppConexaoRoute: typeof AppConexaoRoute
   AppConfiguracoesRoute: typeof AppConfiguracoesRoute
   AppContatosRoute: typeof AppContatosRoute
+  AppConteudoRoute: typeof AppConteudoRoute
   AppConversasRoute: typeof AppConversasRoute
   AppCrmRoute: typeof AppCrmRoute
   AppDashboardRoute: typeof AppDashboardRoute
@@ -2196,7 +2196,6 @@ interface AppRouteChildren {
   AppParceiroRoute: typeof AppParceiroRoute
   AppPluginsRoute: typeof AppPluginsRoute
   AppProspeccaoRoute: typeof AppProspeccaoRoute
-  AppPublicacoesRoute: typeof AppPublicacoesRoute
   AppRelatoriosRoute: typeof AppRelatoriosRoute
   AppRespostasRapidasRoute: typeof AppRespostasRapidasRoute
   AppTemplatesRoute: typeof AppTemplatesRoute
@@ -2215,6 +2214,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppConexaoRoute: AppConexaoRoute,
   AppConfiguracoesRoute: AppConfiguracoesRoute,
   AppContatosRoute: AppContatosRoute,
+  AppConteudoRoute: AppConteudoRoute,
   AppConversasRoute: AppConversasRoute,
   AppCrmRoute: AppCrmRoute,
   AppDashboardRoute: AppDashboardRoute,
@@ -2224,7 +2224,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppParceiroRoute: AppParceiroRoute,
   AppPluginsRoute: AppPluginsRoute,
   AppProspeccaoRoute: AppProspeccaoRoute,
-  AppPublicacoesRoute: AppPublicacoesRoute,
   AppRelatoriosRoute: AppRelatoriosRoute,
   AppRespostasRapidasRoute: AppRespostasRapidasRoute,
   AppTemplatesRoute: AppTemplatesRoute,
@@ -2321,7 +2320,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicGoogleMarketingCallbackRoute: ApiPublicGoogleMarketingCallbackRoute,
   ApiPublicLeadCaptureRoute: ApiPublicLeadCaptureRoute,
   ApiPublicLeadPhotoRoute: ApiPublicLeadPhotoRoute,
-  ApiPublicLovableWhatsappRoute: ApiPublicLovableWhatsappRoute,
   ApiPublicMetaCallbackRoute: ApiPublicMetaCallbackRoute,
   ApiPublicMetaHealthRoute: ApiPublicMetaHealthRoute,
   ApiPublicMetaLeadsWebhookRoute: ApiPublicMetaLeadsWebhookRoute,
@@ -2341,6 +2339,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksGoogleCalendarRoute: ApiPublicHooksGoogleCalendarRoute,
   ApiPublicHooksGoogleCalendarRenewRoute:
     ApiPublicHooksGoogleCalendarRenewRoute,
+  ApiPublicHooksMetaSyncRoute: ApiPublicHooksMetaSyncRoute,
   ApiPublicHooksProcessAgendamentosRoute:
     ApiPublicHooksProcessAgendamentosRoute,
   ApiPublicHooksProcessCampaignsRoute: ApiPublicHooksProcessCampaignsRoute,
