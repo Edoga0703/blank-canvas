@@ -14,7 +14,9 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
         const mode = url.searchParams.get("hub.mode");
         const token = url.searchParams.get("hub.verify_token");
         const challenge = url.searchParams.get("hub.challenge") ?? "";
-        const expected = process.env["META_WEBHOOK_VERIFY_TOKEN"];
+        const { ensureMetaSecrets } = await import("@/lib/meta-oauth.server");
+        const cfg = await ensureMetaSecrets();
+        const expected = process.env["META_WEBHOOK_VERIFY_TOKEN"] || cfg.webhookVerifyToken;
 
         if (mode === "subscribe" && expected && token === expected) {
           return new Response(challenge, {
@@ -26,6 +28,8 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
       },
 
       POST: async ({ request }) => {
+        const { ensureMetaSecrets } = await import("@/lib/meta-oauth.server");
+        const cfg = await ensureMetaSecrets();
         const rawBuf = Buffer.from(await request.arrayBuffer());
         const raw = rawBuf.toString("utf8");
         const clean = (v?: string) =>
@@ -37,8 +41,8 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
             .replace(/[\s\u200B-\u200D\u2060\uFEFF]/g, "");
         // Instagram pode estar em outro app Meta (secret diferente do Messenger)
         const secrets = [
-          clean(process.env["META_APP_SECRET"]),
-          clean(process.env["META_APP_SECRET_INSTAGRAM"]),
+          clean(process.env["META_APP_SECRET"] || cfg.appSecret),
+          clean(process.env["META_APP_SECRET_INSTAGRAM"] || cfg.appSecretInstagram),
         ].filter((s): s is string => !!s);
         const signature = request.headers
           .get("x-hub-signature-256")
@@ -97,6 +101,7 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
 
           const publicOrigin = (
             process.env["PUBLIC_APP_URL"] ||
+            cfg.publicAppUrl ||
             process.env["APP_URL"] ||
             new URL(request.url).origin
           ).replace(/\/+$/, "");

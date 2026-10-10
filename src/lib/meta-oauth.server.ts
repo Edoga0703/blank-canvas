@@ -28,9 +28,15 @@ export function sanitizeOrigin(raw: string | null | undefined): string | null {
     const loopback = ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
     if (url.protocol !== "https:" && !loopback) return null;
     const host = url.hostname;
+    const allOrigins = [
+      ...configuredOrigins(),
+      ...(cachedMetaConfig?.allowedOrigins || []),
+      "https://capiconversa.com",
+      "https://www.capiconversa.com",
+    ];
     const ok =
       loopback ||
-      configuredOrigins().includes(url.origin) ||
+      allOrigins.includes(url.origin) ||
       PLATFORM_HOST_SUFFIXES.some((s) => host === s.replace(/^\./, "") || host.endsWith(s));
     return ok ? url.origin : null;
   } catch {
@@ -38,15 +44,81 @@ export function sanitizeOrigin(raw: string | null | undefined): string | null {
   }
 }
 
+let cachedMetaConfig: {
+  appId: string;
+  appSecret: string;
+  appSecretInstagram: string;
+  webhookVerifyToken: string;
+  publicAppUrl: string;
+  allowedOrigins: string[];
+  loadedAt: number;
+} | null = null;
+
+export async function ensureMetaSecrets() {
+  if (cachedMetaConfig && Date.now() - cachedMetaConfig.loadedAt < 30_000) {
+    return cachedMetaConfig;
+  }
+
+  let envAppId = (process.env["META_APP_ID"] || "").trim();
+  let envAppSecret = (process.env["META_APP_SECRET"] || "").trim();
+  let envAppSecretIg = (process.env["META_APP_SECRET_INSTAGRAM"] || "").trim();
+  let envWebhookToken = (process.env["META_WEBHOOK_VERIFY_TOKEN"] || "").trim();
+  let envPublicUrl = (process.env["PUBLIC_APP_URL"] || "").trim();
+  let envOrigins = (process.env["META_ALLOWED_ORIGINS"] || "").trim();
+
+  // Se faltam dados no environment, busca em master_settings do Supabase
+  if (!envAppId || !envAppSecret) {
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data } = await (supabaseAdmin as any)
+        .from("master_settings")
+        .select("value")
+        .eq("key", "meta_channels_config")
+        .maybeSingle();
+
+      if (data?.value) {
+        const v = data.value;
+        if (!envAppId && v.app_id) envAppId = String(v.app_id).trim();
+        if (!envAppSecret && v.app_secret) envAppSecret = String(v.app_secret).trim();
+        if (!envAppSecretIg && v.app_secret_instagram) envAppSecretIg = String(v.app_secret_instagram).trim();
+        if (!envWebhookToken && v.webhook_verify_token) envWebhookToken = String(v.webhook_verify_token).trim();
+        if (!envPublicUrl && v.public_app_url) envPublicUrl = String(v.public_app_url).trim();
+        if (!envOrigins && v.allowed_origins) envOrigins = String(v.allowed_origins).trim();
+      }
+    } catch (e) {
+      console.warn("[meta-oauth] erro ao carregar master_settings:", e);
+    }
+  }
+
+  const publicUrl = envPublicUrl || "https://capiconversa.com";
+  const origins = [
+    publicUrl,
+    "https://capiconversa.com",
+    "https://www.capiconversa.com",
+    ...(envOrigins ? envOrigins.split(",").map((s) => s.trim()).filter(Boolean) : []),
+  ];
+
+  cachedMetaConfig = {
+    appId: envAppId,
+    appSecret: envAppSecret,
+    appSecretInstagram: envAppSecretIg,
+    webhookVerifyToken: envWebhookToken || "capiconversa_meta_verify_2026",
+    publicAppUrl: publicUrl,
+    allowedOrigins: origins,
+    loadedAt: Date.now(),
+  };
+  return cachedMetaConfig;
+}
+
 function secret() {
-  const value = process.env["META_APP_SECRET"];
-  if (!value) throw new Error("META_APP_SECRET não configurado.");
+  const value = process.env["META_APP_SECRET"] || cachedMetaConfig?.appSecret;
+  if (!value) throw new Error("META_APP_SECRET não configurado (nem no .env nem em master_settings).");
   return value;
 }
 
 function appId() {
-  const value = process.env["META_APP_ID"];
-  if (!value) throw new Error("META_APP_ID não configurado.");
+  const value = process.env["META_APP_ID"] || cachedMetaConfig?.appId;
+  if (!value) throw new Error("META_APP_ID não configurado (nem no .env nem em master_settings).");
   return value;
 }
 
@@ -82,11 +154,13 @@ export type MetaOAuthState = {
 };
 
 export async function signState(state: MetaOAuthState) {
+  await ensureMetaSecrets();
   const payload = b64url(new TextEncoder().encode(JSON.stringify(state)));
   return `${payload}.${await hmac(payload)}`;
 }
 
 export async function verifyState(raw: string): Promise<MetaOAuthState | null> {
+  await ensureMetaSecrets();
   const [payload, sig] = raw.split(".");
   if (!payload || !sig) return null;
   if ((await hmac(payload)) !== sig) return null;
@@ -140,6 +214,7 @@ async function graphGet(path: string) {
 
 /** code -> user token -> token de longa duração (60 dias). */
 export async function exchangeCodeForLongLivedToken(code: string, origin: string) {
+  await ensureMetaSecrets();
   const callbackUrl = new URL(META_OAUTH_CALLBACK_PATH, origin).toString();
   const short = await graphGet(
     `/oauth/access_token?client_id=${encodeURIComponent(appId())}` +
