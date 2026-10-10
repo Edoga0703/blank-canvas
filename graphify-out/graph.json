@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T01:37:09.452365+00:00",
+  "generated_at": "2026-10-10T03:00:01.082454+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -87,7 +87,7 @@
     },
     {
       "path": "src/routeTree.gen.ts",
-      "bytes": 93547
+      "bytes": 94307
     },
     {
       "path": "src/styles.css",
@@ -539,7 +539,7 @@
     },
     {
       "path": "src/components/app-shell.tsx",
-      "bytes": 34422
+      "bytes": 34618
     },
     {
       "path": "src/components/mobile-app-banner.tsx",
@@ -730,6 +730,10 @@
       "bytes": 25983
     },
     {
+      "path": "src/lib/meta-publish.functions.ts",
+      "bytes": 5053
+    },
+    {
       "path": "src/lib/billing-checkout.functions.ts",
       "bytes": 17401
     },
@@ -783,7 +787,7 @@
     },
     {
       "path": "src/lib/meta-oauth.server.ts",
-      "bytes": 10178
+      "bytes": 10314
     },
     {
       "path": "src/lib/automacao-ai.functions.ts",
@@ -1044,6 +1048,10 @@
     {
       "path": "src/lib/master-overview.server.ts",
       "bytes": 7325
+    },
+    {
+      "path": "src/lib/meta-publish.server.ts",
+      "bytes": 6990
     },
     {
       "path": "src/lib/dashboard-layout.functions.ts",
@@ -2426,6 +2434,10 @@
       "bytes": 48371
     },
     {
+      "path": "src/routes/app/publicacoes.tsx",
+      "bytes": 22485
+    },
+    {
       "path": "src/routes/app/treinamentos.index.tsx",
       "bytes": 232
     },
@@ -2938,6 +2950,10 @@
     {
       "source": "src/routeTree.gen.ts",
       "target": "./routes/app/prospeccao"
+    },
+    {
+      "source": "src/routeTree.gen.ts",
+      "target": "./routes/app/publicacoes"
     },
     {
       "source": "src/routeTree.gen.ts",
@@ -4574,6 +4590,38 @@
     {
       "source": "src/lib/support.functions.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-publish.functions.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/meta-publish.functions.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/meta-publish.functions.ts",
+      "target": "@/lib/company-cache"
+    },
+    {
+      "source": "src/lib/meta-publish.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-publish.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-publish.functions.ts",
+      "target": "./meta-publish.server"
+    },
+    {
+      "source": "src/lib/meta-publish.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-publish.functions.ts",
+      "target": "./meta-publish.server"
     },
     {
       "source": "src/lib/billing-checkout.functions.ts",
@@ -12994,6 +13042,58 @@
     {
       "source": "src/routes/app/agente-avancado.tsx",
       "target": "@/hooks/use-capacidades"
+    },
+    {
+      "source": "src/routes/app/publicacoes.tsx",
+      "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/app/publicacoes.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/routes/app/publicacoes.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/routes/app/publicacoes.tsx",
+      "target": "@/lib/meta-publish.functions"
+    },
+    {
+      "source": "src/routes/app/publicacoes.tsx",
+      "target": "@/lib/storage/r2.functions"
+    },
+    {
+      "source": "src/routes/app/publicacoes.tsx",
+      "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/routes/app/publicacoes.tsx",
+      "target": "@/components/ui/card"
+    },
+    {
+      "source": "src/routes/app/publicacoes.tsx",
+      "target": "@/components/ui/input"
+    },
+    {
+      "source": "src/routes/app/publicacoes.tsx",
+      "target": "@/components/ui/textarea"
+    },
+    {
+      "source": "src/routes/app/publicacoes.tsx",
+      "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/routes/app/publicacoes.tsx",
+      "target": "@/components/ui/tabs"
+    },
+    {
+      "source": "src/routes/app/publicacoes.tsx",
+      "target": "sonner"
+    },
+    {
+      "source": "src/routes/app/publicacoes.tsx",
+      "target": "lucide-react"
     },
     {
       "source": "src/routes/app/treinamentos.index.tsx",
