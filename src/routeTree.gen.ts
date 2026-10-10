@@ -44,6 +44,7 @@ import { Route as AppOnboardingRouteImport } from './routes/app/onboarding'
 import { Route as AppParceiroRouteImport } from './routes/app/parceiro'
 import { Route as AppPluginsRouteImport } from './routes/app/plugins'
 import { Route as AppProspeccaoRouteImport } from './routes/app/prospeccao'
+import { Route as AppPublicacoesRouteImport } from './routes/app/publicacoes'
 import { Route as AppRelatoriosRouteImport } from './routes/app/relatorios'
 import { Route as AppRespostasRapidasRouteImport } from './routes/app/respostas-rapidas'
 import { Route as AppTemplatesRouteImport } from './routes/app/templates'
@@ -292,6 +293,11 @@ const AppPluginsRoute = AppPluginsRouteImport.update({
 const AppProspeccaoRoute = AppProspeccaoRouteImport.update({
   id: '/prospeccao',
   path: '/prospeccao',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPublicacoesRoute = AppPublicacoesRouteImport.update({
+  id: '/publicacoes',
+  path: '/publicacoes',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
@@ -711,6 +717,7 @@ export interface FileRoutesByFullPath {
   '/app/parceiro': typeof AppParceiroRoute
   '/app/plugins': typeof AppPluginsRoute
   '/app/prospeccao': typeof AppProspeccaoRoute
+  '/app/publicacoes': typeof AppPublicacoesRoute
   '/app/relatorios': typeof AppRelatoriosRoute
   '/app/respostas-rapidas': typeof AppRespostasRapidasRoute
   '/app/templates': typeof AppTemplatesRoute
@@ -819,6 +826,7 @@ export interface FileRoutesByTo {
   '/app/parceiro': typeof AppParceiroRoute
   '/app/plugins': typeof AppPluginsRoute
   '/app/prospeccao': typeof AppProspeccaoRoute
+  '/app/publicacoes': typeof AppPublicacoesRoute
   '/app/relatorios': typeof AppRelatoriosRoute
   '/app/respostas-rapidas': typeof AppRespostasRapidasRoute
   '/app/templates': typeof AppTemplatesRoute
@@ -928,6 +936,7 @@ export interface FileRoutesById {
   '/app/parceiro': typeof AppParceiroRoute
   '/app/plugins': typeof AppPluginsRoute
   '/app/prospeccao': typeof AppProspeccaoRoute
+  '/app/publicacoes': typeof AppPublicacoesRoute
   '/app/relatorios': typeof AppRelatoriosRoute
   '/app/respostas-rapidas': typeof AppRespostasRapidasRoute
   '/app/templates': typeof AppTemplatesRoute
@@ -1039,6 +1048,7 @@ export interface FileRouteTypes {
     | '/app/parceiro'
     | '/app/plugins'
     | '/app/prospeccao'
+    | '/app/publicacoes'
     | '/app/relatorios'
     | '/app/respostas-rapidas'
     | '/app/templates'
@@ -1147,6 +1157,7 @@ export interface FileRouteTypes {
     | '/app/parceiro'
     | '/app/plugins'
     | '/app/prospeccao'
+    | '/app/publicacoes'
     | '/app/relatorios'
     | '/app/respostas-rapidas'
     | '/app/templates'
@@ -1255,6 +1266,7 @@ export interface FileRouteTypes {
     | '/app/parceiro'
     | '/app/plugins'
     | '/app/prospeccao'
+    | '/app/publicacoes'
     | '/app/relatorios'
     | '/app/respostas-rapidas'
     | '/app/templates'
@@ -1634,6 +1646,13 @@ declare module '@tanstack/react-router' {
       path: '/prospeccao'
       fullPath: '/app/prospeccao'
       preLoaderRoute: typeof AppProspeccaoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/publicacoes': {
+      id: '/app/publicacoes'
+      path: '/publicacoes'
+      fullPath: '/app/publicacoes'
+      preLoaderRoute: typeof AppPublicacoesRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/relatorios': {
@@ -2177,6 +2196,7 @@ interface AppRouteChildren {
   AppParceiroRoute: typeof AppParceiroRoute
   AppPluginsRoute: typeof AppPluginsRoute
   AppProspeccaoRoute: typeof AppProspeccaoRoute
+  AppPublicacoesRoute: typeof AppPublicacoesRoute
   AppRelatoriosRoute: typeof AppRelatoriosRoute
   AppRespostasRapidasRoute: typeof AppRespostasRapidasRoute
   AppTemplatesRoute: typeof AppTemplatesRoute
@@ -2204,6 +2224,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppParceiroRoute: AppParceiroRoute,
   AppPluginsRoute: AppPluginsRoute,
   AppProspeccaoRoute: AppProspeccaoRoute,
+  AppPublicacoesRoute: AppPublicacoesRoute,
   AppRelatoriosRoute: AppRelatoriosRoute,
   AppRespostasRapidasRoute: AppRespostasRapidasRoute,
   AppTemplatesRoute: AppTemplatesRoute,
