@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T00:12:20.049711+00:00",
+  "generated_at": "2026-10-10T01:01:43.747520+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -783,7 +783,7 @@
     },
     {
       "path": "src/lib/meta-oauth.server.ts",
-      "bytes": 9750
+      "bytes": 10178
     },
     {
       "path": "src/lib/automacao-ai.functions.ts",
@@ -915,7 +915,7 @@
     },
     {
       "path": "src/lib/meta-oauth.functions.ts",
-      "bytes": 8825
+      "bytes": 8829
     },
     {
       "path": "src/lib/master-alerts.server.ts",
