@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T01:01:43.747520+00:00",
+  "generated_at": "2026-10-10T01:25:05.571784+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -1435,7 +1435,7 @@
     },
     {
       "path": "src/routes/termos.tsx",
-      "bytes": 13063
+      "bytes": 13068
     },
     {
       "path": "src/routes/app.tsx",
@@ -1443,7 +1443,7 @@
     },
     {
       "path": "src/routes/privacidade.tsx",
-      "bytes": 12870
+      "bytes": 12875
     },
     {
       "path": "src/routes/csat.$token.tsx",
