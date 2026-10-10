@@ -16,29 +16,69 @@ export type IngestRequest = {
   raw: unknown;
 };
 
+const STATUS_PRIORITY: Record<string, number> = {
+  queued: 1,
+  pendente: 1,
+  sent: 2,
+  enviado: 2,
+  delivered: 3,
+  entregue: 3,
+  read: 4,
+  lido: 4,
+  failed: 5,
+  falha: 5,
+};
+
+const STATUS_MAP: Record<MessageStatusEvent["status"], string> = {
+  queued: "pendente",
+  sent: "enviado",
+  delivered: "entregue",
+  read: "lido",
+  failed: "falha",
+};
+
+/**
+ * F2 — Resolución segura de conexión.
+ * Usa consultas parametrizadas individuales para evitar riesgos de inyección
+ * y comportamientos erráticos con caracteres especiales.
+ */
 async function resolveConnection(
   provider: MessagingProviderId,
   externalConnectionId?: string | null,
 ) {
-  let query = (supabaseAdmin as any)
-    .from("whatsapp_instances")
-    .select("id,company_id,user_id,instance_name,external_connection_id")
-    .eq("provider", provider);
+  let data: any = null;
 
   if (externalConnectionId) {
-    query = query.or(
-      `external_connection_id.eq.${externalConnectionId},instance_name.eq.${externalConnectionId}`,
-    );
+    // 1. Busca por external_connection_id parametrizado
+    const { data: byExtId, error: err1 } = await (supabaseAdmin as any)
+      .from("whatsapp_instances")
+      .select("id,company_id,user_id,instance_name,external_connection_id")
+      .eq("provider", provider)
+      .eq("external_connection_id", externalConnectionId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (err1) throw new Error(`No se pudo resolver la conexión: ${err1.message}`);
+    if (byExtId) data = byExtId;
+
+    // 2. Si no coincide, busca por instance_name parametrizado
+    if (!data) {
+      const { data: byName, error: err2 } = await (supabaseAdmin as any)
+        .from("whatsapp_instances")
+        .select("id,company_id,user_id,instance_name,external_connection_id")
+        .eq("provider", provider)
+        .eq("instance_name", externalConnectionId)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (err2) throw new Error(`No se pudo resolver la conexión: ${err2.message}`);
+      if (byName) data = byName;
+    }
   }
 
-  const { data: matchedData, error } = await query
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw new Error(`No se pudo resolver la conexión: ${error.message}`);
-  let data = matchedData;
-  // La beta tiene una unica conexion oficial por proyecto. El ID real solo se
-  // conoce al recibir el primer evento generado por Lovable.
+  // 3. Fallback controlado para beta de lovable_whatsapp si existe solo 1 instancia
   if (!data && provider === "lovable_whatsapp") {
     const fallback = await (supabaseAdmin as any)
       .from("whatsapp_instances")
@@ -46,11 +86,17 @@ async function resolveConnection(
       .eq("provider", provider)
       .order("updated_at", { ascending: false })
       .limit(2);
-    if (fallback.error)
+
+    if (fallback.error) {
       throw new Error(`No se pudo resolver la conexión: ${fallback.error.message}`);
-    if ((fallback.data ?? []).length === 1) data = fallback.data[0];
+    }
+    if ((fallback.data ?? []).length === 1) {
+      data = fallback.data[0];
+    }
   }
+
   if (!data) throw new Error(`No existe una conexión ${provider} registrada para este evento.`);
+
   return data as {
     id: string;
     company_id: string;
@@ -101,6 +147,7 @@ async function persistMessage(
     )
     .select("id")
     .single();
+
   if (error) throw new Error(`No se pudo guardar el mensaje: ${error.message}`);
 
   if (event.attachments.length) {
@@ -130,8 +177,101 @@ async function persistMessage(
     const { error: attachmentError } = await (supabaseAdmin as any)
       .from("message_attachments")
       .upsert(rows, { onConflict: "mensagem_id,attachment_key" });
-    if (attachmentError)
+    if (attachmentError) {
       throw new Error(`No se pudieron guardar los adjuntos: ${attachmentError.message}`);
+    }
+  }
+
+  // F4/F5 — Conciliación de estados huérfanos que hayan llegado antes del mensaje principal
+  const { data: orphanStatuses } = await (supabaseAdmin as any)
+    .from("message_status_events")
+    .select("id, status")
+    .eq("company_id", connection.company_id)
+    .eq("external_message_id", event.externalMessageId)
+    .is("mensagem_id", null);
+
+  if (orphanStatuses && orphanStatuses.length > 0) {
+    await (supabaseAdmin as any)
+      .from("message_status_events")
+      .update({ mensagem_id: message.id })
+      .in("id", orphanStatuses.map((s: any) => s.id));
+
+    let highestStatus: MessageStatusEvent["status"] | null = null;
+    let maxPriority = 0;
+    for (const orphan of orphanStatuses) {
+      const prio = STATUS_PRIORITY[orphan.status] ?? 0;
+      if (prio > maxPriority) {
+        maxPriority = prio;
+        highestStatus = orphan.status as MessageStatusEvent["status"];
+      }
+    }
+
+    if (
+      highestStatus &&
+      maxPriority > (STATUS_PRIORITY[event.direction === "incoming" ? "recebido" : "enviado"] ?? 0)
+    ) {
+      await (supabaseAdmin as any)
+        .from("mensagens")
+        .update({ status_envio: STATUS_MAP[highestStatus] ?? highestStatus })
+        .eq("id", message.id);
+    }
+  }
+
+  // F7 — Conexión con CRM / Kanban / IA para mensajes entrantes
+  if (event.direction === "incoming") {
+    try {
+      const { upsertCard, getStagesBrief, pickLeadOwner } = await import("@/lib/crm-engine.server");
+      const stages = await getStagesBrief(supabaseAdmin, connection.company_id);
+      const isAudio = event.attachments.some((a) => a.kind === "audio");
+      const summaryText =
+        event.text ||
+        (isAudio
+          ? "[ÁUDIO]"
+          : event.attachments.length
+            ? `[${event.attachments[0].kind.toUpperCase()}]`
+            : "");
+
+      const currentCard = await upsertCard(
+        supabaseAdmin,
+        connection.company_id,
+        connection.user_id,
+        event.phone,
+        event.contactName || null,
+        summaryText,
+        stages,
+        "whatsapp",
+      );
+
+      if (currentCard && !currentCard.owner_id) {
+        const { data: stageConfig } = await (supabaseAdmin as any)
+          .from("crm_stage")
+          .select("modo_atendimento")
+          .eq("id", currentCard.stage_id)
+          .maybeSingle();
+
+        if (stageConfig?.modo_atendimento === "manual") {
+          const ownerId = await pickLeadOwner(supabaseAdmin, connection.company_id, currentCard.stage_id);
+          if (ownerId) {
+            await (supabaseAdmin as any)
+              .from("crm_cards")
+              .update({ owner_id: ownerId })
+              .eq("id", currentCard.id);
+          }
+        }
+      }
+
+      const { processInboundAutomation } = await import("@/lib/inbound-automation.server");
+      await processInboundAutomation(supabaseAdmin, {
+        companyId: connection.company_id,
+        numero: event.phone,
+        texto: summaryText,
+        inboundMessageId: message.id,
+        stageId: currentCard?.stage_id,
+        isAudioMessage: isAudio,
+      });
+    } catch (automationError) {
+      console.error("[ingest.automation] Error al ejecutar automatización de CRM/IA:", automationError);
+    }
   }
 }
 
@@ -141,13 +281,13 @@ async function persistStatus(
 ) {
   const { data: message } = await (supabaseAdmin as any)
     .from("mensagens")
-    .select("id")
+    .select("id, status_envio")
     .eq("company_id", connection.company_id)
     .eq("provider", event.provider)
     .eq("whatsapp_message_id", event.externalMessageId)
     .maybeSingle();
 
-  await (supabaseAdmin as any).from("message_status_events").upsert(
+  const { error: statusEventError } = await (supabaseAdmin as any).from("message_status_events").upsert(
     {
       company_id: connection.company_id,
       mensagem_id: message?.id ?? null,
@@ -161,18 +301,22 @@ async function persistStatus(
     { onConflict: "company_id,external_message_id,status,occurred_at", ignoreDuplicates: true },
   );
 
+  if (statusEventError) {
+    console.warn("[persistStatus] Error registrando status_event:", statusEventError.message);
+  }
+
+  // F4/F5 — Regla de avance de estado: nunca retroceder a un estado de menor prioridad
   if (message?.id) {
-    const statusMap: Record<MessageStatusEvent["status"], string> = {
-      queued: "pendente",
-      sent: "enviado",
-      delivered: "entregue",
-      read: "lido",
-      failed: "falha",
-    };
-    await (supabaseAdmin as any)
-      .from("mensagens")
-      .update({ status_envio: statusMap[event.status] })
-      .eq("id", message.id);
+    const currentStatus = message.status_envio || "pendente";
+    const currentPriority = STATUS_PRIORITY[currentStatus] ?? 0;
+    const newPriority = STATUS_PRIORITY[event.status] ?? 0;
+
+    if (newPriority >= currentPriority || event.status === "failed") {
+      await (supabaseAdmin as any)
+        .from("mensagens")
+        .update({ status_envio: STATUS_MAP[event.status] })
+        .eq("id", message.id);
+    }
   }
 }
 
@@ -186,12 +330,14 @@ async function persistNormalized(
 
 /**
  * Entrada única para el receptor que Lovable generará.
- * Registra primero el payload crudo para no perder eventos y aplica una clave
- * externa única para que los reintentos del webhook no creen duplicados.
+ * F1: Manejo robusto de reintentos. Si el evento falló anteriormente, se reprocesa
+ * en lugar de devolver duplicate silenciosamente.
  */
 export async function ingestMessagingEvent(request: IngestRequest) {
   const connection = await resolveConnection(request.provider, request.externalConnectionId);
-  const { data: inboxEvent, error: insertError } = await (supabaseAdmin as any)
+
+  let inboxEventId: string | null = null;
+  const { data: insertedEvent, error: insertError } = await (supabaseAdmin as any)
     .from("messaging_inbox_events")
     .insert({
       company_id: connection.company_id,
@@ -199,13 +345,41 @@ export async function ingestMessagingEvent(request: IngestRequest) {
       external_event_id: request.externalEventId,
       external_connection_id: request.externalConnectionId ?? connection.external_connection_id,
       raw_payload: request.raw,
+      status: "received",
     })
     .select("id")
     .maybeSingle();
 
   if (insertError) {
-    if (insertError.code === "23505") return { ok: true, duplicate: true, processed: 0 };
-    throw new Error(`No se pudo registrar el evento: ${insertError.message}`);
+    if (insertError.code === "23505") {
+      // Evento ya existe: consultar su estado para decidir si reintentar
+      const { data: existingEvent } = await (supabaseAdmin as any)
+        .from("messaging_inbox_events")
+        .select("id, status")
+        .eq("provider", request.provider)
+        .eq("external_event_id", request.externalEventId)
+        .maybeSingle();
+
+      if (!existingEvent) {
+        return { ok: true, duplicate: true, processed: 0 };
+      }
+
+      // Si ya fue procesado con éxito o ignorado deliberadamente, responder duplicado
+      if (existingEvent.status === "processed" || existingEvent.status === "ignored") {
+        return { ok: true, duplicate: true, processed: 0 };
+      }
+
+      // Si estaba en 'failed' o 'received' pendiente, REPROCESARLO
+      inboxEventId = existingEvent.id;
+      await (supabaseAdmin as any)
+        .from("messaging_inbox_events")
+        .update({ status: "received", error_message: null })
+        .eq("id", inboxEventId);
+    } else {
+      throw new Error(`No se pudo registrar el evento: ${insertError.message}`);
+    }
+  } else {
+    inboxEventId = insertedEvent?.id ?? null;
   }
 
   try {
@@ -239,6 +413,7 @@ export async function ingestMessagingEvent(request: IngestRequest) {
         }),
       );
     }
+
     for (const event of normalized) await persistNormalized(event, connection);
 
     if (request.provider === "lovable_whatsapp" && normalized.length) {
@@ -252,22 +427,31 @@ export async function ingestMessagingEvent(request: IngestRequest) {
         .eq("id", connection.id);
     }
 
-    await (supabaseAdmin as any)
-      .from("messaging_inbox_events")
-      .update({
-        status: normalized.length ? "processed" : "ignored",
-        normalized_count: normalized.length,
-        processed_at: new Date().toISOString(),
-      })
-      .eq("id", inboxEvent.id);
+    if (inboxEventId) {
+      await (supabaseAdmin as any)
+        .from("messaging_inbox_events")
+        .update({
+          status: normalized.length ? "processed" : "ignored",
+          normalized_count: normalized.length,
+          processed_at: new Date().toISOString(),
+          error_message: null,
+        })
+        .eq("id", inboxEventId);
+    }
 
     return { ok: true, duplicate: false, processed: normalized.length };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await (supabaseAdmin as any)
-      .from("messaging_inbox_events")
-      .update({ status: "failed", error_message: message, processed_at: new Date().toISOString() })
-      .eq("id", inboxEvent.id);
+    if (inboxEventId) {
+      await (supabaseAdmin as any)
+        .from("messaging_inbox_events")
+        .update({
+          status: "failed",
+          error_message: message,
+          processed_at: new Date().toISOString(),
+        })
+        .eq("id", inboxEventId);
+    }
     throw error;
   }
 }
