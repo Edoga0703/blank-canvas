@@ -214,11 +214,56 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                 else message = { documentMessage: { mimetype: "application/octet-stream", url, fileName: "arquivo", caption: texto || undefined } };
               }
 
+              const mid = ev?.message?.mid || ev?.value?.message?.mid || `meta_${Date.now()}`;
+              const midiaUrl = attachment?.payload?.url || null;
+              const midiaTipo = attachment?.type || null;
+
+              // 1. Inserção direta e resiliente em mensagens
+              try {
+                await (supabaseAdmin as any)
+                  .from("mensagens")
+                  .upsert({
+                    company_id: inst.company_id,
+                    user_id: inst.user_id || null,
+                    numero: String(senderId),
+                    contato_nome: perfilNome || null,
+                    direcao: "entrada",
+                    autor: "contato",
+                    texto: texto || (midiaTipo ? `[${midiaTipo}]` : ""),
+                    whatsapp_message_id: mid,
+                    created_at: new Date().toISOString(),
+                    midia_url: midiaUrl,
+                    midia_tipo: midiaTipo,
+                    status_envio: "recebido",
+                  }, { onConflict: "company_id,whatsapp_message_id" });
+              } catch (e: any) {
+                console.warn("[meta-webhook] direct insert mensagens error:", e?.message);
+              }
+
+              // 2. Criação/atualização do lead no CRM
+              try {
+                const { upsertCard, getStagesBrief } = await import("@/lib/crm-engine.server");
+                const stages = await getStagesBrief(supabaseAdmin, inst.company_id);
+                await upsertCard(supabaseAdmin, inst.company_id, inst.user_id, String(senderId), perfilNome || null, texto || "", stages, canal as any);
+
+                const patch: any = { canal_chat: canal };
+                if (perfilNome) patch.nome = perfilNome;
+                if (perfilFoto) patch.foto_url = perfilFoto;
+                await (supabaseAdmin as any)
+                  .from("crm_cards")
+                  .update(patch)
+                  .eq("company_id", inst.company_id)
+                  .eq("numero", String(senderId));
+              } catch (e: any) {
+                console.warn("[meta-webhook] upsertCard error:", e?.message);
+              }
+
+              // 3. Encaminha também para o webhook interno (para disparar IA Drael e automações)
               const normalized = {
                 event: "messages.upsert",
                 instance: inst.instance_name,
                 data: {
-                  key: { remoteJid: `${senderId}@s.whatsapp.net`, fromMe: false, id: ev?.message?.mid || ev?.value?.message?.mid || `meta_${Date.now()}` },
+                  key: { remoteJid: `${senderId}@s.whatsapp.net`, fromMe: false, id: mid },
                   message,
                   pushName: perfilNome,
                   messageTimestamp: Math.floor((ev?.timestamp ?? Date.now()) / 1000),
@@ -226,37 +271,11 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
               };
 
               const forwardUrl = `${publicOrigin}/api/public/whatsapp-webhook?t=${encodeURIComponent(inst.webhook_token)}`;
-              await fetch(forwardUrl, {
+              fetch(forwardUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "x-webhook-token": inst.webhook_token },
                 body: JSON.stringify(normalized),
-              }).catch((e) => console.warn("[meta-webhook] forward failed", e?.message));
-
-              // Marca o canal do lead (e salva nome/foto do perfil Meta).
-              try {
-                const patch: any = { canal_chat: canal };
-                if (perfilNome) patch.nome = perfilNome;
-                if (perfilFoto) patch.foto_url = perfilFoto;
-                for (let i = 0; i < 3; i++) {
-                  const { data } = await (supabaseAdmin as any)
-                    .from("crm_cards")
-                    .update(patch)
-                    .eq("company_id", inst.company_id)
-                    .eq("numero", String(senderId))
-                    .select("id");
-                  if (data?.length) break;
-                  await new Promise((r) => setTimeout(r, 400));
-                }
-                if (perfilNome) {
-                  await (supabaseAdmin as any)
-                    .from("whatsapp_mensagens")
-                    .update({ contato_nome: perfilNome })
-                    .eq("company_id", inst.company_id)
-                    .eq("numero", String(senderId));
-                }
-              } catch (e: any) {
-                console.warn("[meta-webhook] update card falhou", e?.message);
-              }
+              }).catch(() => {});
             }
           }
         } catch (e: any) {

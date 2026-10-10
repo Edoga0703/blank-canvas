@@ -309,6 +309,7 @@ function ConversasPage() {
     return localStorage.getItem("conv:setor") || null;
   });
   const [agentFilter, setAgentFilter] = useState<string | null>(null);
+  const [channelFilter, setChannelFilter] = useState<string | null>(null);
   const loadSectorsFn = useServerFn(getInboxSectors);
   const setoresOn = useFeatureEnabled("feature.setores");
   useEffect(() => {
@@ -864,6 +865,10 @@ function ConversasPage() {
 
       if (sectorFilter && (card as any)?.department_id !== sectorFilter) return false;
       if (agentFilter && card?.owner_id !== agentFilter) return false;
+      if (channelFilter) {
+        const canal = (card as any)?.canal_chat || "whatsapp";
+        if (canal !== channelFilter) return false;
+      }
 
 
       const iaAtiva = !(pauses[c.numero] ?? false);
@@ -880,7 +885,7 @@ function ConversasPage() {
     });
     // ordena SEMPRE pela última mensagem (mais recente no topo)
     return list.sort((a, b) => +new Date(b.last.created_at) - +new Date(a.last.created_at));
-  }, [msgs, search, filter, sectorFilter, agentFilter, mySectorIds, unread, cards, pauses, stages, userId, ctx, grupos, operationalMode]);
+  }, [msgs, search, filter, sectorFilter, agentFilter, channelFilter, mySectorIds, unread, cards, pauses, stages, userId, ctx, grupos, operationalMode]);
 
 
   const thread = useMemo(() =>
@@ -1345,6 +1350,54 @@ function ConversasPage() {
                       ))}
                     </>
                   )}
+
+                  <div className="my-1 h-px bg-[color:var(--hairline)]" />
+                  <p className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Canal / Aplicativo
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setChannelFilter(null); setFilterOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+                      !channelFilter ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)]" : "hover:bg-muted text-foreground"
+                    }`}
+                  >
+                    <Check className={`size-3.5 shrink-0 ${!channelFilter ? "opacity-100" : "opacity-0"}`} />
+                    <span className="flex-1 text-left truncate">Todos os canais</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setChannelFilter("whatsapp"); setFilterOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+                      channelFilter === "whatsapp" ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)]" : "hover:bg-muted text-foreground"
+                    }`}
+                  >
+                    <Check className={`size-3.5 shrink-0 ${channelFilter === "whatsapp" ? "opacity-100" : "opacity-0"}`} />
+                    <WhatsAppGlyph className="size-4 shrink-0 text-[#25D366]" />
+                    <span className="flex-1 text-left truncate">WhatsApp</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setChannelFilter("instagram"); setFilterOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+                      channelFilter === "instagram" ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)]" : "hover:bg-muted text-foreground"
+                    }`}
+                  >
+                    <Check className={`size-3.5 shrink-0 ${channelFilter === "instagram" ? "opacity-100" : "opacity-0"}`} />
+                    <InstagramGlyph className="size-4 shrink-0 text-[#E4405F]" />
+                    <span className="flex-1 text-left truncate">Instagram Direct</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setChannelFilter("messenger"); setFilterOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+                      channelFilter === "messenger" ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)]" : "hover:bg-muted text-foreground"
+                    }`}
+                  >
+                    <Check className={`size-3.5 shrink-0 ${channelFilter === "messenger" ? "opacity-100" : "opacity-0"}`} />
+                    <MessengerGlyph className="size-4 shrink-0 text-[#0084FF]" />
+                    <span className="flex-1 text-left truncate">Facebook Messenger</span>
+                  </button>
                 </PopoverContent>
 
               </Popover>
