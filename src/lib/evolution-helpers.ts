@@ -97,7 +97,22 @@ export async function getInstanceForContact(
   if (!canal || canal === "null" || canal === "undefined") {
     canal = String((card as any)?.canal_entrada ?? "").toLowerCase();
   }
-  console.log("[getInstanceForContact] Canal inicial (CRM):", canal);
+
+  // Fallback: se não estiver explícito no CRM ou for whatsapp genérico, verifica o provedor na última mensagem
+  if (!canal || canal === "null" || canal === "undefined" || canal === "whatsapp") {
+    const { data: lastMsg } = await supabase
+      .from("mensagens")
+      .select("provider")
+      .eq("company_id", companyId)
+      .eq("numero", numero)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (lastMsg?.provider === "meta_instagram") canal = "instagram";
+    else if (lastMsg?.provider === "meta_messenger") canal = "messenger";
+    else if (lastMsg?.provider === "telegram") canal = "telegram";
+  }
+  console.log("[getInstanceForContact] Canal resolvido:", canal);
 
 
   if (canal === "telegram") {

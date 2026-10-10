@@ -154,6 +154,16 @@ interface Msg {
   reacao?: string | null; editado_em?: string | null;
   whatsapp_message_id?: string | null; reply_to_id?: string | null;
   status_envio?: string | null;
+  provider?: string | null;
+}
+
+function getChannel(card?: any, lastMsg?: Msg | null): CanalChat {
+  const c = String((card as any)?.canal_chat || (card as any)?.canal_entrada || "").toLowerCase();
+  if (c === "instagram" || c === "messenger" || c === "telegram") return c as CanalChat;
+  if (lastMsg?.provider === "meta_instagram") return "instagram";
+  if (lastMsg?.provider === "meta_messenger") return "messenger";
+  if (lastMsg?.provider === "telegram") return "telegram";
+  return "whatsapp";
 }
 
 
@@ -278,6 +288,28 @@ function ConversasPage() {
       setCsatAoFinalizar(c?.enviarAoFinalizar === true);
     }).catch(() => {});
   }, [getCsatCfgFn]);
+
+  const [instances, setInstances] = useState<Array<{ id: string; instance_name: string; display_name: string | null; provider: string; status: string; phone_number_id: string | null }>>([]);
+
+  useEffect(() => {
+    if (!companyId) return;
+    let alive = true;
+    async function loadInstances() {
+      const { data } = await supabase
+        .from("whatsapp_instances")
+        .select("id,instance_name,display_name,provider,status,phone_number_id")
+        .eq("company_id", companyId);
+      if (alive && data) setInstances(data as any);
+    }
+    void loadInstances();
+    const sub = supabase
+      .channel("conversas-instances-status")
+      .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_instances", filter: `company_id=eq.${companyId}` }, () => {
+        void loadInstances();
+      })
+      .subscribe();
+    return () => { alive = false; void supabase.removeChannel(sub); };
+  }, [companyId]);
 
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
@@ -650,7 +682,7 @@ function ConversasPage() {
   // PostgREST limita 1000 linhas por request. Buscamos em páginas para manter
   // TODO o histórico da conta disponível (sem cortar conversas antigas).
   const MSG_COLS =
-    "id,numero,contato_nome,direcao,autor,texto,created_at,user_id,midia_url,midia_tipo,midia_mime,midia_nome,reacao,editado_em,whatsapp_message_id,reply_to_id,status_envio";
+    "id,numero,contato_nome,direcao,autor,texto,created_at,user_id,midia_url,midia_tipo,midia_mime,midia_nome,reacao,editado_em,whatsapp_message_id,reply_to_id,status_envio,provider";
 
   // Paginação por cursor (keyset): OFFSET profundo fazia o banco reler tudo a
   // cada página e era a principal causa da lentidão ao abrir Conversas.
@@ -754,7 +786,7 @@ function ConversasPage() {
   async function refreshRecent(cid: string) {
     const [{ data }, { data: cds }] = await Promise.all([
       supabase
-        .from("mensagens").select("id,numero,contato_nome,direcao,autor,texto,created_at,user_id,midia_url,midia_tipo,midia_mime,midia_nome,reacao,editado_em,whatsapp_message_id,reply_to_id,status_envio").eq("company_id", cid)
+        .from("mensagens").select("id,numero,contato_nome,direcao,autor,texto,created_at,user_id,midia_url,midia_tipo,midia_mime,midia_nome,reacao,editado_em,whatsapp_message_id,reply_to_id,status_envio,provider").eq("company_id", cid)
         .order("created_at", { ascending: false })
         .limit(100),
       supabase.from("crm_cards").select("id,numero,nome,foto_url,owner_id,stage_id,canal_chat,department_id,transfer_para_user_id,transfer_de_user_id,transfer_status").eq("company_id", cid).order("ultima_em", { ascending: false, nullsFirst: false }).limit(400),
@@ -866,7 +898,7 @@ function ConversasPage() {
       if (sectorFilter && (card as any)?.department_id !== sectorFilter) return false;
       if (agentFilter && card?.owner_id !== agentFilter) return false;
       if (channelFilter) {
-        const canal = (card as any)?.canal_chat || "whatsapp";
+        const canal = getChannel(card, c.last);
         if (canal !== channelFilter) return false;
       }
 
@@ -952,6 +984,22 @@ function ConversasPage() {
     }
     return c;
   }, [msgs, search, sectorFilter, mySectorIds, unread, cards, pauses, stages, userId, ctx, grupos, operationalMode]);
+
+  const channelCounts = useMemo(() => {
+    const map = new Map<string, { numero: string; last: Msg }>();
+    for (const m of msgs) if (!map.has(m.numero)) map.set(m.numero, { numero: m.numero, last: m });
+    const counts = { todos: 0, whatsapp: 0, instagram: 0, messenger: 0 };
+    for (const c of map.values()) {
+      if (isGrupo(c.numero)) continue;
+      const card = cards[c.numero];
+      const canal = getChannel(card, c.last);
+      counts.todos++;
+      if (canal === "instagram") counts.instagram++;
+      else if (canal === "messenger") counts.messenger++;
+      else counts.whatsapp++;
+    }
+    return counts;
+  }, [msgs, cards]);
 
 
   useEffect(() => {
@@ -1424,25 +1472,38 @@ function ConversasPage() {
 
           </div>
 
-          {/* Status WhatsApp — discreto */}
+          {/* Status dos Canais — dinâmico multicanal */}
           <div className="px-4 sm:px-5 pb-2">
-            <div className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-              {wppStatus === "connected" ? (
-                <><span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /> <Wifi className="size-3" /> WhatsApp conectado</>
-              ) : wppStatus === "connecting" ? (
-                <><span className="size-2 rounded-full bg-amber-500 animate-pulse" /> Conectando…</>
-              ) : wppStatus === "disconnected" ? (
-                <><span className="size-2 rounded-full bg-red-500" /> <WifiOff className="size-3" /> WhatsApp desconectado</>
-              ) : (
-                <><span className="size-2 rounded-full bg-muted-foreground/40" /> Verificando…</>
-              )}
-            </div>
-            {wppStatus === "disconnected" && (
-              <p className="text-[9px] text-muted-foreground mt-0.5 leading-none px-0.5 opacity-80">
-                Nenhuma conexão ativa na empresa.
-              </p>
-            )}
+            <div className="flex flex-wrap items-center gap-2.5 text-[11px] font-medium text-muted-foreground">
+              {/* WhatsApp */}
+              <div className="inline-flex items-center gap-1.5" title="Status do WhatsApp">
+                {wppStatus === "connected" ? (
+                  <><span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /> <WhatsAppGlyph className="size-3 text-[#25D366]" /> <span className="text-foreground">WhatsApp</span></>
+                ) : wppStatus === "connecting" ? (
+                  <><span className="size-2 rounded-full bg-amber-500 animate-pulse" /> <WhatsAppGlyph className="size-3 text-[#25D366]" /> <span>Conectando…</span></>
+                ) : (
+                  <><span className="size-2 rounded-full bg-amber-500/70" /> <WhatsAppGlyph className="size-3 text-muted-foreground" /> <span>WhatsApp pendente</span></>
+                )}
+              </div>
 
+              {/* Instagram */}
+              {instances.filter(i => i.provider === "meta_instagram").map(inst => (
+                <div key={inst.id} className="inline-flex items-center gap-1.5 pl-2.5 border-l border-[color:var(--hairline)]" title={`Instagram: ${inst.display_name || inst.instance_name}`}>
+                  <span className={`size-2 rounded-full ${inst.status === "connected" ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-amber-500"}`} />
+                  <InstagramGlyph className="size-3 text-[#E4405F]" />
+                  <span className="text-foreground">{inst.display_name || "Instagram"}</span>
+                </div>
+              ))}
+
+              {/* Messenger */}
+              {instances.filter(i => i.provider === "meta_messenger").map(inst => (
+                <div key={inst.id} className="inline-flex items-center gap-1.5 pl-2.5 border-l border-[color:var(--hairline)]" title={`Facebook Messenger: ${inst.display_name || inst.instance_name}`}>
+                  <span className={`size-2 rounded-full ${inst.status === "connected" ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-amber-500"}`} />
+                  <MessengerGlyph className="size-3 text-[#0084FF]" />
+                  <span className="text-foreground">{inst.display_name || "Messenger"}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="px-4 pb-3">
@@ -1454,6 +1515,64 @@ function ConversasPage() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9 h-10 rounded-xl bg-muted/60 border-transparent focus-visible:border-[color:var(--hairline)] text-[12.5px]"
               />
+            </div>
+
+            {/* Abas de Canais Rápidas (Todos, WhatsApp, Instagram, Messenger) */}
+            <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+              <button
+                type="button"
+                onClick={() => setChannelFilter(null)}
+                className={`inline-flex h-7 shrink-0 items-center gap-1.5 px-2.5 text-[11px] font-medium rounded-lg transition-all ${
+                  !channelFilter
+                    ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                    : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <span>Todos</span>
+                <span className="text-[10px] opacity-75 font-semibold">({channelCounts.todos})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setChannelFilter("whatsapp")}
+                className={`inline-flex h-7 shrink-0 items-center gap-1.5 px-2.5 text-[11px] font-medium rounded-lg transition-all ${
+                  channelFilter === "whatsapp"
+                    ? "bg-[#25D366] text-white shadow-sm font-semibold"
+                    : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <WhatsAppGlyph className="size-3 shrink-0" />
+                <span>WhatsApp</span>
+                <span className="text-[10px] opacity-75 font-semibold">({channelCounts.whatsapp})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setChannelFilter("instagram")}
+                className={`inline-flex h-7 shrink-0 items-center gap-1.5 px-2.5 text-[11px] font-medium rounded-lg transition-all ${
+                  channelFilter === "instagram"
+                    ? "bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] text-white shadow-sm font-semibold"
+                    : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <InstagramGlyph className="size-3 shrink-0" />
+                <span>Instagram</span>
+                <span className="text-[10px] opacity-75 font-semibold">({channelCounts.instagram})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setChannelFilter("messenger")}
+                className={`inline-flex h-7 shrink-0 items-center gap-1.5 px-2.5 text-[11px] font-medium rounded-lg transition-all ${
+                  channelFilter === "messenger"
+                    ? "bg-[#0084FF] text-white shadow-sm font-semibold"
+                    : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <MessengerGlyph className="size-3 shrink-0" />
+                <span>Messenger</span>
+                <span className="text-[10px] opacity-75 font-semibold">({channelCounts.messenger})</span>
+              </button>
             </div>
 
             {/* Filtros rápidos do dia a dia */}
@@ -1567,7 +1686,7 @@ function ConversasPage() {
                           <Bot className="size-2.5" />
                         </span>
                       )}
-                      <ChannelBadge canal={(card as any)?.canal_chat} parentSize={42} />
+                      <ChannelBadge canal={getChannel(card, c.last)} parentSize={42} />
                     </div>
                     <div className="min-w-0 flex-1 flex flex-col gap-1 relative group/item">
                       <div className="flex items-baseline justify-between gap-2">
@@ -1702,7 +1821,7 @@ function ConversasPage() {
                         <Bot className="size-2.5" />
                       </span>
                     )}
-                    <ChannelBadge canal={(activeCard as any)?.canal_chat} size={18} parentSize={40} />
+                    <ChannelBadge canal={getChannel(activeCard, activeConv?.last)} size={18} parentSize={40} />
                   </div>
 
                   <div className="min-w-0 flex-1">

@@ -121,6 +121,8 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
 
           console.log(`[webhook] DEEP DETECTED: fromMe=${fromMe}, number=${number}, autor=${autor}`);
 
+          const detectedChannel = payload?.channel || payload?.canal || (inst.provider === "meta_instagram" ? "instagram" : inst.provider === "meta_messenger" ? "messenger" : "whatsapp");
+
           const { data: insertedMsg, error: insertErr } = await (supabaseAdmin as any)
             .from("mensagens")
             .insert({
@@ -131,6 +133,7 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
               direcao: direcao,
               autor: autor,
               texto: text || "",
+              provider: inst.provider || (detectedChannel === "instagram" ? "meta_instagram" : detectedChannel === "messenger" ? "meta_messenger" : "lovable_whatsapp"),
               whatsapp_message_id: stableMessageId,
               created_at: new Date().toISOString(),
               midia_url: midiaUrl,
@@ -149,7 +152,7 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
 
           const { upsertCard, getStagesBrief, pickLeadOwner } = await import("@/lib/crm-engine.server");
           const stages = await getStagesBrief(supabaseAdmin, companyId);
-          const currentCard = await upsertCard(supabaseAdmin, companyId, userId, number, pushName || null, text || "", stages, "whatsapp");
+          const currentCard = await upsertCard(supabaseAdmin, companyId, userId, number, pushName || null, text || "", stages, detectedChannel);
 
           if (currentCard && !fromMe) {
             // PERSISTÊNCIA DE DONO: O upsertCard preserva o dono se ele já existir.

@@ -103,6 +103,7 @@ export async function upsertCard(
     ultima_mensagem: text.slice(0, 240),
     ultima_em: now,
     canal_entrada: canal,
+    canal_chat: canal,
   };
 
   if (!existing) {
@@ -170,6 +171,10 @@ export async function upsertCard(
       ultima_mensagem: payload.ultima_mensagem,
       ultima_em: payload.ultima_em,
     };
+
+    if (canal && (!existing.canal_chat || (existing.canal_chat === "whatsapp" && canal !== "whatsapp"))) {
+      updatePayload.canal_chat = canal;
+    }
 
     // Só atualiza o nome se o atual for genérico ou estiver vazio
     if (existingIsGeneric && pushName) {

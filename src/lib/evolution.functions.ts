@@ -231,7 +231,9 @@ export const checkWhatsappStatus = createServerFn({ method: "POST" })
     const query = (sbAdminTok as any)
       .from("whatsapp_instances")
       .select("instance_name,status,numero,webhook_token,webhook_configured_at,last_state_at,provider")
-      .eq("company_id", companyId);
+      .eq("company_id", companyId)
+      .not("provider", "like", "meta%")
+      .neq("provider", "telegram");
     const { data: rows } = await (data.instanceName
       ? query.eq("instance_name", data.instanceName).limit(1)
       : query.order("updated_at", { ascending: false }));

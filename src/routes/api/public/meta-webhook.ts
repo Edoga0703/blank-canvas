@@ -233,11 +233,62 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
               const isMention = /mention|tag/i.test(field) || (field === "feed" && /mention|tag/i.test(String(value?.item ?? "")));
               const isComment = /comment/i.test(field) || (field === "feed" && /comment/i.test(String(value?.item ?? "")));
               const shouldForwardToAttention = field === "messaging" || isComment;
-              if ((!shouldForwardToAttention && !isMention) || !senderId || !pageId || isEcho || ((isComment || isMention) && senderId === pageId)) continue;
+              if ((!shouldForwardToAttention && !isMention) || !pageId) continue;
 
-              const { data: inst } = await (supabaseAdmin as any).from("whatsapp_instances").select("id,instance_name,webhook_token,provider,company_id,instance_token").eq("phone_number_id", pageId).like("provider", "meta%").maybeSingle();
-              if (!inst?.webhook_token) continue;
+              let { data: inst } = await (supabaseAdmin as any)
+                .from("whatsapp_instances")
+                .select("id,instance_name,webhook_token,provider,company_id,instance_token,user_id")
+                .eq("phone_number_id", pageId)
+                .like("provider", "meta%")
+                .maybeSingle();
+
+              if (!inst) {
+                const { data: byName } = await (supabaseAdmin as any)
+                  .from("whatsapp_instances")
+                  .select("id,instance_name,webhook_token,provider,company_id,instance_token,user_id")
+                  .like("provider", "meta%")
+                  .ilike("instance_name", `%${pageId}%`)
+                  .limit(1)
+                  .maybeSingle();
+                if (byName) inst = byName;
+              }
+
+              if (!inst) continue;
               companyId = inst.company_id;
+
+              // Trata eco (mensagem enviada pela própria empresa via Instagram App / Facebook Suite)
+              if (isEcho) {
+                const echoRecipientId = String(ev?.recipient?.id ?? "");
+                if (echoRecipientId) {
+                  const echoText = textFor(value);
+                  const echoExternalId = String(ev?.message?.mid ?? `meta_echo_${receivedEventId}`);
+                  const echoTimestamp = ev?.timestamp ? (ev.timestamp < 10_000_000_000 ? ev.timestamp * 1000 : ev.timestamp) : Date.now();
+                  try {
+                    await (supabaseAdmin as any).from("mensagens").insert({
+                      company_id: inst.company_id,
+                      user_id: inst.user_id || null,
+                      numero: echoRecipientId,
+                      direcao: "saida",
+                      autor: "humano",
+                      texto: echoText || "",
+                      provider: inst.provider,
+                      whatsapp_message_id: echoExternalId,
+                      created_at: new Date(echoTimestamp).toISOString(),
+                      status_envio: "enviado",
+                    });
+                  } catch { /* ignora duplicatas de eco */ }
+                  await (supabaseAdmin as any).from("crm_cards").update({
+                    ultima_mensagem: echoText.slice(0, 240),
+                    ultima_direcao: "saida",
+                    ultima_em: new Date(echoTimestamp).toISOString(),
+                  }).eq("company_id", inst.company_id).eq("numero", echoRecipientId);
+                  normalizedCount += 1;
+                }
+                continue;
+              }
+
+              if (!senderId || ((isComment || isMention) && senderId === pageId)) continue;
+
               const { metaFetchProfile } = await import("@/lib/meta.server");
               const profile = inst.instance_token ? await metaFetchProfile(inst.instance_token, senderId) : { name: null, picture: null };
               const text = textFor(value);
@@ -256,35 +307,92 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
               }
               const attachment = attachmentFor(value);
               const mediaType = String(attachment?.type ?? "").toLowerCase();
-              const message = attachment?.payload?.url
-                ? mediaType === "image" ? { imageMessage: { mimetype: "image/jpeg", url: attachment.payload.url, caption: text || undefined } }
-                  : mediaType === "video" ? { videoMessage: { mimetype: "video/mp4", url: attachment.payload.url, caption: text || undefined } }
-                    : mediaType === "audio" ? { audioMessage: { mimetype: "audio/mp4", url: attachment.payload.url } }
-                      : { documentMessage: { mimetype: "application/octet-stream", url: attachment.payload.url, fileName: "arquivo", caption: text || undefined } }
-                : { conversation: text || (isComment || isMention ? `[${field}]` : "") };
               if (!text && !attachment && !isComment && !isMention) continue;
 
               const externalId = String(ev?.message?.mid ?? value?.comment_id ?? value?.id ?? `meta_${receivedEventId}_${senderId}`);
               const sourceTimestamp = ev?.timestamp ?? value?.created_time;
               const timestampMs = typeof sourceTimestamp === "number" ? (sourceTimestamp < 10_000_000_000 ? sourceTimestamp * 1000 : sourceTimestamp) : (sourceTimestamp ? new Date(sourceTimestamp).getTime() : Date.now());
-              const normalized = {
-                event: "messages.upsert", channel, canal: channel, instance: inst.instance_name,
-                data: {
-                  key: { remoteJid: `${senderId}@s.whatsapp.net`, fromMe: false, id: externalId },
-                  message, pushName: profile.name || (channel === "instagram" ? `Instagram ${senderId.slice(-4)}` : `Messenger ${senderId.slice(-4)}`),
-                  messageTimestamp: Math.floor(timestampMs / 1000),
-                },
-              };
-              const forwarded = await fetch(`${publicOrigin}/api/public/whatsapp-webhook?t=${encodeURIComponent(inst.webhook_token)}`, {
-                method: "POST", headers: { "Content-Type": "application/json", "x-webhook-token": inst.webhook_token }, body: JSON.stringify(normalized), signal: AbortSignal.timeout(20_000),
-              });
-              if (!forwarded.ok) throw new Error(`normalização interna retornou ${forwarded.status}`);
-              normalizedCount += 1;
-              const patch: any = { canal_chat: channel };
+              const stableMessageId = String(externalId || `meta:${inst.id}:${senderId}:${timestampMs}`);
+              const contatoNome = profile.name || (channel === "instagram" ? `Instagram ${senderId.slice(-4)}` : `Messenger ${senderId.slice(-4)}`);
+
+              // 1. Inserir em mensagens
+              const { data: insertedMsg, error: insertErr } = await (supabaseAdmin as any)
+                .from("mensagens")
+                .insert({
+                  company_id: inst.company_id,
+                  user_id: inst.user_id || null,
+                  numero: senderId,
+                  contato_nome: contatoNome,
+                  direcao: "entrada",
+                  autor: "contato",
+                  texto: text || (mediaType ? `[${mediaType.toUpperCase()}]` : ""),
+                  provider: inst.provider,
+                  whatsapp_message_id: stableMessageId,
+                  created_at: new Date(timestampMs).toISOString(),
+                  midia_url: attachment?.payload?.url || null,
+                  midia_tipo: mediaType || null,
+                  status_envio: "recebido",
+                })
+                .select("*")
+                .maybeSingle();
+
+              if (insertErr && (insertErr as any).code !== "23505") {
+                console.error("[meta-webhook] DB Insert Error:", insertErr);
+              }
+
+              // 2. Atualizar ou criar cartão no CRM com canal_chat correto
+              const { upsertCard, getStagesBrief, pickLeadOwner } = await import("@/lib/crm-engine.server");
+              const stages = await getStagesBrief(supabaseAdmin, inst.company_id);
+              const currentCard = await upsertCard(
+                supabaseAdmin,
+                inst.company_id,
+                inst.user_id || null,
+                senderId,
+                contatoNome,
+                text || "",
+                stages,
+                channel,
+              );
+
+              // 3. Garantir canal_chat e foto no card
+              const patch: any = { canal_chat: channel, canal_entrada: channel };
               if (profile.name) patch.nome = profile.name;
               if (profile.picture) patch.foto_url = profile.picture;
-              await (supabaseAdmin as any).from("crm_cards").update(patch).eq("company_id", inst.company_id).eq("numero", senderId);
-              if (profile.name) await (supabaseAdmin as any).from("mensagens").update({ contato_nome: profile.name }).eq("company_id", inst.company_id).eq("numero", senderId);
+              await (supabaseAdmin as any)
+                .from("crm_cards")
+                .update(patch)
+                .eq("company_id", inst.company_id)
+                .eq("numero", senderId);
+
+              // 4. Distribuição automática se modo manual
+              if (currentCard) {
+                const { data: stageConfig } = await (supabaseAdmin as any)
+                  .from("crm_stage")
+                  .select("modo_atendimento")
+                  .eq("id", currentCard.stage_id)
+                  .maybeSingle();
+                if (stageConfig?.modo_atendimento === "manual" && !currentCard.owner_id) {
+                  const ownerId = await pickLeadOwner(supabaseAdmin, inst.company_id, currentCard.stage_id);
+                  if (ownerId) {
+                    await (supabaseAdmin as any).from("crm_cards").update({ owner_id: ownerId }).eq("id", currentCard.id);
+                  }
+                }
+              }
+
+              // 5. Automação / Atendimento IA
+              if (text) {
+                const { processInboundAutomation } = await import("@/lib/inbound-automation.server");
+                await processInboundAutomation(supabaseAdmin, {
+                  companyId: inst.company_id,
+                  numero: senderId,
+                  texto: text,
+                  inboundMessageId: stableMessageId,
+                  stageId: currentCard?.stage_id,
+                  isAudioMessage: mediaType === "audio",
+                });
+              }
+
+              normalizedCount += 1;
             }
           }
 
