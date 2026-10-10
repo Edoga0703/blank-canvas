@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T20:49:06.773158+00:00",
+  "generated_at": "2026-10-10T21:21:52.656579+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -2287,7 +2287,7 @@
     },
     {
       "path": "src/lib/messaging/ingest.server.ts",
-      "bytes": 10002
+      "bytes": 15855
     },
     {
       "path": "src/lib/messaging/media-archive.server.ts",
@@ -12414,6 +12414,14 @@
     {
       "source": "src/lib/messaging/ingest.server.ts",
       "target": "node:crypto"
+    },
+    {
+      "source": "src/lib/messaging/ingest.server.ts",
+      "target": "@/lib/crm-engine.server"
+    },
+    {
+      "source": "src/lib/messaging/ingest.server.ts",
+      "target": "@/lib/inbound-automation.server"
     },
     {
       "source": "src/lib/messaging/ingest.server.ts",
