@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-08T18:56:19.382649+00:00",
+  "generated_at": "2026-10-10T19:12:22.214887+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -20,6 +20,10 @@
     {
       "path": "drizzle.config.ts",
       "bytes": 245
+    },
+    {
+      "path": "package-lock.json",
+      "bytes": 542434
     },
     {
       "path": "20240803010000_plugin_suggestions.sql",
@@ -47,7 +51,7 @@
     },
     {
       "path": "vite.config.ts",
-      "bytes": 1686
+      "bytes": 1984
     },
     {
       "path": "vite-serverfn-warmup.ts",
@@ -67,7 +71,7 @@
     },
     {
       "path": "package.json",
-      "bytes": 4026
+      "bytes": 4105
     },
     {
       "path": "components.json",
@@ -87,7 +91,7 @@
     },
     {
       "path": "src/routeTree.gen.ts",
-      "bytes": 92485
+      "bytes": 94190
     },
     {
       "path": "src/styles.css",
@@ -104,6 +108,10 @@
     {
       "path": "src/start.ts",
       "bytes": 1642
+    },
+    {
+      "path": "docs/meta-integration.md",
+      "bytes": 3520
     },
     {
       "path": "drizzle/schema.ts",
@@ -479,7 +487,7 @@
     },
     {
       "path": "src/components/notifications-bell.tsx",
-      "bytes": 8974
+      "bytes": 9351
     },
     {
       "path": "src/components/trial-banner.tsx",
@@ -491,7 +499,7 @@
     },
     {
       "path": "src/components/app-shell.tsx",
-      "bytes": 34422
+      "bytes": 34617
     },
     {
       "path": "src/components/mobile-app-banner.tsx",
@@ -546,6 +554,10 @@
       "bytes": 4973
     },
     {
+      "path": "src/lib/meta-leads.server.ts",
+      "bytes": 4085
+    },
+    {
       "path": "src/lib/resumo.functions.ts",
       "bytes": 2322
     },
@@ -556,6 +568,10 @@
     {
       "path": "src/lib/openai-usage.functions.ts",
       "bytes": 8304
+    },
+    {
+      "path": "src/lib/meta-config.server.ts",
+      "bytes": 1766
     },
     {
       "path": "src/lib/media-fetch.server.ts",
@@ -766,6 +782,10 @@
       "bytes": 1425
     },
     {
+      "path": "src/lib/meta-content.functions.ts",
+      "bytes": 12406
+    },
+    {
       "path": "src/lib/plugin-gate.server.ts",
       "bytes": 1998
     },
@@ -867,7 +887,7 @@
     },
     {
       "path": "src/lib/meta-oauth.functions.ts",
-      "bytes": 8626
+      "bytes": 8788
     },
     {
       "path": "src/lib/master-alerts.server.ts",
@@ -891,7 +911,7 @@
     },
     {
       "path": "src/lib/meta.server.ts",
-      "bytes": 10407
+      "bytes": 19655
     },
     {
       "path": "src/lib/wa-interactive.ts",
@@ -912,6 +932,10 @@
     {
       "path": "src/lib/alert-sounds.ts",
       "bytes": 1874
+    },
+    {
+      "path": "src/lib/kanban.functions.ts",
+      "bytes": 1196
     },
     {
       "path": "src/lib/lead-forms.functions.ts",
@@ -1099,7 +1123,7 @@
     },
     {
       "path": "src/lib/incoming-media.server.ts",
-      "bytes": 3306
+      "bytes": 4094
     },
     {
       "path": "src/lib/masks.ts",
@@ -1108,6 +1132,10 @@
     {
       "path": "src/lib/department-menu.server.ts",
       "bytes": 3593
+    },
+    {
+      "path": "src/lib/meta-sync.server.ts",
+      "bytes": 15018
     },
     {
       "path": "src/lib/olist.functions.ts",
@@ -1159,7 +1187,7 @@
     },
     {
       "path": "src/lib/meta.functions.ts",
-      "bytes": 8478
+      "bytes": 8906
     },
     {
       "path": "src/lib/company-reset.functions.ts",
@@ -1415,7 +1443,7 @@
     },
     {
       "path": "src/routes/__root.tsx",
-      "bytes": 9142
+      "bytes": 9154
     },
     {
       "path": "src/routes/master.tsx",
@@ -1503,7 +1531,7 @@
     },
     {
       "path": "src/integrations/supabase/types.ts",
-      "bytes": 209102
+      "bytes": 213034
     },
     {
       "path": "src/integrations/supabase/client.ts",
@@ -1559,7 +1587,7 @@
     },
     {
       "path": "src/components/crm/lead-drawer.tsx",
-      "bytes": 72627
+      "bytes": 72587
     },
     {
       "path": "src/components/crm/olist-pedidos-tab.tsx",
@@ -1950,6 +1978,10 @@
       "bytes": 8558
     },
     {
+      "path": "src/components/config/meta-ads-panel.tsx",
+      "bytes": 10776
+    },
+    {
       "path": "src/components/config/funcoes-tab.tsx",
       "bytes": 18089
     },
@@ -1958,12 +1990,16 @@
       "bytes": 7355
     },
     {
+      "path": "src/components/config/meta-operations-tab.tsx",
+      "bytes": 17156
+    },
+    {
       "path": "src/components/config/company-logo-dialog.tsx",
       "bytes": 4714
     },
     {
       "path": "src/components/config/integracoes-tab.tsx",
-      "bytes": 14151
+      "bytes": 14216
     },
     {
       "path": "src/components/config/avatar-upload-dialog.tsx",
@@ -1979,7 +2015,7 @@
     },
     {
       "path": "src/components/config/integracao-guias.tsx",
-      "bytes": 13793
+      "bytes": 13835
     },
     {
       "path": "src/components/catalogo/produto-edit-dialog.tsx",
@@ -2110,6 +2146,10 @@
       "bytes": 17813
     },
     {
+      "path": "src/components/content/meta-content-center.tsx",
+      "bytes": 26029
+    },
+    {
       "path": "src/components/master/signup-welcome-card.tsx",
       "bytes": 3977
     },
@@ -2196,6 +2236,14 @@
     {
       "path": "src/lib/mcp/index.ts",
       "bytes": 753
+    },
+    {
+      "path": "src/lib/storage/r2.server.ts",
+      "bytes": 9222
+    },
+    {
+      "path": "src/lib/storage/r2.functions.ts",
+      "bytes": 1152
     },
     {
       "path": "src/lib/integracoes/runtime.server.ts",
@@ -2310,6 +2358,10 @@
       "bytes": 615
     },
     {
+      "path": "src/routes/app/conteudo.tsx",
+      "bytes": 1460
+    },
+    {
       "path": "src/routes/app/checkout.tsx",
       "bytes": 16656
     },
@@ -2347,7 +2399,7 @@
     },
     {
       "path": "src/routes/app/integracoes.tsx",
-      "bytes": 15564
+      "bytes": 15836
     },
     {
       "path": "src/routes/app/conexao.tsx",
@@ -2523,7 +2575,7 @@
     },
     {
       "path": "src/routes/api/public/meta-leads-webhook.ts",
-      "bytes": 7957
+      "bytes": 4036
     },
     {
       "path": "src/routes/api/public/google-callback.ts",
@@ -2571,11 +2623,11 @@
     },
     {
       "path": "src/routes/api/public/whatsapp-webhook.ts",
-      "bytes": 9906
+      "bytes": 12154
     },
     {
       "path": "src/routes/api/public/meta-webhook.ts",
-      "bytes": 12148
+      "bytes": 19769
     },
     {
       "path": "src/routes/api/public/v1/$.ts",
@@ -2596,6 +2648,10 @@
     {
       "path": "src/routes/api/public/hooks/google-calendar.ts",
       "bytes": 1711
+    },
+    {
+      "path": "src/routes/api/public/hooks/meta-sync.ts",
+      "bytes": 1292
     },
     {
       "path": "src/routes/api/public/hooks/admin-crm-tick.ts",
@@ -2654,6 +2710,10 @@
     {
       "source": "drizzle.config.ts",
       "target": "drizzle-kit"
+    },
+    {
+      "source": "package-lock.json",
+      "target": "node:util"
     },
     {
       "source": "vite.config.ts",
@@ -2810,6 +2870,10 @@
     {
       "source": "src/routeTree.gen.ts",
       "target": "./routes/app/contatos"
+    },
+    {
+      "source": "src/routeTree.gen.ts",
+      "target": "./routes/app/conteudo"
     },
     {
       "source": "src/routeTree.gen.ts",
@@ -3086,6 +3150,10 @@
     {
       "source": "src/routeTree.gen.ts",
       "target": "./routes/api/public/hooks/google-calendar-renew"
+    },
+    {
+      "source": "src/routeTree.gen.ts",
+      "target": "./routes/api/public/hooks/meta-sync"
     },
     {
       "source": "src/routeTree.gen.ts",
@@ -3716,6 +3784,18 @@
       "target": "@/integrations/supabase/client.server"
     },
     {
+      "source": "src/lib/meta-leads.server.ts",
+      "target": "@/lib/crm-engine.server"
+    },
+    {
+      "source": "src/lib/meta-leads.server.ts",
+      "target": "@/lib/kanban-engine.server"
+    },
+    {
+      "source": "src/lib/meta-leads.server.ts",
+      "target": "@/lib/meta.server"
+    },
+    {
       "source": "src/lib/resumo.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -3749,6 +3829,10 @@
     },
     {
       "source": "src/lib/openai-usage.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-config.server.ts",
       "target": "@/integrations/supabase/client.server"
     },
     {
@@ -4836,6 +4920,106 @@
       "target": "@/integrations/supabase/client"
     },
     {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "./company-cache"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "./meta-sync.server"
+    },
+    {
       "source": "src/lib/admin-crm.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -5522,6 +5706,26 @@
     {
       "source": "src/lib/plan.functions.ts",
       "target": "./plan-limits.server"
+    },
+    {
+      "source": "src/lib/kanban.functions.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/kanban.functions.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/kanban.functions.ts",
+      "target": "@/lib/company-cache"
+    },
+    {
+      "source": "src/lib/kanban.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/kanban.functions.ts",
+      "target": "@/lib/kanban-engine.server"
     },
     {
       "source": "src/lib/lead-forms.functions.ts",
@@ -6372,12 +6576,28 @@
       "target": "@/lib/uazapi.server"
     },
     {
+      "source": "src/lib/incoming-media.server.ts",
+      "target": "@/lib/storage/r2.server"
+    },
+    {
       "source": "src/lib/department-menu.server.ts",
       "target": "./sector-assignment.server"
     },
     {
       "source": "src/lib/department-menu.server.ts",
       "target": "./wa-dispatch.server"
+    },
+    {
+      "source": "src/lib/meta-sync.server.ts",
+      "target": "@/lib/meta.server"
+    },
+    {
+      "source": "src/lib/meta-sync.server.ts",
+      "target": "@/lib/crm-engine.server"
+    },
+    {
+      "source": "src/lib/meta-sync.server.ts",
+      "target": "@/lib/meta-leads.server"
     },
     {
       "source": "src/lib/olist.functions.ts",
@@ -7813,19 +8033,15 @@
     },
     {
       "source": "src/components/crm/lead-drawer.tsx",
+      "target": "@/lib/kanban.functions"
+    },
+    {
+      "source": "src/components/crm/lead-drawer.tsx",
       "target": "@/lib/evolution.functions"
     },
     {
       "source": "src/components/crm/lead-drawer.tsx",
       "target": "@/components/chat/encaminhar-dialog"
-    },
-    {
-      "source": "src/components/crm/lead-drawer.tsx",
-      "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/components/crm/lead-drawer.tsx",
-      "target": "@/lib/kanban-engine.server"
     },
     {
       "source": "src/components/crm/olist-pedidos-tab.tsx",
@@ -9972,6 +10188,38 @@
       "target": "@/lib/business-hours"
     },
     {
+      "source": "src/components/config/meta-ads-panel.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/components/config/meta-ads-panel.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/components/config/meta-ads-panel.tsx",
+      "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/components/config/meta-ads-panel.tsx",
+      "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/components/config/meta-ads-panel.tsx",
+      "target": "@/components/ui/card"
+    },
+    {
+      "source": "src/components/config/meta-ads-panel.tsx",
+      "target": "@/lib/meta-content.functions"
+    },
+    {
+      "source": "src/components/config/meta-ads-panel.tsx",
+      "target": "lucide-react"
+    },
+    {
+      "source": "src/components/config/meta-ads-panel.tsx",
+      "target": "sonner"
+    },
+    {
       "source": "src/components/config/funcoes-tab.tsx",
       "target": "react"
     },
@@ -10078,6 +10326,54 @@
     {
       "source": "src/components/config/departamentos-tab.tsx",
       "target": "@/lib/team.functions"
+    },
+    {
+      "source": "src/components/config/meta-operations-tab.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/components/config/meta-operations-tab.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/components/config/meta-operations-tab.tsx",
+      "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/components/config/meta-operations-tab.tsx",
+      "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/components/config/meta-operations-tab.tsx",
+      "target": "@/components/ui/card"
+    },
+    {
+      "source": "src/components/config/meta-operations-tab.tsx",
+      "target": "@/components/ui/input"
+    },
+    {
+      "source": "src/components/config/meta-operations-tab.tsx",
+      "target": "@/components/ui/label"
+    },
+    {
+      "source": "src/components/config/meta-operations-tab.tsx",
+      "target": "@/lib/meta.functions"
+    },
+    {
+      "source": "src/components/config/meta-operations-tab.tsx",
+      "target": "@/lib/meta-content.functions"
+    },
+    {
+      "source": "src/components/config/meta-operations-tab.tsx",
+      "target": "lucide-react"
+    },
+    {
+      "source": "src/components/config/meta-operations-tab.tsx",
+      "target": "sonner"
+    },
+    {
+      "source": "src/components/config/meta-operations-tab.tsx",
+      "target": "@/components/config/meta-ads-panel"
     },
     {
       "source": "src/components/config/company-logo-dialog.tsx",
@@ -11280,6 +11576,58 @@
       "target": "lucide-react"
     },
     {
+      "source": "src/components/content/meta-content-center.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/components/content/meta-content-center.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/components/content/meta-content-center.tsx",
+      "target": "lucide-react"
+    },
+    {
+      "source": "src/components/content/meta-content-center.tsx",
+      "target": "sonner"
+    },
+    {
+      "source": "src/components/content/meta-content-center.tsx",
+      "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/components/content/meta-content-center.tsx",
+      "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/components/content/meta-content-center.tsx",
+      "target": "@/components/ui/card"
+    },
+    {
+      "source": "src/components/content/meta-content-center.tsx",
+      "target": "@/components/ui/dialog"
+    },
+    {
+      "source": "src/components/content/meta-content-center.tsx",
+      "target": "@/components/ui/input"
+    },
+    {
+      "source": "src/components/content/meta-content-center.tsx",
+      "target": "@/components/ui/label"
+    },
+    {
+      "source": "src/components/content/meta-content-center.tsx",
+      "target": "@/components/ui/textarea"
+    },
+    {
+      "source": "src/components/content/meta-content-center.tsx",
+      "target": "@/lib/meta.functions"
+    },
+    {
+      "source": "src/components/content/meta-content-center.tsx",
+      "target": "@/lib/meta-content.functions"
+    },
+    {
       "source": "src/components/master/signup-welcome-card.tsx",
       "target": "react"
     },
@@ -11976,6 +12324,26 @@
       "target": "./tools/send-whatsapp"
     },
     {
+      "source": "src/lib/storage/r2.server.ts",
+      "target": "node:crypto"
+    },
+    {
+      "source": "src/lib/storage/r2.functions.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/storage/r2.functions.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/storage/r2.functions.ts",
+      "target": "@/lib/company-cache"
+    },
+    {
+      "source": "src/lib/storage/r2.functions.ts",
+      "target": "@/lib/storage/r2.server"
+    },
+    {
       "source": "src/lib/integracoes/runtime.server.ts",
       "target": "./adapters.server"
     },
@@ -12322,6 +12690,18 @@
     {
       "source": "src/routes/app/treinamentos.tsx",
       "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/app/conteudo.tsx",
+      "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/app/conteudo.tsx",
+      "target": "@/components/content/meta-content-center"
+    },
+    {
+      "source": "src/routes/app/conteudo.tsx",
+      "target": "@/config/brand"
     },
     {
       "source": "src/routes/app/checkout.tsx",
@@ -12950,6 +13330,10 @@
     {
       "source": "src/routes/app/integracoes.tsx",
       "target": "@/components/config/integracao-guias"
+    },
+    {
+      "source": "src/routes/app/integracoes.tsx",
+      "target": "@/components/config/meta-operations-tab"
     },
     {
       "source": "src/routes/app/integracoes.tsx",
@@ -14993,15 +15377,19 @@
     },
     {
       "source": "src/routes/api/public/meta-leads-webhook.ts",
+      "target": "@/lib/meta-config.server"
+    },
+    {
+      "source": "src/routes/api/public/meta-leads-webhook.ts",
+      "target": "@/lib/meta-config.server"
+    },
+    {
+      "source": "src/routes/api/public/meta-leads-webhook.ts",
       "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/routes/api/public/meta-leads-webhook.ts",
-      "target": "@/lib/crm-engine.server"
-    },
-    {
-      "source": "src/routes/api/public/meta-leads-webhook.ts",
-      "target": "@/lib/kanban-engine.server"
+      "target": "@/lib/meta-leads.server"
     },
     {
       "source": "src/routes/api/public/google-callback.ts",
@@ -15185,6 +15573,26 @@
     },
     {
       "source": "src/routes/api/public/meta-webhook.ts",
+      "target": "@/lib/meta-config.server"
+    },
+    {
+      "source": "src/routes/api/public/meta-webhook.ts",
+      "target": "@/lib/meta-config.server"
+    },
+    {
+      "source": "src/routes/api/public/meta-webhook.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/routes/api/public/meta-webhook.ts",
+      "target": "@/lib/meta-leads.server"
+    },
+    {
+      "source": "src/routes/api/public/meta-webhook.ts",
+      "target": "@/lib/meta.server"
+    },
+    {
+      "source": "src/routes/api/public/meta-webhook.ts",
       "target": "@/integrations/supabase/client.server"
     },
     {
@@ -15286,6 +15694,22 @@
     {
       "source": "src/routes/api/public/hooks/google-calendar.ts",
       "target": "@/lib/google.server"
+    },
+    {
+      "source": "src/routes/api/public/hooks/meta-sync.ts",
+      "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/api/public/hooks/meta-sync.ts",
+      "target": "@/lib/cron-auth.server"
+    },
+    {
+      "source": "src/routes/api/public/hooks/meta-sync.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/routes/api/public/hooks/meta-sync.ts",
+      "target": "@/lib/meta-sync.server"
     },
     {
       "source": "src/routes/api/public/hooks/admin-crm-tick.ts",
