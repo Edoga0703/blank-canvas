@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-09T21:03:15.772581+00:00",
+  "generated_at": "2026-10-10T00:12:20.049711+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -783,7 +783,7 @@
     },
     {
       "path": "src/lib/meta-oauth.server.ts",
-      "bytes": 6872
+      "bytes": 9750
     },
     {
       "path": "src/lib/automacao-ai.functions.ts",
@@ -2667,7 +2667,7 @@
     },
     {
       "path": "src/routes/api/public/meta-webhook.ts",
-      "bytes": 12431
+      "bytes": 12784
     },
     {
       "path": "src/routes/api/public/v1/$.ts",
@@ -4854,6 +4854,10 @@
     {
       "source": "src/lib/handoff-summary.server.ts",
       "target": "./lovable-ai.server"
+    },
+    {
+      "source": "src/lib/meta-oauth.server.ts",
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/automacao-ai.functions.ts",
@@ -15410,6 +15414,14 @@
     {
       "source": "src/routes/api/public/meta-webhook.ts",
       "target": "node:crypto"
+    },
+    {
+      "source": "src/routes/api/public/meta-webhook.ts",
+      "target": "@/lib/meta-oauth.server"
+    },
+    {
+      "source": "src/routes/api/public/meta-webhook.ts",
+      "target": "@/lib/meta-oauth.server"
     },
     {
       "source": "src/routes/api/public/meta-webhook.ts",
