@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T03:32:53.432396+00:00",
+  "generated_at": "2026-10-10T03:59:33.178247+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -615,7 +615,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 27190
+      "bytes": 28338
     },
     {
       "path": "src/lib/tracking.functions.ts",
@@ -763,7 +763,7 @@
     },
     {
       "path": "src/lib/inbound-automation.server.ts",
-      "bytes": 2753
+      "bytes": 3593
     },
     {
       "path": "src/lib/quick-replies.functions.ts",
@@ -1023,7 +1023,7 @@
     },
     {
       "path": "src/lib/wa-dispatch.server.ts",
-      "bytes": 11025
+      "bytes": 14488
     },
     {
       "path": "src/lib/test-disparo.functions.ts",
@@ -1091,7 +1091,7 @@
     },
     {
       "path": "src/lib/evolution.functions.ts",
-      "bytes": 53206
+      "bytes": 53075
     },
     {
       "path": "src/lib/integrations.functions.ts",
@@ -1123,7 +1123,7 @@
     },
     {
       "path": "src/lib/kanban-engine.server.ts",
-      "bytes": 14792
+      "bytes": 14862
     },
     {
       "path": "src/lib/lead-coach.functions.ts",
@@ -1575,7 +1575,7 @@
     },
     {
       "path": "src/integrations/supabase/client.server.ts",
-      "bytes": 3134
+      "bytes": 3014
     },
     {
       "path": "src/integrations/lovable/appUserConnector.ts",
@@ -2675,11 +2675,11 @@
     },
     {
       "path": "src/routes/api/public/whatsapp-webhook.ts",
-      "bytes": 9906
+      "bytes": 9959
     },
     {
       "path": "src/routes/api/public/meta-webhook.ts",
-      "bytes": 13743
+      "bytes": 14509
     },
     {
       "path": "src/routes/api/public/v1/$.ts",
@@ -5910,6 +5910,26 @@
     {
       "source": "src/lib/wa-dispatch.server.ts",
       "target": "@/lib/messaging/provider-registry.server"
+    },
+    {
+      "source": "src/lib/wa-dispatch.server.ts",
+      "target": "@/lib/evolution-helpers"
+    },
+    {
+      "source": "src/lib/wa-dispatch.server.ts",
+      "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/wa-dispatch.server.ts",
+      "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/wa-dispatch.server.ts",
+      "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/wa-dispatch.server.ts",
+      "target": "./meta.server"
     },
     {
       "source": "src/lib/wa-dispatch.server.ts",
@@ -15530,6 +15550,10 @@
     {
       "source": "src/routes/api/public/meta-webhook.ts",
       "target": "@/lib/crm-engine.server"
+    },
+    {
+      "source": "src/routes/api/public/meta-webhook.ts",
+      "target": "@/lib/inbound-automation.server"
     },
     {
       "source": "src/routes/api/public/v1/$.ts",
