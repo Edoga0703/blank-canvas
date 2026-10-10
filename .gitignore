@@ -16,8 +16,8 @@ dist-ssr
 .tanstack/**
 .nitro
 *.local
+.env
 .env.*
-!.env
 !.env.example
 .secrets/
 infra.env
