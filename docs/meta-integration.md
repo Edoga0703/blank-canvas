@@ -29,3 +29,7 @@ Se `META_WEBHOOK_VERIFY_TOKEN` ou os App Secrets não estiverem no ambiente de e
 6. O job periódico usa cursores em `messaging_inbox_events` e só avança o cursor quando o bloco terminou sem erros.
 
 As chamadas de publicação, resposta de comentários, insights, anúncios e sincronização manual estão em `src/lib/meta-content.functions.ts` e mantêm os tokens somente no servidor.
+
+## Painel operacional
+
+A aba **Integrações → Meta** permite selecionar o canal conectado, executar a reconciliação, consultar publicações e comentários, responder comentários, publicar conteúdo e acompanhar contas/campanhas de anúncios. Alterações de status de campanha exigem confirmação na interface e continuam sujeitas às permissões `ads_read` ou `ads_management` aprovadas no App da Meta.
