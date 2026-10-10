@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T21:21:22.973157+00:00",
+  "generated_at": "2026-10-10T21:38:57.361307+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -47,7 +47,7 @@
     },
     {
       "path": "vite.config.ts",
-      "bytes": 2075
+      "bytes": 3081
     },
     {
       "path": "vite-serverfn-warmup.ts",
@@ -1575,11 +1575,11 @@
     },
     {
       "path": "src/integrations/supabase/cron-auth.ts",
-      "bytes": 1109
+      "bytes": 1117
     },
     {
       "path": "src/integrations/supabase/auth-middleware.ts",
-      "bytes": 3236
+      "bytes": 3201
     },
     {
       "path": "src/integrations/supabase/previewAuthStorage.ts",
@@ -1591,7 +1591,7 @@
     },
     {
       "path": "src/integrations/supabase/client.ts",
-      "bytes": 3785
+      "bytes": 3515
     },
     {
       "path": "src/integrations/supabase/auth-attacher.ts",
@@ -1599,7 +1599,7 @@
     },
     {
       "path": "src/integrations/supabase/client.server.ts",
-      "bytes": 3014
+      "bytes": 2811
     },
     {
       "path": "src/integrations/lovable/appUserConnector.ts",
