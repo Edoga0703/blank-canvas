@@ -4,8 +4,10 @@
   "path": "/mcp",
   "auth": {
     "type": "oauth",
-    "issuer": "https://llnfjhqdeeuscyqzoqfz.supabase.co/auth/v1",
-    "accepted_audiences": ["authenticated"]
+    "issuer": "https://project-ref-unset.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
   },
   "mcp": {
     "server": {
@@ -68,8 +70,8 @@
       },
       {
         "name": "send_whatsapp_message",
-        "title": "Enviar mensagem WhatsApp",
-        "description": "Envia uma mensagem de texto pelo WhatsApp através da instância conectada da empresa do usuário.",
+        "title": "Enviar mensaje por WhatsApp",
+        "description": "Envía texto con la conexión oficial de WhatsApp vinculada al proyecto.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -82,16 +84,19 @@
             "numero": {
               "type": "string",
               "minLength": 8,
-              "description": "Número do destinatário com DDI+DDD, ex: 5511999999999."
+              "description": "Número con código de país, por ejemplo 584121234567."
             },
             "texto": {
               "type": "string",
               "minLength": 1,
               "maxLength": 4000,
-              "description": "Texto da mensagem."
+              "description": "Texto del mensaje."
             }
           },
-          "required": ["numero", "texto"]
+          "required": [
+            "numero",
+            "texto"
+          ]
         },
         "outputSchema": null
       }
