@@ -1228,7 +1228,9 @@ function ConversasPage() {
   }
 
   async function handleSyncMeta() {
-    const metaInsts = instances.filter(i => i.provider === "meta_messenger" || i.provider === "meta_instagram");
+    const metaInsts = instances.filter(
+      (instance) => instance.provider === "meta_messenger" || instance.provider === "meta_instagram",
+    );
     if (metaInsts.length === 0) {
       toast.error("Nenhuma conta Meta conectada.");
       return;
@@ -1236,20 +1238,43 @@ function ConversasPage() {
     setSyncingMeta(true);
     try {
       let totalMsgs = 0;
-      for (const inst of metaInsts) {
-        const res = await syncMetaFn({ data: { instanceName: inst.instance_name, full: false } });
-        if (res?.ok && res.result?.messages) {
-          totalMsgs += res.result.messages;
+      const failures: string[] = [];
+      for (const instance of metaInsts) {
+        try {
+          const response = await syncMetaFn({
+            data: { instanceName: instance.instance_name, full: false },
+          });
+          totalMsgs += Number(response?.result?.messages ?? 0);
+          const errors = Array.isArray(response?.result?.errors) ? response.result.errors : [];
+          if (errors.length > 0) {
+            failures.push(
+              `${instance.display_name || instance.instance_name}: ${errors.join(" | ")}`,
+            );
+          }
+        } catch (error) {
+          failures.push(
+            `${instance.display_name || instance.instance_name}: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
         }
       }
-      toast.success(totalMsgs > 0 ? `${totalMsgs} mensagens sincronizadas da Meta!` : "Sincronização com a Meta concluída.");
       if (companyId) {
         await load(companyId);
         await refreshRecent(companyId);
         await loadCards(companyId);
       }
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao sincronizar com a Meta");
+      if (failures.length > 0) {
+        toast.error(`Falhas na sincronização:\n${failures.join("\n")}`, {
+          duration: 15_000,
+        });
+      } else {
+        toast.success(
+          totalMsgs > 0
+            ? `${totalMsgs} mensagens sincronizadas da Meta.`
+            : "Sincronização concluída. Nenhuma mensagem nova foi encontrada.",
+        );
+      }
     } finally {
       setSyncingMeta(false);
     }

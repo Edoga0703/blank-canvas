@@ -105,15 +105,17 @@ function qs(values: Record<string, string | number | boolean | null | undefined>
 }
 
 /** Conversas e mensagens do Messenger/Instagram para sincronização inicial e reconciliação. */
-export async function metaListConversations(token: string, pageId: string, options?: { since?: string; until?: string; limit?: number; instagram?: boolean }) {
-  const instagram = options?.instagram ?? isInstagramToken(normalizeToken(token));
-  return graphCollection(`/${encodeURIComponent(pageId)}/conversations${qs({
-    platform: instagram ? "instagram" : "messenger",
+export async function metaListConversations(token: string, ownerId: string, options?: { since?: string; until?: string; limit?: number; instagram?: boolean }) {
+  const cleanToken = normalizeToken(token);
+  const instagramLogin = isInstagramToken(cleanToken);
+  const instagram = options?.instagram ?? instagramLogin;
+  return graphCollection(`/${encodeURIComponent(ownerId)}/conversations${qs({
+    platform: instagramLogin ? undefined : instagram ? "instagram" : "messenger",
     fields: "id,updated_time,participants,snippet,messages.limit(100){id,created_time,from,to,message,attachments,sticker}",
     since: options?.since,
     until: options?.until,
     limit: options?.limit ?? 25,
-  })}`, token, 5);
+  })}`, cleanToken, 5);
 }
 
 export async function metaListConversationMessages(token: string, conversationId: string, options?: { since?: string; until?: string; limit?: number }) {
@@ -127,7 +129,21 @@ export async function metaListConversationMessages(token: string, conversationId
 
 function metaPostFields(instagram: boolean, withEngagement = true) {
   if (instagram) {
-    return "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,comments.limit(100){id,text,timestamp,username,from,like_count,replies.limit(100){id,text,timestamp,username,from}}";
+    return [
+      "id",
+      "caption",
+      "media_type",
+      "media_product_type",
+      "media_url",
+      "thumbnail_url",
+      "permalink",
+      "timestamp",
+      "username",
+      "like_count",
+      "comments_count",
+      "children.limit(20){id,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp}",
+      "comments.limit(100){id,text,timestamp,username,from,like_count,replies.limit(100){id,text,timestamp,username,from}}",
+    ].join(",");
   }
   if (!withEngagement) {
     return "id,message,created_time,permalink_url,attachments,shares";
@@ -232,6 +248,27 @@ export async function metaListPageInsights(token: string, pageId: string, metric
     since: options?.since,
     until: options?.until,
   })}`, token, { method: "GET" });
+}
+
+export async function metaGetMediaInsights(token: string, mediaId: string, metrics: string[]) {
+  const cleanToken = normalizeToken(token);
+  const results = await Promise.allSettled(
+    metrics.map(async (metric) => {
+      const response = await graph(
+        `/${encodeURIComponent(mediaId)}/insights${qs({ metric })}`,
+        cleanToken,
+        { method: "GET" },
+      );
+      return Array.isArray(response?.data) ? response.data : [];
+    }),
+  );
+  const data = results.flatMap((result) => (result.status === "fulfilled" ? result.value : []));
+  return {
+    data,
+    unavailable: results
+      .map((result, index) => (result.status === "rejected" ? metrics[index] : null))
+      .filter(Boolean),
+  };
 }
 
 export async function metaListLeadForms(token: string, pageId: string, options?: { limit?: number }) {

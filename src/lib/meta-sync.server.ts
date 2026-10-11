@@ -214,6 +214,61 @@ async function persistComment(_admin: Admin, _instance: MetaInstance, _item: any
   return false;
 }
 
+function isInstagramLoginToken(token: string) {
+  const clean = String(token ?? "").trim();
+  return /^(IGAA|IGQV|IGQW)/.test(clean);
+}
+
+async function resolveConversationCredentials(
+  admin: any,
+  instance: MetaInstance,
+) {
+  const token = String(instance.instance_token ?? "").trim();
+  if (instance.provider !== "meta_instagram") {
+    return {
+      ownerId: String(instance.phone_number_id ?? ""),
+      token,
+      instagram: false,
+      authMode: "facebook_login" as const,
+    };
+  }
+
+  // Instagram Login trabalha diretamente com o ID de Instagram
+  if (isInstagramLoginToken(token)) {
+    return {
+      ownerId: String(instance.phone_number_id ?? ""),
+      token,
+      instagram: true,
+      authMode: "instagram_login" as const,
+    };
+  }
+
+  // Facebook Login precisa do Page ID e do seu Page Access Token
+  const { data: page, error } = await admin
+    .from("whatsapp_instances")
+    .select("phone_number_id,instance_token,status")
+    .eq("company_id", instance.company_id)
+    .eq("provider", "meta_messenger")
+    .eq("status", "connected")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!page?.phone_number_id || !page?.instance_token) {
+    throw new Error(
+      "Instagram está conectado mediante Facebook Login, mas não foi encontrada a Página do Facebook vinculada com seu Page Access Token.",
+    );
+  }
+
+  return {
+    ownerId: String(page.phone_number_id),
+    token: String(page.instance_token),
+    instagram: true,
+    authMode: "facebook_login" as const,
+  };
+}
+
 /** Sincroniza histórico e conteúdo público com paginação limitada e checkpoint idempotente. */
 export async function syncMetaChannel(admin: Admin, instance: MetaInstance, options?: { full?: boolean; maxConversations?: number; maxPosts?: number }): Promise<SyncResult> {
   const result: SyncResult = {
@@ -242,25 +297,18 @@ export async function syncMetaChannel(admin: Admin, instance: MetaInstance, opti
     : {}) as EngagementSnapshot;
   const currentEngagement: EngagementSnapshot = { ...previousEngagement };
 
-  let targetPageId = instance.phone_number_id;
-  if (channel === "instagram") {
-    const { data: companion } = await admin
-      .from("whatsapp_instances")
-      .select("phone_number_id")
-      .eq("company_id", instance.company_id)
-      .eq("provider", "meta_messenger")
-      .maybeSingle();
-    if (companion?.phone_number_id) {
-      targetPageId = companion.phone_number_id;
-    }
-  }
-
   try {
-    const conversations = await metaListConversations(instance.instance_token, targetPageId, { since, until, limit: maxConversations, instagram: channel === "instagram" });
+    const credentials = await resolveConversationCredentials(admin, instance);
+    const conversations = await metaListConversations(credentials.token, credentials.ownerId, {
+      since,
+      until,
+      limit: maxConversations,
+      instagram: credentials.instagram,
+    });
     for (const conversation of conversations.data.slice(0, maxConversations)) {
       const messages = Array.isArray(conversation?.messages?.data)
         ? conversation.messages.data
-        : (await metaListConversationMessages(instance.instance_token, String(conversation.id), { since, until, limit: 100 })).data;
+        : (await metaListConversationMessages(credentials.token, String(conversation.id), { since, until, limit: 100 })).data;
       for (const message of messages) {
         if (await persistMessage(admin, instance, message, channel)) result.messages += 1;
       }

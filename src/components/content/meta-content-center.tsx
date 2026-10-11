@@ -12,6 +12,9 @@ import {
   Reply,
   Search,
   Send,
+  Eye,
+  Bookmark,
+  Share2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { listMetaChannels } from "@/lib/meta.functions";
 import {
   getMetaContentPost,
+  getMetaPostInsights,
   listMetaContent,
   listMetaPostComments,
   publishMetaContent,
@@ -69,12 +73,16 @@ type MetaPost = {
   media_url?: string;
   thumbnail_url?: string;
   media_type?: string;
+  media_product_type?: string;
   like_count?: number;
   comments_count?: number;
   reactions?: { summary?: { total_count?: number } };
   comments?: { data?: MetaComment[]; summary?: { total_count?: number } };
   attachments?: {
     data?: Array<{ media?: { image?: { src?: string } }; url?: string; type?: string }>;
+  };
+  children?: {
+    data?: MetaPost[];
   };
 };
 
@@ -92,9 +100,54 @@ function postText(post: MetaPost) {
   return String(post.message ?? post.caption ?? "Publicação sem texto");
 }
 
-function postImage(post: MetaPost) {
+function isVideoPost(post: MetaPost) {
+  const mediaType = String(post.media_type ?? "").toUpperCase();
+  const productType = String(post.media_product_type ?? "").toUpperCase();
+  return mediaType === "VIDEO" || productType === "REELS";
+}
+
+function postPreview(post: MetaPost) {
+  if (isVideoPost(post)) {
+    return post.thumbnail_url ?? post.media_url ?? null;
+  }
   return (
     post.media_url ?? post.thumbnail_url ?? post.attachments?.data?.[0]?.media?.image?.src ?? null
+  );
+}
+
+function postImage(post: MetaPost) {
+  return postPreview(post);
+}
+
+function PostMedia({ post }: { post: MetaPost }) {
+  if (isVideoPost(post) && post.media_url) {
+    return (
+      <video
+        controls
+        playsInline
+        preload="metadata"
+        poster={post.thumbnail_url}
+        className="max-h-[430px] w-full rounded-lg border bg-black object-contain"
+      >
+        <source src={post.media_url} type="video/mp4" />
+        Seu navegador não consegue reproduzir este vídeo.
+      </video>
+    );
+  }
+  const source = postPreview(post);
+  if (!source) {
+    return (
+      <div className="grid h-64 place-items-center rounded-lg border bg-muted/40">
+        <ImageIcon className="size-10 text-muted-foreground" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={source}
+      alt="Mídia da publicação"
+      className="max-h-[430px] w-full rounded-lg border object-contain"
+    />
   );
 }
 
@@ -132,12 +185,15 @@ export function MetaContentCenter({ requestedChannel, requestedPost, onRouteSele
   const replyComment = useServerFn(replyMetaComment);
   const publish = useServerFn(publishMetaContent);
   const runSync = useServerFn(syncMetaNow);
+  const loadPostInsights = useServerFn(getMetaPostInsights);
 
   const [channels, setChannels] = useState<MetaChannel[]>([]);
   const [selected, setSelected] = useState("");
   const [posts, setPosts] = useState<MetaPost[]>([]);
   const [openedPost, setOpenedPost] = useState<MetaPost | null>(null);
   const [openedComments, setOpenedComments] = useState<MetaComment[]>([]);
+  const [insights, setInsights] = useState<Array<{ name: string; title: string; value: number }>>([]);
+  const [insightsLoading, setInsightsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [contentLoading, setContentLoading] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -225,14 +281,50 @@ export function MetaContentCenter({ requestedChannel, requestedPost, onRouteSele
     [loadComments],
   );
 
+  const refreshInsights = useCallback(
+    async (instanceName: string, post: MetaPost) => {
+      const postId = String(post.id ?? "");
+      if (!instanceName || !postId) return;
+      setInsightsLoading(true);
+      try {
+        const res = await loadPostInsights({
+          data: {
+            instanceName,
+            postId,
+            mediaProductType: post.media_product_type,
+          },
+        });
+        const rows = Array.isArray(res?.data) ? res.data : [];
+        const formatted = rows
+          .map((item: any) => {
+            const name = String(item?.name ?? item?.title ?? "");
+            const title = item?.title || item?.description || name;
+            const value = Number(item?.values?.[0]?.value ?? item?.value ?? 0);
+            return { name, title, value };
+          })
+          .filter((item: any) => !Number.isNaN(item.value));
+        setInsights(formatted);
+      } catch {
+        setInsights([]);
+      } finally {
+        setInsightsLoading(false);
+      }
+    },
+    [loadPostInsights],
+  );
+
   const openPost = useCallback(
     (post: MetaPost, updateRoute = true) => {
       setOpenedPost(post);
       setOpenedComments(postComments(post));
-      if (selected) void refreshOpenedComments(selected, post);
+      setInsights([]);
+      if (selected) {
+        void refreshOpenedComments(selected, post);
+        void refreshInsights(selected, post);
+      }
       if (updateRoute && selected && post.id) onRouteSelection?.(selected, String(post.id));
     },
-    [onRouteSelection, refreshOpenedComments, selected],
+    [onRouteSelection, refreshOpenedComments, refreshInsights, selected],
   );
 
   useEffect(() => {
@@ -513,14 +605,21 @@ export function MetaContentCenter({ requestedChannel, requestedPost, onRouteSele
                 }}
               >
                 {image ? (
-                  <img
-                    src={image}
-                    alt="Mídia da publicação"
-                    className="h-48 w-full object-cover"
-                    loading="lazy"
-                  />
+                  <div className="relative h-48 w-full overflow-hidden bg-black/5">
+                    <img
+                      src={image}
+                      alt="Mídia da publicação"
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                    {isVideoPost(post) && (
+                      <span className="absolute bottom-2 right-2 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-medium text-white shadow">
+                        {post.media_product_type === "REELS" ? "Reel" : "Vídeo"}
+                      </span>
+                    )}
+                  </div>
                 ) : (
-                  <div className="grid h-32 place-items-center bg-muted/40">
+                  <div className="grid h-48 place-items-center bg-muted/40">
                     <ImageIcon className="size-8 text-muted-foreground" />
                   </div>
                 )}
@@ -561,6 +660,7 @@ export function MetaContentCenter({ requestedChannel, requestedPost, onRouteSele
           if (!open) {
             setOpenedPost(null);
             setOpenedComments([]);
+            setInsights([]);
             if (selected) onRouteSelection?.(selected);
           }
         }}
@@ -583,13 +683,7 @@ export function MetaContentCenter({ requestedChannel, requestedPost, onRouteSele
               </DialogHeader>
               <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
                 <div className="space-y-3">
-                  {postImage(openedPost) && (
-                    <img
-                      src={postImage(openedPost) ?? ""}
-                      alt="Mídia da publicação"
-                      className="max-h-[430px] w-full rounded-lg border object-contain"
-                    />
-                  )}
+                  <PostMedia post={openedPost} />
                   <p className="whitespace-pre-wrap text-sm">{postText(openedPost)}</p>
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
@@ -601,6 +695,42 @@ export function MetaContentCenter({ requestedChannel, requestedPost, onRouteSele
                       {commentsCount(openedPost)} comentários
                     </span>
                   </div>
+
+                  {/* Insights e Estatísticas detalhadas */}
+                  <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Estatísticas da publicação
+                      </span>
+                      {insightsLoading && <Loader2 className="size-3 animate-spin text-muted-foreground" />}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      <div className="rounded-md border bg-background/60 p-2">
+                        <span className="text-[10.5px] text-muted-foreground block">Curtidas</span>
+                        <span className="text-sm font-semibold">{reactionsCount(openedPost)}</span>
+                      </div>
+                      <div className="rounded-md border bg-background/60 p-2">
+                        <span className="text-[10.5px] text-muted-foreground block">Comentários</span>
+                        <span className="text-sm font-semibold">{commentsCount(openedPost)}</span>
+                      </div>
+                      {insights.map((stat, idx) => (
+                        <div key={idx} className="rounded-md border bg-background/60 p-2">
+                          <span className="text-[10.5px] text-muted-foreground block truncate" title={stat.title}>
+                            {stat.name === "views" ? "Visualizações" :
+                             stat.name === "reach" ? "Alcance" :
+                             stat.name === "saved" ? "Salvos" :
+                             stat.name === "shares" ? "Compartilhados" :
+                             stat.name === "total_interactions" ? "Interações" :
+                             stat.name === "ig_reels_avg_watch_time" ? "Tempo médio (s)" :
+                             stat.name === "ig_reels_video_view_total_time" ? "Tempo total (ms)" :
+                             stat.title}
+                          </span>
+                          <span className="text-sm font-semibold">{stat.value.toLocaleString("pt-BR")}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   {(openedPost.permalink ?? openedPost.permalink_url) && (
                     <a
                       href={String(openedPost.permalink ?? openedPost.permalink_url)}

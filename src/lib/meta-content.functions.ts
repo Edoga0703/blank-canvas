@@ -183,3 +183,40 @@ export const syncMetaNow = createServerFn({ method: "POST" })
     const { syncMetaChannel } = await import("./meta-sync.server");
     return { ok: true, result: await syncMetaChannel(supabaseAdmin, { ...channel, user_id: context.userId, instance_name: data.instanceName }, { full: data.full }) };
   });
+
+/** Obtém métricas e insights detalhados de uma publicação específica. */
+export const getMetaPostInsights = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { instanceName?: string; postId?: string; mediaProductType?: string }) => {
+    const instanceName = String(data?.instanceName ?? "").trim();
+    const postId = String(data?.postId ?? "").trim();
+    if (!instanceName || !postId) {
+      throw new Error("Canal e publicação são obrigatórios.");
+    }
+    return {
+      instanceName,
+      postId,
+      mediaProductType: String(data?.mediaProductType ?? "").toUpperCase(),
+    };
+  })
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const channel = await channelFor(supabaseAdmin, companyId, data.instanceName);
+    const standardMetrics = [
+      "views",
+      "reach",
+      "likes",
+      "comments",
+      "saved",
+      "shares",
+      "total_interactions",
+    ];
+    const reelMetrics = [
+      "ig_reels_video_view_total_time",
+      "ig_reels_avg_watch_time",
+    ];
+    const metrics = data.mediaProductType === "REELS" ? [...standardMetrics, ...reelMetrics] : standardMetrics;
+    const { metaGetMediaInsights } = await import("./meta.server");
+    return metaGetMediaInsights(channel.instance_token, data.postId, metrics);
+  });
