@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-11T03:47:31.915275+00:00",
+  "generated_at": "2026-10-11T04:20:14.034173+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -39,7 +39,7 @@
     },
     {
       "path": "AGENTS.md",
-      "bytes": 624
+      "bytes": 965
     },
     {
       "path": "tsconfig.json",
@@ -152,6 +152,10 @@
     {
       "path": "supabase/migrations/20261009050000_rpc_and_auxiliary.sql",
       "bytes": 7438
+    },
+    {
+      "path": "supabase/migrations/20261011040000_meta_phase1_assets_content_history.sql",
+      "bytes": 14026
     },
     {
       "path": "supabase/migrations/20261009080000_full_119_tables_parity.sql",
@@ -675,7 +679,7 @@
     },
     {
       "path": "src/lib/meta-content-sync.server.ts",
-      "bytes": 38865
+      "bytes": 50664
     },
     {
       "path": "src/lib/message-actions.functions.ts",
@@ -947,7 +951,7 @@
     },
     {
       "path": "src/lib/meta-oauth.functions.ts",
-      "bytes": 9595
+      "bytes": 9770
     },
     {
       "path": "src/lib/master-alerts.server.ts",
@@ -1219,7 +1223,7 @@
     },
     {
       "path": "src/lib/meta-history.functions.ts",
-      "bytes": 9352
+      "bytes": 10211
     },
     {
       "path": "src/lib/dashboard-ops.functions.ts",
@@ -2211,7 +2215,7 @@
     },
     {
       "path": "src/components/content/meta-content-history.tsx",
-      "bytes": 28337
+      "bytes": 29899
     },
     {
       "path": "src/components/master/signup-welcome-card.tsx",
@@ -6926,6 +6930,14 @@
     {
       "source": "src/lib/meta-history.functions.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "./meta-content-sync.server"
     },
     {
       "source": "src/lib/meta-history.functions.ts",
