@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AlertTriangle, CheckCircle2, CircleSlash, ExternalLink, Film, Grid3x3, ImageIcon, Layers, LayoutList, Loader2, PlayCircle, RefreshCw, Stethoscope, XCircle } from "lucide-react";
@@ -15,6 +15,7 @@ import {
   getMetaProfileGrowth,
   getStoredMetaPost,
   listMetaSocialAccounts,
+  reconcileMetaAssets,
   listStoredMetaPosts,
   runMetaChannelDiagnostics,
   syncMetaContentHistory,
@@ -62,6 +63,7 @@ function FormatIcon({ format }: { format: string }) {
 
 export function MetaContentHistory() {
   const listAccounts = useServerFn(listMetaSocialAccounts);
+  const reconcileAssets = useServerFn(reconcileMetaAssets);
   const listPosts = useServerFn(listStoredMetaPosts);
   const sync = useServerFn(syncMetaContentHistory);
   const growth = useServerFn(getMetaProfileGrowth);
@@ -81,6 +83,7 @@ export function MetaContentHistory() {
   const [profile, setProfile] = useState<any[]>([]);
   const [open, setOpen] = useState<Post | null>(null);
 
+  const reconciledRef = useRef(false);
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -89,7 +92,14 @@ export function MetaContentHistory() {
         listPosts({ data: { network: network === "all" ? undefined : network, accountId: accountId === "all" ? undefined : accountId, format: format === "all" ? undefined : format, since: since || undefined, until: until || undefined } }),
         growth({ data: { accountId: accountId === "all" ? undefined : accountId } }),
       ]);
-      setAccounts(a.accounts as Account[]);
+      let accs = a.accounts as Account[];
+      if (!a.error && accs.length === 0 && !reconciledRef.current) {
+        reconciledRef.current = true;
+        const rec = await reconcileAssets().catch(() => null);
+        for (const w of rec?.warnings ?? []) toast.warning(w);
+        if (rec?.ok && rec.count) accs = (await listAccounts()).accounts as Account[];
+      }
+      setAccounts(accs);
       setPosts(p.posts as Post[]);
       setProfile(g.profile);
       setError(a.error ?? p.error ?? g.error ?? null);
@@ -98,7 +108,7 @@ export function MetaContentHistory() {
     } finally {
       setLoading(false);
     }
-  }, [listAccounts, listPosts, growth, network, accountId, format, since, until]);
+  }, [listAccounts, reconcileAssets, listPosts, growth, network, accountId, format, since, until]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -182,7 +192,14 @@ export function MetaContentHistory() {
               return (
                 <div key={s.accountId} className="rounded-md border p-3">
                   <div className="mb-1 flex items-center gap-2 font-medium">{acc ? accountLabel(acc) : s.network}<Badge variant={s.status === "ok" ? "secondary" : "destructive"}>{s.status}</Badge></div>
-                  <div className="text-muted-foreground">{s.counts.posts} publicações · {s.counts.comments} comentários · {s.counts.snapshots} métricas · {s.counts.stories} stories · {s.counts.archived} mídias arquivadas</div>
+                  <div className="text-muted-foreground">{s.counts.posts} publicações importadas · {s.counts.comments} comentários · {s.counts.stories} stories · {s.counts.archived} mídias arquivadas</div>
+                  <div className="text-muted-foreground">Métricas: {s.counts.snapshots_full ?? 0} snapshot(s) com dados do Graph ({s.counts.graph_metrics ?? 0} valores) · {s.counts.snapshots_fallback ?? 0} básico(s) com curtidas/comentários da publicação ({s.counts.basic_metrics ?? 0} valores){s.counts.db_errors ? ` · ${s.counts.db_errors} erro(s) de gravação` : ""}</div>
+                  {s.stages.some((st: any) => st.stage === "posts" && !st.ok && st.kind === "permission_missing" && s.network === "facebook") && (
+                    <div className="mt-1 text-destructive">Permissão ausente no Facebook: a Meta exige pages_read_user_content ou Page Public Content Access para ler as publicações da Página.</div>
+                  )}
+                  {(s.breakers ?? []).length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">{s.breakers.map((b: any, i: number) => <Badge key={i} variant="outline">Circuit breaker: {b.stage} [{b.kind}]</Badge>)}</div>
+                  )}
                   <ul className="mt-2 space-y-0.5">
                     {s.stages.map((st: any, i: number) => (
                       <li key={i} className="flex items-start gap-1.5">
@@ -374,7 +391,7 @@ type Check = { key: string; label: string; status: "ok" | "warn" | "fail" | "ski
 export function MetaDiagnosticsPanel() {
   const listAccounts = useServerFn(listMetaSocialAccounts);
   const diagnose = useServerFn(runMetaChannelDiagnostics);
-  const sync = useServerFn(syncMetaContentHistory);
+  const reconcile = useServerFn(reconcileMetaAssets);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selected, setSelected] = useState("");
   const [checks, setChecks] = useState<Check[] | null>(null);
@@ -385,7 +402,9 @@ export function MetaDiagnosticsPanel() {
     (async () => {
       let r = await listAccounts();
       if (!r.error && r.accounts.length === 0) {
-        await sync({ data: { accountId: "__none__" } }).catch(() => null); // registra os ativos sem sincronizar conteúdo
+        const rec = await reconcile().catch(() => null);
+        for (const w of rec?.warnings ?? []) toast.warning(w);
+        if (rec && !rec.ok && rec.error) toast.error(rec.error);
         r = await listAccounts();
       }
       setAccounts(r.accounts as Account[]);
@@ -393,7 +412,7 @@ export function MetaDiagnosticsPanel() {
       const first = (r.accounts as Account[]).find((a) => a.instance_name);
       if (first?.instance_name) setSelected(first.instance_name);
     })().catch((e) => setLoadError(e instanceof Error ? e.message : String(e)));
-  }, [listAccounts, sync]);
+  }, [listAccounts, reconcile]);
 
   async function run() {
     if (!selected) return;
