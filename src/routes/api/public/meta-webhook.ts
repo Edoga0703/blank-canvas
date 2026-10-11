@@ -110,7 +110,7 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const { data: previous } = await (supabaseAdmin as any).from("messaging_inbox_events").select("id,status").eq("external_event_id", receivedEventId).maybeSingle();
           if (previous?.status === "processed") return new Response("duplicate", { status: 200 });
-          const inboxPayload: any = { external_event_id: receivedEventId, provider: `meta_${channel}`, raw_payload: payload, status: "processing", received_at: new Date().toISOString() };
+          const inboxPayload: any = { external_event_id: receivedEventId, provider: `meta_${channel}`, raw_payload: payload, status: "received", received_at: new Date().toISOString() };
           if (previous?.id) await (supabaseAdmin as any).from("messaging_inbox_events").update(inboxPayload).eq("id", previous.id);
           else await (supabaseAdmin as any).from("messaging_inbox_events").insert(inboxPayload);
 
@@ -119,7 +119,18 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
           let companyId: string | null = null;
           const unmatchedIds = new Set<string>();
 
-          for (const entry of payload?.entry ?? []) {
+          const entries = Array.isArray(payload?.entry)
+            ? payload.entry
+            : payload?.sample
+            ? [
+                {
+                  id: String(payload.sample.value?.recipient?.id ?? "0"),
+                  messaging: [payload.sample.value],
+                },
+              ]
+            : [];
+
+          for (const entry of entries) {
             const messaging = [...(entry?.messaging ?? []), ...(entry?.standby ?? [])].map((ev: any) => ({ ev, field: "messaging", value: ev }));
             const changes = (entry?.changes ?? []).map((change: any) => ({ ev: change, field: String(change?.field ?? "change"), value: change?.value ?? {} }));
             for (const item of [...messaging, ...changes]) {
@@ -254,6 +265,18 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                   .limit(1)
                   .maybeSingle();
                 if (byName) inst = byName;
+              }
+
+              if (!inst && Boolean(payload?.sample)) {
+                const { data: fallback } = await (supabaseAdmin as any)
+                  .from("whatsapp_instances")
+                  .select("id,instance_name,webhook_token,provider,company_id,instance_token,user_id")
+                  .eq("provider", `meta_${channel}`)
+                  .eq("status", "connected")
+                  .order("updated_at", { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+                if (fallback) inst = fallback;
               }
 
               if (!inst) {
