@@ -499,7 +499,7 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
     const companyId = await resolveCompanyId(supabase, userId);
     await (await import("./billing/access.server")).assertCompanyCanWrite(companyId);
     const { supabaseAdmin: sbAdmin } = await import("@/integrations/supabase/client.server");
-    const inst = await getInstanceForContact(sbAdmin, companyId, data.numero, "instance_name,status,numero,provider,instance_token", userId);
+    const inst = await getInstanceForContact(sbAdmin, companyId, data.numero, "id,instance_name,status,numero,provider,instance_token", userId);
     {
       const { canonicalOutboundNumero } = await import("./phone-thread.server");
       const canon = await canonicalOutboundNumero(sbAdmin, companyId, data.numero, inst as any);
@@ -611,6 +611,7 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
     const permanentFailure = isPermanentMetaSendError(inst.provider, sendError) || sessionDead;
     const { data: inserted, error } = await supabase.from("mensagens").insert({
       company_id: companyId, user_id: userId, numero: data.numero,
+      instance_id: inst.id ?? null, provider: inst.provider,
       contato_nome: data.contatoNome ?? null,
       direcao: "saida", autor: "humano", texto: data.texto,
       whatsapp_message_id: waId,
@@ -674,7 +675,7 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
     const companyId = await resolveCompanyId(supabase, userId);
     await (await import("./billing/access.server")).assertCompanyCanWrite(companyId);
     const { supabaseAdmin: sbAdmin } = await import("@/integrations/supabase/client.server");
-    const inst = await getInstanceForContact(sbAdmin, companyId, data.numero, "instance_name,status,numero,provider,instance_token", userId);
+    const inst = await getInstanceForContact(sbAdmin, companyId, data.numero, "id,instance_name,status,numero,provider,instance_token", userId);
     {
       const { canonicalOutboundNumero } = await import("./phone-thread.server");
       const canon = await canonicalOutboundNumero(sbAdmin, companyId, data.numero, inst as any);
@@ -740,6 +741,7 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
     const permanentFailure = isPermanentMetaSendError(inst.provider, sendError);
     const { data: inserted, error } = await supabase.from("mensagens").insert({
       company_id: companyId, user_id: userId, numero: data.numero,
+      instance_id: inst.id ?? null, provider: inst.provider,
       contato_nome: data.contatoNome ?? null,
       direcao: "saida", autor: "humano",
       texto: data.caption ?? (data.mediatype === "image" ? "📷 Foto" : data.mediatype === "video" ? "🎥 Vídeo" : `📎 ${data.fileName ?? "Documento"}`),
@@ -795,7 +797,7 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
     const companyId = await resolveCompanyId(supabase, userId);
     await (await import("./billing/access.server")).assertCompanyCanWrite(companyId);
     const { supabaseAdmin: sbAdmin } = await import("@/integrations/supabase/client.server");
-    const inst = await getInstanceForContact(sbAdmin, companyId, data.numero, "instance_name,status,numero,provider,instance_token", userId);
+    const inst = await getInstanceForContact(sbAdmin, companyId, data.numero, "id,instance_name,status,numero,provider,instance_token", userId);
     {
       const { canonicalOutboundNumero } = await import("./phone-thread.server");
       const canon = await canonicalOutboundNumero(sbAdmin, companyId, data.numero, inst as any);
@@ -844,6 +846,7 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
     const permanentFailure = isPermanentMetaSendError(inst.provider, sendError);
     const { data: inserted, error } = await supabase.from("mensagens").insert({
       company_id: companyId, user_id: userId, numero: data.numero,
+      instance_id: inst.id ?? null, provider: inst.provider,
       contato_nome: data.contatoNome ?? null,
       direcao: "saida", autor: "humano",
       texto: "🎤 Áudio",

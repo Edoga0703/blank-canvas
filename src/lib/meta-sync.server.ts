@@ -154,6 +154,20 @@ async function readCheckpoint(admin: Admin, instance: MetaInstance) {
   return (data?.raw_payload ?? {}) as Record<string, any>;
 }
 
+async function upsertMessageAttachment(admin: Admin, instance: MetaInstance, messageId: string, externalId: string, media: { url: string | null; type: string | null; mime: string | null }) {
+  if (!media.url || !media.type) return;
+  const { error } = await admin.from("message_attachments").upsert({
+    company_id: instance.company_id,
+    mensagem_id: messageId,
+    attachment_key: externalId,
+    provider_attachment_id: externalId,
+    provider_url: media.url,
+    mime_type: media.mime,
+    kind: media.type,
+  }, { onConflict: "mensagem_id,attachment_key" });
+  if (error) throw error;
+}
+
 /** Persiste histórico sem disparar a IA; o webhook ao vivo é o responsável pela resposta imediata. */
 async function persistMessage(admin: Admin, instance: MetaInstance, item: any, channel: "instagram" | "messenger") {
   const id = String(item?.id ?? "");
@@ -171,13 +185,6 @@ async function persistMessage(admin: Admin, instance: MetaInstance, item: any, c
   const contactName = isFromPage ? null : (item?.from?.name ?? null);
   const text = textOf(item);
   const media = mediaOf(item);
-  const stages = await getStagesBrief(admin, instance.company_id);
-  await upsertCard(admin, instance.company_id, instance.user_id, customerId, contactName, text, stages, channel);
-
-  // Garante canal_chat e canal_entrada no crm_cards
-  const patch: any = { canal_chat: channel, canal_entrada: channel };
-  if (contactName) patch.nome = contactName;
-  await admin.from("crm_cards").update(patch).eq("company_id", instance.company_id).eq("numero", customerId);
 
   const { data: existing } = await admin
     .from("mensagens")
@@ -187,11 +194,26 @@ async function persistMessage(admin: Admin, instance: MetaInstance, item: any, c
     .eq("whatsapp_message_id", id)
     .limit(1)
     .maybeSingle();
-  if (existing?.id) return false;
+  if (existing?.id) {
+    // A URL assinada da Meta pode mudar. Atualizá-la permite que o job de R2
+    // recupere uma mídia que havia expirado numa execução anterior.
+    await upsertMessageAttachment(admin, instance, existing.id, id, media);
+    return false;
+  }
+
+  // Somente mensagens realmente novas alteram a última interação do cartão.
+  // Assim uma sincronização histórica repetida não reabre nem reordena leads.
+  const stages = await getStagesBrief(admin, instance.company_id);
+  await upsertCard(admin, instance.company_id, instance.user_id, customerId, contactName, text, stages, channel);
+
+  const patch: any = { canal_chat: channel, canal_entrada: channel };
+  if (contactName) patch.nome = contactName;
+  await admin.from("crm_cards").update(patch).eq("company_id", instance.company_id).eq("numero", customerId);
 
   const { data: inserted, error } = await admin.from("mensagens").insert({
     company_id: instance.company_id,
     user_id: instance.user_id,
+    instance_id: instance.id,
     numero: customerId,
     contato_nome: contactName,
     direcao,
@@ -199,6 +221,7 @@ async function persistMessage(admin: Admin, instance: MetaInstance, item: any, c
     texto: text,
     provider: instance.provider,
     whatsapp_message_id: id,
+    provider_timestamp: item?.created_time ? new Date(item.created_time).toISOString() : new Date().toISOString(),
     created_at: item?.created_time ? new Date(item.created_time).toISOString() : new Date().toISOString(),
     status_envio: isFromPage ? "enviado" : "recebido",
     midia_url: media.url,
@@ -206,17 +229,7 @@ async function persistMessage(admin: Admin, instance: MetaInstance, item: any, c
     midia_mime: media.mime,
   }).select("id").maybeSingle();
   if (error) throw error;
-  if (inserted?.id && media.url && media.type) {
-    await admin.from("message_attachments").insert({
-      company_id: instance.company_id,
-      mensagem_id: inserted.id,
-      attachment_key: id,
-      provider_attachment_id: id,
-      provider_url: media.url,
-      mime_type: media.mime,
-      kind: media.type,
-    });
-  }
+  if (inserted?.id) await upsertMessageAttachment(admin, instance, inserted.id, id, media);
   return true;
 }
 
@@ -333,9 +346,20 @@ export async function syncMetaChannel(admin: Admin, instance: MetaInstance, opti
       instagram: credentials.instagram,
     });
     for (const conversation of conversations.data.slice(0, maxConversations)) {
-      const messages = Array.isArray(conversation?.messages?.data)
-        ? conversation.messages.data
-        : (await metaListConversationMessages(credentials.token, String(conversation.id), { since, until, limit: 100 })).data;
+      const inlineMessages = Array.isArray(conversation?.messages?.data) ? conversation.messages.data : [];
+      let messages = inlineMessages;
+      if (!inlineMessages.length || conversation?.messages?.paging?.next) {
+        try {
+          const expanded = await metaListConversationMessages(credentials.token, String(conversation.id), { since, until, limit: 100 });
+          const byId = new Map<string, any>();
+          for (const message of [...inlineMessages, ...(expanded.data ?? [])]) {
+            if (message?.id) byId.set(String(message.id), message);
+          }
+          messages = [...byId.values()];
+        } catch (error) {
+          result.errors.push(`mensagens da conversa ${conversation.id}: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
       for (const message of messages) {
         if (await persistMessage(admin, instance, message, channel)) result.messages += 1;
       }
@@ -445,6 +469,21 @@ export async function syncMetaChannel(admin: Admin, instance: MetaInstance, opti
         result.errors.push(`lead ads: ${message}`);
       }
     }
+  }
+
+  try {
+    const { archivePendingMetaMessageMedia } = await import("@/lib/meta-message-media.server");
+    const mediaArchive = await archivePendingMetaMessageMedia(admin, {
+      companyId: instance.company_id,
+      provider: instance.provider,
+      limit: options?.full ? 25 : 10,
+    });
+    if (mediaArchive.archived) result.warnings?.push(`${mediaArchive.archived} anexo(s) de mensagens arquivado(s) no R2.`);
+    if (mediaArchive.failed || mediaArchive.skipped) {
+      result.warnings?.push(`Arquivo R2 pendente: ${mediaArchive.failed} falha(s), ${mediaArchive.skipped} URL(s) ignorada(s).`);
+    }
+  } catch (error) {
+    result.warnings?.push(`Arquivo R2 de mensagens indisponível: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   // Se algum bloco falhou, não avançamos o cursor além do último ponto confirmado;

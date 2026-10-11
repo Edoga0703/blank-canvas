@@ -315,9 +315,9 @@ export async function metaSendText(token: string, recipientId: string, text: str
     }),
   });
   console.log("[meta] resposta de envio:", JSON.stringify(json));
-  const provider = token.startsWith("EAAB") ? "meta_instagram" : "meta_messenger"; // Heurística simples se necessário ou passar via parâmetro
-  const idSuffix = token.includes("instagram") || recipientId.length > 15 ? "meta_instagram" : "meta_messenger"; // Mais seguro vir do contexto
-  return { key: { id: json?.message_id ? `${json.message_id}_meta` : null, remoteJid: recipientId, fromMe: true } };
+  // O MID precisa ser preservado sem sufixos: delivery/read webhooks usam
+  // exatamente este valor para conciliar o estado da mensagem.
+  return { key: { id: json?.message_id ?? null, remoteJid: recipientId, fromMe: true } };
 }
 
 /** Envia mídia por URL pública. */

@@ -16,8 +16,9 @@ function validSignature(raw: Buffer, signature: string, secrets: string[]) {
   });
 }
 
-function eventId(payload: any, raw: string) {
-  if (payload?.id) return String(payload.id);
+function eventId(_payload: any, raw: string) {
+  // O hash do corpo representa uma entrega concreta. IDs de nível superior da
+  // Meta podem ser o ID da Página e se repetir entre webhooks diferentes.
   return `meta:${createHash("sha256").update(raw).digest("hex")}`;
 }
 
@@ -36,8 +37,7 @@ function reactionFor(value: any) {
 
 function statusEvents(value: any) {
   const result: Array<{ id: string; status: string; occurredAt?: number }> = [];
-  for (const id of value?.delivery?.mids ?? []) result.push({ id: String(id), status: "delivered", occurredAt: value?.watermark });
-  if (value?.read?.watermark) result.push({ id: `read:${String(value.read.watermark)}`, status: "read", occurredAt: value.read.watermark });
+  for (const id of value?.delivery?.mids ?? []) result.push({ id: String(id), status: "delivered", occurredAt: value?.delivery?.watermark ?? value?.timestamp });
   if (value?.message_id) result.push({ id: String(value.message_id), status: String(value.status ?? "updated"), occurredAt: value?.timestamp });
   return result;
 }
@@ -108,9 +108,14 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
 
         try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-          const { data: previous } = await (supabaseAdmin as any).from("messaging_inbox_events").select("id,status").eq("external_event_id", receivedEventId).maybeSingle();
+          const eventProvider = `meta_${channel}`;
+          const { data: previous } = await (supabaseAdmin as any).from("messaging_inbox_events")
+            .select("id,status")
+            .eq("provider", eventProvider)
+            .eq("external_event_id", receivedEventId)
+            .maybeSingle();
           if (previous?.status === "processed") return new Response("duplicate", { status: 200 });
-          const inboxPayload: any = { external_event_id: receivedEventId, provider: `meta_${channel}`, raw_payload: payload, status: "received", received_at: new Date().toISOString() };
+          const inboxPayload: any = { external_event_id: receivedEventId, provider: eventProvider, raw_payload: payload, status: "received", received_at: new Date().toISOString(), processed_at: null, error_message: null };
           if (previous?.id) await (supabaseAdmin as any).from("messaging_inbox_events").update(inboxPayload).eq("id", previous.id);
           else await (supabaseAdmin as any).from("messaging_inbox_events").insert(inboxPayload);
 
@@ -140,18 +145,41 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
               const field = item.field;
 
               const statuses = field === "messaging" ? statusEvents(ev) : [];
-              if (/delivery|read|message_deliveries|message_reads|message_status/i.test(field) || statuses.length) {
-                const { data: statusInst } = await (supabaseAdmin as any).from("whatsapp_instances").select("company_id").eq("phone_number_id", pageId).like("provider", "meta%").maybeSingle();
+              const readWatermark = Number(ev?.read?.watermark ?? 0);
+              if (/delivery|read|message_deliveries|message_reads|message_status/i.test(field) || statuses.length || readWatermark) {
+                const { data: statusRows } = await (supabaseAdmin as any).from("whatsapp_instances")
+                  .select("company_id,provider")
+                  .eq("phone_number_id", pageId)
+                  .like("provider", "meta%")
+                  .order("updated_at", { ascending: false })
+                  .limit(5);
+                const statusInst = (statusRows ?? []).find((row: any) => row.provider === eventProvider) ?? (statusRows ?? [])[0] ?? null;
                 if (statusInst?.company_id) {
                   companyId = statusInst.company_id;
+                  const { applyMetaMessageStatus, applyMetaReadWatermark } = await import("@/lib/meta-message-status.server");
                   for (const status of statuses) {
-                    const { data: existingStatus } = await (supabaseAdmin as any).from("message_status_events").select("id").eq("company_id", statusInst.company_id).eq("external_message_id", status.id).eq("status", status.status).limit(1).maybeSingle();
-                    if (!existingStatus) await (supabaseAdmin as any).from("message_status_events").insert({ company_id: statusInst.company_id, external_message_id: status.id, status: status.status, occurred_at: status.occurredAt ? new Date(Number(status.occurredAt)).toISOString() : new Date().toISOString(), raw_payload: ev });
                     const timestamp = Number(status.occurredAt ?? 0);
                     const occurredAt = timestamp ? new Date(timestamp < 10_000_000_000 ? timestamp * 1000 : timestamp).toISOString() : new Date().toISOString();
-                    const localStatus = status.status === "delivered" ? "recebido" : status.status === "read" ? "visto" : status.status === "sent" ? "enviado" : status.status;
-                    await (supabaseAdmin as any).from("message_status_events").update({ occurred_at: occurredAt }).eq("company_id", statusInst.company_id).eq("external_message_id", status.id).eq("status", status.status);
-                    await (supabaseAdmin as any).from("mensagens").update({ status_envio: localStatus }).eq("company_id", statusInst.company_id).eq("whatsapp_message_id", status.id);
+                    if (["sent", "delivered", "read", "failed"].includes(status.status)) {
+                      await applyMetaMessageStatus(supabaseAdmin, {
+                        companyId: statusInst.company_id,
+                        provider: statusInst.provider,
+                        externalMessageId: status.id,
+                        status: status.status as "sent" | "delivered" | "read" | "failed",
+                        occurredAt,
+                        rawPayload: ev,
+                      });
+                    }
+                  }
+                  const readerId = String(ev?.sender?.id ?? "");
+                  if (readWatermark && readerId) {
+                    await applyMetaReadWatermark(supabaseAdmin, {
+                      companyId: statusInst.company_id,
+                      provider: statusInst.provider,
+                      contactId: readerId,
+                      watermark: readWatermark,
+                      rawPayload: ev,
+                    });
                   }
                 }
                 if (field !== "messaging" || !ev?.message) continue;
@@ -291,24 +319,43 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                 const echoRecipientId = String(ev?.recipient?.id ?? "");
                 if (echoRecipientId) {
                   const echoText = textFor(value);
+                  const echoAttachment = attachmentFor(value);
+                  const echoMediaType = String(echoAttachment?.type ?? "").toLowerCase();
+                  const echoMediaUrl = echoAttachment?.payload?.url ? String(echoAttachment.payload.url) : null;
                   const echoExternalId = String(ev?.message?.mid ?? `meta_echo_${receivedEventId}`);
                   const echoTimestamp = ev?.timestamp ? (ev.timestamp < 10_000_000_000 ? ev.timestamp * 1000 : ev.timestamp) : Date.now();
-                  try {
-                    await (supabaseAdmin as any).from("mensagens").insert({
+                  const { data: echoMessage, error: echoError } = await (supabaseAdmin as any).from("mensagens").insert({
                       company_id: inst.company_id,
                       user_id: inst.user_id || null,
+                      instance_id: inst.id,
                       numero: echoRecipientId,
                       direcao: "saida",
                       autor: "humano",
-                      texto: echoText || "",
+                      texto: echoText || (echoMediaType ? `[${echoMediaType.toUpperCase()}]` : ""),
                       provider: inst.provider,
                       whatsapp_message_id: echoExternalId,
+                      provider_timestamp: new Date(echoTimestamp).toISOString(),
                       created_at: new Date(echoTimestamp).toISOString(),
                       status_envio: "enviado",
-                    });
-                  } catch { /* ignora duplicatas de eco */ }
+                      midia_url: echoMediaUrl,
+                      midia_tipo: echoMediaType || null,
+                    }).select("id").maybeSingle();
+                  if (echoError && echoError.code !== "23505") throw new Error(`Falha ao gravar eco Meta: ${echoError.message}`);
+                  if (echoMessage?.id && echoAttachment) {
+                    const identity = String(echoAttachment?.payload?.attachment_id ?? echoMediaUrl ?? `${echoExternalId}:0`);
+                    const attachmentKey = createHash("sha256").update(identity).digest("hex");
+                    const { error: attachmentError } = await (supabaseAdmin as any).from("message_attachments").upsert({
+                      company_id: inst.company_id,
+                      mensagem_id: echoMessage.id,
+                      attachment_key: attachmentKey,
+                      provider_attachment_id: echoAttachment?.payload?.attachment_id ? String(echoAttachment.payload.attachment_id) : null,
+                      provider_url: echoMediaUrl,
+                      kind: echoMediaType || "document",
+                    }, { onConflict: "mensagem_id,attachment_key" });
+                    if (attachmentError) throw new Error(`Falha ao registrar anexo do eco Meta: ${attachmentError.message}`);
+                  }
                   await (supabaseAdmin as any).from("crm_cards").update({
-                    ultima_mensagem: echoText.slice(0, 240),
+                    ultima_mensagem: (echoText || (echoMediaType ? `[${echoMediaType.toUpperCase()}]` : "")).slice(0, 240),
                     ultima_direcao: "saida",
                     ultima_em: new Date(echoTimestamp).toISOString(),
                   }).eq("company_id", inst.company_id).eq("numero", echoRecipientId);
@@ -370,6 +417,7 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                 .insert({
                   company_id: inst.company_id,
                   user_id: inst.user_id || null,
+                  instance_id: inst.id,
                   numero: senderId,
                   contato_nome: contatoNome,
                   direcao: "entrada",
@@ -377,6 +425,7 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                   texto: text || (mediaType ? `[${mediaType.toUpperCase()}]` : ""),
                   provider: inst.provider,
                   whatsapp_message_id: stableMessageId,
+                  provider_timestamp: new Date(timestampMs).toISOString(),
                   created_at: new Date(timestampMs).toISOString(),
                   midia_url: attachment?.payload?.url || null,
                   midia_tipo: mediaType || null,
@@ -385,8 +434,29 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                 .select("*")
                 .maybeSingle();
 
-              if (insertErr && (insertErr as any).code !== "23505") {
-                console.error("[meta-webhook] DB Insert Error:", insertErr);
+              if (insertErr) {
+                if ((insertErr as any).code === "23505") {
+                  // Outro worker/reenvio gravou a mesma mensagem entre a busca
+                  // e o INSERT. Não acionamos CRM/IA uma segunda vez.
+                  continue;
+                }
+                throw new Error(`Falha ao gravar mensagem Meta ${stableMessageId}: ${insertErr.message}`);
+              }
+              if (!insertedMsg?.id) throw new Error(`Mensagem Meta ${stableMessageId} não retornou ID após o INSERT.`);
+
+              const providerMediaUrl = attachment?.payload?.url ? String(attachment.payload.url) : null;
+              if (attachment) {
+                const attachmentIdentity = String(attachment?.payload?.attachment_id ?? providerMediaUrl ?? `${stableMessageId}:0`);
+                const attachmentKey = createHash("sha256").update(attachmentIdentity).digest("hex");
+                const { error: attachmentError } = await (supabaseAdmin as any).from("message_attachments").upsert({
+                  company_id: inst.company_id,
+                  mensagem_id: insertedMsg.id,
+                  attachment_key: attachmentKey,
+                  provider_attachment_id: attachment?.payload?.attachment_id ? String(attachment.payload.attachment_id) : null,
+                  provider_url: providerMediaUrl,
+                  kind: mediaType || "document",
+                }, { onConflict: "mensagem_id,attachment_key" });
+                if (attachmentError) throw new Error(`Falha ao registrar anexo Meta: ${attachmentError.message}`);
               }
 
               // 2. Atualizar ou criar cartão no CRM com canal_chat correto
@@ -448,13 +518,19 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
           const ignoredNote = unmatchedIds.size && !normalizedCount
             ? `ignorado: nenhum canal ${channel} cadastrado para o ID ${[...unmatchedIds].join(",")}`
             : null;
-          await (supabaseAdmin as any).from("messaging_inbox_events").update({ status: "processed", company_id: companyId, normalized_count: normalizedCount, processed_at: new Date().toISOString(), error_message: ignoredNote }).eq("external_event_id", receivedEventId);
+          await (supabaseAdmin as any).from("messaging_inbox_events")
+            .update({ status: "processed", company_id: companyId, normalized_count: normalizedCount, processed_at: new Date().toISOString(), error_message: ignoredNote })
+            .eq("provider", eventProvider)
+            .eq("external_event_id", receivedEventId);
           return new Response("EVENT_RECEIVED", { status: 200 });
         } catch (error) {
           console.error("[meta-webhook]", error);
           try {
             const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-            await (supabaseAdmin as any).from("messaging_inbox_events").update({ status: "failed", error_message: error instanceof Error ? error.message : String(error) }).eq("external_event_id", receivedEventId);
+            await (supabaseAdmin as any).from("messaging_inbox_events")
+              .update({ status: "failed", error_message: error instanceof Error ? error.message : String(error), processed_at: new Date().toISOString() })
+              .eq("provider", `meta_${channel}`)
+              .eq("external_event_id", receivedEventId);
           } catch { /* não esconder o erro original */ }
           return new Response("Webhook processing failed", { status: 500 });
         }

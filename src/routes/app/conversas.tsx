@@ -2668,8 +2668,8 @@ function Bubble({ m, quoted, companyId, onReply, agentTraits, agentAvatarUrl }: 
                 {isOut && m.status_envio === "pendente" && <span className="italic">· enviando</span>}
                 {isOut && m.status_envio === "falha" && <span className="font-semibold">· falhou</span>}
                 {isOut && m.status_envio === "enviado" && <Check className="size-3 text-white/60" />}
-                {isOut && m.status_envio === "recebido" && <CheckCheck className="size-3 text-white/70" />}
-                {isOut && m.status_envio === "visto" && <CheckCheck className="size-3 text-emerald-500" />}
+                {isOut && ["recebido", "entregue", "delivered"].includes(m.status_envio) && <CheckCheck className="size-3 text-white/70" />}
+                {isOut && ["visto", "lido", "read"].includes(m.status_envio) && <CheckCheck className="size-3 text-emerald-500" />}
               </span>
             </div>
             {isOut && ia && (
