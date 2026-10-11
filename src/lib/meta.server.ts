@@ -499,7 +499,7 @@ export async function metaSubscribePage(token: string, pageId: string, _options?
   const ig = isInstagramToken(cleanToken);
   const fields = ig
     ? "messages,messaging_postbacks,message_reactions,comments,mentions"
-    : "messages,messaging_postbacks,messaging_optins,message_deliveries,message_reads,message_reactions,messaging_seen,feed,leadgen";
+    : "messages,messaging_postbacks,messaging_optins,message_deliveries,message_reads,message_reactions,feed,leadgen";
   const path = ig
     ? `/me/subscribed_apps?subscribed_fields=${fields}`
     : `/${encodeURIComponent(pageId)}/subscribed_apps?subscribed_fields=${fields}`;
