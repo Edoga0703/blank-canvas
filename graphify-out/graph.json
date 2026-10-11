@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-11T02:26:51.505278+00:00",
+  "generated_at": "2026-10-11T03:47:31.915275+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -39,7 +39,7 @@
     },
     {
       "path": "AGENTS.md",
-      "bytes": 180
+      "bytes": 624
     },
     {
       "path": "tsconfig.json",
@@ -87,7 +87,7 @@
     },
     {
       "path": "src/routeTree.gen.ts",
-      "bytes": 96012
+      "bytes": 97111
     },
     {
       "path": "src/styles.css",
@@ -674,6 +674,10 @@
       "bytes": 7540
     },
     {
+      "path": "src/lib/meta-content-sync.server.ts",
+      "bytes": 38865
+    },
+    {
       "path": "src/lib/message-actions.functions.ts",
       "bytes": 5930
     },
@@ -943,7 +947,7 @@
     },
     {
       "path": "src/lib/meta-oauth.functions.ts",
-      "bytes": 8829
+      "bytes": 9595
     },
     {
       "path": "src/lib/master-alerts.server.ts",
@@ -1191,7 +1195,7 @@
     },
     {
       "path": "src/lib/meta-sync.server.ts",
-      "bytes": 18424
+      "bytes": 19109
     },
     {
       "path": "src/lib/olist.functions.ts",
@@ -1212,6 +1216,10 @@
     {
       "path": "src/lib/session-persistence.ts",
       "bytes": 1809
+    },
+    {
+      "path": "src/lib/meta-history.functions.ts",
+      "bytes": 9352
     },
     {
       "path": "src/lib/dashboard-ops.functions.ts",
@@ -2202,6 +2210,10 @@
       "bytes": 33113
     },
     {
+      "path": "src/components/content/meta-content-history.tsx",
+      "bytes": 28337
+    },
+    {
       "path": "src/components/master/signup-welcome-card.tsx",
       "bytes": 3977
     },
@@ -2243,7 +2255,7 @@
     },
     {
       "path": "src/components/conexao/meta-oauth-handler.tsx",
-      "bytes": 7591
+      "bytes": 7702
     },
     {
       "path": "src/components/conexao/nova-conexao-dialog.tsx",
@@ -2439,7 +2451,7 @@
     },
     {
       "path": "src/routes/app/conteudo.tsx",
-      "bytes": 1492
+      "bytes": 2177
     },
     {
       "path": "src/routes/app/checkout.tsx",
@@ -2730,6 +2742,10 @@
       "bytes": 1091
     },
     {
+      "path": "src/routes/api/public/hooks/meta-stories.ts",
+      "bytes": 1177
+    },
+    {
       "path": "src/routes/api/public/hooks/process-campaigns.ts",
       "bytes": 13385
     },
@@ -2788,6 +2804,10 @@
     {
       "path": "src/routes/lovable/email/queue/process.ts",
       "bytes": 13116
+    },
+    {
+      "path": "docs/sql/20261011_meta_phase1_assets_content_history.sql",
+      "bytes": 14040
     },
     {
       "path": "drizzle/migrations/meta/_journal.json",
@@ -3242,6 +3262,10 @@
     {
       "source": "src/routeTree.gen.ts",
       "target": "./routes/api/public/hooks/google-calendar-renew"
+    },
+    {
+      "source": "src/routeTree.gen.ts",
+      "target": "./routes/api/public/hooks/meta-stories"
     },
     {
       "source": "src/routeTree.gen.ts",
@@ -4214,6 +4238,14 @@
     {
       "source": "src/lib/admin-broadcast.functions.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-content-sync.server.ts",
+      "target": "@/lib/meta.server"
+    },
+    {
+      "source": "src/lib/meta-content-sync.server.ts",
+      "target": "@/lib/storage/r2.server"
     },
     {
       "source": "src/lib/message-actions.functions.ts",
@@ -5733,6 +5765,10 @@
     },
     {
       "source": "src/lib/meta-oauth.functions.ts",
+      "target": "./meta-content-sync.server"
+    },
+    {
+      "source": "src/lib/meta-oauth.functions.ts",
       "target": "@/integrations/supabase/client.server"
     },
     {
@@ -6753,6 +6789,10 @@
     },
     {
       "source": "src/lib/meta-sync.server.ts",
+      "target": "@/lib/meta-content-sync.server"
+    },
+    {
+      "source": "src/lib/meta-sync.server.ts",
       "target": "@/lib/meta-leads.server"
     },
     {
@@ -6870,6 +6910,54 @@
     {
       "source": "src/lib/session-persistence.ts",
       "target": "@/integrations/supabase/client"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "./company-cache"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "./meta-content-sync.server"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "./storage/r2.server"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "./meta-content-sync.server"
     },
     {
       "source": "src/lib/dashboard-ops.functions.ts",
@@ -11712,6 +11800,66 @@
       "target": "@/lib/meta-content.functions"
     },
     {
+      "source": "src/components/content/meta-content-history.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/components/content/meta-content-history.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/components/content/meta-content-history.tsx",
+      "target": "recharts"
+    },
+    {
+      "source": "src/components/content/meta-content-history.tsx",
+      "target": "lucide-react"
+    },
+    {
+      "source": "src/components/content/meta-content-history.tsx",
+      "target": "sonner"
+    },
+    {
+      "source": "src/components/content/meta-content-history.tsx",
+      "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/components/content/meta-content-history.tsx",
+      "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/components/content/meta-content-history.tsx",
+      "target": "@/components/ui/card"
+    },
+    {
+      "source": "src/components/content/meta-content-history.tsx",
+      "target": "@/components/ui/dialog"
+    },
+    {
+      "source": "src/components/content/meta-content-history.tsx",
+      "target": "@/components/ui/input"
+    },
+    {
+      "source": "src/components/content/meta-content-history.tsx",
+      "target": "@/components/ui/select"
+    },
+    {
+      "source": "src/components/content/meta-content-history.tsx",
+      "target": "@/components/ui/table"
+    },
+    {
+      "source": "src/components/content/meta-content-history.tsx",
+      "target": "@/components/ui/textarea"
+    },
+    {
+      "source": "src/components/content/meta-content-history.tsx",
+      "target": "@/lib/meta-history.functions"
+    },
+    {
+      "source": "src/components/content/meta-content-history.tsx",
+      "target": "@/lib/meta-content.functions"
+    },
+    {
       "source": "src/components/master/signup-welcome-card.tsx",
       "target": "react"
     },
@@ -12862,6 +13010,14 @@
     {
       "source": "src/routes/app/conteudo.tsx",
       "target": "@/components/content/meta-content-center"
+    },
+    {
+      "source": "src/routes/app/conteudo.tsx",
+      "target": "@/components/content/meta-content-history"
+    },
+    {
+      "source": "src/routes/app/conteudo.tsx",
+      "target": "@/components/ui/tabs"
     },
     {
       "source": "src/routes/app/conteudo.tsx",
@@ -15902,6 +16058,22 @@
     {
       "source": "src/routes/api/public/hooks/process-kanban-reguas.ts",
       "target": "@/lib/kanban-engine.server"
+    },
+    {
+      "source": "src/routes/api/public/hooks/meta-stories.ts",
+      "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/api/public/hooks/meta-stories.ts",
+      "target": "@/lib/cron-auth.server"
+    },
+    {
+      "source": "src/routes/api/public/hooks/meta-stories.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/routes/api/public/hooks/meta-stories.ts",
+      "target": "@/lib/meta-content-sync.server"
     },
     {
       "source": "src/routes/api/public/hooks/process-campaigns.ts",
