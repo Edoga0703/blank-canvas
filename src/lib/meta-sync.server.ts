@@ -145,17 +145,33 @@ async function readCheckpoint(admin: Admin, instanceId: string) {
 /** Persiste histórico sem disparar a IA; o webhook ao vivo é o responsável pela resposta imediata. */
 async function persistMessage(admin: Admin, instance: MetaInstance, item: any, channel: "instagram" | "messenger") {
   const id = String(item?.id ?? "");
-  const sender = participantId(item);
-  if (!id || !sender || !instance.phone_number_id || sender === instance.phone_number_id) return false;
+  if (!id || !instance.phone_number_id) return false;
+
+  const fromId = String(item?.from?.id ?? item?.sender?.id ?? "");
+  const isFromPage = fromId === instance.phone_number_id;
+  const toId = String(item?.to?.data?.[0]?.id ?? item?.recipient?.id ?? "");
+  const customerId = isFromPage ? toId : fromId;
+
+  if (!customerId || customerId === instance.phone_number_id) return false;
+
+  const direcao = isFromPage ? "saida" : "entrada";
+  const autor = isFromPage ? "humano" : "contato";
+  const contactName = isFromPage ? null : (item?.from?.name ?? null);
   const text = textOf(item);
   const media = mediaOf(item);
   const stages = await getStagesBrief(admin, instance.company_id);
-  await upsertCard(admin, instance.company_id, instance.user_id, sender, item?.from?.name ?? null, text, stages, channel);
+  await upsertCard(admin, instance.company_id, instance.user_id, customerId, contactName, text, stages, channel);
+
+  // Garante canal_chat e canal_entrada no crm_cards
+  const patch: any = { canal_chat: channel, canal_entrada: channel };
+  if (contactName) patch.nome = contactName;
+  await admin.from("crm_cards").update(patch).eq("company_id", instance.company_id).eq("numero", customerId);
 
   const { data: existing } = await admin
     .from("mensagens")
     .select("id")
     .eq("company_id", instance.company_id)
+    .eq("provider", instance.provider)
     .eq("whatsapp_message_id", id)
     .limit(1)
     .maybeSingle();
@@ -164,13 +180,15 @@ async function persistMessage(admin: Admin, instance: MetaInstance, item: any, c
   const { data: inserted, error } = await admin.from("mensagens").insert({
     company_id: instance.company_id,
     user_id: instance.user_id,
-    numero: sender,
-    contato_nome: item?.from?.name ?? null,
-    direcao: "entrada",
-    autor: "contato",
+    numero: customerId,
+    contato_nome: contactName,
+    direcao,
+    autor,
     texto: text,
+    provider: instance.provider,
     whatsapp_message_id: id,
     created_at: item?.created_time ? new Date(item.created_time).toISOString() : new Date().toISOString(),
+    status_envio: isFromPage ? "enviado" : "recebido",
     midia_url: media.url,
     midia_tipo: media.type,
     midia_mime: media.mime,
@@ -190,13 +208,10 @@ async function persistMessage(admin: Admin, instance: MetaInstance, item: any, c
   return true;
 }
 
-async function persistComment(admin: Admin, instance: MetaInstance, item: any, channel: "instagram" | "messenger") {
-  const synthetic = {
-    ...item,
-    from: item?.from ?? { id: item?.sender_id ?? item?.username, name: item?.username ?? null },
-    message: item?.message ?? item?.text ?? "",
-  };
-  return persistMessage(admin, instance, synthetic, channel);
+async function persistComment(_admin: Admin, _instance: MetaInstance, _item: any, _channel: "instagram" | "messenger") {
+  // Comentários públicos não viram conversas privadas de chat no CRM.
+  // Ficam centralizados no módulo Conteúdo e geram notificações de interação.
+  return false;
 }
 
 /** Sincroniza histórico e conteúdo público com paginação limitada e checkpoint idempotente. */
@@ -227,8 +242,21 @@ export async function syncMetaChannel(admin: Admin, instance: MetaInstance, opti
     : {}) as EngagementSnapshot;
   const currentEngagement: EngagementSnapshot = { ...previousEngagement };
 
+  let targetPageId = instance.phone_number_id;
+  if (channel === "instagram") {
+    const { data: companion } = await admin
+      .from("whatsapp_instances")
+      .select("phone_number_id")
+      .eq("company_id", instance.company_id)
+      .eq("provider", "meta_messenger")
+      .maybeSingle();
+    if (companion?.phone_number_id) {
+      targetPageId = companion.phone_number_id;
+    }
+  }
+
   try {
-    const conversations = await metaListConversations(instance.instance_token, instance.phone_number_id, { since, until, limit: maxConversations, instagram: channel === "instagram" });
+    const conversations = await metaListConversations(instance.instance_token, targetPageId, { since, until, limit: maxConversations, instagram: channel === "instagram" });
     for (const conversation of conversations.data.slice(0, maxConversations)) {
       const messages = Array.isArray(conversation?.messages?.data)
         ? conversation.messages.data

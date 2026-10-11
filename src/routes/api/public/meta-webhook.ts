@@ -304,15 +304,34 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                   link: contentLink(inst.instance_name, postId),
                   refId: `meta:${isMention ? "mention" : "comment"}:${objectId}`,
                 });
+                normalizedCount += 1;
+                // Comentários públicos não abrem conversas privadas no chat CRM
+                continue;
               }
               const attachment = attachmentFor(value);
               const mediaType = String(attachment?.type ?? "").toLowerCase();
-              if (!text && !attachment && !isComment && !isMention) continue;
+              if (!text && !attachment) continue;
 
-              const externalId = String(ev?.message?.mid ?? value?.comment_id ?? value?.id ?? `meta_${receivedEventId}_${senderId}`);
+              const externalId = String(ev?.message?.mid ?? `meta_${receivedEventId}_${senderId}`);
               const sourceTimestamp = ev?.timestamp ?? value?.created_time;
               const timestampMs = typeof sourceTimestamp === "number" ? (sourceTimestamp < 10_000_000_000 ? sourceTimestamp * 1000 : sourceTimestamp) : (sourceTimestamp ? new Date(sourceTimestamp).getTime() : Date.now());
               const stableMessageId = String(externalId || `meta:${inst.id}:${senderId}:${timestampMs}`);
+
+              // Verifica se a mensagem já foi processada anteriormente (reintentos de Meta)
+              const { data: existingMsg } = await (supabaseAdmin as any)
+                .from("mensagens")
+                .select("id")
+                .eq("company_id", inst.company_id)
+                .eq("provider", inst.provider)
+                .eq("whatsapp_message_id", stableMessageId)
+                .limit(1)
+                .maybeSingle();
+
+              if (existingMsg?.id) {
+                // Mensagem duplicada/reintento: ignora para não reprocessar nem disparar a IA novamente
+                continue;
+              }
+
               const contatoNome = profile.name || (channel === "instagram" ? `Instagram ${senderId.slice(-4)}` : `Messenger ${senderId.slice(-4)}`);
 
               // 1. Inserir em mensagens
