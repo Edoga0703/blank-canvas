@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-11T00:14:56.540459+00:00",
+  "generated_at": "2026-10-11T00:41:29.713906+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -835,7 +835,7 @@
     },
     {
       "path": "src/lib/meta-content.functions.ts",
-      "bytes": 12406
+      "bytes": 13878
     },
     {
       "path": "src/lib/plugin-gate.server.ts",
@@ -963,7 +963,7 @@
     },
     {
       "path": "src/lib/meta.server.ts",
-      "bytes": 21366
+      "bytes": 22454
     },
     {
       "path": "src/lib/wa-interactive.ts",
@@ -1187,7 +1187,7 @@
     },
     {
       "path": "src/lib/meta-sync.server.ts",
-      "bytes": 16114
+      "bytes": 17392
     },
     {
       "path": "src/lib/olist.functions.ts",
@@ -2195,7 +2195,7 @@
     },
     {
       "path": "src/components/content/meta-content-center.tsx",
-      "bytes": 27802
+      "bytes": 33113
     },
     {
       "path": "src/components/master/signup-welcome-card.tsx",
@@ -2427,7 +2427,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 187955
+      "bytes": 188699
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -5146,6 +5146,14 @@
     {
       "source": "src/lib/meta-content.functions.ts",
       "target": "./meta-sync.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "./meta.server"
     },
     {
       "source": "src/lib/admin-crm.functions.ts",
