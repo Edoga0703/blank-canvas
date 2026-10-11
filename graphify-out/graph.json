@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-11T04:20:14.034173+00:00",
+  "generated_at": "2026-10-11T17:12:33.764375+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -679,7 +679,7 @@
     },
     {
       "path": "src/lib/meta-content-sync.server.ts",
-      "bytes": 50664
+      "bytes": 56827
     },
     {
       "path": "src/lib/message-actions.functions.ts",
@@ -758,6 +758,10 @@
       "bytes": 25983
     },
     {
+      "path": "src/lib/meta-response-window.server.ts",
+      "bytes": 2359
+    },
+    {
       "path": "src/lib/meta-publish.functions.ts",
       "bytes": 6160
     },
@@ -779,7 +783,7 @@
     },
     {
       "path": "src/lib/evolution-helpers.ts",
-      "bytes": 12961
+      "bytes": 13026
     },
     {
       "path": "src/lib/sector-assignment.server.ts",
@@ -815,7 +819,7 @@
     },
     {
       "path": "src/lib/meta-oauth.server.ts",
-      "bytes": 10261
+      "bytes": 10427
     },
     {
       "path": "src/lib/automacao-ai.functions.ts",
@@ -930,6 +934,10 @@
       "bytes": 9353
     },
     {
+      "path": "src/lib/meta-message-media.server.ts",
+      "bytes": 4259
+    },
+    {
       "path": "src/lib/br-phone.ts",
       "bytes": 3800
     },
@@ -975,7 +983,7 @@
     },
     {
       "path": "src/lib/meta.server.ts",
-      "bytes": 22584
+      "bytes": 22406
     },
     {
       "path": "src/lib/wa-interactive.ts",
@@ -1055,7 +1063,7 @@
     },
     {
       "path": "src/lib/wa-dispatch.server.ts",
-      "bytes": 14488
+      "bytes": 15543
     },
     {
       "path": "src/lib/test-disparo.functions.ts",
@@ -1123,7 +1131,7 @@
     },
     {
       "path": "src/lib/evolution.functions.ts",
-      "bytes": 53150
+      "bytes": 53445
     },
     {
       "path": "src/lib/integrations.functions.ts",
@@ -1174,6 +1182,10 @@
       "bytes": 4212
     },
     {
+      "path": "src/lib/meta-message-status.server.ts",
+      "bytes": 4598
+    },
+    {
       "path": "src/lib/plugin-store.functions.ts",
       "bytes": 10762
     },
@@ -1199,7 +1211,7 @@
     },
     {
       "path": "src/lib/meta-sync.server.ts",
-      "bytes": 19109
+      "bytes": 21291
     },
     {
       "path": "src/lib/olist.functions.ts",
@@ -1223,7 +1235,7 @@
     },
     {
       "path": "src/lib/meta-history.functions.ts",
-      "bytes": 10211
+      "bytes": 16834
     },
     {
       "path": "src/lib/dashboard-ops.functions.ts",
@@ -2215,7 +2227,11 @@
     },
     {
       "path": "src/components/content/meta-content-history.tsx",
-      "bytes": 29899
+      "bytes": 40066
+    },
+    {
+      "path": "src/components/content/meta-social-intelligence.tsx",
+      "bytes": 11884
     },
     {
       "path": "src/components/master/signup-welcome-card.tsx",
@@ -2447,7 +2463,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 188738
+      "bytes": 188795
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -2731,7 +2747,7 @@
     },
     {
       "path": "src/routes/api/public/meta-webhook.ts",
-      "bytes": 25825
+      "bytes": 30599
     },
     {
       "path": "src/routes/api/public/v1/$.ts",
@@ -2739,7 +2755,7 @@
     },
     {
       "path": "src/routes/api/public/hooks/process-retry-queue.ts",
-      "bytes": 12488
+      "bytes": 14133
     },
     {
       "path": "src/routes/api/public/hooks/process-kanban-reguas.ts",
@@ -5620,6 +5636,10 @@
       "target": "node:crypto"
     },
     {
+      "source": "src/lib/meta-message-media.server.ts",
+      "target": "@/lib/storage/r2.server"
+    },
+    {
       "source": "src/lib/signup-welcome.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -6126,6 +6146,10 @@
     {
       "source": "src/lib/wa-dispatch.server.ts",
       "target": "@/lib/evolution-helpers"
+    },
+    {
+      "source": "src/lib/wa-dispatch.server.ts",
+      "target": "./meta-response-window.server"
     },
     {
       "source": "src/lib/wa-dispatch.server.ts",
@@ -6800,6 +6824,10 @@
       "target": "@/lib/meta-leads.server"
     },
     {
+      "source": "src/lib/meta-sync.server.ts",
+      "target": "@/lib/meta-message-media.server"
+    },
+    {
       "source": "src/lib/olist.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -6961,6 +6989,10 @@
     },
     {
       "source": "src/lib/meta-history.functions.ts",
+      "target": "./storage/r2.server"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
       "target": "@/integrations/supabase/client.server"
     },
     {
@@ -6970,6 +7002,18 @@
     {
       "source": "src/lib/meta-history.functions.ts",
       "target": "./meta-content-sync.server"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "./meta-message-media.server"
     },
     {
       "source": "src/lib/dashboard-ops.functions.ts",
@@ -11872,6 +11916,34 @@
       "target": "@/lib/meta-content.functions"
     },
     {
+      "source": "src/components/content/meta-content-history.tsx",
+      "target": "@/components/content/meta-social-intelligence"
+    },
+    {
+      "source": "src/components/content/meta-social-intelligence.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/components/content/meta-social-intelligence.tsx",
+      "target": "lucide-react"
+    },
+    {
+      "source": "src/components/content/meta-social-intelligence.tsx",
+      "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/components/content/meta-social-intelligence.tsx",
+      "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/components/content/meta-social-intelligence.tsx",
+      "target": "@/components/ui/card"
+    },
+    {
+      "source": "src/components/content/meta-social-intelligence.tsx",
+      "target": "@/components/ui/table"
+    },
+    {
       "source": "src/components/master/signup-welcome-card.tsx",
       "target": "react"
     },
@@ -15977,6 +16049,10 @@
     },
     {
       "source": "src/routes/api/public/meta-webhook.ts",
+      "target": "@/lib/meta-message-status.server"
+    },
+    {
+      "source": "src/routes/api/public/meta-webhook.ts",
       "target": "@/lib/meta-leads.server"
     },
     {
@@ -16033,11 +16109,19 @@
     },
     {
       "source": "src/routes/api/public/hooks/process-retry-queue.ts",
+      "target": "@/lib/evolution-helpers"
+    },
+    {
+      "source": "src/routes/api/public/hooks/process-retry-queue.ts",
       "target": "@/lib/storage/r2.server"
     },
     {
       "source": "src/routes/api/public/hooks/process-retry-queue.ts",
       "target": "@/lib/jid"
+    },
+    {
+      "source": "src/routes/api/public/hooks/process-retry-queue.ts",
+      "target": "@/lib/wa-dispatch.server"
     },
     {
       "source": "src/routes/api/public/hooks/process-retry-queue.ts",
