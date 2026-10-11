@@ -422,7 +422,10 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
             }
           }
 
-          await (supabaseAdmin as any).from("messaging_inbox_events").update({ status: "processed", company_id: companyId, normalized_count: normalizedCount, processed_at: new Date().toISOString(), error_message: null }).eq("external_event_id", receivedEventId);
+          const ignoredNote = unmatchedIds.size && !normalizedCount
+            ? `ignorado: nenhum canal ${channel} cadastrado para o ID ${[...unmatchedIds].join(",")}`
+            : null;
+          await (supabaseAdmin as any).from("messaging_inbox_events").update({ status: "processed", company_id: companyId, normalized_count: normalizedCount, processed_at: new Date().toISOString(), error_message: ignoredNote }).eq("external_event_id", receivedEventId);
           return new Response("EVENT_RECEIVED", { status: 200 });
         } catch (error) {
           console.error("[meta-webhook]", error);
