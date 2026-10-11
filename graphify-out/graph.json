@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-11T01:28:02.042953+00:00",
+  "generated_at": "2026-10-11T01:34:53.982659+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -76,10 +76,6 @@
     {
       "path": "query.sql",
       "bytes": 126
-    },
-    {
-      "path": ".lovable/plan.md",
-      "bytes": 5859
     },
     {
       "path": ".lovable/project.json",
@@ -500,6 +496,10 @@
     {
       "path": ".lovable/plan/kiwify-como-padrão-gestão-de-pagamento-carência-pós-trial-2026-09-15.md",
       "bytes": 3567
+    },
+    {
+      "path": ".lovable/plan/diagnóstico-instagram-direct-no-entra-en-app-conversas-2026-10-11.md",
+      "bytes": 5859
     },
     {
       "path": ".lovable/plan/plano-reorganizar-respostas-rápidas-e-agendamento-2026-09-15.md",
@@ -967,7 +967,7 @@
     },
     {
       "path": "src/lib/meta.server.ts",
-      "bytes": 22454
+      "bytes": 22584
     },
     {
       "path": "src/lib/wa-interactive.ts",
@@ -1243,7 +1243,7 @@
     },
     {
       "path": "src/lib/meta.functions.ts",
-      "bytes": 8906
+      "bytes": 9152
     },
     {
       "path": "src/lib/company-reset.functions.ts",
@@ -2431,7 +2431,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 188699
+      "bytes": 188738
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -2715,7 +2715,7 @@
     },
     {
       "path": "src/routes/api/public/meta-webhook.ts",
-      "bytes": 24229
+      "bytes": 24950
     },
     {
       "path": "src/routes/api/public/v1/$.ts",
