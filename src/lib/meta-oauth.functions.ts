@@ -196,7 +196,8 @@ export const connectMetaOAuthTargets = createServerFn({ method: "POST" })
       const rec = await reconcileSocialAccounts(supabaseAdmin, companyId);
       warnings.push(...rec.warnings);
     } catch (e) {
-      warnings.push(`Histórico de conteúdo indisponível: ${e instanceof Error ? e.message : String(e)}`);
+      // O canal continua conectado; só o registro de ativos ficou pendente.
+      warnings.push(`Canal conectado, mas o registro dos ativos do histórico falhou (${e instanceof Error ? e.message : String(e)}). Abra Conteúdo → Histórico ou Diagnóstico para tentar novamente.`);
     }
 
     return { ok: true as const, connected, skipped, warnings };

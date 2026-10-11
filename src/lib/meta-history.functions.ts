@@ -23,6 +23,21 @@ export const listMetaSocialAccounts = createServerFn({ method: "POST" })
     return { accounts: (data ?? []).map((a: any) => ({ ...a, instance_name: names.get(a.instance_id) ?? null })), error: null as string | null };
   });
 
+/** Concilia canais Meta → ativos formais e conexões lógicas, sem sincronizar conteúdo. */
+export const reconcileMetaAssets = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { reconcileSocialAccounts } = await import("./meta-content-sync.server");
+    try {
+      const { accounts, warnings } = await reconcileSocialAccounts(supabaseAdmin, companyId);
+      return { ok: true as const, count: accounts.length, warnings, error: null as string | null };
+    } catch (e) {
+      return { ok: false as const, count: 0, warnings: [] as string[], error: tableError(e instanceof Error ? e.message : String(e)) };
+    }
+  });
+
 /** Sincroniza histórico (posts, comentários, métricas, perfil, Stories) para uma ou todas as contas. */
 export const syncMetaContentHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
