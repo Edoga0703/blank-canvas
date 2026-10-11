@@ -338,8 +338,9 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                   const echoAttachment = attachmentFor(value);
                   const echoMediaType = String(echoAttachment?.type ?? "").toLowerCase();
                   const echoMediaUrl = echoAttachment?.payload?.url ? String(echoAttachment.payload.url) : null;
-                  const echoExternalId = String(ev?.message?.mid ?? `meta_echo_${receivedEventId}`);
-                  const echoTimestamp = ev?.timestamp ? (ev.timestamp < 10_000_000_000 ? ev.timestamp * 1000 : ev.timestamp) : Date.now();
+                  const rawEchoTs = ev?.timestamp;
+                  const numEchoTs = typeof rawEchoTs === "number" ? rawEchoTs : (typeof rawEchoTs === "string" && /^\d+$/.test(rawEchoTs.trim()) ? Number(rawEchoTs.trim()) : NaN);
+                  const echoTimestamp = !isNaN(numEchoTs) && numEchoTs > 0 ? (numEchoTs < 10_000_000_000 ? numEchoTs * 1000 : numEchoTs) : Date.now();
                   const { data: echoMessage, error: echoError } = await (supabaseAdmin as any).from("mensagens").insert({
                       company_id: inst.company_id,
                       user_id: inst.user_id || null,
@@ -407,8 +408,14 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
 
               const externalId = String(ev?.message?.mid ?? `meta_${receivedEventId}_${senderId}`);
               const sourceTimestamp = ev?.timestamp ?? value?.created_time;
-              const timestampMs = typeof sourceTimestamp === "number" ? (sourceTimestamp < 10_000_000_000 ? sourceTimestamp * 1000 : sourceTimestamp) : (sourceTimestamp ? new Date(sourceTimestamp).getTime() : Date.now());
-              const stableMessageId = String(externalId || `meta:${inst.id}:${senderId}:${timestampMs}`);
+              const numericTs = typeof sourceTimestamp === "number"
+                ? sourceTimestamp
+                : (typeof sourceTimestamp === "string" && /^\d+$/.test(sourceTimestamp.trim()) ? Number(sourceTimestamp.trim()) : NaN);
+              const timestampMs = !isNaN(numericTs) && numericTs > 0
+                ? (numericTs < 10_000_000_000 ? numericTs * 1000 : numericTs)
+                : (sourceTimestamp ? new Date(sourceTimestamp).getTime() : Date.now());
+              const safeTimestampMs = isNaN(timestampMs) ? Date.now() : timestampMs;
+              const stableMessageId = String(externalId || `meta:${inst.id}:${senderId}:${safeTimestampMs}`);
 
               // Verifica se a mensagem já foi processada anteriormente (reintentos de Meta)
               const { data: existingMsg } = await (supabaseAdmin as any)
@@ -441,8 +448,8 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                   texto: text || (mediaType ? `[${mediaType.toUpperCase()}]` : ""),
                   provider: inst.provider,
                   whatsapp_message_id: stableMessageId,
-                  provider_timestamp: new Date(timestampMs).toISOString(),
-                  created_at: new Date(timestampMs).toISOString(),
+                  provider_timestamp: new Date(safeTimestampMs).toISOString(),
+                  created_at: new Date(safeTimestampMs).toISOString(),
                   midia_url: attachment?.payload?.url || null,
                   midia_tipo: mediaType || null,
                   status_envio: "recebido",
