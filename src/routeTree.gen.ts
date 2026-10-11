@@ -107,6 +107,7 @@ import { Route as ApiPublicHooksAgendamentosDispatchRouteImport } from './routes
 import { Route as ApiPublicHooksBillingRenewRouteImport } from './routes/api/public/hooks/billing-renew'
 import { Route as ApiPublicHooksGoogleCalendarRouteImport } from './routes/api/public/hooks/google-calendar'
 import { Route as ApiPublicHooksGoogleCalendarRenewRouteImport } from './routes/api/public/hooks/google-calendar-renew'
+import { Route as ApiPublicHooksMetaStoriesRouteImport } from './routes/api/public/hooks/meta-stories'
 import { Route as ApiPublicHooksMetaSyncRouteImport } from './routes/api/public/hooks/meta-sync'
 import { Route as ApiPublicHooksProcessAgendamentosRouteImport } from './routes/api/public/hooks/process-agendamentos'
 import { Route as ApiPublicHooksProcessCampaignsRouteImport } from './routes/api/public/hooks/process-campaigns'
@@ -624,6 +625,12 @@ const ApiPublicHooksGoogleCalendarRenewRoute =
     path: '/api/public/hooks/google-calendar-renew',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksMetaStoriesRoute =
+  ApiPublicHooksMetaStoriesRouteImport.update({
+    id: '/api/public/hooks/meta-stories',
+    path: '/api/public/hooks/meta-stories',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksMetaSyncRoute = ApiPublicHooksMetaSyncRouteImport.update({
   id: '/api/public/hooks/meta-sync',
   path: '/api/public/hooks/meta-sync',
@@ -792,6 +799,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/billing-renew': typeof ApiPublicHooksBillingRenewRoute
   '/api/public/hooks/google-calendar': typeof ApiPublicHooksGoogleCalendarRoute
   '/api/public/hooks/google-calendar-renew': typeof ApiPublicHooksGoogleCalendarRenewRoute
+  '/api/public/hooks/meta-stories': typeof ApiPublicHooksMetaStoriesRoute
   '/api/public/hooks/meta-sync': typeof ApiPublicHooksMetaSyncRoute
   '/api/public/hooks/process-agendamentos': typeof ApiPublicHooksProcessAgendamentosRoute
   '/api/public/hooks/process-campaigns': typeof ApiPublicHooksProcessCampaignsRoute
@@ -902,6 +910,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/billing-renew': typeof ApiPublicHooksBillingRenewRoute
   '/api/public/hooks/google-calendar': typeof ApiPublicHooksGoogleCalendarRoute
   '/api/public/hooks/google-calendar-renew': typeof ApiPublicHooksGoogleCalendarRenewRoute
+  '/api/public/hooks/meta-stories': typeof ApiPublicHooksMetaStoriesRoute
   '/api/public/hooks/meta-sync': typeof ApiPublicHooksMetaSyncRoute
   '/api/public/hooks/process-agendamentos': typeof ApiPublicHooksProcessAgendamentosRoute
   '/api/public/hooks/process-campaigns': typeof ApiPublicHooksProcessCampaignsRoute
@@ -1015,6 +1024,7 @@ export interface FileRoutesById {
   '/api/public/hooks/billing-renew': typeof ApiPublicHooksBillingRenewRoute
   '/api/public/hooks/google-calendar': typeof ApiPublicHooksGoogleCalendarRoute
   '/api/public/hooks/google-calendar-renew': typeof ApiPublicHooksGoogleCalendarRenewRoute
+  '/api/public/hooks/meta-stories': typeof ApiPublicHooksMetaStoriesRoute
   '/api/public/hooks/meta-sync': typeof ApiPublicHooksMetaSyncRoute
   '/api/public/hooks/process-agendamentos': typeof ApiPublicHooksProcessAgendamentosRoute
   '/api/public/hooks/process-campaigns': typeof ApiPublicHooksProcessCampaignsRoute
@@ -1129,6 +1139,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/billing-renew'
     | '/api/public/hooks/google-calendar'
     | '/api/public/hooks/google-calendar-renew'
+    | '/api/public/hooks/meta-stories'
     | '/api/public/hooks/meta-sync'
     | '/api/public/hooks/process-agendamentos'
     | '/api/public/hooks/process-campaigns'
@@ -1239,6 +1250,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/billing-renew'
     | '/api/public/hooks/google-calendar'
     | '/api/public/hooks/google-calendar-renew'
+    | '/api/public/hooks/meta-stories'
     | '/api/public/hooks/meta-sync'
     | '/api/public/hooks/process-agendamentos'
     | '/api/public/hooks/process-campaigns'
@@ -1351,6 +1363,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/billing-renew'
     | '/api/public/hooks/google-calendar'
     | '/api/public/hooks/google-calendar-renew'
+    | '/api/public/hooks/meta-stories'
     | '/api/public/hooks/meta-sync'
     | '/api/public/hooks/process-agendamentos'
     | '/api/public/hooks/process-campaigns'
@@ -1412,6 +1425,7 @@ export interface RootRouteChildren {
   ApiPublicHooksBillingRenewRoute: typeof ApiPublicHooksBillingRenewRoute
   ApiPublicHooksGoogleCalendarRoute: typeof ApiPublicHooksGoogleCalendarRoute
   ApiPublicHooksGoogleCalendarRenewRoute: typeof ApiPublicHooksGoogleCalendarRenewRoute
+  ApiPublicHooksMetaStoriesRoute: typeof ApiPublicHooksMetaStoriesRoute
   ApiPublicHooksMetaSyncRoute: typeof ApiPublicHooksMetaSyncRoute
   ApiPublicHooksProcessAgendamentosRoute: typeof ApiPublicHooksProcessAgendamentosRoute
   ApiPublicHooksProcessCampaignsRoute: typeof ApiPublicHooksProcessCampaignsRoute
@@ -2114,6 +2128,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksGoogleCalendarRenewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/meta-stories': {
+      id: '/api/public/hooks/meta-stories'
+      path: '/api/public/hooks/meta-stories'
+      fullPath: '/api/public/hooks/meta-stories'
+      preLoaderRoute: typeof ApiPublicHooksMetaStoriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/meta-sync': {
       id: '/api/public/hooks/meta-sync'
       path: '/api/public/hooks/meta-sync'
@@ -2382,6 +2403,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksGoogleCalendarRoute: ApiPublicHooksGoogleCalendarRoute,
   ApiPublicHooksGoogleCalendarRenewRoute:
     ApiPublicHooksGoogleCalendarRenewRoute,
+  ApiPublicHooksMetaStoriesRoute: ApiPublicHooksMetaStoriesRoute,
   ApiPublicHooksMetaSyncRoute: ApiPublicHooksMetaSyncRoute,
   ApiPublicHooksProcessAgendamentosRoute:
     ApiPublicHooksProcessAgendamentosRoute,

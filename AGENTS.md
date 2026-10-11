@@ -1,1 +1,3 @@
 Keep the authenticated CRM desktop navigation in one collapsible sidebar, not a permanent icon rail plus a second menu; this keeps one consistent navigation surface in both widths.
+- Meta content history (posts, public comments, metrics, Stories) lives in meta_* tables written only by server code (src/lib/meta-content-sync.server.ts); whatsapp_instances stays the message transport and token holder — keeps public comments out of mensagens and tokens server-only.
+- Schema changes for the external database are delivered as idempotent SQL under docs/sql and applied manually — no migration tool reaches that database.

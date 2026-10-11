@@ -1,5 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { MetaContentCenter } from "@/components/content/meta-content-center";
+import { MetaContentHistory, MetaDiagnosticsPanel } from "@/components/content/meta-content-history";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { brand } from "@/config/brand";
 
 type ContentSearch = {
@@ -28,6 +30,13 @@ function ConteudoPage() {
           Publique, acompanhe comentários, menções e reações e responda pela API oficial da Meta.
         </p>
       </div>
+      <Tabs defaultValue="live">
+        <TabsList>
+          <TabsTrigger value="live">Ao vivo</TabsTrigger>
+          <TabsTrigger value="history">Histórico e métricas</TabsTrigger>
+          <TabsTrigger value="diagnostics">Diagnóstico</TabsTrigger>
+        </TabsList>
+        <TabsContent value="live">
       <MetaContentCenter
         requestedChannel={search.channel}
         requestedPost={search.post}
@@ -39,6 +48,10 @@ function ConteudoPage() {
           });
         }}
       />
+        </TabsContent>
+        <TabsContent value="history"><MetaContentHistory /></TabsContent>
+        <TabsContent value="diagnostics"><MetaDiagnosticsPanel /></TabsContent>
+      </Tabs>
     </div>
   );
 }

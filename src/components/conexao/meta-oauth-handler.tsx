@@ -88,6 +88,9 @@ export function MetaOAuthHandler({ onConnected }: { onConnected?: () => void }) 
       if (r.skipped?.length) {
         toast.warning(`Limite do plano: ${r.skipped.length} conta(s) não conectada(s) — 1 por canal.`);
       }
+      for (const w of (r.warnings ?? []) as string[]) {
+        toast.warning(w, { duration: 12000 });
+      }
       setSession(null);
       setTargets([]);
       onConnected?.();
