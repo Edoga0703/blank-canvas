@@ -116,8 +116,24 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
             .maybeSingle();
           if (previous?.status === "processed") return new Response("duplicate", { status: 200 });
           const inboxPayload: any = { external_event_id: receivedEventId, provider: eventProvider, raw_payload: payload, status: "received", received_at: new Date().toISOString(), processed_at: null, error_message: null };
-          if (previous?.id) await (supabaseAdmin as any).from("messaging_inbox_events").update(inboxPayload).eq("id", previous.id);
-          else await (supabaseAdmin as any).from("messaging_inbox_events").insert(inboxPayload);
+          if (previous?.id) {
+            const { error: inboxUpdateError } = await (supabaseAdmin as any)
+              .from("messaging_inbox_events")
+              .update(inboxPayload)
+              .eq("id", previous.id);
+            if (inboxUpdateError) throw new Error(`Falha ao reabrir evento Meta: ${inboxUpdateError.message}`);
+          } else {
+            const { error: inboxInsertError } = await (supabaseAdmin as any)
+              .from("messaging_inbox_events")
+              .insert(inboxPayload);
+            if (inboxInsertError) {
+              // Uma entrega simultânea já assumiu este mesmo corpo. O worker
+              // vencedor continuará o processamento; este pode confirmar o
+              // recebimento sem disparar CRM, notificações ou IA em duplicidade.
+              if (inboxInsertError.code === "23505") return new Response("duplicate", { status: 200 });
+              throw new Error(`Falha ao registrar evento Meta: ${inboxInsertError.message}`);
+            }
+          }
 
           const publicOrigin = (process.env["PUBLIC_APP_URL"] || process.env["APP_URL"] || new URL(request.url).origin).replace(/\/+$/, "");
           let normalizedCount = 0;
