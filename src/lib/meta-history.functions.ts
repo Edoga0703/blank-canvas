@@ -87,6 +87,7 @@ export const listStoredMetaPosts = createServerFn({ method: "POST" })
       error: null as string | null,
       posts: (rows ?? []).map((p: any) => ({
         ...p,
+        metrics_latest: p.metrics_latest && typeof p.metrics_latest === "object" ? p.metrics_latest : {},
         archived_media_url: r2 && p.archived_media_key ? createR2DownloadUrl(p.archived_media_key, 3600) : null,
         archived_thumbnail_url: r2 && p.archived_thumbnail_key ? createR2DownloadUrl(p.archived_thumbnail_key, 3600) : null,
       })),
@@ -109,7 +110,16 @@ export const getStoredMetaPost = createServerFn({ method: "POST" })
       admin.from("meta_content_media").select("position,media_type,media_url,thumbnail_url,storage_key").eq("company_id", companyId).eq("post_id", data.postId).order("position"),
       admin.from("meta_content_comments").select("id,external_comment_id,parent_external_id,author_name,author_username,text,like_count,is_own,status,commented_at").eq("company_id", companyId).eq("post_id", data.postId).order("commented_at").limit(500),
     ]);
-    return { snapshots: snap.data ?? [], media: media.data ?? [], comments: comments.data ?? [] };
+    const { isR2Configured, createR2DownloadUrl } = await import("./storage/r2.server");
+    const r2 = isR2Configured();
+    return {
+      snapshots: snap.data ?? [],
+      media: (media.data ?? []).map((item: any) => ({
+        ...item,
+        archived_url: r2 && item.storage_key ? createR2DownloadUrl(item.storage_key, 3600) : null,
+      })),
+      comments: comments.data ?? [],
+    };
   });
 
 /** Crescimento do perfil e últimas execuções. */

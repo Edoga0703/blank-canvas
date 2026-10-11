@@ -21,6 +21,7 @@ import {
   syncMetaContentHistory,
 } from "@/lib/meta-history.functions";
 import { replyMetaComment } from "@/lib/meta-content.functions";
+import { MetaSocialIntelligence } from "@/components/content/meta-social-intelligence";
 
 type Account = { id: string; network: string; username: string | null; display_name: string | null; status: string; last_synced_at: string | null; last_error: string | null; instance_name: string | null };
 type Metrics = Partial<Record<"likes" | "comments" | "shares" | "saves" | "reach" | "impressions" | "views" | "total_interactions" | "replies" | "avg_watch_time_ms" | "total_watch_time_ms", number | null>>;
@@ -70,6 +71,7 @@ export function MetaContentHistory() {
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [analyticsPosts, setAnalyticsPosts] = useState<Post[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -87,9 +89,14 @@ export function MetaContentHistory() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [a, p, g] = await Promise.all([
+      const analysisEnd = until ? new Date(`${until}T23:59:59`) : new Date();
+      const analysisStart = since ? new Date(`${since}T00:00:00`) : new Date(analysisEnd.getTime() - 30 * 86400_000);
+      const span = Math.max(analysisEnd.getTime() - analysisStart.getTime(), 86400_000);
+      const previousStart = new Date(analysisStart.getTime() - span).toISOString().slice(0, 10);
+      const [a, p, analysis, g] = await Promise.all([
         listAccounts(),
         listPosts({ data: { network: network === "all" ? undefined : network, accountId: accountId === "all" ? undefined : accountId, format: format === "all" ? undefined : format, since: since || undefined, until: until || undefined } }),
+        listPosts({ data: { network: network === "all" ? undefined : network, accountId: accountId === "all" ? undefined : accountId, format: format === "all" ? undefined : format, since: previousStart, until: until || analysisEnd.toISOString().slice(0, 10) } }),
         growth({ data: { accountId: accountId === "all" ? undefined : accountId } }),
       ]);
       let accs = a.accounts as Account[];
@@ -101,8 +108,9 @@ export function MetaContentHistory() {
       }
       setAccounts(accs);
       setPosts(p.posts as Post[]);
+      setAnalyticsPosts(analysis.posts as Post[]);
       setProfile(g.profile);
-      setError(a.error ?? p.error ?? g.error ?? null);
+      setError(a.error ?? p.error ?? analysis.error ?? g.error ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Falha ao carregar histórico.");
     } finally {
@@ -137,11 +145,11 @@ export function MetaContentHistory() {
     const span = end.getTime() - start.getTime();
     const prevStart = new Date(start.getTime() - span);
     const inRange = (p: Post, a: Date, b: Date) => p.published_at && new Date(p.published_at) >= a && new Date(p.published_at) <= b;
-    const cur = posts.filter((p) => inRange(p, start, end));
-    const prev = posts.filter((p) => inRange(p, prevStart, start));
+    const cur = analyticsPosts.filter((p) => inRange(p, start, end));
+    const prev = analyticsPosts.filter((p) => inRange(p, prevStart, new Date(start.getTime() - 1)));
     const sum = (list: Post[], k: keyof Metrics) => list.reduce((acc, p) => acc + (Number(p.metrics_latest?.[k]) || 0), 0);
     return (["reach", "views", "total_interactions"] as (keyof Metrics)[]).map((k) => ({ k, cur: sum(cur, k), prev: sum(prev, k) })).concat([{ k: "posts" as any, cur: cur.length, prev: prev.length }]);
-  }, [posts, since, until]);
+  }, [analyticsPosts, since, until]);
 
   const ranking = useMemo(() => [...posts].filter((p) => p.format !== "story").sort((a, b) => engagement(b.metrics_latest ?? {}) - engagement(a.metrics_latest ?? {})).slice(0, 5), [posts]);
   const growthSeries = useMemo(() => profile.map((r) => ({ date: r.snapshot_date, followers: r.followers, reach: r.reach })), [profile]);
@@ -254,6 +262,8 @@ export function MetaContentHistory() {
         </Card>
       </div>
 
+      <MetaSocialIntelligence posts={posts} />
+
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Carregando histórico…</div>
       ) : posts.length === 0 ? (
@@ -299,7 +309,7 @@ export function MetaContentHistory() {
 function PostDetailDialog({ post, account, onClose }: { post: Post | null; account: Account | null; onClose: () => void }) {
   const getDetail = useServerFn(getStoredMetaPost);
   const reply = useServerFn(replyMetaComment);
-  const [detail, setDetail] = useState<{ snapshots: any[]; comments: any[] } | null>(null);
+  const [detail, setDetail] = useState<{ snapshots: any[]; media: any[]; comments: any[] } | null>(null);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -307,7 +317,7 @@ function PostDetailDialog({ post, account, onClose }: { post: Post | null; accou
   useEffect(() => {
     if (!post) { setDetail(null); return; }
     let alive = true;
-    getDetail({ data: { postId: post.id } }).then((d) => { if (alive) setDetail(d); }).catch(() => alive && setDetail({ snapshots: [], comments: [] }));
+    getDetail({ data: { postId: post.id } }).then((d) => { if (alive) setDetail(d); }).catch(() => alive && setDetail({ snapshots: [], media: [], comments: [] }));
     return () => { alive = false; };
   }, [post, getDetail]);
 
@@ -338,6 +348,18 @@ function PostDetailDialog({ post, account, onClose }: { post: Post | null; accou
           <div className="grid gap-5 md:grid-cols-2">
             <div className="space-y-3">
               <div className="aspect-square overflow-hidden rounded-md border"><PostMedia post={post} controls /></div>
+              {(detail?.media?.length ?? 0) > 1 && (
+                <div>
+                  <div className="mb-2 text-xs font-medium text-muted-foreground">Itens do carrossel ({detail?.media.length})</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {detail?.media.map((item: any) => {
+                      const src = item.archived_url ?? item.media_url;
+                      const video = /video|reel/i.test(String(item.media_type ?? ""));
+                      return <div key={item.position} className="aspect-square overflow-hidden rounded-md border bg-muted">{src ? (video ? <video src={src} controls playsInline className="h-full w-full object-contain" /> : <img src={src} alt={`Mídia ${item.position + 1}`} loading="lazy" className="h-full w-full object-cover" />) : <div className="flex h-full items-center justify-center text-xs text-muted-foreground">Sem mídia</div>}</div>;
+                    })}
+                  </div>
+                </div>
+              )}
               {post.caption && <p className="whitespace-pre-wrap text-sm">{post.caption}</p>}
             </div>
             <div className="space-y-4">

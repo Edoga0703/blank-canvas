@@ -325,7 +325,7 @@ async function upsertPost(admin: Admin, account: SocialAccount, item: any, dbErr
     last_synced_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
-  const { data, error } = await admin.from("meta_content_posts").upsert(row, { onConflict: "company_id,network,external_post_id" }).select("id,format,archived_media_key").single();
+  const { data, error } = await admin.from("meta_content_posts").upsert(row, { onConflict: "company_id,network,external_post_id" }).select("id,format,archived_media_key,archived_thumbnail_key").single();
   if (error) throw new Error(`gravar post ${item.id}: ${error.message}`);
 
   // Medios (carrusel = varios hijos).
@@ -345,7 +345,7 @@ async function upsertPost(admin: Admin, account: SocialAccount, item: any, dbErr
     const msg = `mídias do post ${item.id}: ${mediaErr.message}`;
     if (dbErrors) dbErrors.push(msg); else console.warn("[meta-content]", msg);
   }
-  return data as { id: string; format: string; archived_media_key: string | null };
+  return data as { id: string; format: string; archived_media_key: string | null; archived_thumbnail_key: string | null };
 }
 
 export function normalizeComment(network: "facebook" | "instagram", c: any) {
@@ -415,10 +415,94 @@ async function archiveToR2(companyId: string, url: string | null, name: string, 
   return stored.storageKey;
 }
 
+function mediaExtension(url: string | null | undefined, mediaType: string | null | undefined) {
+  const clean = String(url ?? "").split("?")[0];
+  const fromUrl = clean.match(/\.([a-z0-9]{2,5})$/i)?.[1]?.toLowerCase();
+  if (fromUrl && ["jpg", "jpeg", "png", "webp", "gif", "mp4", "mov", "webm"].includes(fromUrl)) return fromUrl;
+  return /video|reel/i.test(String(mediaType ?? "")) ? "mp4" : "jpg";
+}
+
+/** Arquiva mídia orgânica em lotes pequenos sem invalidar o post se a URL expirar. */
+async function archivePostAssets(
+  admin: Admin,
+  account: SocialAccount,
+  item: any,
+  saved: { id: string; format: string; archived_media_key: string | null; archived_thumbnail_key: string | null },
+  maxAttempts: number,
+) {
+  const ig = account.network === "instagram";
+  const attachment = item?.attachments?.data?.[0];
+  const primaryUrl = ig
+    ? item?.media_url ?? null
+    : attachment?.media?.source ?? attachment?.media?.image?.src ?? item?.full_picture ?? null;
+  const thumbnailUrl = ig
+    ? item?.thumbnail_url ?? (/video|reel/i.test(saved.format) ? null : item?.media_url ?? null)
+    : item?.full_picture ?? attachment?.media?.image?.src ?? null;
+  const occurredAt = (ig ? item?.timestamp : item?.created_time) ?? null;
+  let archived = 0;
+  let attempts = 0;
+  const updates: Record<string, string> = {};
+
+  if (!saved.archived_media_key && primaryUrl && attempts < maxAttempts) {
+    attempts += 1;
+    const key = await archiveToR2(
+      account.company_id,
+      primaryUrl,
+      `meta-${account.network}-${item.id}.${mediaExtension(primaryUrl, saved.format)}`,
+      occurredAt,
+    ).catch((error) => {
+      console.warn("[meta-content] arquivo R2 falhou", item.id, error instanceof Error ? error.message : error);
+      return null;
+    });
+    if (key) { updates.archived_media_key = key; archived += 1; }
+  }
+
+  if (!saved.archived_thumbnail_key && thumbnailUrl && thumbnailUrl !== primaryUrl && /video|reel/i.test(saved.format) && attempts < maxAttempts) {
+    attempts += 1;
+    const key = await archiveToR2(
+      account.company_id,
+      thumbnailUrl,
+      `meta-${account.network}-${item.id}-thumb.${mediaExtension(thumbnailUrl, "image")}`,
+      occurredAt,
+    ).catch(() => null);
+    if (key) { updates.archived_thumbnail_key = key; archived += 1; }
+  }
+
+  if (Object.keys(updates).length) {
+    const { error } = await admin.from("meta_content_posts").update(updates).eq("id", saved.id);
+    if (error) throw new Error(`arquivo principal do post ${item.id}: ${error.message}`);
+  }
+
+  const children: any[] = ig ? item?.children?.data ?? [] : attachment?.subattachments?.data ?? [];
+  if (children.length) {
+    const { data: storedRows } = await admin.from("meta_content_media").select("position,storage_key").eq("post_id", saved.id);
+    const stored = new Map((storedRows ?? []).map((row: any) => [Number(row.position), row.storage_key]));
+    for (const [position, child] of children.entries()) {
+      if (attempts >= maxAttempts) break;
+      if (stored.get(position)) continue;
+      const childUrl = ig ? child?.media_url : child?.media?.source ?? child?.media?.image?.src;
+      if (!childUrl) continue;
+      attempts += 1;
+      const key = await archiveToR2(
+        account.company_id,
+        childUrl,
+        `meta-${account.network}-${item.id}-${position}.${mediaExtension(childUrl, child?.media_type ?? child?.type)}`,
+        occurredAt,
+      ).catch(() => null);
+      if (!key) continue;
+      const { error } = await admin.from("meta_content_media").update({ storage_key: key }).eq("post_id", saved.id).eq("position", position);
+      if (!error) archived += 1;
+    }
+  }
+
+  return { archived, attempts };
+}
+
 // ───────────────────────── C. Sincronización orgánica ─────────────────────────
 
 const IG_MEDIA_FIELDS = "id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,children{id,media_type,media_url,thumbnail_url}";
-const FB_POST_FIELDS = "id,message,created_time,permalink_url,full_picture,attachments{media_type,type,url,media,subattachments,target},shares,reactions.limit(0).summary(true),comments.limit(0).summary(true)";
+const FB_POST_BASE_FIELDS = "id,message,created_time,permalink_url,full_picture,attachments{media_type,type,url,media,subattachments,target}";
+const FB_POST_ENGAGEMENT_FIELDS = "shares,reactions.limit(0).summary(true),comments.limit(0).summary(true)";
 const IG_COMMENT_FIELDS = "id,text,timestamp,username,from,like_count,hidden,parent_id";
 const FB_COMMENT_FIELDS = "id,message,created_time,from,like_count,comment_count,is_hidden,parent{id}";
 
@@ -447,6 +531,8 @@ export type ContentSyncOptions = {
   maxCommentPages?: number;
   /** Páginas de 50 respuestas por comentario (solo Instagram). */
   maxReplyPages?: number;
+  /** Quantidade máxima de publicações novas arquivadas no R2 por execução. */
+  maxMediaArchives?: number;
 };
 
 const emptyCounts = (): ContentSyncCounts => ({
@@ -501,11 +587,14 @@ async function runAccountSync(admin: Admin, account: SocialAccount, options: Con
   const maxPages = Math.min(options.maxPages ?? (options.full ? 10 : 3), 20);
   const maxCommentPages = Math.min(Math.max(options.maxCommentPages ?? (options.full ? 5 : 2), 1), 10);
   const maxReplyPages = Math.min(Math.max(options.maxReplyPages ?? 2, 0), 5);
+  const maxMediaArchives = Math.min(Math.max(options.maxMediaArchives ?? (options.full ? 50 : 10), 0), 100);
+  let mediaArchiveAttempts = 0;
 
   // Estado del circuit breaker por cuenta.
   let halt: Issue | null = null; // token vencido / rate limit: corta todo lo opcional
   let insightsBreaker: Issue | null = null;
   let commentsBreaker: Issue | null = null;
+  let engagementFieldsBreaker: Issue | null = null;
   const trip = (stage: string, issue: Issue) => {
     breakers.push({ stage, kind: issue.kind, message: issue.message });
     if (haltsAccount(issue.kind) && !halt) halt = issue;
@@ -515,7 +604,7 @@ async function runAccountSync(admin: Admin, account: SocialAccount, options: Con
   const posts: any[] = [];
   try {
     let next: string | null = `/${encodeURIComponent(ownerId)}/${ig ? "media" : "published_posts"}${qs({
-      fields: ig ? IG_MEDIA_FIELDS : FB_POST_FIELDS,
+      fields: ig ? IG_MEDIA_FIELDS : FB_POST_BASE_FIELDS,
       limit: 25,
       since: !ig && !options.full && cursor.last_post_at ? Math.floor(new Date(cursor.last_post_at).getTime() / 1000) - 7 * 86400 : undefined,
     })}`;
@@ -540,7 +629,24 @@ async function runAccountSync(admin: Admin, account: SocialAccount, options: Con
   }
 
   let newest = cursor.last_post_at ?? null;
-  for (const item of posts) {
+  for (const rawItem of posts) {
+    let item = rawItem;
+    // Conteúdo e engagement têm permissões diferentes. Se os campos opcionais
+    // falharem, a publicação básica continua sendo persistida normalmente.
+    if (!ig && !engagementFieldsBreaker && !halt) {
+      try {
+        const extra = await metaGraphRequest(`/${encodeURIComponent(String(rawItem.id))}${qs({ fields: FB_POST_ENGAGEMENT_FIELDS })}`, token, { method: "GET" });
+        item = { ...rawItem, ...extra };
+      } catch (error) {
+        const issue = classifyMetaError(error);
+        if (isGlobalIssue(issue.kind)) {
+          engagementFieldsBreaker = issue;
+          trip("post_engagement_fields", issue);
+        } else {
+          dbErrors.push(`engagement do post ${rawItem.id}: ${issue.kind} — ${issue.message}`);
+        }
+      }
+    }
     let saved: Awaited<ReturnType<typeof upsertPost>>;
     try {
       saved = await upsertPost(admin, account, item, dbErrors);
@@ -550,6 +656,16 @@ async function runAccountSync(admin: Admin, account: SocialAccount, options: Con
     } catch (e) {
       dbErrors.push(e instanceof Error ? e.message : String(e));
       continue;
+    }
+
+    if (mediaArchiveAttempts < maxMediaArchives) {
+      try {
+        const result = await archivePostAssets(admin, account, item, saved, maxMediaArchives - mediaArchiveAttempts);
+        mediaArchiveAttempts += result.attempts;
+        counts.archived += result.archived;
+      } catch (error) {
+        dbErrors.push(`arquivo do post ${item.id}: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
 
     // 2) Comentarios + respuestas, paginación acotada (solo histórico; nunca mensagens).
@@ -650,6 +766,19 @@ async function runAccountSync(admin: Admin, account: SocialAccount, options: Con
     }
   }
   if (posts.length) {
+    if (!ig) {
+      stages.push(engagementFieldsBreaker
+        ? { stage: "post_engagement_fields", ok: false, kind: engagementFieldsBreaker.kind, message: `Publicações básicas preservadas; curtidas/comentários detalhados indisponíveis: ${engagementFieldsBreaker.message}` }
+        : { stage: "post_engagement_fields", ok: true, count: posts.length });
+    }
+    stages.push({
+      stage: "media_archive",
+      ok: true,
+      count: counts.archived,
+      ...(mediaArchiveAttempts >= maxMediaArchives && maxMediaArchives > 0
+        ? { message: `Lote limitado a ${maxMediaArchives} tentativa(s) de arquivo; mídias pendentes serão retomadas nas próximas sincronizações.` }
+        : {}),
+    });
     stages.push(commentsBreaker
       ? { stage: "comments", ok: false, kind: (commentsBreaker as Issue).kind, message: `Interrompido após a primeira falha (circuit breaker): ${(commentsBreaker as Issue).message}` }
       : { stage: "comments", ok: true, count: counts.comments, ...(counts.posts_comments_truncated ? { message: `${counts.posts_comments_truncated} publicação(ões) com mais comentários além do limite de ${maxCommentPages} página(s)` } : {}) });
@@ -823,7 +952,9 @@ export async function runMetaDiagnostics(token: string, network: "facebook" | "i
     if (opts.skipIf) { checks.push({ key, label, status: "skip", detail: opts.skipIf }); return null; }
     try {
       const json = await metaGraphRequest(path, token, { method: "GET" });
-      checks.push({ key, label, status: "ok", detail: describe(json), access: "standard" });
+      // Sucesso confirma o endpoint testado, mas não prova Standard/Advanced
+      // Access do aplicativo. Não rotulamos o nível de acesso por inferência.
+      checks.push({ key, label, status: "ok", detail: describe(json) });
       return json;
     } catch (e) {
       const c = classifyMetaError(e);

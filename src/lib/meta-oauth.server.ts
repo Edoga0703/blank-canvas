@@ -198,12 +198,19 @@ const SCOPES = [
   "pages_messaging",
   "pages_manage_metadata",
   "pages_read_engagement",
+  "pages_read_user_content",
+  "pages_manage_engagement",
+  "pages_manage_posts",
+  "read_insights",
   "instagram_basic",
   "instagram_manage_messages",
   "instagram_content_publish",
   "instagram_manage_comments",
+  "instagram_manage_insights",
   "business_management",
   "leads_retrieval",
+  "ads_read",
+  "ads_management",
 ];
 
 /** Monta a URL do diálogo de login da Meta. Usa config_id quando o app já tem uma configuração Login for Business. */
