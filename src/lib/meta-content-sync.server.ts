@@ -177,17 +177,60 @@ export async function reconcileSocialAccounts(admin: Admin, companyId: string): 
     }
   }
 
-  // Vincula IG ↔ Página por page_id.
-  const { data: accounts } = await admin.from("meta_social_accounts").select("id,company_id,instance_id,network,provider,external_id,page_id,ig_user_id,username,display_name,sync_cursor").eq("company_id", companyId);
+  // Vincula IG ↔ Página por page_id (solo coincidencias exactas).
+  const { data: accounts, error: listErr } = await admin.from("meta_social_accounts").select("id,company_id,instance_id,network,provider,external_id,page_id,ig_user_id,username,display_name,sync_cursor").eq("company_id", companyId);
+  if (listErr) throw new Error(`Falha ao ler ativos Meta: ${listErr.message}`);
   const list = (accounts ?? []) as SocialAccount[];
   for (const ig of list.filter((a) => a.network === "instagram" && a.page_id)) {
     const fb = list.find((a) => a.network === "facebook" && a.external_id === ig.page_id);
     if (fb) {
-      await admin.from("meta_social_accounts").update({ linked_account_id: fb.id }).eq("id", ig.id);
-      await admin.from("meta_social_accounts").update({ linked_account_id: ig.id }).eq("id", fb.id);
+      const r1 = await admin.from("meta_social_accounts").update({ linked_account_id: fb.id }).eq("id", ig.id);
+      const r2 = await admin.from("meta_social_accounts").update({ linked_account_id: ig.id }).eq("id", fb.id);
+      for (const r of [r1, r2]) if (r?.error) warnings.push(`Falha ao vincular Instagram ↔ Página: ${r.error.message}`);
     }
   }
+  warnings.push(...(await reconcileMetaConnections(admin, companyId, list)));
   return { accounts: list, warnings };
+}
+
+/**
+ * Identidad lógica de conexión: la Página (page:<id>) o, para Instagram Login sin Página,
+ * la cuenta IG (ig:<id>). Nunca usa "última instancia" ni guarda tokens.
+ */
+export function connectionIdentityFor(account: Pick<SocialAccount, "network" | "page_id" | "external_id">): string | null {
+  if (account.page_id) return `page:${account.page_id}`;
+  if (account.network === "instagram" && account.external_id) return `ig:${account.external_id}`;
+  return null;
+}
+
+async function reconcileMetaConnections(admin: Admin, companyId: string, list: SocialAccount[]): Promise<string[]> {
+  const warnings: string[] = [];
+  const groups = new Map<string, SocialAccount[]>();
+  for (const a of list) {
+    const key = connectionIdentityFor(a);
+    if (!key) continue;
+    groups.set(key, [...(groups.get(key) ?? []), a]);
+  }
+  for (const [identity, members] of groups) {
+    const fb = members.find((m) => m.network === "facebook");
+    const label = fb?.display_name ?? fb?.username ?? members[0]?.display_name ?? members[0]?.username ?? identity;
+    const now = new Date().toISOString();
+    const { data: existing, error: selErr } = await admin.from("meta_connections").select("id").eq("company_id", companyId).eq("meta_user_id", identity).maybeSingle();
+    if (selErr) { warnings.push(`Conexão Meta ${label}: ${selErr.message}`); continue; }
+    let connectionId: string | null = existing?.id ?? null;
+    if (connectionId) {
+      const { error } = await admin.from("meta_connections").update({ label, status: "active", last_checked_at: now, updated_at: now }).eq("id", connectionId);
+      if (error) warnings.push(`Conexão Meta ${label}: ${error.message}`);
+    } else {
+      const { data: created, error } = await admin.from("meta_connections").insert({ company_id: companyId, meta_user_id: identity, label, status: "active", last_checked_at: now }).select("id").single();
+      if (error) { warnings.push(`Conexão Meta ${label}: ${error.message}`); continue; }
+      connectionId = created?.id ?? null;
+    }
+    if (!connectionId) continue;
+    const { error: linkErr } = await admin.from("meta_social_accounts").update({ connection_id: connectionId }).in("id", members.map((m) => m.id));
+    if (linkErr) warnings.push(`Vincular contas à conexão ${label}: ${linkErr.message}`);
+  }
+  return warnings;
 }
 
 async function tokenFor(admin: Admin, account: SocialAccount): Promise<string | null> {
@@ -196,14 +239,30 @@ async function tokenFor(admin: Admin, account: SocialAccount): Promise<string | 
   return data?.instance_token ?? null;
 }
 
+// ───────────────────────── Circuit breaker ─────────────────────────
+
+/** Errores que afectan a toda la cuenta/etapa: no tiene sentido reintentar por métrica o por post. */
+const GLOBAL_KINDS: MetaIssueKind[] = ["permission_missing", "advanced_access_missing", "token_expired", "rate_limited"];
+export const isGlobalIssue = (kind: MetaIssueKind | undefined) => !!kind && GLOBAL_KINDS.includes(kind);
+/** Detiene todas las llamadas opcionales restantes de la cuenta. */
+export const haltsAccount = (kind: MetaIssueKind | undefined) => kind === "token_expired" || kind === "rate_limited";
+/** El fallback métrica por métrica solo tiene sentido si la combinación/métrica no es soportada. */
+export const allowsPerMetricFallback = (kind: MetaIssueKind | undefined) => kind === "metric_unsupported";
+
+export type Issue = { kind: MetaIssueKind; message: string };
+export type InsightsResult = { values: Record<string, number>; unavailable: Record<string, MetaIssueKind>; commonFailure: Issue | null; calls: number };
+
 // ───────────────────────── Insights tolerantes ─────────────────────────
 
-async function tolerantInsights(token: string, objectId: string, metrics: string[], extra: Record<string, string> = {}) {
+export async function tolerantInsights(token: string, objectId: string, metrics: string[], extra: Record<string, string> = {}, request = metaGraphRequest): Promise<InsightsResult> {
   const values: Record<string, number> = {};
   const unavailable: Record<string, MetaIssueKind> = {};
+  let calls = 0;
   const read = (row: any) => row?.total_value?.value ?? row?.values?.[row?.values?.length - 1]?.value;
+  const markAll = (kind: MetaIssueKind) => { for (const m of metrics) if (!(m in values)) unavailable[m] = kind; };
   try {
-    const res = await metaGraphRequest(`/${encodeURIComponent(objectId)}/insights${qs({ metric: metrics.join(","), ...extra })}`, token, { method: "GET" });
+    calls += 1;
+    const res = await request(`/${encodeURIComponent(objectId)}/insights${qs({ metric: metrics.join(","), ...extra })}`, token, { method: "GET" });
     for (const m of res?.data ?? []) {
       const v = read(m);
       if (typeof v === "number") values[m.name] = v;
@@ -211,23 +270,26 @@ async function tolerantInsights(token: string, objectId: string, metrics: string
     }
   } catch (bulkError) {
     const bulk = classifyMetaError(bulkError);
-    if (bulk.kind === "token_expired" || bulk.kind === "rate_limited") {
-      for (const m of metrics) unavailable[m] = bulk.kind;
-      return { values, unavailable };
+    if (!allowsPerMetricFallback(bulk.kind)) {
+      markAll(bulk.kind);
+      return { values, unavailable, commonFailure: bulk, calls };
     }
     for (const metric of metrics) {
       try {
-        const res = await metaGraphRequest(`/${encodeURIComponent(objectId)}/insights${qs({ metric, ...extra })}`, token, { method: "GET" });
+        calls += 1;
+        const res = await request(`/${encodeURIComponent(objectId)}/insights${qs({ metric, ...extra })}`, token, { method: "GET" });
         const v = read(res?.data?.[0]);
         if (typeof v === "number") values[metric] = v;
         else unavailable[metric] = "no_data";
       } catch (e) {
-        unavailable[metric] = classifyMetaError(e).kind;
+        const c = classifyMetaError(e);
+        unavailable[metric] = c.kind;
+        if (isGlobalIssue(c.kind)) { markAll(c.kind); return { values, unavailable, commonFailure: c, calls }; }
       }
     }
   }
   for (const m of metrics) if (!(m in values) && !(m in unavailable)) unavailable[m] = "no_data";
-  return { values, unavailable };
+  return { values, unavailable, commonFailure: null, calls };
 }
 
 function igMetricsFor(format: string) {
@@ -240,7 +302,7 @@ const FB_POST_METRICS = ["post_impressions", "post_impressions_unique", "post_cl
 
 // ───────────────────────── Persistencia ─────────────────────────
 
-async function upsertPost(admin: Admin, account: SocialAccount, item: any) {
+async function upsertPost(admin: Admin, account: SocialAccount, item: any, dbErrors?: string[]) {
   const network = account.network;
   const format = detectFormat(network, item);
   const ig = network === "instagram";
@@ -278,7 +340,11 @@ async function upsertPost(admin: Admin, account: SocialAccount, item: any) {
     thumbnail_url: ig ? c?.thumbnail_url ?? c?.media_url ?? null : c?.media?.image?.src ?? null,
     updated_at: new Date().toISOString(),
   }));
-  await admin.from("meta_content_media").upsert(mediaRows, { onConflict: "post_id,position" });
+  const { error: mediaErr } = await admin.from("meta_content_media").upsert(mediaRows, { onConflict: "post_id,position" });
+  if (mediaErr) {
+    const msg = `mídias do post ${item.id}: ${mediaErr.message}`;
+    if (dbErrors) dbErrors.push(msg); else console.warn("[meta-content]", msg);
+  }
   return data as { id: string; format: string; archived_media_key: string | null };
 }
 
@@ -353,40 +419,97 @@ async function archiveToR2(companyId: string, url: string | null, name: string, 
 
 const IG_MEDIA_FIELDS = "id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,children{id,media_type,media_url,thumbnail_url}";
 const FB_POST_FIELDS = "id,message,created_time,permalink_url,full_picture,attachments{media_type,type,url,media,subattachments,target},shares,reactions.limit(0).summary(true),comments.limit(0).summary(true)";
+const IG_COMMENT_FIELDS = "id,text,timestamp,username,from,like_count,hidden,parent_id";
+const FB_COMMENT_FIELDS = "id,message,created_time,from,like_count,comment_count,is_hidden,parent{id}";
+
+export type ContentSyncCounts = {
+  posts: number; comments: number;
+  snapshots: number; snapshots_full: number; snapshots_fallback: number;
+  profile: number; stories: number; archived: number;
+  db_errors: number; comment_pages: number; posts_comments_truncated: number;
+  graph_metrics: number; basic_metrics: number;
+};
 
 export type ContentSyncSummary = {
   accountId: string;
   network: string;
   status: "ok" | "partial" | "failed";
-  counts: { posts: number; comments: number; snapshots: number; profile: number; stories: number; archived: number };
+  counts: ContentSyncCounts;
   stages: StageResult[];
+  breakers: { stage: string; kind: MetaIssueKind; message: string }[];
 };
 
-export async function syncAccountContent(admin: Admin, account: SocialAccount, options: { full?: boolean; trigger?: string; maxPages?: number } = {}): Promise<ContentSyncSummary> {
-  const counts = { posts: 0, comments: 0, snapshots: 0, profile: 0, stories: 0, archived: 0 };
+export type ContentSyncOptions = {
+  full?: boolean;
+  trigger?: string;
+  maxPages?: number;
+  /** Páginas de 100 comentarios por publicación. */
+  maxCommentPages?: number;
+  /** Páginas de 50 respuestas por comentario (solo Instagram). */
+  maxReplyPages?: number;
+};
+
+const emptyCounts = (): ContentSyncCounts => ({
+  posts: 0, comments: 0, snapshots: 0, snapshots_full: 0, snapshots_fallback: 0, profile: 0, stories: 0, archived: 0,
+  db_errors: 0, comment_pages: 0, posts_comments_truncated: 0, graph_metrics: 0, basic_metrics: 0,
+});
+
+/** Siempre cierra meta_sync_runs, incluso si hay una excepción no controlada. */
+export async function syncAccountContent(admin: Admin, account: SocialAccount, options: ContentSyncOptions = {}): Promise<ContentSyncSummary> {
+  const counts = emptyCounts();
   const stages: StageResult[] = [];
-  const { data: run } = await admin.from("meta_sync_runs").insert({ company_id: account.company_id, social_account_id: account.id, kind: "content", trigger: options.trigger ?? "manual" }).select("id").single();
+  const breakers: ContentSyncSummary["breakers"] = [];
+  const { data: run, error: runErr } = await admin.from("meta_sync_runs").insert({ company_id: account.company_id, social_account_id: account.id, kind: "content", trigger: options.trigger ?? "manual" }).select("id").single();
+  if (runErr) console.warn("[meta-content] não foi possível abrir meta_sync_runs:", runErr.message);
 
   const finish = async (status: "ok" | "partial" | "failed") => {
-    if (run?.id) await admin.from("meta_sync_runs").update({ status, counts, stages, finished_at: new Date().toISOString() }).eq("id", run.id);
-    await admin.from("meta_social_accounts").update({
+    const summaryCounts = { ...counts, breakers };
+    if (run?.id) {
+      const { error } = await admin.from("meta_sync_runs").update({ status, counts: summaryCounts, stages, finished_at: new Date().toISOString() }).eq("id", run.id);
+      if (error) console.error("[meta-content] falha ao fechar meta_sync_runs", run.id, error.message);
+    }
+    const { error: accErr } = await admin.from("meta_social_accounts").update({
       last_synced_at: new Date().toISOString(),
       last_error: stages.find((s) => !s.ok)?.message ?? null,
       status: stages.some((s) => s.kind === "token_expired") ? "expired" : stages.some((s) => !s.ok) ? "degraded" : "active",
     }).eq("id", account.id);
-    return { accountId: account.id, network: account.network, status, counts, stages };
+    if (accErr) console.error("[meta-content] falha ao atualizar conta", account.id, accErr.message);
+    return { accountId: account.id, network: account.network, status, counts, stages, breakers };
   };
 
+  try {
+    await runAccountSync(admin, account, options, counts, stages, breakers);
+  } catch (e) {
+    stages.push({ stage: "internal", ok: false, kind: "internal", message: (e instanceof Error ? e.message : String(e)).slice(0, 400) });
+    try { return await finish("failed"); } catch { return { accountId: account.id, network: account.network, status: "failed", counts, stages, breakers }; }
+  }
+  const failed = stages.filter((s) => !s.ok);
+  return finish(failed.length === 0 ? "ok" : counts.posts || counts.profile || counts.stories ? "partial" : "failed");
+}
+
+async function runAccountSync(admin: Admin, account: SocialAccount, options: ContentSyncOptions, counts: ContentSyncCounts, stages: StageResult[], breakers: ContentSyncSummary["breakers"]) {
+  const dbErrors: string[] = [];
   const token = await tokenFor(admin, account);
   if (!token) {
     stages.push({ stage: "token", ok: false, kind: "token_expired", message: "Canal sem token salvo. Reconecte." });
-    return finish("failed");
+    return;
   }
 
   const ig = account.network === "instagram";
   const ownerId = account.external_id;
   const cursor = (account.sync_cursor ?? {}) as { last_post_at?: string };
   const maxPages = Math.min(options.maxPages ?? (options.full ? 10 : 3), 20);
+  const maxCommentPages = Math.min(Math.max(options.maxCommentPages ?? (options.full ? 5 : 2), 1), 10);
+  const maxReplyPages = Math.min(Math.max(options.maxReplyPages ?? 2, 0), 5);
+
+  // Estado del circuit breaker por cuenta.
+  let halt: Issue | null = null; // token vencido / rate limit: corta todo lo opcional
+  let insightsBreaker: Issue | null = null;
+  let commentsBreaker: Issue | null = null;
+  const trip = (stage: string, issue: Issue) => {
+    breakers.push({ stage, kind: issue.kind, message: issue.message });
+    if (haltsAccount(issue.kind) && !halt) halt = issue;
+  };
 
   // 1) Publicaciones con paginación limitada.
   const posts: any[] = [];
@@ -402,7 +525,6 @@ export async function syncAccountContent(admin: Admin, account: SocialAccount, o
       const batch: any[] = Array.isArray(json?.data) ? json.data : [];
       posts.push(...batch);
       pages += 1;
-      // IG no soporta `since` en /media: cortamos al pasar el checkpoint (con 7 días de margen para métricas).
       if (ig && !options.full && cursor.last_post_at) {
         const limit = new Date(cursor.last_post_at).getTime() - 7 * 86400_000;
         if (batch.some((b) => new Date(b.timestamp).getTime() < limit)) break;
@@ -412,128 +534,193 @@ export async function syncAccountContent(admin: Admin, account: SocialAccount, o
     stages.push({ stage: "posts", ok: true, count: posts.length, ...(posts.length ? {} : { kind: "no_data" as const, message: "Nenhuma publicação retornada" }) });
   } catch (e) {
     const c = classifyMetaError(e);
-    stages.push({ stage: "posts", ok: false, kind: c.kind, message: c.message });
+    const hint = !ig && c.kind === "permission_missing" ? " — Facebook exige pages_read_user_content ou Page Public Content Access para ler published_posts." : "";
+    stages.push({ stage: "posts", ok: false, kind: c.kind, message: c.message + hint });
+    if (haltsAccount(c.kind)) trip("posts", c);
   }
 
   let newest = cursor.last_post_at ?? null;
-  let commentFailure: StageResult | null = null;
-  let insightFailures = 0;
   for (const item of posts) {
     let saved: Awaited<ReturnType<typeof upsertPost>>;
     try {
-      saved = await upsertPost(admin, account, item);
+      saved = await upsertPost(admin, account, item, dbErrors);
       counts.posts += 1;
       const at = ig ? item.timestamp : item.created_time;
       if (at && (!newest || at > newest)) newest = at;
     } catch (e) {
-      stages.push({ stage: `post:${item.id}`, ok: false, kind: "internal", message: e instanceof Error ? e.message : String(e) });
+      dbErrors.push(e instanceof Error ? e.message : String(e));
       continue;
     }
 
-    // 2) Comentarios + respuestas (solo histórico; nunca mensagens).
-    if (!commentFailure) {
-      try {
-        const fields = ig
-          ? "id,text,timestamp,username,from,like_count,hidden,replies.limit(50){id,text,timestamp,username,from,like_count,hidden}"
-          : "id,message,created_time,from,like_count,comment_count,is_hidden,parent{id}";
-        const res = await metaGraphRequest(`/${encodeURIComponent(String(item.id))}/comments${qs({ fields, limit: 100, ...(ig ? {} : { filter: "stream" }) })}`, token, { method: "GET" });
-        for (const c of res?.data ?? []) {
-          await persistContentComment(admin, { companyId: account.company_id, network: account.network, externalPostId: String(item.id), ownerExternalId: ownerId, comment: c, postRowId: saved.id, socialAccountId: account.id });
+    // 2) Comentarios + respuestas, paginación acotada (solo histórico; nunca mensagens).
+    if (!commentsBreaker && !halt) {
+      const persist = async (c: any, parent?: string) => {
+        try {
+          await persistContentComment(admin, { companyId: account.company_id, network: account.network, externalPostId: String(item.id), ownerExternalId: ownerId, comment: c, parentExternalId: parent ?? null, postRowId: saved.id, socialAccountId: account.id });
           counts.comments += 1;
-          for (const r of c?.replies?.data ?? []) {
-            await persistContentComment(admin, { companyId: account.company_id, network: account.network, externalPostId: String(item.id), ownerExternalId: ownerId, comment: r, parentExternalId: String(c.id), postRowId: saved.id, socialAccountId: account.id });
-            counts.comments += 1;
-          }
+        } catch (e) {
+          dbErrors.push(`comentário ${c?.id}: ${e instanceof Error ? e.message : String(e)}`);
         }
+      };
+      try {
+        const fields = ig ? `${IG_COMMENT_FIELDS},replies.limit(50){${IG_COMMENT_FIELDS}}` : FB_COMMENT_FIELDS;
+        let next: string | null = `/${encodeURIComponent(String(item.id))}/comments${qs({ fields, limit: 100, ...(ig ? {} : { filter: "stream" }) })}`;
+        let pages = 0;
+        while (next && pages < maxCommentPages) {
+          const res: any = await metaGraphRequest(next, token, { method: "GET" });
+          pages += 1;
+          counts.comment_pages += 1;
+          for (const c of res?.data ?? []) {
+            await persist(c);
+            for (const r of c?.replies?.data ?? []) await persist(r, String(c.id));
+            // Respuestas adicionales (IG), también acotadas.
+            let rNext: string | null = ig && typeof c?.replies?.paging?.next === "string" ? c.replies.paging.next : null;
+            let rPages = 0;
+            while (rNext && rPages < maxReplyPages && !halt) {
+              try {
+                const rr: any = await metaGraphRequest(rNext, token, { method: "GET" });
+                rPages += 1;
+                for (const r of rr?.data ?? []) await persist(r, String(c.id));
+                rNext = typeof rr?.paging?.next === "string" ? rr.paging.next : null;
+              } catch (e) {
+                const ce = classifyMetaError(e);
+                if (haltsAccount(ce.kind)) trip("comments", ce);
+                rNext = null;
+              }
+            }
+          }
+          next = typeof res?.paging?.next === "string" ? res.paging.next : null;
+        }
+        if (next) counts.posts_comments_truncated += 1;
       } catch (e) {
         const c = classifyMetaError(e);
-        commentFailure = { stage: "comments", ok: false, kind: c.kind, message: c.message };
+        if (isGlobalIssue(c.kind)) {
+          commentsBreaker = c;
+          trip("comments", c);
+        } else {
+          dbErrors.push(`comentários do post ${item.id}: ${c.kind} — ${c.message}`);
+        }
       }
     }
 
-    // 3) Métricas por publicación (snapshot diario).
-    try {
-      const metrics = ig ? igMetricsFor(saved.format) : FB_POST_METRICS;
-      const ins = await tolerantInsights(token, String(item.id), metrics);
-      const v = ins.values;
-      if (Object.keys(ins.unavailable).length === metrics.length) insightFailures += 1;
-      const snapshot = {
-        likes: num(v.likes ?? item.like_count ?? v.post_reactions_by_type_total ?? item?.reactions?.summary?.total_count),
-        comments: num(v.comments ?? item.comments_count ?? item?.comments?.summary?.total_count),
-        shares: num(v.shares ?? item?.shares?.count),
-        saves: num(v.saved),
-        reach: num(v.reach ?? v.post_impressions_unique),
-        impressions: num(v.impressions ?? v.post_impressions),
-        views: num(v.views ?? v.post_video_views),
-        total_interactions: num(v.total_interactions),
-        replies: num(v.replies),
-        avg_watch_time_ms: num(v.ig_reels_avg_watch_time),
-        total_watch_time_ms: num(v.ig_reels_video_view_total_time),
-      };
-      await admin.from("meta_content_metric_snapshots").upsert({
-        company_id: account.company_id, post_id: saved.id, social_account_id: account.id,
-        collected_date: dayOf(), collected_at: new Date().toISOString(), ...snapshot,
-        raw_metrics: Object.keys(v).length ? v : null,
-        unavailable: Object.keys(ins.unavailable).length ? ins.unavailable : null,
-        source: options.trigger === "cron" ? "cron" : "sync",
-      }, { onConflict: "post_id,collected_date" });
-      await admin.from("meta_content_posts").update({ metrics_latest: snapshot }).eq("id", saved.id);
+    // 3) Métricas por publicación (máximo un snapshot por post y día).
+    const metrics = ig ? igMetricsFor(saved.format) : FB_POST_METRICS;
+    let ins: InsightsResult;
+    if (insightsBreaker || halt) {
+      const kind = (insightsBreaker ?? halt)!.kind;
+      ins = { values: {}, unavailable: Object.fromEntries(metrics.map((m) => [m, kind])), commonFailure: insightsBreaker ?? halt, calls: 0 };
+    } else {
+      ins = await tolerantInsights(token, String(item.id), metrics);
+      if (ins.commonFailure && isGlobalIssue(ins.commonFailure.kind)) {
+        insightsBreaker = ins.commonFailure;
+        trip("post_insights", ins.commonFailure);
+      }
+    }
+    const v = ins.values;
+    const fromGraph = Object.keys(v).length > 0;
+    const snapshot = {
+      likes: num(v.likes ?? item.like_count ?? v.post_reactions_by_type_total ?? item?.reactions?.summary?.total_count),
+      comments: num(v.comments ?? item.comments_count ?? item?.comments?.summary?.total_count),
+      shares: num(v.shares ?? item?.shares?.count),
+      saves: num(v.saved),
+      reach: num(v.reach ?? v.post_impressions_unique),
+      impressions: num(v.impressions ?? v.post_impressions),
+      views: num(v.views ?? v.post_video_views),
+      total_interactions: num(v.total_interactions),
+      replies: num(v.replies),
+      avg_watch_time_ms: num(v.ig_reels_avg_watch_time),
+      total_watch_time_ms: num(v.ig_reels_video_view_total_time),
+    };
+    const { error: snapErr } = await admin.from("meta_content_metric_snapshots").upsert({
+      company_id: account.company_id, post_id: saved.id, social_account_id: account.id,
+      collected_date: dayOf(), collected_at: new Date().toISOString(), ...snapshot,
+      raw_metrics: fromGraph ? v : null,
+      unavailable: Object.keys(ins.unavailable).length ? { ...ins.unavailable, ...(fromGraph ? {} : { _basis: "post_fields" }) } : null,
+      source: fromGraph ? (options.trigger === "cron" ? "cron" : "sync") : "post_fields",
+    }, { onConflict: "post_id,collected_date" });
+    if (snapErr) {
+      dbErrors.push(`snapshot do post ${item.id}: ${snapErr.message}`);
+    } else {
       counts.snapshots += 1;
-    } catch (e) {
-      insightFailures += 1;
+      if (fromGraph) { counts.snapshots_full += 1; counts.graph_metrics += Object.keys(v).length; }
+      else counts.snapshots_fallback += 1;
+      if (!fromGraph) counts.basic_metrics += [snapshot.likes, snapshot.comments, snapshot.shares].filter((x) => x !== null).length;
+      const { error: upErr } = await admin.from("meta_content_posts").update({ metrics_latest: { ...snapshot, basis: fromGraph ? "graph" : "post_fields" } }).eq("id", saved.id);
+      if (upErr) dbErrors.push(`metrics_latest do post ${item.id}: ${upErr.message}`);
     }
   }
   if (posts.length) {
-    stages.push(commentFailure ?? { stage: "comments", ok: true, count: counts.comments });
-    stages.push(insightFailures && insightFailures === posts.length
-      ? { stage: "post_insights", ok: false, kind: "permission_missing", message: "Nenhuma métrica de publicação disponível (verifique instagram_manage_insights / read_insights)." }
-      : { stage: "post_insights", ok: true, count: counts.snapshots, ...(insightFailures ? { message: `${insightFailures} publicação(ões) sem métricas` } : {}) });
+    stages.push(commentsBreaker
+      ? { stage: "comments", ok: false, kind: (commentsBreaker as Issue).kind, message: `Interrompido após a primeira falha (circuit breaker): ${(commentsBreaker as Issue).message}` }
+      : { stage: "comments", ok: true, count: counts.comments, ...(counts.posts_comments_truncated ? { message: `${counts.posts_comments_truncated} publicação(ões) com mais comentários além do limite de ${maxCommentPages} página(s)` } : {}) });
+    stages.push(insightsBreaker
+      ? { stage: "post_insights", ok: false, kind: (insightsBreaker as Issue).kind, message: `Insights indisponíveis (circuit breaker; verifique instagram_manage_insights / read_insights). ${counts.snapshots_fallback} snapshot(s) básicos com curtidas/comentários da publicação. ${(insightsBreaker as Issue).message}` }
+      : { stage: "post_insights", ok: true, count: counts.snapshots_full, ...(counts.snapshots_fallback ? { message: `${counts.snapshots_fallback} snapshot(s) apenas com métricas básicas` } : {}) });
   }
 
   // 4) Métricas de perfil.
-  try {
-    const profileFields = ig ? "followers_count,follows_count,media_count" : "followers_count,fan_count";
-    const profile = await metaGraphRequest(`/${encodeURIComponent(ownerId)}${qs({ fields: profileFields })}`, token, { method: "GET" });
-    const ins = ig
-      ? await tolerantInsights(token, ownerId, ["reach", "profile_views", "accounts_engaged", "views"], { period: "day", metric_type: "total_value" })
-      : await tolerantInsights(token, ownerId, ["page_impressions_unique", "page_impressions", "page_post_engagements"], { period: "day" });
-    const v = ins.values;
-    await admin.from("meta_profile_metric_snapshots").upsert({
-      company_id: account.company_id, social_account_id: account.id, snapshot_date: dayOf(), collected_at: new Date().toISOString(),
-      followers: num(profile?.followers_count ?? profile?.fan_count),
-      follows: num(profile?.follows_count),
-      media_count: num(profile?.media_count),
-      reach: num(v.reach ?? v.page_impressions_unique),
-      impressions: num(v.views ?? v.page_impressions),
-      profile_views: num(v.profile_views),
-      accounts_engaged: num(v.accounts_engaged ?? v.page_post_engagements),
-      raw: { profile, insights: v },
-      unavailable: Object.keys(ins.unavailable).length ? ins.unavailable : null,
-    }, { onConflict: "social_account_id,snapshot_date" });
-    counts.profile = 1;
-    stages.push({ stage: "profile", ok: true, count: 1, ...(Object.keys(ins.unavailable).length ? { message: `Indisponível: ${Object.entries(ins.unavailable).map(([k, r]) => `${k} (${r})`).join(", ")}` } : {}) });
-  } catch (e) {
-    const c = classifyMetaError(e);
-    stages.push({ stage: "profile", ok: false, kind: c.kind, message: c.message });
+  if (halt) {
+    stages.push({ stage: "profile", ok: false, kind: (halt as Issue).kind, message: "Ignorado: chamadas opcionais suspensas nesta conta." });
+  } else {
+    try {
+      const profileFields = ig ? "followers_count,follows_count,media_count" : "followers_count,fan_count";
+      const profile = await metaGraphRequest(`/${encodeURIComponent(ownerId)}${qs({ fields: profileFields })}`, token, { method: "GET" });
+      const metricsP = ig ? ["reach", "profile_views", "accounts_engaged", "views"] : ["page_impressions_unique", "page_impressions", "page_post_engagements"];
+      const ins: InsightsResult = insightsBreaker
+        ? { values: {}, unavailable: Object.fromEntries(metricsP.map((m) => [m, (insightsBreaker as Issue).kind])), commonFailure: insightsBreaker, calls: 0 }
+        : await tolerantInsights(token, ownerId, metricsP, ig ? { period: "day", metric_type: "total_value" } : { period: "day" });
+      if (ins.commonFailure && !insightsBreaker && isGlobalIssue(ins.commonFailure.kind)) trip("profile_insights", ins.commonFailure);
+      const v = ins.values;
+      const { error } = await admin.from("meta_profile_metric_snapshots").upsert({
+        company_id: account.company_id, social_account_id: account.id, snapshot_date: dayOf(), collected_at: new Date().toISOString(),
+        followers: num(profile?.followers_count ?? profile?.fan_count),
+        follows: num(profile?.follows_count),
+        media_count: num(profile?.media_count),
+        reach: num(v.reach ?? v.page_impressions_unique),
+        impressions: num(v.views ?? v.page_impressions),
+        profile_views: num(v.profile_views),
+        accounts_engaged: num(v.accounts_engaged ?? v.page_post_engagements),
+        raw: { profile, insights: v },
+        unavailable: Object.keys(ins.unavailable).length ? ins.unavailable : null,
+      }, { onConflict: "social_account_id,snapshot_date" });
+      if (error) {
+        stages.push({ stage: "profile", ok: false, kind: "internal", message: `Falha ao gravar snapshot de perfil: ${error.message}` });
+      } else {
+        counts.profile = 1;
+        stages.push({ stage: "profile", ok: true, count: 1, ...(ins.commonFailure ? { kind: ins.commonFailure.kind, message: `Seguidores salvos; insights de perfil indisponíveis (${ins.commonFailure.kind})` } : Object.keys(ins.unavailable).length ? { message: `Indisponível: ${Object.entries(ins.unavailable).map(([k, r]) => `${k} (${r})`).join(", ")}` } : {}) });
+      }
+    } catch (e) {
+      const c = classifyMetaError(e);
+      stages.push({ stage: "profile", ok: false, kind: c.kind, message: c.message });
+      if (haltsAccount(c.kind)) trip("profile", c);
+    }
   }
 
   // 5) Stories (solo Instagram).
   if (ig) {
-    const st = await captureStoriesForAccount(admin, account, token);
-    counts.stories = st.found;
-    counts.archived += st.archived;
-    stages.push(st.error ? { stage: "stories", ok: false, kind: st.errorKind, message: st.error } : { stage: "stories", ok: true, count: st.found });
+    if (halt) {
+      stages.push({ stage: "stories", ok: false, kind: (halt as Issue).kind, message: "Ignorado: chamadas opcionais suspensas nesta conta." });
+    } else {
+      const st = await captureStoriesForAccount(admin, account, token, { skipInsights: insightsBreaker });
+      counts.stories = st.found;
+      counts.archived += st.archived;
+      stages.push(st.error ? { stage: "stories", ok: false, kind: st.errorKind, message: st.error } : { stage: "stories", ok: true, count: st.found });
+    }
   }
 
-  if (newest) await admin.from("meta_social_accounts").update({ sync_cursor: { ...cursor, last_post_at: newest } }).eq("id", account.id);
-  const failed = stages.filter((s) => !s.ok);
-  return finish(failed.length === 0 ? "ok" : counts.posts || counts.profile || counts.stories ? "partial" : "failed");
+  if (newest) {
+    const { error } = await admin.from("meta_social_accounts").update({ sync_cursor: { ...cursor, last_post_at: newest } }).eq("id", account.id);
+    if (error) dbErrors.push(`checkpoint da conta: ${error.message}`);
+  }
+  counts.db_errors = dbErrors.length;
+  if (dbErrors.length) stages.push({ stage: "database", ok: false, kind: "internal", count: dbErrors.length, message: dbErrors.slice(0, 3).join(" | ") });
 }
 
 // ───────────────────────── D. Stories ─────────────────────────
 
-export async function captureStoriesForAccount(admin: Admin, account: SocialAccount, token: string) {
+export async function captureStoriesForAccount(admin: Admin, account: SocialAccount, token: string, opts: { skipInsights?: Issue | null } = {}) {
   const out = { found: 0, created: 0, updated: 0, snapshots: 0, archived: 0, error: null as string | null, errorKind: undefined as MetaIssueKind | undefined };
+  let insightsBreaker: Issue | null = opts.skipInsights ?? null;
   let stories: any[] = [];
   try {
     const res = await metaGraphRequest(`/${encodeURIComponent(account.external_id)}/stories${qs({ fields: "id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp" })}`, token, { method: "GET" });
@@ -564,7 +751,11 @@ export async function captureStoriesForAccount(admin: Admin, account: SocialAcco
           console.warn("[meta-stories] arquivo R2 falhou", s.id, e instanceof Error ? e.message : e);
         }
       }
-      const ins = await tolerantInsights(token, String(s.id), igMetricsFor("story"));
+      const storyMetrics = igMetricsFor("story");
+      const ins: InsightsResult = insightsBreaker
+        ? { values: {}, unavailable: Object.fromEntries(storyMetrics.map((m) => [m, insightsBreaker!.kind])), commonFailure: insightsBreaker, calls: 0 }
+        : await tolerantInsights(token, String(s.id), storyMetrics);
+      if (!insightsBreaker && ins.commonFailure && isGlobalIssue(ins.commonFailure.kind)) insightsBreaker = ins.commonFailure;
       const v = ins.values;
       const { error } = await admin.from("meta_content_metric_snapshots").upsert({
         company_id: account.company_id, post_id: saved.id, social_account_id: account.id,
@@ -575,7 +766,9 @@ export async function captureStoriesForAccount(admin: Admin, account: SocialAcco
         source: "stories",
       }, { onConflict: "post_id,collected_date" });
       if (!error) out.snapshots += 1;
-      await admin.from("meta_content_posts").update({ metrics_latest: { reach: num(v.reach), views: num(v.views), replies: num(v.replies), shares: num(v.shares), total_interactions: num(v.total_interactions) } }).eq("id", saved.id);
+      else console.warn("[meta-stories] snapshot falhou", s.id, error.message);
+      const { error: mlErr } = await admin.from("meta_content_posts").update({ metrics_latest: { reach: num(v.reach), views: num(v.views), replies: num(v.replies), shares: num(v.shares), total_interactions: num(v.total_interactions) } }).eq("id", saved.id);
+      if (mlErr) console.warn("[meta-stories] metrics_latest falhou", s.id, mlErr.message);
     } catch (e) {
       out.error = e instanceof Error ? e.message : String(e);
       out.errorKind = "internal";
