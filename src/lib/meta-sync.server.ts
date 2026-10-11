@@ -30,6 +30,7 @@ type SyncResult = {
   notifications: number;
   reactionAlerts: number;
   errors: string[];
+  warnings?: string[];
 };
 
 type EngagementSnapshot = Record<string, {
@@ -114,6 +115,7 @@ function mediaOf(value: any) {
 
 async function checkpoint(admin: Admin, instance: MetaInstance, state: Record<string, unknown>) {
   const key = `meta-sync:${instance.id}`;
+  const now = new Date().toISOString();
   const payload = {
     company_id: instance.company_id,
     external_connection_id: instance.id,
@@ -121,23 +123,33 @@ async function checkpoint(admin: Admin, instance: MetaInstance, state: Record<st
     provider: instance.provider,
     raw_payload: state,
     normalized_count: Number(state.normalizedCount ?? 0),
-    status: "checkpoint",
-    processed_at: new Date().toISOString(),
+    status: "processed",
+    received_at: now,
+    processed_at: now,
   };
-  const { data: existing } = await admin
+  const { data: existing, error: findError } = await admin
     .from("messaging_inbox_events")
     .select("id")
+    .eq("provider", instance.provider)
     .eq("external_event_id", key)
     .maybeSingle();
-  if (existing?.id) await admin.from("messaging_inbox_events").update(payload).eq("id", existing.id);
-  else await admin.from("messaging_inbox_events").insert(payload);
+  if (findError) throw findError;
+  const query = existing?.id
+    ? admin.from("messaging_inbox_events").update(payload).eq("id", existing.id)
+    : admin.from("messaging_inbox_events").insert(payload);
+  const { error } = await query;
+  if (error) {
+    console.error("[checkpoint] Erro ao salvar checkpoint:", error);
+    throw new Error(`Não foi possível salvar o checkpoint Meta: ${error.message}`);
+  }
 }
 
-async function readCheckpoint(admin: Admin, instanceId: string) {
+async function readCheckpoint(admin: Admin, instance: MetaInstance) {
   const { data } = await admin
     .from("messaging_inbox_events")
     .select("raw_payload")
-    .eq("external_event_id", `meta-sync:${instanceId}`)
+    .eq("provider", instance.provider)
+    .eq("external_event_id", `meta-sync:${instance.id}`)
     .maybeSingle();
   return (data?.raw_payload ?? {}) as Record<string, any>;
 }
@@ -281,13 +293,14 @@ export async function syncMetaChannel(admin: Admin, instance: MetaInstance, opti
     notifications: 0,
     reactionAlerts: 0,
     errors: [],
+    warnings: [],
   };
   if (!instance.instance_token || !instance.phone_number_id) {
     result.errors.push("Canal sem token ou page/account id");
     return result;
   }
   const channel = instance.provider === "meta_instagram" ? "instagram" : "messenger";
-  const previous = await readCheckpoint(admin, instance.id);
+  const previous = await readCheckpoint(admin, instance);
   const since = options?.full ? undefined : (previous.since as string | undefined);
   const until = new Date().toISOString();
   const maxConversations = options?.maxConversations ?? (options?.full ? 250 : 25);
@@ -387,24 +400,37 @@ export async function syncMetaChannel(admin: Admin, instance: MetaInstance, opti
     result.errors.push(`feed/comentarios: ${e instanceof Error ? e.message : String(e)}`);
   }
 
-  try {
-    const forms = await metaListLeadForms(instance.instance_token, instance.phone_number_id, { limit: 50 });
-    const { fetchAndProcessMetaLead } = await import("@/lib/meta-leads.server");
-    let leadBudget = 100;
-    for (const form of forms.data.slice(0, 50)) {
-      if (leadBudget <= 0) break;
-      const leads = await metaListFormLeads(instance.instance_token, String(form.id), { since, until, limit: 100 });
-      for (const lead of leads.data.slice(0, leadBudget)) {
-        leadBudget -= 1;
-        const resultLead = await fetchAndProcessMetaLead(admin, instance.phone_number_id, String(lead.id), String(form.id)).catch((error) => {
-          result.errors.push(`lead ${lead.id}: ${error instanceof Error ? error.message : String(error)}`);
-          return null;
-        });
-        if (resultLead?.ok) result.leads += 1;
+  // Lead Ads pertence exclusivamente à Página do Facebook.
+  if (instance.provider === "meta_messenger" && instance.phone_number_id) {
+    try {
+      const forms = await metaListLeadForms(instance.instance_token, instance.phone_number_id, { limit: 50 });
+      const { fetchAndProcessMetaLead } = await import("@/lib/meta-leads.server");
+      let leadBudget = 100;
+      for (const form of forms.data.slice(0, 50)) {
+        if (leadBudget <= 0) break;
+        const leads = await metaListFormLeads(instance.instance_token, String(form.id), { since, until, limit: 100 });
+        for (const lead of leads.data.slice(0, leadBudget)) {
+          leadBudget -= 1;
+          const resultLead = await fetchAndProcessMetaLead(admin, instance.phone_number_id, String(lead.id), String(form.id)).catch((error) => {
+            const message = error instanceof Error ? error.message : String(error);
+            if (/pages_manage_ads|leads_retrieval|leadgen_forms/i.test(message)) {
+              result.warnings?.push(`Lead Ads ${lead.id}: ${message}`);
+            } else {
+              result.errors.push(`lead ${lead.id}: ${message}`);
+            }
+            return null;
+          });
+          if (resultLead?.ok) result.leads += 1;
+        }
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      if (/pages_manage_ads|leads_retrieval|leadgen_forms/i.test(message)) {
+        result.warnings?.push(`Lead Ads indisponível: ${message}`);
+      } else {
+        result.errors.push(`lead ads: ${message}`);
       }
     }
-  } catch (e) {
-    result.errors.push(`lead ads: ${e instanceof Error ? e.message : String(e)}`);
   }
 
   // Se algum bloco falhou, não avançamos o cursor além do último ponto confirmado;
