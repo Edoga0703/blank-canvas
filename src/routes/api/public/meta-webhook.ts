@@ -117,6 +117,7 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
           const publicOrigin = (process.env["PUBLIC_APP_URL"] || process.env["APP_URL"] || new URL(request.url).origin).replace(/\/+$/, "");
           let normalizedCount = 0;
           let companyId: string | null = null;
+          const unmatchedIds = new Set<string>();
 
           for (const entry of payload?.entry ?? []) {
             const messaging = [...(entry?.messaging ?? []), ...(entry?.standby ?? [])].map((ev: any) => ({ ev, field: "messaging", value: ev }));
@@ -235,25 +236,31 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
               const shouldForwardToAttention = field === "messaging" || isComment;
               if ((!shouldForwardToAttention && !isMention) || !pageId) continue;
 
-              let { data: inst } = await (supabaseAdmin as any)
+              // Prefere o canal do mesmo tipo do evento e tolera linhas duplicadas de reconexões.
+              const { data: instRows } = await (supabaseAdmin as any)
                 .from("whatsapp_instances")
-                .select("id,instance_name,webhook_token,provider,company_id,instance_token,user_id")
+                .select("id,instance_name,webhook_token,provider,company_id,instance_token,user_id,updated_at")
                 .eq("phone_number_id", pageId)
                 .like("provider", "meta%")
-                .maybeSingle();
+                .order("updated_at", { ascending: false })
+                .limit(5);
+              let inst: any = (instRows ?? []).find((r: any) => r.provider === `meta_${channel}`) ?? (instRows ?? [])[0] ?? null;
 
-              if (!inst) {
+              if (!inst && /^\d+$/.test(pageId)) {
                 const { data: byName } = await (supabaseAdmin as any)
                   .from("whatsapp_instances")
                   .select("id,instance_name,webhook_token,provider,company_id,instance_token,user_id")
-                  .like("provider", "meta%")
-                  .ilike("instance_name", `%${pageId}%`)
+                  .eq("instance_name", `meta_${channel}_${pageId}`)
                   .limit(1)
                   .maybeSingle();
                 if (byName) inst = byName;
               }
 
-              if (!inst) continue;
+              if (!inst) {
+                unmatchedIds.add(pageId);
+                console.warn(`[meta-webhook] evento ${channel} sem canal cadastrado para o ID ${pageId}`);
+                continue;
+              }
               companyId = inst.company_id;
 
               // Trata eco (mensagem enviada pela própria empresa via Instagram App / Facebook Suite)
@@ -415,7 +422,10 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
             }
           }
 
-          await (supabaseAdmin as any).from("messaging_inbox_events").update({ status: "processed", company_id: companyId, normalized_count: normalizedCount, processed_at: new Date().toISOString(), error_message: null }).eq("external_event_id", receivedEventId);
+          const ignoredNote = unmatchedIds.size && !normalizedCount
+            ? `ignorado: nenhum canal ${channel} cadastrado para o ID ${[...unmatchedIds].join(",")}`
+            : null;
+          await (supabaseAdmin as any).from("messaging_inbox_events").update({ status: "processed", company_id: companyId, normalized_count: normalizedCount, processed_at: new Date().toISOString(), error_message: ignoredNote }).eq("external_event_id", receivedEventId);
           return new Response("EVENT_RECEIVED", { status: 200 });
         } catch (error) {
           console.error("[meta-webhook]", error);

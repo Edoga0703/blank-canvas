@@ -492,9 +492,11 @@ export async function metaFetchPage(token: string, pageId?: string | null) {
 
 
 /** Assina o app nos eventos de mensagem da Página / conta IG. Sem isso a Meta não envia webhooks. */
-export async function metaSubscribePage(token: string, pageId: string, options?: { instagram?: boolean }) {
+export async function metaSubscribePage(token: string, pageId: string, _options?: { instagram?: boolean }) {
   const cleanToken = normalizeToken(token);
-  const ig = options?.instagram ?? isInstagramToken(cleanToken);
+  // O tipo de token decide o endpoint: campos de IG (comments, mentions) não existem
+  // numa Página e fazem a Meta rejeitar a assinatura inteira.
+  const ig = isInstagramToken(cleanToken);
   const fields = ig
     ? "messages,messaging_postbacks,message_reactions,comments,mentions"
     : "messages,messaging_postbacks,messaging_optins,message_deliveries,message_reads,message_reactions,feed,leadgen";

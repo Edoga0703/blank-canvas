@@ -301,7 +301,7 @@ function ConversasPage() {
       const { data } = await supabase
         .from("whatsapp_instances")
         .select("id,instance_name,display_name,provider,status,phone_number_id")
-        .eq("company_id", companyId);
+        .eq("company_id", companyId ?? "");
       if (alive && data) setInstances(data as any);
     }
     void loadInstances();
@@ -809,9 +809,9 @@ function ConversasPage() {
       const byId = new Map<string, Msg>();
       // mantém otimistas (tmp-)
       for (const m of prev) if (m.id.startsWith("tmp-")) byId.set(m.id, m);
-      for (const m of data as Msg[]) byId.set(m.id, m);
+      for (const m of data as unknown as Msg[]) byId.set(m.id, m);
       // remove otimistas que já tem versão real
-      for (const m of data as Msg[]) {
+      for (const m of data as unknown as Msg[]) {
         for (const [k, v] of byId) {
           if (k.startsWith("tmp-") && v.numero === m.numero && v.texto === m.texto && v.direcao === m.direcao) {
             byId.delete(k);
@@ -823,7 +823,7 @@ function ConversasPage() {
       return Array.from(byId.values()).sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
     });
     // atualiza unread para mensagens de entrada em conversas não ativas
-    for (const m of data as Msg[]) {
+    for (const m of data as unknown as Msg[]) {
       if (m.direcao === "entrada" && m.numero !== active) {
         // noop; unread já é somado por realtime; polling não incrementa para não duplicar
       }

@@ -110,7 +110,11 @@ export const connectMetaChannel = createServerFn({ method: "POST" })
     }
 
     const { metaSubscribePage } = await import("./meta.server");
-    const sub = await metaSubscribePage(page.token || data.pageToken, channelId, { instagram: data.canal === "instagram" });
+    // Com token de Página, o Instagram vinculado recebe DMs pela assinatura da própria Página
+    // (campo "messages"); só tokens do Instagram Login usam /me/subscribed_apps.
+    const subscribeToken = page.token || data.pageToken;
+    const subscribeId = String((page as any).id || channelId);
+    const sub = await metaSubscribePage(subscribeToken, subscribeId);
 
     return {
       ok: true as const,
