@@ -220,9 +220,23 @@ async function persistMessage(admin: Admin, instance: MetaInstance, item: any, c
   return true;
 }
 
-async function persistComment(_admin: Admin, _instance: MetaInstance, _item: any, _channel: "instagram" | "messenger") {
-  // Comentários públicos não viram conversas privadas de chat no CRM.
-  // Ficam centralizados no módulo Conteúdo e geram notificações de interação.
+async function persistComment(admin: Admin, instance: MetaInstance, item: any, channel: "instagram" | "messenger", externalPostId?: string) {
+  // Comentários públicos NÃO viram conversas privadas (mensagens) no CRM.
+  // São guardados no histórico do módulo Conteúdo; o retorno continua false
+  // para não contar como mensagem da caixa de entrada.
+  try {
+    const { persistContentComment } = await import("@/lib/meta-content-sync.server");
+    await persistContentComment(admin, {
+      companyId: instance.company_id,
+      network: channel === "instagram" ? "instagram" : "facebook",
+      externalPostId: externalPostId ?? null,
+      ownerExternalId: instance.phone_number_id,
+      comment: item,
+    });
+  } catch (error) {
+    // Tabela ainda não aplicada ou falha pontual: não interrompe a sincronização.
+    console.warn("[meta-sync] histórico de comentário", error instanceof Error ? error.message : String(error));
+  }
   return false;
 }
 
@@ -368,7 +382,7 @@ export async function syncMetaChannel(admin: Admin, instance: MetaInstance, opti
         : (await metaListPostComments(instance.instance_token, String(post.id), { limit: 100, instagram: channel === "instagram" })).data;
       const commentsAndReplies = comments.flatMap((comment: any) => [comment, ...commentReplies(comment)]);
       for (const comment of commentsAndReplies) {
-        const inserted = await persistComment(admin, instance, comment, channel);
+        const inserted = await persistComment(admin, instance, comment, channel, String(post.id));
         if (inserted) result.comments += 1;
 
         const commentId = String(comment?.id ?? "");
