@@ -95,6 +95,7 @@ export const connectMetaOAuthTargets = createServerFn({ method: "POST" })
 
     const connected: { canal: string; name: string }[] = [];
     const skipped: string[] = [];
+    const warnings: string[] = [];
 
     // Plano padrão: 1 conta de Facebook e 1 de Instagram por empresa.
     const { getCompanyPlan } = await import("./plan-limits.server");
@@ -167,7 +168,11 @@ export const connectMetaOAuthTargets = createServerFn({ method: "POST" })
       }
 
       // Assina o app nos eventos de mensagem da Página (cobre Messenger + IG vinculado).
-      await metaSubscribePage(target.pageToken, target.pageId);
+      // A conexão é mantida mesmo se a assinatura falhar, mas o aviso é devolvido.
+      const sub = await metaSubscribePage(target.pageToken, target.pageId);
+      if (!sub.ok) {
+        warnings.push(`${target.pageName ?? target.pageId}: webhooks não assinados — mensagens novas não chegarão até corrigir. ${sub.error ?? ""}`.trim());
+      }
     }
 
     // El token de usuario solo sirve para completar esta seleccion. La cuenta
@@ -185,7 +190,16 @@ export const connectMetaOAuthTargets = createServerFn({ method: "POST" })
       };
     }
 
-    return { ok: true as const, connected, skipped };
+    // Registra os ativos formais (Página ↔ Instagram). Opcional: falha vira aviso.
+    try {
+      const { reconcileSocialAccounts } = await import("./meta-content-sync.server");
+      const rec = await reconcileSocialAccounts(supabaseAdmin, companyId);
+      warnings.push(...rec.warnings);
+    } catch (e) {
+      warnings.push(`Histórico de conteúdo indisponível: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    return { ok: true as const, connected, skipped, warnings };
   });
 
 /** Passo 5 — revalida os tokens dos canais Meta da empresa. */
