@@ -158,3 +158,145 @@ export const runMetaChannelDiagnostics = createServerFn({ method: "POST" })
     const { runMetaDiagnostics } = await import("./meta-content-sync.server");
     return { checks: await runMetaDiagnostics(inst.instance_token, inst.provider === "meta_instagram" ? "instagram" : "facebook", String(inst.phone_number_id)) };
   });
+
+/** Saúde operacional da ingesta Meta. Não expõe payloads nem credenciais. */
+export const getMetaOperationalHealth = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const admin = supabaseAdmin as any;
+    const providers = ["meta_instagram", "meta_messenger"];
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const staleBefore = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+    const countInbox = async (status: string) => {
+      const result = await admin.from("messaging_inbox_events")
+        .select("id", { count: "exact", head: true })
+        .eq("company_id", companyId)
+        .in("provider", providers)
+        .eq("status", status)
+        .gte("received_at", since24h);
+      return { count: result.count ?? 0, error: result.error?.message ?? null };
+    };
+
+    const [
+      connections,
+      processed,
+      failed,
+      received,
+      ignored,
+      stale,
+      recentFailures,
+      pendingAttachments,
+      orphanStatuses,
+      latestInstagram,
+      latestMessenger,
+      latestSync,
+    ] = await Promise.all([
+      admin.from("whatsapp_instances")
+        .select("id,instance_name,provider,status,last_state_at,updated_at")
+        .eq("company_id", companyId).in("provider", providers).order("updated_at", { ascending: false }),
+      countInbox("processed"),
+      countInbox("failed"),
+      countInbox("received"),
+      countInbox("ignored"),
+      admin.from("messaging_inbox_events")
+        .select("id,provider,external_connection_id,received_at,error_message")
+        .eq("company_id", companyId).in("provider", providers).eq("status", "received")
+        .lt("received_at", staleBefore).order("received_at", { ascending: true }).limit(20),
+      admin.from("messaging_inbox_events")
+        .select("id,provider,external_connection_id,received_at,processed_at,error_message")
+        .eq("company_id", companyId).in("provider", providers).eq("status", "failed")
+        .order("received_at", { ascending: false }).limit(12),
+      admin.from("message_attachments")
+        .select("id,mensagem_id,provider_url,created_at,mensagens!inner(provider)", { count: "exact" })
+        .eq("company_id", companyId).is("storage_key", null).not("provider_url", "is", null)
+        .in("mensagens.provider", providers).order("created_at", { ascending: true }).limit(10),
+      admin.from("message_status_events")
+        .select("id", { count: "exact", head: true })
+        .eq("company_id", companyId).is("mensagem_id", null).gte("occurred_at", since24h),
+      admin.from("mensagens")
+        .select("created_at,provider_timestamp,direcao")
+        .eq("company_id", companyId).eq("provider", "meta_instagram")
+        .order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      admin.from("mensagens")
+        .select("created_at,provider_timestamp,direcao")
+        .eq("company_id", companyId).eq("provider", "meta_messenger")
+        .order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      admin.from("meta_sync_runs")
+        .select("kind,trigger,status,counts,started_at,finished_at")
+        .eq("company_id", companyId).order("started_at", { ascending: false }).limit(1).maybeSingle(),
+    ]);
+
+    const errors = [
+      connections.error?.message,
+      processed.error,
+      failed.error,
+      received.error,
+      ignored.error,
+      stale.error?.message,
+      recentFailures.error?.message,
+      pendingAttachments.error?.message,
+      orphanStatuses.error?.message,
+    ].filter(Boolean) as string[];
+
+    const rows = connections.data ?? [];
+    const connected = rows.filter((row: any) => ["connected", "open"].includes(String(row.status))).length;
+    const staleCount = (stale.data ?? []).length;
+    const pendingCount = pendingAttachments.count ?? 0;
+    const failedCount = failed.count ?? 0;
+    const status = connected === 0
+      ? "critical"
+      : errors.length || staleCount || failedCount || (orphanStatuses.count ?? 0)
+        ? "degraded"
+        : "operational";
+
+    return {
+      generatedAt: new Date().toISOString(),
+      status,
+      connections: rows,
+      inbox24h: {
+        processed: processed.count,
+        failed: failed.count,
+        received: received.count,
+        ignored: ignored.count,
+        stale: staleCount,
+      },
+      recentFailures: (recentFailures.data ?? []).map((row: any) => ({
+        ...row,
+        error_message: row.error_message ? String(row.error_message).slice(0, 500) : null,
+      })),
+      staleEvents: stale.data ?? [],
+      attachments: {
+        pending: pendingCount,
+        oldestAt: pendingAttachments.data?.[0]?.created_at ?? null,
+      },
+      orphanStatuses24h: orphanStatuses.count ?? 0,
+      latestMessages: {
+        meta_instagram: latestInstagram.data ?? null,
+        meta_messenger: latestMessenger.data ?? null,
+      },
+      latestSync: latestSync.error ? null : latestSync.data ?? null,
+      warnings: errors,
+    };
+  });
+
+/** Executa manualmente um lote seguro de arquivamento dos anexos Meta em R2. */
+export const archivePendingMetaMedia = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { archivePendingMetaMessageMedia } = await import("./meta-message-media.server");
+    const [instagram, messenger] = await Promise.all([
+      archivePendingMetaMessageMedia(supabaseAdmin as any, { companyId, provider: "meta_instagram", limit: 25 }),
+      archivePendingMetaMessageMedia(supabaseAdmin as any, { companyId, provider: "meta_messenger", limit: 25 }),
+    ]);
+    return {
+      archived: instagram.archived + messenger.archived,
+      failed: instagram.failed + messenger.failed,
+      skipped: instagram.skipped + messenger.skipped,
+      errors: [...instagram.errors, ...messenger.errors].slice(0, 20),
+    };
+  });

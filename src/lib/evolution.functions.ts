@@ -573,6 +573,7 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
         console.log("[sendWhatsappText] Enviando por", inst.provider, inst.instance_name);
         const resp: any = await waSendText(
           {
+            company_id: companyId,
             instance_name: inst.instance_name,
             instance_token: inst.instance_token,
             provider: inst.provider as any,
@@ -712,6 +713,7 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
         console.log("[sendWhatsappMedia] Enviando por", inst.provider);
         const resp: any = await waSendMedia(
           {
+            company_id: companyId,
             instance_name: inst.instance_name,
             instance_token: inst.instance_token,
             provider: inst.provider as any,
@@ -823,6 +825,7 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
       if (!sendError) {
         console.log("[sendWhatsappAudio] Chamando dispatcher de áudio...");
         const waInst = {
+          company_id: companyId,
           instance_name: inst.instance_name,
           instance_token: inst.instance_token,
           provider: inst.provider as any,

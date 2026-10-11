@@ -27,6 +27,7 @@ export function isMetaProvider(provider?: string | null): boolean {
 }
 
 export type WaInstance = {
+  company_id?: string | null;
   instance_name: string;
   instance_token: string | null;
   provider: WaProvider;
@@ -64,6 +65,7 @@ export async function getActiveInstance(companyId: string): Promise<WaInstance |
   }
 
   return {
+    company_id: companyId,
     instance_name: (inst as any).instance_name,
     instance_token: (inst as any).instance_token ?? null,
     provider,
@@ -100,6 +102,7 @@ export async function getActiveInstanceForContact(
     else if (providerType === "uazapi") provider = "uazapi";
 
     return {
+      company_id: companyId,
       instance_name: (inst as any).instance_name,
       instance_token: (inst as any).instance_token ?? null,
       provider,
@@ -112,6 +115,28 @@ export async function getActiveInstanceForContact(
     console.warn(`[getActiveInstanceForContact] Falha ao resolver instância para ${numero}, usando fallback:`, e?.message);
     return getActiveInstance(companyId);
   }
+}
+
+async function assertMetaWindowForInstance(inst: WaInstance, numero: string) {
+  if (!isMetaProvider(inst.provider)) return;
+  let companyId = inst.company_id ?? null;
+  if (!companyId) {
+    const { data, error } = await (supabaseAdmin as any).from("whatsapp_instances")
+      .select("company_id")
+      .eq("instance_name", inst.instance_name)
+      .eq("provider", inst.provider)
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    companyId = data?.company_id ?? null;
+  }
+  if (!companyId) throw new Error(`Empresa da conexão Meta ${inst.instance_name} não encontrada.`);
+  const { assertMetaResponseWindow } = await import("./meta-response-window.server");
+  await assertMetaResponseWindow(supabaseAdmin, {
+    companyId,
+    provider: inst.provider,
+    contactId: numero,
+  });
 }
 
 export async function waPresenceTyping(inst: WaInstance, numero: string, ms: number) {
@@ -172,6 +197,7 @@ export async function waSendText(
   numero = assertSendableNumber(numero, inst.provider);
   if (isMetaProvider(inst.provider)) {
     if (!inst.instance_token) throw new Error(`Token da Meta ausente para conexão ${inst.instance_name}`);
+    await assertMetaWindowForInstance(inst, numero);
     const { metaSendText } = await import("./meta.server");
     return metaSendText(inst.instance_token, numero, texto);
   }
@@ -202,6 +228,7 @@ export async function waSendMedia(
   numero = assertSendableNumber(numero, inst.provider);
   if (isMetaProvider(inst.provider)) {
     if (!inst.instance_token) throw new Error(`Token da Meta ausente para conexão ${inst.instance_name}`);
+    await assertMetaWindowForInstance(inst, numero);
     const { metaSendMedia } = await import("./meta.server");
     return metaSendMedia(inst.instance_token, numero, {
       mediatype: media.type,
@@ -247,6 +274,7 @@ export async function waSendAudio(inst: WaInstance, numero: string, audioBase64O
   numero = assertSendableNumber(numero, inst.provider);
   if (isMetaProvider(inst.provider)) {
     if (!inst.instance_token) throw new Error(`Token da Meta ausente para conexão ${inst.instance_name}`);
+    await assertMetaWindowForInstance(inst, numero);
     const { metaSendMedia } = await import("./meta.server");
     return metaSendMedia(inst.instance_token, numero, {
       mediatype: "audio",

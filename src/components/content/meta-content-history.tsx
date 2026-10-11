@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { AlertTriangle, CheckCircle2, CircleSlash, ExternalLink, Film, Grid3x3, ImageIcon, Layers, LayoutList, Loader2, PlayCircle, RefreshCw, Stethoscope, XCircle } from "lucide-react";
+import { Activity, AlertTriangle, Archive, CheckCircle2, CircleSlash, ExternalLink, Film, Grid3x3, HardDrive, ImageIcon, Inbox, Layers, LayoutList, Loader2, PlayCircle, RefreshCw, Stethoscope, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import {
   getMetaProfileGrowth,
+  getMetaOperationalHealth,
   getStoredMetaPost,
+  archivePendingMetaMedia,
   listMetaSocialAccounts,
   reconcileMetaAssets,
   listStoredMetaPosts,
@@ -448,6 +450,7 @@ export function MetaDiagnosticsPanel() {
   const accessLabel: Record<string, string> = { standard: "Standard Access", advanced_missing: "Falta Advanced Access", permission_missing: "Permissão ausente", endpoint_failure: "Falha do endpoint" };
 
   return (
+    <div className="space-y-4">
     <Card>
       <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Stethoscope className="h-4 w-4" />Diagnóstico Meta (somente leitura)</CardTitle></CardHeader>
       <CardContent className="space-y-4">
@@ -472,5 +475,143 @@ export function MetaDiagnosticsPanel() {
         )}
       </CardContent>
     </Card>
+    <MetaOperationsPanel />
+    </div>
+  );
+}
+
+function formatOperationalDate(value: string | null | undefined) {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("pt-BR");
+}
+
+function MetaOperationsPanel() {
+  const getHealth = useServerFn(getMetaOperationalHealth);
+  const archiveMedia = useServerFn(archivePendingMetaMedia);
+  const [health, setHealth] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [archiving, setArchiving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try { setHealth(await getHealth()); }
+    catch (e) { setError(e instanceof Error ? e.message : "Falha ao consultar a operação Meta."); }
+    finally { setLoading(false); }
+  }, [getHealth]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  async function runArchive() {
+    setArchiving(true);
+    try {
+      const result = await archiveMedia();
+      if (result.archived) toast.success(`${result.archived} anexo(s) arquivado(s) no R2.`);
+      if (result.failed || result.skipped) toast.warning(`${result.failed} falha(s) e ${result.skipped} arquivo(s) ignorado(s).`);
+      if (!result.archived && !result.failed && !result.skipped) toast.info("Não há anexos Meta pendentes.");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao arquivar anexos.");
+    } finally {
+      setArchiving(false);
+    }
+  }
+
+  const statusTone = health?.status === "operational"
+    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+    : health?.status === "critical"
+      ? "border-red-200 bg-red-50 text-red-800"
+      : "border-amber-200 bg-amber-50 text-amber-800";
+  const statusLabel = health?.status === "operational" ? "Operacional" : health?.status === "critical" ? "Crítico" : "Atenção";
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base"><Activity className="h-4 w-4" />Operação de mensagens Meta</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">Webhooks, estados de entrega e arquivos recebidos. Nenhum payload ou token é exibido.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {health && <Badge variant="outline" className={statusTone}>{statusLabel}</Badge>}
+            <Button variant="outline" size="sm" onClick={() => void runArchive()} disabled={archiving || loading}>
+              {archiving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Archive className="mr-2 h-4 w-4" />}Arquivar anexos
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}Atualizar
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {error && <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</div>}
+        {health && (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <OperationalMetric icon={<Inbox className="h-4 w-4" />} label="Processados 24h" value={health.inbox24h.processed} />
+              <OperationalMetric icon={<XCircle className="h-4 w-4" />} label="Falhas 24h" value={health.inbox24h.failed} alert={health.inbox24h.failed > 0} />
+              <OperationalMetric icon={<Activity className="h-4 w-4" />} label="Estagnados +5 min" value={health.inbox24h.stale} alert={health.inbox24h.stale > 0} />
+              <OperationalMetric icon={<HardDrive className="h-4 w-4" />} label="Arquivos pendentes" value={health.attachments.pending} alert={health.attachments.pending > 0} />
+              <OperationalMetric icon={<CircleSlash className="h-4 w-4" />} label="Estados órfãos 24h" value={health.orphanStatuses24h} alert={health.orphanStatuses24h > 0} />
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-md border">
+                <div className="border-b px-3 py-2 text-sm font-medium">Canais e última atividade</div>
+                <div className="divide-y">
+                  {health.connections.length === 0 && <p className="p-3 text-sm text-muted-foreground">Nenhum canal Meta cadastrado.</p>}
+                  {health.connections.map((connection: any) => {
+                    const latest = health.latestMessages?.[connection.provider];
+                    const connected = ["connected", "open"].includes(String(connection.status));
+                    return (
+                      <div key={connection.id} className="flex items-start justify-between gap-3 p-3 text-sm">
+                        <div className="min-w-0">
+                          <div className="truncate font-medium">{connection.provider === "meta_instagram" ? "Instagram" : "Messenger"} · {connection.instance_name}</div>
+                          <div className="text-xs text-muted-foreground">Última mensagem: {formatOperationalDate(latest?.provider_timestamp ?? latest?.created_at)}</div>
+                        </div>
+                        <Badge variant="outline" className={connected ? "text-emerald-700" : "text-destructive"}>{connection.status}</Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-md border">
+                <div className="border-b px-3 py-2 text-sm font-medium">Últimas falhas de webhook</div>
+                <div className="max-h-64 divide-y overflow-auto">
+                  {health.recentFailures.length === 0 && <p className="p-3 text-sm text-muted-foreground">Nenhuma falha registrada.</p>}
+                  {health.recentFailures.map((failure: any) => (
+                    <div key={failure.id} className="space-y-1 p-3 text-sm">
+                      <div className="flex items-center justify-between gap-2"><b>{failure.provider}</b><span className="text-xs text-muted-foreground">{formatOperationalDate(failure.received_at)}</span></div>
+                      <p className="break-words text-xs text-destructive">{failure.error_message ?? "Falha sem detalhe registrado."}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {health.attachments.pending > 0 && (
+              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>Há {health.attachments.pending} arquivo(s) aguardando cópia para R2. O mais antigo é de {formatOperationalDate(health.attachments.oldestAt)}.</span>
+              </div>
+            )}
+            {health.warnings.length > 0 && <p className="text-xs text-destructive">Consulta parcial: {health.warnings.join(" · ")}</p>}
+            <p className="text-xs text-muted-foreground">Atualizado em {formatOperationalDate(health.generatedAt)}. Envios de Instagram e Messenger são bloqueados no servidor quando a última mensagem do contato ultrapassa 24 horas.</p>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function OperationalMetric({ icon, label, value, alert = false }: { icon: React.ReactNode; label: string; value: number; alert?: boolean }) {
+  return (
+    <div className={`rounded-md border p-3 ${alert ? "border-amber-200 bg-amber-50" : "bg-muted/20"}`}>
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">{icon}{label}</div>
+      <div className={`mt-1 text-2xl font-bold ${alert ? "text-amber-800" : ""}`}>{value}</div>
+    </div>
   );
 }

@@ -296,7 +296,7 @@ export async function assertInstanceOpen(
 export function isPermanentMetaSendError(provider: string | undefined, message: string | null): boolean {
   if (!provider?.startsWith("meta") || !message) return false;
   // Captura erros de Modo de Desenvolvimento (403 Forbidden) ou falta de permissões avançadas
-  return /acesso avançado|advanced access|função no app|role on app|missing permissions|permission.*instagram_manage_messages|403|forbidden/i.test(message);
+  return /acesso avançado|advanced access|função no app|role on app|missing permissions|permission.*instagram_manage_messages|403|forbidden|janela de resposta de 24 horas|outside.*24.?hour|response window/i.test(message);
 }
 
 export async function resolveCompanyId(supabase: any, userId: string): Promise<string> {

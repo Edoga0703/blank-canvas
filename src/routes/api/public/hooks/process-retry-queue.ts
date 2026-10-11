@@ -22,13 +22,13 @@ async function processOne(admin: any, item: any): Promise<{ ok: boolean; erro?: 
 
 
 
-  const { data: inst } = await admin
-    .from("whatsapp_instances")
-    .select("instance_name,instance_token,status,updated_at,provider,provider_type,phone_number_id,waba_id")
-    .eq("company_id", item.company_id)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { getInstanceForContact } = await import("@/lib/evolution-helpers");
+  const inst = await getInstanceForContact(
+    admin,
+    item.company_id,
+    rawNumero,
+    "company_id,instance_name,instance_token,status,updated_at,provider,provider_type,phone_number_id,waba_id",
+  );
   if (!inst?.instance_name) return { ok: false, erro: "Sem instância WhatsApp" };
   if (inst.status && !["open", "connected"].includes(String(inst.status).toLowerCase())) {
     return { ok: false, erro: `Instância não conectada (${inst.status})` };
@@ -101,6 +101,49 @@ async function processOne(admin: any, item: any): Promise<{ ok: boolean; erro?: 
         ok: false,
         erro: msg,
         permanent: /invalid|forbidden|blocked|24h|window|template|recipient|não autorizado/i.test(msg),
+      };
+    }
+  }
+
+  // Instagram e Messenger usam a Graph API também nos reintentos. Sem esta
+  // ramificação, mensagens Meta caíam no fallback da Evolution API.
+  if (isMetaProvider) {
+    try {
+      const { waSendText, waSendMedia, waSendAudio } = await import("@/lib/wa-dispatch.server");
+      const metaProvider = /instagram/i.test(provider) ? "meta_instagram" as const : "meta_messenger" as const;
+      const waInst = {
+        company_id: item.company_id,
+        instance_name: inst.instance_name,
+        instance_token: (inst as any).instance_token ?? null,
+        provider: metaProvider,
+        status: inst.status,
+        paused: false,
+      };
+      let resp: any;
+      if (item.kind === "text") {
+        resp = await waSendText(waInst, p.numero, p.texto, {
+          replyToExternalMessageId: p.quoted?.key?.id ?? null,
+        });
+      } else if (item.kind === "media") {
+        resp = await waSendMedia(waInst, p.numero, {
+          type: p.mediatype,
+          url: p.media,
+          mime: p.mimetype,
+          fileName: p.fileName,
+          caption: p.caption,
+        });
+      } else if (item.kind === "audio") {
+        resp = await waSendAudio(waInst, p.numero, p.audio);
+      } else {
+        return { ok: false, erro: `Tipo desconhecido: ${item.kind}`, permanent: true };
+      }
+      return { ok: true, waId: resp?.key?.id ?? resp?.id ?? resp?.message_id ?? null };
+    } catch (e: any) {
+      const msg = e?.message ?? String(e);
+      return {
+        ok: false,
+        erro: msg,
+        permanent: /24 horas|response window|advanced access|missing permissions|forbidden|403|invalid recipient/i.test(msg),
       };
     }
   }
