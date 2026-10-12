@@ -22,10 +22,6 @@ import { sendWhatsappMedia } from "@/lib/evolution.functions";
 import { brand } from "@/config/brand";
 
 export const Route = createFileRoute("/app/relatorios")({
-  beforeLoad: ({ context }) => {
-    const manager = context.membership?.role === "owner" || context.membership?.role === "admin" || context.isSuperAdmin;
-    if (context.company?.atendimento_operacional !== true || !manager) throw redirect({ to: "/app/dashboard" });
-  },
   head: () => ({ meta: [
     { title: `${brand.name} — Relatórios de atendimento` },
     { name: "description", content: "Acompanhamento em tempo real e relatório diário dos atendimentos." },

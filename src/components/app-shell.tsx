@@ -62,33 +62,29 @@ const sections: { label: string; items: (NavItem & { flag?: string })[] }[] = [
     items: [
       { to: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard, flag: "module.dashboard" },
       { to: "/app/conversas", label: "Conversas", icon: Inbox, badge: true, flag: "module.conversas" },
-      { to: "/app/publicacoes", label: "Publicações", icon: Share2, tag: "Meta", flag: "module.publicacoes" },
-      { to: "/app/conteudo", label: "Conteúdo", icon: Images, tag: "Meta" },
       { to: "/app/crm", label: "CRM Kanban", icon: KanbanSquare, flag: "module.crm" },
       { to: "/app/comercial", label: "Comercial", icon: TrendingUp, flag: "module.comercial" },
       { to: "/app/contatos", label: "Contatos", icon: Contact, flag: "module.contatos" },
       { to: "/app/prospeccao", label: "Prospecção", icon: Radar, capacidade: "prospeccao" },
-      { to: "/app/agente", label: "Agente IA", icon: Bot, tag: "IA", flag: "module.agente", adminOnly: true },
-      
-
+      { to: "/app/agente", label: "Agente IA", icon: Bot, tag: "IA", flag: "module.agente" },
       { to: "/app/respostas-rapidas", label: "Respostas Rápidas", icon: Bolt, flag: "module.respostas" },
       { to: "/app/agendamentos", label: "Agendamentos", icon: CalendarClock, flag: "module.agendamentos" },
       { to: "/app/campanhas", label: "Campanhas", icon: Megaphone, flag: "module.campanhas" },
-      { to: "/app/templates", label: "Templates", icon: FileText, adminOnly: true, tag: "Meta", flag: "module.templates" },
+      { to: "/app/templates", label: "Templates", icon: FileText, tag: "Meta", flag: "module.templates" },
       { to: "/app/catalogo", label: "Catálogo", icon: Package, flag: "module.catalogo" },
+      { to: "/app/publicacoes", label: "Publicações", icon: Share2, tag: "Meta", flag: "module.publicacoes" },
+      { to: "/app/conteudo", label: "Conteúdo", icon: Images, tag: "Meta" },
       { to: "/app/treinamentos", label: "Capi Conversa Academy", icon: GraduationCap, tag: "Interno", superOnly: true, flag: "module.treinamentos" },
-
     ],
   },
   {
     label: "Gestão",
     items: [
-      { to: "/app/usuarios", label: "Usuários", icon: Users, adminOnly: true, flag: "module.usuarios" },
-      { to: "/app/conexao", label: "Conexão", icon: Smartphone, adminOnly: true, flag: "module.conexao" },
-      { to: "/app/plugins", label: "Plugins", icon: Puzzle, adminOnly: true, flag: "module.plugins" },
+      { to: "/app/usuarios", label: "Usuários", icon: Users, flag: "module.usuarios" },
+      { to: "/app/conexao", label: "Conexão", icon: Smartphone, flag: "module.conexao" },
+      { to: "/app/plugins", label: "Plugins", icon: Puzzle, flag: "module.plugins" },
       { to: "/app/configuracoes", label: "Configurações", icon: Settings, flag: "module.configuracoes" },
-      { to: "/app/relatorios", label: "Relatórios", icon: BarChart3, adminOnly: true, operationalOnly: true },
-
+      { to: "/app/relatorios", label: "Relatórios", icon: BarChart3 },
       { to: "/app/parceiro", label: "Portal do Parceiro", icon: Users, capacidade: "parceiro" },
     ],
   },
@@ -96,26 +92,9 @@ const sections: { label: string; items: (NavItem & { flag?: string })[] }[] = [
 
 const flatNavItems = sections.flatMap((section) => section.items.flatMap((item) => item.children ?? item));
 
-// Empresas com funções individuais (ex.: Sevcon): usuários não-admin acessam
-// apenas os módulos operacionais abaixo.
-const MODULOS_RESTRITOS = [
-  "/app/dashboard",
-  "/app/conversas",
-  "/app/contatos",
-  "/app/respostas-rapidas",
-  "/app/agendamentos",
-  "/app/configuracoes",
-];
-
-// Módulos ocultos para TODOS os usuários (inclusive admin) em contas no modo
-// operacional (SevyCon). Para reativar, basta remover a rota desta lista.
-const MODULOS_OCULTOS_MODO_OPERACIONAL = [
-  "/app/comercial",
-  "/app/agente",
-  "/app/campanhas",
-  "/app/templates",
-  "/app/catalogo",
-];
+// Listas legadas desativadas para permitir visão completa de todas as ferramentas
+const MODULOS_RESTRITOS: string[] = [];
+const MODULOS_OCULTOS_MODO_OPERACIONAL: string[] = [];
 
 const routeSubtitles: Record<string, string> = {
   "/app/dashboard": "Visão geral do atendimento",
@@ -259,8 +238,6 @@ export function AppShell({
   const [moreOpen, setMoreOpen] = useState(false);
   const { capacidades: capsAtivas, carregando: capsCarregando } = useCapacidades();
   const capOk = (slug?: string) => !slug || capsCarregando || capsAtivas.includes(slug);
-  // MVP mobile: apenas módulos operacionais. Os administrativos/complexos
-  // ficam disponíveis somente no desktop (mobileHidden).
   const moreItems: { to: string; label: string; icon: any; adminOnly?: boolean; capacidade?: string; mobileHidden?: boolean }[] = [
     { to: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/app/conversas", label: "Conversas", icon: Inbox },
@@ -271,25 +248,15 @@ export function AppShell({
     { to: "/app/configuracoes", label: "Configurações", icon: Settings },
     { to: "/app/comercial", label: "Comercial", icon: TrendingUp },
     { to: "/app/agente", label: "Agente IA", icon: Bot, mobileHidden: true },
-    
     { to: "/app/campanhas", label: "Campanhas", icon: Megaphone, mobileHidden: true },
     { to: "/app/conteudo", label: "Conteúdo", icon: Images },
-    { to: "/app/templates", label: "Templates", icon: FileText, adminOnly: true, mobileHidden: true },
+    { to: "/app/templates", label: "Templates", icon: FileText, mobileHidden: true },
     { to: "/app/catalogo", label: "Catálogo", icon: Package, mobileHidden: true },
-
-    { to: "/app/usuarios", label: "Usuários", icon: Users, adminOnly: true, mobileHidden: true },
-    { to: "/app/conexao", label: "Conexão", icon: Smartphone, adminOnly: true, mobileHidden: true },
-    { to: "/app/plugins", label: "Plugins", icon: Puzzle, adminOnly: true, mobileHidden: true },
+    { to: "/app/usuarios", label: "Usuários", icon: Users, mobileHidden: true },
+    { to: "/app/conexao", label: "Conexão", icon: Smartphone, mobileHidden: true },
+    { to: "/app/plugins", label: "Plugins", icon: Puzzle, mobileHidden: true },
   ]
     .filter((i: any) => (i.adminOnly ? isAdmin : true))
-    .filter((i: any) =>
-      !(company as any)?.atendimento_operacional || !MODULOS_OCULTOS_MODO_OPERACIONAL.includes(i.to),
-    )
-    .filter((i: any) =>
-      (company as any)?.funcoes_individuais && !isAdmin && !isSuperAdmin
-        ? MODULOS_RESTRITOS.includes(i.to) || ((company as any)?.atendimento_operacional === true && i.to === "/app/crm")
-        : true,
-    )
     .filter((i: any) => capOk(i.capacidade))
     .filter((i: any) => !i.mobileHidden);
 
@@ -316,7 +283,13 @@ export function AppShell({
   const isCrmPath = pathForLayout.startsWith("/app/crm");
   const isTrainingPath = loc.pathname.startsWith("/app/treinamentos");
   const isContainedPath = isConversasPath || isCrmPath;
-  const [collapsed, setCollapsed] = useState<boolean>(true);
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("sidebar_collapsed");
+      if (saved !== null) return saved === "true";
+    }
+    return false;
+  });
   const unreadConversations = unreadConversationsCount;
   useRealtimeSounds(company?.id);
   const { muted: soundsMuted, toggle: toggleSounds } = useSoundsMuted();
@@ -370,7 +343,11 @@ export function AppShell({
             companyLogo={companyLogo}
             signOut={signOut}
             collapsed={collapsed}
-            onToggleCollapsed={() => setCollapsed((v) => !v)}
+            onToggleCollapsed={() => setCollapsed((v) => {
+              const next = !v;
+              try { localStorage.setItem("sidebar_collapsed", String(next)); } catch {}
+              return next;
+            })}
             unreadConversations={unreadConversations}
             onNavigateStart={startModuleNavigation}
             userName={userName}
@@ -517,13 +494,13 @@ function Sidebar({
        </div>
 
 
-        <nav aria-label="Menu principal" className={`${collapsed ? "px-3" : "px-3"} py-5 [@media(max-height:820px)]:py-2 flex-1 overflow-y-auto overflow-x-hidden no-scrollbar space-y-5 [@media(max-height:820px)]:space-y-2`}>
+        <nav aria-label="Menu principal" className={`${collapsed ? "px-2" : "px-3"} py-3 flex-1 overflow-y-auto overflow-x-hidden space-y-4`}>
         {sections.map((sec, i) => (
           <div key={sec.label}>
             {i > 0 && <div className="h-px bg-border mx-2 mb-3" />}
              {!collapsed && <div className="px-3 pb-2 text-[10px] font-bold uppercase text-muted-foreground">{sec.label}</div>}
             <div className="flex flex-col gap-[3px]">
-              {sec.items.filter((i: any) => (!i.adminOnly || isAdmin) && (!i.superOnly || isSuperAdmin) && (!i.operationalOnly || company?.atendimento_operacional === true) && !(company?.atendimento_operacional === true && i.to && MODULOS_OCULTOS_MODO_OPERACIONAL.includes(i.to)) && isFeatureVisible(i.flag) && isCapacidadeVisible(i.capacidade) && (!(company as any)?.funcoes_individuais || isAdmin || isSuperAdmin || MODULOS_RESTRITOS.includes(i.to) || (company?.atendimento_operacional === true && i.to === "/app/crm"))).map((item: any) => (
+              {sec.items.filter((i: any) => (!i.adminOnly || isAdmin) && (!i.superOnly || isSuperAdmin) && isFeatureVisible(i.flag) && isCapacidadeVisible(i.capacidade)).map((item: any) => (
                 item.children
                   ? <NavGroup key={item.label} item={item} activePath={activePath} primary={primary} collapsed={collapsed} isAdmin={isAdmin} onNavigateStart={onNavigateStart} />
                   : <NavLink key={item.to} item={item} active={activePath.startsWith(item.to!)} primary={primary} collapsed={collapsed} badgeCount={item.to === "/app/conversas" ? unreadConversations : 0} onNavigateStart={onNavigateStart} />

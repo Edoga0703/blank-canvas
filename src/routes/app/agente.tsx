@@ -37,12 +37,6 @@ import { AgentAvatar } from "@/components/agente/agent-avatar";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/agente")({
-  beforeLoad: ({ context }) => {
-    const role = context.membership?.role;
-    if (role !== "owner" && role !== "admin") {
-      throw redirect({ to: "/app/dashboard" });
-    }
-  },
   head: () => ({ meta: [{ title: `${brand.name} — Agente IA Studio` }] }),
   component: AgentePage,
 });

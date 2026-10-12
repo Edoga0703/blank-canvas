@@ -31,10 +31,6 @@ const searchSchema = z.object({
 export const Route = createFileRoute("/app/agente-avancado")({
   head: () => ({ meta: [{ title: `${brand.name} — Agente IA` }] }),
   validateSearch: (search) => searchSchema.parse(search),
-  beforeLoad: ({ context }: any) => {
-    const r = context?.membership?.role;
-    if (r === "atendente") throw redirect({ to: "/app/dashboard" });
-  },
   component: AgentePage,
 });
 
