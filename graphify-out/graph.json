@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-12T05:00:48.973764+00:00",
+  "generated_at": "2026-10-12T05:54:18.572579+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -555,7 +555,7 @@
     },
     {
       "path": "src/components/app-shell.tsx",
-      "bytes": 34826
+      "bytes": 33610
     },
     {
       "path": "src/components/mobile-app-banner.tsx",
@@ -2499,7 +2499,7 @@
     },
     {
       "path": "src/routes/app/agente-avancado.tsx",
-      "bytes": 48371
+      "bytes": 48218
     },
     {
       "path": "src/routes/app/publicacoes.tsx",
@@ -2523,7 +2523,7 @@
     },
     {
       "path": "src/routes/app/relatorios.tsx",
-      "bytes": 22020
+      "bytes": 21747
     },
     {
       "path": "src/routes/app/usuarios.tsx",
@@ -2559,7 +2559,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 83850
+      "bytes": 83667
     },
     {
       "path": "src/routes/app/dashboard.tsx",
