@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-11T18:28:55.285290+00:00",
+  "generated_at": "2026-10-12T05:00:48.973764+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -739,7 +739,7 @@
     },
     {
       "path": "src/lib/lovable-ai.server.ts",
-      "bytes": 7397
+      "bytes": 7824
     },
     {
       "path": "src/lib/permissions.ts",
@@ -2583,7 +2583,7 @@
     },
     {
       "path": "src/routes/master/sistema.tsx",
-      "bytes": 23383
+      "bytes": 23741
     },
     {
       "path": "src/routes/master/financeiro.tsx",
