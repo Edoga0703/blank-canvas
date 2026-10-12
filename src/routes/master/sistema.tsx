@@ -388,10 +388,17 @@ function SistemaPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Provedor padrão</Label>
-              <Select value={globalAi.ai_provider} onValueChange={v => setGlobalAi({ ...globalAi, ai_provider: v })}>
+              <Select
+                value={globalAi.ai_provider}
+                onValueChange={(v) => {
+                  const defaultModel = v === "drael" ? "drael-v1" : v === "openai" ? "gpt-4o-mini" : "google/gemini-2.0-flash-exp";
+                  setGlobalAi({ ...globalAi, ai_provider: v, ai_model: defaultModel });
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="openai">OpenAI (GPT-4o / GPT-4o-mini)</SelectItem>
+                  <SelectItem value="drael">Drael (drael.sh / drael-v1)</SelectItem>
                   <SelectItem value="gemini">Google Gemini (Gateway Capi Conversa)</SelectItem>
                 </SelectContent>
               </Select>
@@ -401,13 +408,13 @@ function SistemaPage() {
               <Input
                 value={globalAi.ai_model}
                 onChange={e => setGlobalAi({ ...globalAi, ai_model: e.target.value })}
-                placeholder="ex: gpt-4o-mini"
+                placeholder="ex: gpt-4o-mini ou drael-v1"
                 list="ai-models"
               />
               <datalist id="ai-models">
                 <option value="gpt-4o-mini" />
                 <option value="gpt-4o" />
-                <option value="gpt-4.1-mini" />
+                <option value="drael-v1" />
                 <option value="google/gemini-2.0-flash-exp" />
               </datalist>
             </div>
@@ -416,7 +423,7 @@ function SistemaPage() {
           <div className="pt-4 border-t space-y-4">
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
-                <Key className="size-3" /> OpenAI API Key
+                <Key className="size-3" /> API Key (OpenAI ou Drael)
                 {savedKeys.openai && (
                   <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700"><ShieldCheck className="size-3" /> chave salva</span>
                 )}
@@ -426,7 +433,7 @@ function SistemaPage() {
                   type={showKeys.openai ? "text" : "password"}
                   value={globalAi.openai_api_key}
                   onChange={e => setGlobalAi({ ...globalAi, openai_api_key: e.target.value })}
-                  placeholder="sk-..."
+                  placeholder="sk-... ou dk-..."
                   className="flex-1"
                 />
                 <Button

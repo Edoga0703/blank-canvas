@@ -59,11 +59,13 @@ export async function lovableAiChat(
   // A configuração global do painel Master tem prioridade sobre a do agente.
   const provider = globalProvider || (cfg.provider || "openai").toLowerCase();
 
-  if (provider === "openai") {
+  if (provider === "openai" || provider === "drael") {
     const key = globalOpenAiKey?.trim() || cfg.openaiKey?.trim();
-    if (!key) throw new Error("Chave OpenAI não configurada no painel Master (Sistema > Inteligência Artificial).");
-    const model = globalModel || cfg.model || "gpt-4o-mini";
-    return openAiChat(key, model, msgs, 0.1);
+    if (!key) throw new Error("Chave de IA não configurada no painel Master (Sistema > Inteligência Artificial).");
+    const isDrael = provider === "drael" || key.startsWith("dk-");
+    const baseUrl = (gVal.base_url || process.env.OPENAI_BASE_URL || (isDrael ? "https://drael.sh/v1" : "https://api.openai.com/v1")).trim();
+    const model = globalModel || cfg.model || (isDrael ? "drael-v1" : "gpt-4o-mini");
+    return openAiChat(key, model, msgs, 0.1, baseUrl);
   }
   if (provider === "anthropic") {
     const key = globalAnthropicKey?.trim() || cfg.anthropicKey?.trim();
@@ -132,15 +134,23 @@ export async function lovableAiChat(
 }
 
 
-async function openAiChat(key: string, model: string, messages: ChatMsg[], temperature = 0.1): Promise<string> {
-  const res = await fetchJson("https://api.openai.com/v1/chat/completions", {
+async function openAiChat(
+  key: string,
+  model: string,
+  messages: ChatMsg[],
+  temperature = 0.1,
+  baseUrl = "https://api.openai.com/v1",
+): Promise<string> {
+  const url = `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
+  const res = await fetchJson(url, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({ model, messages, temperature, presence_penalty: 0.2, frequency_penalty: 0.1 }),
   });
   if (!res.ok) {
     const t = await res.text();
-    throw new Error(`OpenAI: ${res.status} ${t.slice(0, 200)}`);
+    const providerName = baseUrl.includes("drael.sh") ? "Drael" : "OpenAI";
+    throw new Error(`${providerName}: ${res.status} ${t.slice(0, 200)}`);
   }
   const data = await res.json();
   return data?.choices?.[0]?.message?.content?.toString().trim() || "";
