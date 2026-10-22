@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-22T22:49:28.027754+00:00",
+  "generated_at": "2026-10-22T23:18:49.244114+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -1011,7 +1011,7 @@
     },
     {
       "path": "src/lib/meta.server.ts",
-      "bytes": 22406
+      "bytes": 25584
     },
     {
       "path": "src/lib/wa-interactive.ts",
@@ -1295,7 +1295,7 @@
     },
     {
       "path": "src/lib/meta.functions.ts",
-      "bytes": 9152
+      "bytes": 9834
     },
     {
       "path": "src/lib/company-reset.functions.ts",
@@ -2495,7 +2495,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 188852
+      "bytes": 189490
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -2779,7 +2779,7 @@
     },
     {
       "path": "src/routes/api/public/meta-webhook.ts",
-      "bytes": 33230
+      "bytes": 33239
     },
     {
       "path": "src/routes/api/public/v1/$.ts",
@@ -13234,6 +13234,10 @@
     {
       "source": "src/routes/app/conversas.tsx",
       "target": "@/lib/meta-content.functions"
+    },
+    {
+      "source": "src/routes/app/conversas.tsx",
+      "target": "@/lib/meta.functions"
     },
     {
       "source": "src/routes/app/conversas.tsx",
