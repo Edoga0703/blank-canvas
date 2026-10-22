@@ -197,8 +197,11 @@ export function parseCopilotOutput(rawText: string): CopilotTurnResult {
   let reply = rawText;
   const proposals: CopilotActionProposal[] = [];
 
-  const jsonBlockRegex = /```(?:json_actions|json)?\s*([\s\S]*?)\s*```/;
-  const match = rawText.match(jsonBlockRegex);
+  // Prioriza bloco específico ```json_actions para não colidir com outros blocos de código
+  let match = rawText.match(/```json_actions\s*([\s\S]*?)\s*```/i);
+  if (!match) {
+    match = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  }
 
   if (match) {
     try {

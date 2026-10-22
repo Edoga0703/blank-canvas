@@ -178,9 +178,23 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
     }
 
     if (action.type === "config") {
-      const updates = action.payload?.updates || {};
+      const rawUpdates = action.payload?.updates || {};
+      const ALLOWED_CONFIG_KEYS = [
+        "segundos_buffer", "tamanho_resposta", "sobre_empresa", "descricao_negocio",
+        "formas_pagamento", "estilo_comunicacao", "apresentacao", "como_vender",
+        "regras_rigidas", "pode_fazer", "nao_pode_fazer", "palavra_pausar",
+        "palavra_despausar", "responder_em_partes", "politicas", "faq", "objecoes",
+        "diferenciais", "publico_alvo", "regiao_horario"
+      ];
+      const safeUpdates: Record<string, any> = {};
+      for (const k of ALLOWED_CONFIG_KEYS) {
+        if (rawUpdates[k] !== undefined) safeUpdates[k] = rawUpdates[k];
+      }
+      if (Object.keys(safeUpdates).length === 0) {
+        throw new Error("Nenhum campo de configuração permitido para atualizar.");
+      }
       let query = supabase.from("agent_config").update({
-        ...updates,
+        ...safeUpdates,
         updated_at: new Date().toISOString(),
       });
       if (data.agentId) query = query.eq("id", data.agentId);

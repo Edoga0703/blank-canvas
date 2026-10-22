@@ -549,6 +549,7 @@ export function parseAiOutput(
   qualified: boolean;
   pedido: PedidoBrief | null;
   sugestao: PromptSuggestion | null;
+  produtosSku?: string[];
 } {
 
   let text = raw || "";
@@ -625,12 +626,20 @@ export function parseAiOutput(
     }
   }
 
+  // B-04: Extrai e remove [PRODUTO:sku] para não expor marcador cru ao cliente
+  const produtosSku: string[] = [];
+  text = text.replace(/\[\s*PRODUTO\s*:\s*([^\]]+)\]/gi, (_, sku) => {
+    const s = String(sku || "").trim();
+    if (s && !produtosSku.includes(s)) produtosSku.push(s);
+    return "";
+  }).trim();
+
   const parts = text
     .split(PART_SEPARATOR)
     .map((p) => p.trim())
     .filter((p) => p.length > 0)
     .slice(0, 3);
-  return { parts: parts.length ? parts : [text.trim()].filter(Boolean), stage, agendar, intent, handoff, qualified, pedido, sugestao };
+  return { parts: parts.length ? parts : [text.trim()].filter(Boolean), stage, agendar, intent, handoff, qualified, pedido, sugestao, produtosSku };
 
 }
 

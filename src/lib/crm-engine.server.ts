@@ -458,7 +458,7 @@ export async function reactivateLostCard(
     const { data: dest } = await admin.from("crm_stage").select("nome").eq("id", destinoId).maybeSingle();
     await admin.rpc("push_notificacao", {
       _company_id: card.company_id,
-      _tipo: "lead",
+      _tipo: "lead_novo",
       _titulo: "Lead perdido voltou a falar",
       _descricao: `O lead retornou e foi movido para ${dest?.nome ?? "a etapa de retorno"}.`,
       _link: "/app/crm",

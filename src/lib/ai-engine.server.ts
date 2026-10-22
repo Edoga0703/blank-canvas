@@ -73,20 +73,52 @@ export async function processAiResponse(
 
   try {
 
-    // 1. Carregar configuração do agente e saldo
-    const [{ data: cfg }, { data: company }] = await Promise.all([
-      supabaseAdmin
-        .from("agent_config")
-        .select("*")
-        .eq("company_id", companyId)
-        .eq("tipo", "qualificacao")
-        .maybeSingle(),
+    // B-02: Resolve o agente dinamicamente pelo estágio/pipeline ou default
+    const { data: cardRowsPre } = await (supabaseAdmin as any)
+      .from("crm_cards")
+      .select("stage_id")
+      .eq("company_id", companyId)
+      .eq("numero", number)
+      .not("stage_id", "is", null)
+      .order("updated_at", { ascending: false })
+      .limit(1);
+    const preStageId = cardRowsPre?.[0]?.stage_id;
+
+    let targetAgentId: string | null = null;
+    if (preStageId) {
+      const { data: stRow } = await supabaseAdmin
+        .from("crm_stage")
+        .select("agent_id, pipeline_id")
+        .eq("id", preStageId)
+        .maybeSingle();
+      targetAgentId = stRow?.agent_id || null;
+      if (!targetAgentId && stRow?.pipeline_id) {
+        const { data: plRow } = await (supabaseAdmin as any)
+          .from("crm_pipeline")
+          .select("agent_id")
+          .eq("id", stRow.pipeline_id)
+          .maybeSingle();
+        targetAgentId = plRow?.agent_id || null;
+      }
+    }
+
+    let agentQuery = supabaseAdmin.from("agent_config").select("*").eq("company_id", companyId);
+    if (targetAgentId) {
+      agentQuery = agentQuery.eq("id", targetAgentId);
+    } else {
+      agentQuery = agentQuery.order("is_default", { ascending: false }).order("created_at", { ascending: true });
+    }
+
+    const [{ data: cfgRows }, { data: company }] = await Promise.all([
+      agentQuery.limit(1),
       supabaseAdmin
         .from("company")
         .select("creditos_saldo, status_cobranca")
         .eq("id", companyId)
         .maybeSingle()
     ]);
+
+    const cfg = cfgRows?.[0] || null;
 
     if (!cfg) {
       console.warn(`[ai-engine] No agent config for company ${companyId}`);
@@ -95,7 +127,44 @@ export async function processAiResponse(
         acao: "ai_error",
         detalhes: { error: "Configuração do agente de IA não encontrada para esta empresa." }
       } as any);
+      await (supabaseAdmin as any)
+        .from("ai_message_processing")
+        .update({ status: "skipped", error_message: "no_agent_config" })
+        .eq("id", processing.id);
       return;
+    }
+
+    // B-10: Avaliação de palavra_pausar e palavra_despausar
+    const textTrim = incomingText.trim().toLowerCase();
+    const pPausar = (cfg.palavra_pausar || "/pausar").trim().toLowerCase();
+    const pDespausar = (cfg.palavra_despausar || "/despausar").trim().toLowerCase();
+
+    if (textTrim === pPausar || textTrim.startsWith(pPausar + " ")) {
+      console.log(`[ai-engine] Comando de pausa '${pPausar}' recebido de ${number}`);
+      await supabaseAdmin.from("contact_pause").upsert(
+        {
+          company_id: companyId,
+          numero: number,
+          pausado: true,
+          pausado_por: "comando_palavra_pausar",
+          pausado_em: new Date().toISOString(),
+        } as any,
+        { onConflict: "company_id,numero" }
+      );
+      await (supabaseAdmin as any)
+        .from("ai_message_processing")
+        .update({ status: "completed", error_message: "chat_paused_by_keyword" })
+        .eq("id", processing.id);
+      return;
+    }
+
+    if (textTrim === pDespausar || textTrim.startsWith(pDespausar + " ")) {
+      console.log(`[ai-engine] Comando de despausa '${pDespausar}' recebido de ${number}`);
+      await supabaseAdmin
+        .from("contact_pause")
+        .update({ pausado: false, pausado_por: null } as any)
+        .eq("company_id", companyId)
+        .eq("numero", number);
     }
 
     if (!company || (company.creditos_saldo ?? 0) <= 0) {
@@ -105,6 +174,10 @@ export async function processAiResponse(
         acao: "ai_error",
         detalhes: { error: "Saldo de créditos insuficiente ou empresa não encontrada.", creditos: company?.creditos_saldo }
       } as any);
+      await (supabaseAdmin as any)
+        .from("ai_message_processing")
+        .update({ status: "skipped", error_message: "insufficient_credits" })
+        .eq("id", processing.id);
       return;
     }
 
@@ -268,6 +341,7 @@ export async function processAiResponse(
           .eq("numero", number);
       } else {
         console.log(`[ai-engine] AI is paused for ${number} (por=${(pause as any).pausado_por ?? "?"})`);
+        await (supabaseAdmin as any).from("ai_message_processing").update({ status: "skipped", error_message: "contact_paused" }).eq("id", processing.id);
         return;
       }
     }
@@ -282,11 +356,13 @@ export async function processAiResponse(
       (stageCfg?.modo_atendimento === "auto" && !stageHasFixedRule);
     if (stageCfg && !aiAllowed) {
       console.log(`[ai-engine] AI is disabled for stage ${card?.stage_id} (mode=${stageCfg.modo_atendimento})`);
+      await (supabaseAdmin as any).from("ai_message_processing").update({ status: "skipped", error_message: "stage_ai_disabled" }).eq("id", processing.id);
       return;
     }
     // Sem etapa configurada = sem agente designado. Nunca ativar a IA por padrão.
     if (!stageCfg) {
       console.log(`[ai-engine] No stage for ${number} — AI not allowed`);
+      await (supabaseAdmin as any).from("ai_message_processing").update({ status: "skipped", error_message: "no_stage" }).eq("id", processing.id);
       return;
     }
     // Um humano atendeu recentemente (inclusive após encerrar o ticket): a IA não assume sozinha,
@@ -304,6 +380,7 @@ export async function processAiResponse(
         .limit(1);
       if ((humano ?? []).length > 0) {
         console.log(`[ai-engine] Human handled ${number} in last 24h — AI stays off (mode=${stageCfg.modo_atendimento})`);
+        await (supabaseAdmin as any).from("ai_message_processing").update({ status: "skipped", error_message: "human_handled_recently" }).eq("id", processing.id);
         return;
       }
     }
@@ -409,11 +486,36 @@ export async function processAiResponse(
       console.warn("[ai-engine] Olist indisponível para o prompt:", e?.message);
     }
 
+    // B-06: Consulta feedback humano prévio e integração do Google Calendar
+    const [{ data: feedbackRows }, { data: googleIntegration }] = await Promise.all([
+      supabaseAdmin
+        .from("agent_feedback")
+        .select("rating, texto, nota")
+        .eq("company_id", companyId)
+        .order("created_at", { ascending: false })
+        .limit(8),
+      supabaseAdmin
+        .from("google_integration")
+        .select("id, ativo")
+        .eq("company_id", companyId)
+        .eq("ativo", true)
+        .maybeSingle()
+    ]);
+
+    const feedbackHints = (feedbackRows ?? []).map((f: any) => ({
+      rating: f.rating === "up" ? "up" : "down",
+      texto: f.texto || "",
+      nota: f.nota || null,
+    }));
+    const googleConectado = Boolean(googleIntegration && googleIntegration.ativo);
+
     // 5. Montar System Prompt
     const system = buildSystemPrompt(cfg as any, {
       responderEmPartes: cfg.responder_em_partes ?? true,
       stages: stages as any,
       produtos: produtos as any,
+      feedbackHints,
+      googleConectado,
       olistCatalogo,
       olistPedido: olistPedidoAtivo,
     });
@@ -449,6 +551,24 @@ export async function processAiResponse(
     const replyText = replyParts.join("\n\n");
     console.log(`[ai-engine] Parsed intent: ${parsed.intent}, parts count: ${replyParts.length}, qualified: ${parsed.qualified}, sugestao: ${Boolean(parsed.sugestao)}`);
 
+    // B-06: Agendamento automático quando a IA confirma horário com o cliente
+    if (parsed.agendar) {
+      try {
+        await supabaseAdmin.from("agendamento").insert({
+          company_id: companyId,
+          contato_numero: number,
+          titulo: parsed.agendar.titulo || `Agendamento - ${number}`,
+          data_inicio: parsed.agendar.inicio || new Date().toISOString(),
+          data_fim: parsed.agendar.fim || undefined,
+          status: "pendente",
+          origem: "ai_bot",
+        } as any);
+        console.log(`[ai-engine] Agendamento registrado para ${number} às ${parsed.agendar.inicio}`);
+      } catch (agErr: any) {
+        console.warn("[ai-engine] Falha ao registrar agendamento automático:", agErr?.message);
+      }
+    }
+
     // Fase B: Registrar sugestão de treinamento / melhoria de prompt se gerada pela IA
     if (parsed.sugestao) {
       console.log(`[ai-engine] 💡 AI prompt suggestion detected for ${number}:`, parsed.sugestao);
@@ -471,7 +591,7 @@ export async function processAiResponse(
 
         await (supabaseAdmin as any).rpc("push_notificacao", {
           _company_id: companyId,
-          _tipo: "ia_sugestao",
+          _tipo: "geral",
           _titulo: "💡 Sugerencia de entrenamiento para tu Agente IA",
           _descricao: parsed.sugestao.duda.slice(0, 180),
           _link: "/app/agente",
@@ -496,6 +616,7 @@ export async function processAiResponse(
         acao: "ai_error",
         detalhes: { error: "Nenhuma instância ativa encontrada para responder.", number }
       });
+      await (supabaseAdmin as any).from("ai_message_processing").update({ status: "skipped", error_message: "no_active_instance" }).eq("id", processing.id);
       return;
     }
     console.log(`[ai-engine] Found instance: ${inst.instance_name} (${inst.provider})`);
@@ -534,6 +655,7 @@ export async function processAiResponse(
     // Sem card (contato fora do Kanban) a IA responde normalmente.
     if (card?.id && latestStage && !latestAiAllowed) {
       console.log(`[ai-engine] Reply cancelled because stage mode changed for ${number}`);
+      await (supabaseAdmin as any).from("ai_message_processing").update({ status: "skipped", error_message: "stage_mode_changed_during_generation" }).eq("id", processing.id);
       return;
     }
 
@@ -547,6 +669,7 @@ export async function processAiResponse(
       .maybeSingle();
     if ((pauseNow as any)?.pausado && (pauseNow as any)?.pausado_por === "humano") {
       console.log(`[ai-engine] Reply cancelled: atendente assumiu a conversa de ${number}`);
+      await (supabaseAdmin as any).from("ai_message_processing").update({ status: "skipped", error_message: "human_took_over_during_generation" }).eq("id", processing.id);
       return;
     }
 

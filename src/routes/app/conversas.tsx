@@ -2520,7 +2520,7 @@ function Bubble({ m, quoted, companyId, onReply, agentTraits, agentAvatarUrl }: 
     }
     const { error } = await supabase.from("agent_feedback").insert({
       company_id: companyId, rating, nota,
-      mensagem_texto: m.texto || "", mensagem_id: m.id, numero: m.numero,
+      texto: m.texto || "", mensagem_texto: m.texto || "", mensagem_id: m.id, numero: m.numero,
     });
     setBusy(false);
     if (error) { toast.error("Não foi possível salvar o feedback"); return; }

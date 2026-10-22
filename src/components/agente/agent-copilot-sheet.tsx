@@ -155,7 +155,7 @@ Puedo ayudarte a:
         return copy;
       });
 
-      if (proposal.type === "rule" && onRuleApplied) onRuleApplied();
+      if ((proposal.type === "rule" || proposal.type === "config") && onRuleApplied) onRuleApplied();
       if (proposal.type === "catalog" && onCatalogUpdated) onCatalogUpdated();
     } catch (e: any) {
       toast.error(e.message || "Error al aplicar la acción.");

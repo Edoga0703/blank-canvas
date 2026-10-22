@@ -416,7 +416,7 @@ export const generateAgentAvatar = createServerFn({ method: "POST" })
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${apiKey}`, "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "fetch", "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash-image",
         prompt: basePrompt,
@@ -614,9 +614,26 @@ export const saveAgentConfig = createServerFn({ method: "POST" })
       return { id: data.id };
     }
 
+    // Procura por agente existente
+    const { data: existing } = await supabase
+      .from("agent_config")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("tipo", row.tipo || "qualificacao")
+      .maybeSingle();
+
+    if (existing?.id) {
+      const { error: upErr } = await supabase
+        .from("agent_config")
+        .update(row)
+        .eq("id", existing.id);
+      if (upErr) throw new Error(upErr.message);
+      return { id: existing.id };
+    }
+
     const { data: saved, error } = await supabase
       .from("agent_config")
-      .upsert(row, { onConflict: "company_id,tipo" })
+      .insert(row)
       .select("id")
       .single();
     if (error) throw new Error(error.message);
@@ -640,7 +657,7 @@ export const createAgent = createServerFn({ method: "POST" })
         user_id: userId,
         nome: data.nome,
         nome_agente: data.nome,
-        tipo: data.tipo,
+        tipo: data.tipo ? `${data.tipo}_${Date.now().toString(36)}` : 'custom',
         is_default: false,
         sobre_empresa: "",
         papel_objetivo: "",
@@ -851,10 +868,12 @@ async function executeSuggestionSimulation(
   if (params.agentId) query = query.eq("id", params.agentId);
   else query = query.eq("company_id", companyId).eq("tipo", params.tipo || "qualificacao");
 
-  const [{ data: cfg }, { data: stagesRows }, { data: prodRows }] = await Promise.all([
+  const [{ data: cfg }, { data: stagesRows }, { data: prodRows }, { data: fbRows }, { data: googleIntegration }] = await Promise.all([
     query.maybeSingle(),
     supabase.from("crm_stage").select("nome, tipo, ordem").eq("company_id", companyId).order("ordem", { ascending: true }),
     supabase.from("produto").select("nome, preco, descricao, sku, tipo, duracao_min, agendavel, ordem").eq("company_id", companyId).eq("ativo", true).order("ordem", { ascending: true }),
+    supabase.from("agent_feedback").select("rating, texto, mensagem_texto, nota").eq("company_id", companyId).order("created_at", { ascending: false }).limit(8),
+    supabase.from("google_integration").select("id, ativo").eq("company_id", companyId).eq("ativo", true).maybeSingle(),
   ]);
 
   if (!cfg) throw new Error("Configuração do agente não encontrada.");
@@ -882,10 +901,19 @@ async function executeSuggestionSimulation(
     regras_rigidas: testRegras,
   };
 
+  const feedbackHints = (fbRows ?? []).map((f: any) => ({
+    rating: f.rating === "up" ? "up" : "down",
+    texto: f.texto || f.mensagem_texto || "",
+    nota: f.nota || null,
+  })).filter((f: any) => f.texto);
+  const googleConectado = Boolean(googleIntegration && googleIntegration.ativo);
+
   const system = buildSystemPrompt(testCfg as any, {
     responderEmPartes: cfg.responder_em_partes ?? true,
     stages,
     produtos,
+    feedbackHints,
+    googleConectado,
   });
 
   // Recupera histórico relevante (seja dos detalhes ou das mensagens)

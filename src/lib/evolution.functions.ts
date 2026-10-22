@@ -976,6 +976,8 @@ export const testAiReply = createServerFn({ method: "POST" })
   .inputValidator((d: {
     message: string;
     tipo?: "qualificacao" | "followup" | "posvenda";
+    agentId?: string | null;
+    draftCfg?: Record<string, any>;
     history?: { role: "user" | "assistant"; content: string }[];
   }) => d)
   .handler(async ({ context, data }) => {
@@ -984,12 +986,19 @@ export const testAiReply = createServerFn({ method: "POST" })
     const { lovableAiChat } = await import("./lovable-ai.server");
     const { buildSystemPrompt, parseAiOutput } = await import("./ai-prompt");
     const tipo = data.tipo || "qualificacao";
-    const [{ data: cfg }, { data: stagesRows }, { data: prodRows }, { data: fbRows }] = await Promise.all([
-      supabase.from("agent_config").select("*").eq("company_id", companyId).eq("tipo", tipo).maybeSingle(),
+
+    let agentQuery = supabase.from("agent_config").select("*");
+    if (data.agentId) agentQuery = agentQuery.eq("id", data.agentId);
+    else agentQuery = agentQuery.eq("company_id", companyId).eq("tipo", tipo);
+
+    const [{ data: dbCfg }, { data: stagesRows }, { data: prodRows }, { data: fbRows }] = await Promise.all([
+      agentQuery.maybeSingle(),
       supabase.from("crm_stage").select("nome, tipo, ordem").eq("company_id", companyId).order("ordem", { ascending: true }),
       supabase.from("produto").select("nome, preco, descricao, sku, tipo, duracao_min, agendavel, ordem").eq("company_id", companyId).eq("ativo", true).order("ordem", { ascending: true }),
-      supabase.from("agent_feedback").select("rating, mensagem_texto, nota").eq("company_id", companyId).eq("agent_tipo", tipo).order("created_at", { ascending: false }).limit(8),
+      supabase.from("agent_feedback").select("rating, mensagem_texto, nota").eq("company_id", companyId).order("created_at", { ascending: false }).limit(8),
     ]);
+
+    const cfg = data.draftCfg ? { ...(dbCfg || {}), ...data.draftCfg } : dbCfg;
     const stages = (stagesRows ?? []).map((s: any) => ({ nome: s.nome, tipo: s.tipo }));
     const produtos = (prodRows ?? []).map((p: any) => ({ nome: p.nome, preco: p.preco, descricao: p.descricao, sku: p.sku, tipo: p.tipo, duracao_min: p.duracao_min, agendavel: p.agendavel }));
     const feedback = (fbRows ?? []).map((f: any) => ({ rating: f.rating, texto: f.mensagem_texto || "", nota: f.nota })).filter((f: any) => f.texto);
@@ -997,7 +1006,7 @@ export const testAiReply = createServerFn({ method: "POST" })
       responderEmPartes: cfg?.responder_em_partes ?? true,
       stages,
       produtos,
-      feedback,
+      feedbackHints: feedback,
     });
 
     const { getCompanyPlan } = await import("./plan-limits.server");

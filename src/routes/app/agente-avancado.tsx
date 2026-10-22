@@ -252,7 +252,7 @@ function AgentePage() {
   async function runTest() {
     setTesting(true); setTestReply([]);
     try {
-      const r = await test({ data: { message: testMsg } });
+      const r = await test({ data: { message: testMsg, agentId: agentId || cfg?.id || undefined, tipo: (cfg?.tipo as any) || undefined, draftCfg: cfg } });
       setTestReply(r.parts);
     } catch (e: any) { toast.error(e?.message || "Falha"); }
     finally { setTesting(false); }

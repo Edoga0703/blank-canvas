@@ -381,12 +381,12 @@ function AgentePage() {
     setSaving(true);
     const payload = {
       ...cfg,
-      sobre_empresa: livre,
-      segmento: "",
-      regiao_horario: "",
-      produtos_servicos: "",
-      pode_fazer: "",
-      nao_pode_fazer: "",
+      sobre_empresa: livre || cfg?.sobre_empresa || "",
+      segmento: cfg?.segmento ?? "",
+      regiao_horario: cfg?.regiao_horario ?? "",
+      produtos_servicos: cfg?.produtos_servicos ?? "",
+      pode_fazer: cfg?.pode_fazer ?? "",
+      nao_pode_fazer: cfg?.nao_pode_fazer ?? "",
       tipo,
       tamanho_resposta: tamanhoResposta,
       telefone_transferencia: telefone,
@@ -395,8 +395,8 @@ function AgentePage() {
       responder_em_partes: responderEmPartes,
       segundos_buffer: segundosBuffer,
       regras_rigidas: regrasRigidas,
-      is_default: tipo === "qualificacao",
-      nome: TIPO_LABELS[tipo].label,
+      is_default: cfg?.is_default ?? (tipo === "qualificacao"),
+      nome: cfg?.nome || cfg?.nome_agente || TIPO_LABELS[tipo].label,
     };
     const { id: _id, user_id: _u, company_id: _c, updated_at: _ua, ...rest } = payload;
     const savePayload = { 
@@ -528,7 +528,7 @@ function AgentePage() {
     setTesting(true);
     try {
       const history = chat.map((m) => ({ role: m.role, content: m.content }));
-      const r = await test({ data: { message: msg, tipo, history } });
+      const r = await test({ data: { message: msg, tipo, agentId: activeAgentId, draftCfg: cfg, history } });
       setChat((c) => [...c, { role: "assistant", content: r.parts.join("\n\n"), parts: r.parts }]);
       if ((r as any)?.sugestao) {
         toast.info("💡 La IA detectó una oportunidad de mejora y generó una sugerencia de entrenamiento.");
@@ -655,11 +655,10 @@ function AgentePage() {
     try {
       const nextLivre = (livre?.trim() ? livre.trim() + "\n\n" : "") + txt;
       setLivre(nextLivre);
-      const { error } = await supabase
-        .from("agent_config")
-        .update({ sobre_empresa: nextLivre })
-        .eq("company_id", companyId)
-        .eq("tipo", tipo);
+      let teachQuery = supabase.from("agent_config").update({ sobre_empresa: nextLivre });
+      if (activeAgentId) teachQuery = teachQuery.eq("id", activeAgentId);
+      else teachQuery = teachQuery.eq("company_id", companyId).eq("tipo", tipo);
+      const { error } = await teachQuery;
       if (error) throw error;
       setCfg((prev: any) => ({ ...(prev || {}), sobre_empresa: nextLivre }));
       setPromptPreview(buildSystemPrompt({ ...(cfg || {}), sobre_empresa: nextLivre } as any, { responderEmPartes, produtos: [] }));
@@ -1754,7 +1753,7 @@ function AgentePage() {
                           </div>
                           <Switch checked={true} />
                         </div>
-                        <Button variant="outline" size="sm" className="w-full text-xs">Configurar conexão</Button>
+                        <Button variant="outline" size="sm" className="w-full text-xs" asChild><Link to="/app/conexao">Configurar conexão</Link></Button>
                       </div>
                       <div className="p-4 rounded-xl border border-[var(--border)] bg-white space-y-4 opacity-50">
                         <div className="flex items-center justify-between">
@@ -2069,8 +2068,16 @@ function AgentePage() {
         agentName={cfg?.nome_agente || "Agente"}
         tipo={tipo}
         initialPrompt={copilotInitialPrompt}
-        onRuleApplied={() => {
-          loadAgents(activeAgentId || undefined);
+        onRuleApplied={async () => {
+          await loadAgents(activeAgentId || undefined);
+          if (activeAgentId) {
+            const { data: updated } = await supabase
+              .from("agent_config")
+              .select("*")
+              .eq("id", activeAgentId)
+              .maybeSingle();
+            if (updated) applyAgentData(updated);
+          }
         }}
         onCatalogUpdated={() => {
           toast.success("Catálogo actualizado con éxito");

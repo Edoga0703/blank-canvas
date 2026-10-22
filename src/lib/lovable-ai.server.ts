@@ -57,7 +57,7 @@ export async function lovableAiChat(
   const globalAnthropicKey = gVal.anthropic_api_key || process.env.ANTHROPIC_API_KEY;
 
   // A configuração global do painel Master tem prioridade sobre a do agente.
-  const provider = globalProvider || (cfg.provider || "openai").toLowerCase();
+  const provider = globalProvider || (cfg.provider || "gemini").toLowerCase();
 
   if (provider === "openai" || provider === "drael") {
     const key = globalOpenAiKey?.trim() || cfg.openaiKey?.trim();
