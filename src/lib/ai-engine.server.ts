@@ -445,7 +445,9 @@ export async function processAiResponse(
     }
 
     const parsed = parseAiOutput(response, stages as any);
-    console.log(`[ai-engine] Parsed intent: ${parsed.intent}, parts count: ${parsed.parts.length}, qualified: ${parsed.qualified}, sugestao: ${Boolean(parsed.sugestao)}`);
+    const replyParts = parsed.parts.map((part) => part.trim()).filter(Boolean);
+    const replyText = replyParts.join("\n\n");
+    console.log(`[ai-engine] Parsed intent: ${parsed.intent}, parts count: ${replyParts.length}, qualified: ${parsed.qualified}, sugestao: ${Boolean(parsed.sugestao)}`);
 
     // Fase B: Registrar sugestão de treinamento / melhoria de prompt se gerada pela IA
     if (parsed.sugestao) {
@@ -456,7 +458,9 @@ export async function processAiResponse(
           acao: "ai_prompt_suggestion",
           detalhes: {
             numero: number,
-            inbound_text: effectiveIncomingText.slice(0, 400),
+            inbound_text: effectiveIncomingText.slice(0, 500),
+            previous_reply: replyText.slice(0, 500),
+            history: history.slice(-6),
             intent: parsed.intent || "NEUTRA",
             duda: parsed.sugestao.duda,
             regra_sugerida: parsed.sugestao.regra,
@@ -477,9 +481,6 @@ export async function processAiResponse(
         console.warn("[ai-engine] Falha ao gravar sugestão de treinamento:", sugErr?.message);
       }
     }
-    
-    const replyParts = parsed.parts.map((part) => part.trim()).filter(Boolean);
-    const replyText = replyParts.join("\n\n");
     const stage = parsed.stage;
     const intent = parsed.intent;
     const handoff = parsed.handoff;

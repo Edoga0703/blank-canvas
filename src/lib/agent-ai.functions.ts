@@ -665,11 +665,19 @@ export interface AgentPromptSuggestionItem {
   id: string;
   numero: string;
   inbound_text: string;
+  previous_reply?: string;
+  history?: Array<{ role: "user" | "assistant"; content: string }>;
   intent: string;
   duda: string;
   regra_sugerida: string;
   status: "pending" | "approved" | "dismissed";
   created_at: string;
+  last_simulation?: {
+    simulated_at: string;
+    new_reply: string;
+    doubt_resolved: boolean;
+    candidate_rule?: string;
+  };
 }
 
 export const listAgentSuggestions = createServerFn({ method: "POST" })
@@ -697,11 +705,14 @@ export const listAgentSuggestions = createServerFn({ method: "POST" })
         id: row.id,
         numero: String(row.detalhes?.numero || ""),
         inbound_text: String(row.detalhes?.inbound_text || ""),
+        previous_reply: row.detalhes?.previous_reply ? String(row.detalhes.previous_reply) : undefined,
+        history: Array.isArray(row.detalhes?.history) ? row.detalhes.history : undefined,
         intent: String(row.detalhes?.intent || "NEUTRA"),
         duda: String(row.detalhes?.duda || ""),
         regra_sugerida: String(row.detalhes?.regra_sugerida || ""),
         status: (row.detalhes?.status as any) || "pending",
         created_at: row.created_at,
+        last_simulation: row.detalhes?.last_simulation || undefined,
       }))
       .filter((s) => s.status === "pending" && s.regra_sugerida.length > 0);
 
@@ -799,4 +810,225 @@ export const dismissAgentSuggestion = createServerFn({ method: "POST" })
     }
 
     return { ok: true };
+  });
+
+// ────────────────────────────────────────────────────────────────────────
+// SIMULAÇÃO DE FIX / REGRESSION TESTING DE SUGESTÕES (Replay Engine)
+// ────────────────────────────────────────────────────────────────────────
+async function executeSuggestionSimulation(
+  supabase: any,
+  companyId: string,
+  params: {
+    suggestionId: string;
+    candidateRule?: string;
+    agentId?: string | null;
+    tipo?: string;
+  },
+) {
+  const { lovableAiChat } = await import("./lovable-ai.server");
+  const { buildSystemPrompt, parseAiOutput } = await import("./ai-prompt");
+
+  // 1. Carregar a sugestão do audit_log
+  const { data: auditRow, error: auditErr } = await supabase
+    .from("audit_log")
+    .select("id, detalhes")
+    .eq("id", params.suggestionId)
+    .eq("company_id", companyId)
+    .maybeSingle();
+
+  if (auditErr || !auditRow) throw new Error("Sugestão não encontrada.");
+
+  const detalhes = auditRow.detalhes || {};
+  const inboundText = String(detalhes.inbound_text || "").trim();
+  const ruleToTest = params.candidateRule || String(detalhes.regra_sugerida || "").trim();
+  const originalReply = String(detalhes.previous_reply || "");
+  const numero = String(detalhes.numero || "");
+
+  if (!inboundText) throw new Error("Mensagem de entrada não encontrada para simulação.");
+
+  // 2. Carregar o agente alvo, estágios e produtos
+  let query = supabase.from("agent_config").select("*");
+  if (params.agentId) query = query.eq("id", params.agentId);
+  else query = query.eq("company_id", companyId).eq("tipo", params.tipo || "qualificacao");
+
+  const [{ data: cfg }, { data: stagesRows }, { data: prodRows }] = await Promise.all([
+    query.maybeSingle(),
+    supabase.from("crm_stage").select("nome, tipo, ordem").eq("company_id", companyId).order("ordem", { ascending: true }),
+    supabase.from("produto").select("nome, preco, descricao, sku, tipo, duracao_min, agendavel, ordem").eq("company_id", companyId).eq("ativo", true).order("ordem", { ascending: true }),
+  ]);
+
+  if (!cfg) throw new Error("Configuração do agente não encontrada.");
+
+  const stages = (stagesRows ?? []).map((s: any) => ({ nome: s.nome, tipo: s.tipo }));
+  const produtos = (prodRows ?? []).map((p: any) => ({
+    nome: p.nome,
+    preco: p.preco,
+    descricao: p.descricao,
+    sku: p.sku,
+    tipo: p.tipo,
+    duracao_min: p.duracao_min,
+    agendavel: p.agendavel,
+  }));
+
+  // Injeta a regra candidata temporariamente nas regras rígidas para a simulação
+  const currentRegras = (cfg.regras_rigidas || "").trim();
+  const formattedRule = ruleToTest.startsWith("-") || /^\d+\./.test(ruleToTest) ? ruleToTest : `- ${ruleToTest}`;
+  const testRegras = currentRegras.includes(ruleToTest)
+    ? currentRegras
+    : currentRegras ? `${currentRegras}\n${formattedRule}` : formattedRule;
+
+  const testCfg = {
+    ...cfg,
+    regras_rigidas: testRegras,
+  };
+
+  const system = buildSystemPrompt(testCfg as any, {
+    responderEmPartes: cfg.responder_em_partes ?? true,
+    stages,
+    produtos,
+  });
+
+  // Recupera histórico relevante (seja dos detalhes ou das mensagens)
+  let history: { role: "user" | "assistant"; content: string }[] = [];
+  if (Array.isArray(detalhes.history) && detalhes.history.length > 0) {
+    history = detalhes.history.map((m: any) => ({ role: m.role, content: String(m.content || "") }));
+  } else if (numero && numero !== "Playground Test") {
+    const { data: dbMsgs } = await supabase
+      .from("mensagens")
+      .select("autor, texto")
+      .eq("company_id", companyId)
+      .eq("numero", numero)
+      .order("created_at", { ascending: false })
+      .limit(8);
+    history = (dbMsgs ?? [])
+      .reverse()
+      .filter((m: any) => m.texto && m.texto !== inboundText)
+      .map((m: any) => ({
+        role: m.autor === "contato" ? "user" : "assistant",
+        content: m.texto || "",
+      }));
+  }
+
+  // 3. Executar nova inferência na API com a regra aplicada
+  const rawNewResponse = await lovableAiChat(
+    [
+      { role: "system", content: system },
+      ...history,
+      { role: "user", content: inboundText },
+    ],
+    {
+      provider: cfg.ai_provider || "gemini",
+      model: cfg.ai_model || undefined,
+    }
+  );
+
+  const parsedNew = parseAiOutput(rawNewResponse, stages);
+  const newReply = parsedNew.parts.join("\n\n");
+  const doubtResolved = !parsedNew.sugestao;
+
+  const simulationResult = {
+    simulated_at: new Date().toISOString(),
+    new_reply: newReply,
+    doubt_resolved: doubtResolved,
+    candidate_rule: ruleToTest,
+  };
+
+  // Persistir o resultado da simulação na sugestão
+  await supabase
+    .from("audit_log")
+    .update({
+      detalhes: {
+        ...detalhes,
+        last_simulation: simulationResult,
+      },
+    })
+    .eq("id", params.suggestionId);
+
+  return {
+    ok: true,
+    suggestionId: params.suggestionId,
+    inbound_text: inboundText,
+    previous_reply: originalReply,
+    new_reply: newReply,
+    doubt_resolved: doubtResolved,
+    candidate_rule: ruleToTest,
+    still_has_doubt: Boolean(parsedNew.sugestao),
+    new_sugestao: parsedNew.sugestao,
+  };
+}
+
+export const simulateSuggestionFix = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: {
+    suggestionId: string;
+    candidateRule?: string;
+    agentId?: string | null;
+    tipo?: string;
+  }) => {
+    if (!d?.suggestionId) throw new Error("ID da sugestão é obrigatório.");
+    return {
+      suggestionId: d.suggestionId,
+      candidateRule: d.candidateRule?.trim() || undefined,
+      agentId: d.agentId || null,
+      tipo: d.tipo || "qualificacao",
+    };
+  })
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
+    return executeSuggestionSimulation(supabase, companyId, data);
+  });
+
+export const runAutoRegressionTests = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d?: { agentId?: string | null; tipo?: string }) => d || {})
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
+
+    const { data: suggestions, error } = await supabase
+      .from("audit_log")
+      .select("id, detalhes")
+      .eq("company_id", companyId)
+      .eq("acao", "ai_prompt_suggestion")
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (error || !suggestions?.length) {
+      return { total: 0, resolved: 0, results: [] };
+    }
+
+    const pending = suggestions.filter(
+      (s: any) => s.detalhes?.status === "pending" && s.detalhes?.inbound_text && s.detalhes?.regra_sugerida,
+    );
+    if (!pending.length) {
+      return { total: 0, resolved: 0, results: [] };
+    }
+
+    const results: any[] = [];
+    let resolvedCount = 0;
+
+    for (const sug of pending) {
+      try {
+        const sim = await executeSuggestionSimulation(supabase, companyId, {
+          suggestionId: sug.id,
+          agentId: data?.agentId,
+          tipo: data?.tipo,
+        });
+        if (sim?.doubt_resolved) resolvedCount++;
+        results.push(sim);
+      } catch (err: any) {
+        results.push({
+          suggestionId: sug.id,
+          error: err?.message || "Falha na simulação",
+          doubt_resolved: false,
+        });
+      }
+    }
+
+    return {
+      total: pending.length,
+      resolved: resolvedCount,
+      results,
+    };
   });

@@ -23,7 +23,7 @@ import { testAiReply } from "@/lib/evolution.functions";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 
-import { generateAgentConfig, analyzeBusinessBrief, addAgentExample, listAgents, deleteAgent, generateAgentAvatar, updateAgentKnowledgeFiles, saveAgentConfig, createAgent, indexAgentKnowledge, listAgentSuggestions, applyAgentSuggestion, dismissAgentSuggestion, type BriefQuestion, type AgentPromptSuggestionItem } from "@/lib/agent-ai.functions";
+import { generateAgentConfig, analyzeBusinessBrief, addAgentExample, listAgents, deleteAgent, generateAgentAvatar, updateAgentKnowledgeFiles, saveAgentConfig, createAgent, indexAgentKnowledge, listAgentSuggestions, applyAgentSuggestion, dismissAgentSuggestion, simulateSuggestionFix, runAutoRegressionTests, type BriefQuestion, type AgentPromptSuggestionItem } from "@/lib/agent-ai.functions";
 import { ensureSession, mensagemErroSessao } from "@/lib/ensure-session";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { MicDictateButton } from "@/components/mic-dictate-button";
@@ -67,6 +67,8 @@ function AgentePage() {
   const fetchSuggestions = useServerFn(listAgentSuggestions);
   const applySuggestion = useServerFn(applyAgentSuggestion);
   const dismissSuggestion = useServerFn(dismissAgentSuggestion);
+  const simulateFix = useServerFn(simulateSuggestionFix);
+  const autoTestAll = useServerFn(runAutoRegressionTests);
 
   const [avatarLoading, setAvatarLoading] = useState(false);
 
@@ -97,9 +99,17 @@ function AgentePage() {
   const [responderEmPartes, setResponderEmPartes] = useState(true);
   const [segundosBuffer, setSegundosBuffer] = useState<number>(3);
 
-  // Sugestões de treinamento da IA (Fase B)
+  // Sugestões de treinamento da IA (Fase B + Regression Replay)
   const [suggestions, setSuggestions] = useState<AgentPromptSuggestionItem[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [simulatingId, setSimulatingId] = useState<string | null>(null);
+  const [runningBatchTest, setRunningBatchTest] = useState(false);
+  const [simulationDiffs, setSimulationDiffs] = useState<Record<string, {
+    new_reply: string;
+    previous_reply?: string;
+    doubt_resolved: boolean;
+    simulated_at: string;
+  }>>({});
 
   const [regrasRigidas, setRegrasRigidas] = useState("");
   const [livre, setLivre] = useState("");
@@ -436,6 +446,73 @@ function AgentePage() {
       toast.success("Sugerencia descartada");
     } catch (e: any) {
       toast.error(e?.message || "Error al descartar sugerencia");
+    }
+  }
+
+  async function handleSimulateFix(sug: AgentPromptSuggestionItem) {
+    try {
+      setSimulatingId(sug.id);
+      const res = await simulateFix({
+        data: {
+          suggestionId: sug.id,
+          candidateRule: sug.regra_sugerida,
+          agentId: activeAgentId,
+          tipo,
+        },
+      });
+      if (res?.ok) {
+        setSimulationDiffs((prev) => ({
+          ...prev,
+          [sug.id]: {
+            new_reply: res.new_reply,
+            previous_reply: res.previous_reply || sug.previous_reply,
+            doubt_resolved: res.doubt_resolved,
+            simulated_at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          },
+        }));
+        if (res.doubt_resolved) {
+          toast.success("✅ Simulación completada: ¡La regla resuelve la ambigüedad con éxito!");
+        } else {
+          toast.warning("⚠️ Simulación completada: La IA aún detectó dudas. Revisa la redacción de la regla.");
+        }
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Error al simular fix");
+    } finally {
+      setSimulatingId(null);
+    }
+  }
+
+  async function handleRunBatchTests() {
+    try {
+      setRunningBatchTest(true);
+      const res = await autoTestAll({
+        data: {
+          agentId: activeAgentId,
+          tipo,
+        },
+      });
+      if (res?.results?.length) {
+        const nextDiffs: Record<string, any> = { ...simulationDiffs };
+        for (const item of res.results) {
+          if (item?.suggestionId && item.new_reply) {
+            nextDiffs[item.suggestionId] = {
+              new_reply: item.new_reply,
+              previous_reply: item.previous_reply,
+              doubt_resolved: item.doubt_resolved,
+              simulated_at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            };
+          }
+        }
+        setSimulationDiffs(nextDiffs);
+        toast.success(`⚡ Pruebas automáticas: ${res.resolved} de ${res.total} sugerencias resueltas exitosamente.`);
+      } else {
+        toast.info("No hay sugerencias pendientes para probar.");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Error al ejecutar pruebas automáticas");
+    } finally {
+      setRunningBatchTest(false);
     }
   }
 
@@ -1397,23 +1474,38 @@ function AgentePage() {
                             </p>
                           </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs text-muted-foreground hover:text-foreground"
-                          onClick={() => loadSuggestions(activeAgentId)}
-                          disabled={loadingSuggestions}
-                        >
-                          <RefreshCcw className={cn("h-3.5 w-3.5 mr-1", loadingSuggestions && "animate-spin")} />
-                          Actualizar
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs gap-1.5 bg-background border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10 shadow-xs"
+                            onClick={handleRunBatchTests}
+                            disabled={runningBatchTest || loadingSuggestions}
+                          >
+                            <Zap className={cn("h-3.5 w-3.5", runningBatchTest && "animate-spin text-amber-500")} />
+                            {runningBatchTest ? "Probando..." : "⚡ Pruebas Automáticas"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                            onClick={() => loadSuggestions(activeAgentId)}
+                            disabled={loadingSuggestions}
+                          >
+                            <RefreshCcw className={cn("h-3.5 w-3.5 mr-1", loadingSuggestions && "animate-spin")} />
+                            Actualizar
+                          </Button>
+                        </div>
                       </div>
 
                       <div className="space-y-3">
-                        {suggestions.map((sug) => (
+                        {suggestions.map((sug) => {
+                          const sim = simulationDiffs[sug.id] || sug.last_simulation;
+                          const isSimulating = simulatingId === sug.id;
+                          return (
                           <div
                             key={sug.id}
-                            className="rounded-lg border border-border/80 bg-background/90 p-4 space-y-2.5 shadow-xs"
+                            className="rounded-lg border border-border/80 bg-background/90 p-4 space-y-3 shadow-xs"
                           >
                             <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
                               <div className="flex items-center gap-2">
@@ -1452,26 +1544,82 @@ function AgentePage() {
                               <p className="font-mono text-[11px] text-foreground">{sug.regra_sugerida}</p>
                             </div>
 
-                            <div className="flex items-center justify-end gap-2 pt-1 border-t border-border/40">
+                            {/* Comparativa Before vs After (Regression Test Simulation) */}
+                            {sim && (
+                              <div className="rounded-lg border border-border/80 bg-muted/30 p-3 space-y-2 text-xs">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                                    <Sparkles className="h-3.5 w-3.5 text-brand" />
+                                    <span>Simulación con la Regla (Before vs After)</span>
+                                  </div>
+                                  {sim.doubt_resolved ? (
+                                    <Badge className="bg-emerald-600/90 text-white hover:bg-emerald-600 text-[10px] gap-1">
+                                      <CheckCircle2 className="h-3 w-3" />
+                                      Ambigüedad resuelta
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="destructive" className="text-[10px]">
+                                      Aún requiere ajuste
+                                    </Badge>
+                                  )}
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
+                                  <div className="rounded border border-red-500/20 bg-red-500/5 p-2 space-y-1">
+                                    <div className="text-[10px] font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide">
+                                      🔴 Respuesta Original (Sin Fix):
+                                    </div>
+                                    <p className="text-[11px] text-muted-foreground whitespace-pre-wrap">
+                                      {sim.previous_reply || sug.previous_reply || "No registrada"}
+                                    </p>
+                                  </div>
+
+                                  <div className="rounded border border-emerald-500/20 bg-emerald-500/5 p-2 space-y-1">
+                                    <div className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
+                                      🟢 Nueva Respuesta con Fix Aplicado:
+                                    </div>
+                                    <p className="text-[11px] text-foreground font-medium whitespace-pre-wrap">
+                                      {sim.new_reply}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-border/40">
                               <Button
                                 size="sm"
-                                variant="ghost"
-                                className="h-7 text-xs text-muted-foreground hover:text-foreground"
-                                onClick={() => handleDismissSuggestion(sug.id)}
+                                variant="outline"
+                                className="h-7 text-xs gap-1.5 text-brand hover:bg-brand/10 border-brand/30"
+                                onClick={() => handleSimulateFix(sug)}
+                                disabled={isSimulating}
                               >
-                                Descartar
+                                <RefreshCcw className={cn("h-3 w-3", isSimulating && "animate-spin")} />
+                                {isSimulating ? "Simulando respuesta..." : "🧪 Simular Fix (Before vs After)"}
                               </Button>
-                              <Button
-                                size="sm"
-                                className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shadow-xs"
-                                onClick={() => handleApplySuggestion(sug)}
-                              >
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                + Agregar a Reglas Rígidas
-                              </Button>
+
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                                  onClick={() => handleDismissSuggestion(sug.id)}
+                                >
+                                  Descartar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shadow-xs"
+                                  onClick={() => handleApplySuggestion(sug)}
+                                >
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  + Agregar a Reglas Rígidas
+                                </Button>
+                              </div>
                             </div>
                           </div>
-                        ))}
+                        );
+                        })}
                       </div>
                     </div>
                   )}

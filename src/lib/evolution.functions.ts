@@ -1038,7 +1038,9 @@ export const testAiReply = createServerFn({ method: "POST" })
           acao: "ai_prompt_suggestion",
           detalhes: {
             numero: "Playground Test",
-            inbound_text: data.message.slice(0, 400),
+            inbound_text: data.message.slice(0, 500),
+            previous_reply: parsed.parts.join("\n\n").slice(0, 500),
+            history: history.slice(-6),
             intent: parsed.intent || "NEUTRA",
             duda: parsed.sugestao.duda,
             regra_sugerida: parsed.sugestao.regra,
