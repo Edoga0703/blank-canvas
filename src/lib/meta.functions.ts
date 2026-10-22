@@ -179,12 +179,17 @@ export const backfillMetaProfiles = createServerFn({ method: "POST" })
       .select("instance_token,provider")
       .eq("company_id", companyId)
       .like("provider", "meta%");
-    const tokens = (insts ?? []).map((i: any) => i.instance_token).filter(Boolean);
-    if (!tokens.length) return { updated: 0, total: 0 };
+    const channels = (insts ?? [])
+      .filter((i: any) => Boolean(i.instance_token))
+      .map((i: any) => ({
+        token: i.instance_token as string,
+        channel: (i.provider === "meta_instagram" ? "instagram" : "messenger") as "instagram" | "messenger",
+      }));
+    if (!channels.length) return { updated: 0, total: 0 };
 
     const { data: cards } = await (supabase as any)
       .from("crm_cards")
-      .select("numero,nome,foto_url")
+      .select("numero,nome,foto_url,canal_chat,canal_entrada")
       .eq("company_id", companyId)
       .limit(500);
 
@@ -194,8 +199,15 @@ export const backfillMetaProfiles = createServerFn({ method: "POST" })
     let updated = 0;
     const alvos = (cards ?? []).filter((c: any) => isGeneric(c.nome ?? "") || !c.foto_url);
     for (const c of alvos) {
-      for (const token of tokens) {
-        const p = await metaFetchProfile(token, c.numero).catch(() => null);
+      const preferredChannel = c.canal_chat === "instagram" || c.canal_entrada === "instagram" ? "instagram" : (c.canal_chat === "messenger" || c.canal_entrada === "messenger" ? "messenger" : undefined);
+      const sortedChannels = [...channels].sort((a, b) => {
+        if (preferredChannel && a.channel === preferredChannel) return -1;
+        if (preferredChannel && b.channel === preferredChannel) return 1;
+        return 0;
+      });
+
+      for (const ch of sortedChannels) {
+        const p = await metaFetchProfile(ch.token, c.numero, ch.channel).catch(() => null);
         if (!p?.name && !p?.picture) continue;
         const patch: any = {};
         if (p.name && isGeneric(c.nome ?? "")) patch.nome = p.name;

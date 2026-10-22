@@ -427,7 +427,7 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
               if (!senderId || ((isComment || isMention) && senderId === pageId)) continue;
 
               const { metaFetchProfile } = await import("@/lib/meta.server");
-              const profile = inst.instance_token ? await metaFetchProfile(inst.instance_token, senderId) : { name: null, picture: null };
+              const profile = inst.instance_token ? await metaFetchProfile(inst.instance_token, senderId, channel) : { name: null, picture: null };
               const text = textFor(value);
               if (isComment || isMention) {
                 const objectId = String(value?.comment_id ?? value?.id ?? value?.mention_id ?? `meta_${receivedEventId}_${senderId}`);

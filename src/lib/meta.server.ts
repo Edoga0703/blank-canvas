@@ -359,25 +359,115 @@ export async function metaSendPresence(
 }
 
 /** Nome e foto do contato (quando a política da Meta permite). */
-export async function metaFetchProfile(token: string, userId: string) {
-  try {
-    const json = await graph(
-      `/${encodeURIComponent(userId)}?fields=name,username,profile_pic,first_name,last_name`,
-      token,
-      { method: "GET" },
-    );
-    const fullName = json?.name || (json?.first_name ? `${json.first_name}${json.last_name ? ` ${json.last_name}` : ""}` : null);
-    const result = {
-      name: (fullName || json?.username || null) as string | null,
-      picture: (json?.profile_pic || json?.profile_picture_url || null) as string | null,
-    };
-    if (result.name && (result.name.toLowerCase().includes("instagram") || result.name.toLowerCase().includes("messenger"))) {
-      result.name = json?.username || result.name;
+export async function metaFetchProfile(
+  token: string,
+  userId: string,
+  channel?: "instagram" | "messenger",
+) {
+  const cleanToken = normalizeToken(token);
+  const isIgToken = isInstagramToken(cleanToken);
+  const isIgChannel = channel === "instagram" || isIgToken;
+  const isMsgChannel = channel === "messenger";
+
+  const formatInstagram = (json: any) => {
+    const rawName = typeof json?.name === "string" ? json.name.trim() : null;
+    const rawUsername = typeof json?.username === "string" ? json.username.trim() : null;
+    let name: string | null = null;
+    if (rawName && rawUsername) {
+      name = rawName.toLowerCase() === rawUsername.toLowerCase()
+        ? `@${rawUsername}`
+        : `${rawName} (@${rawUsername})`;
+    } else if (rawUsername) {
+      name = `@${rawUsername}`;
+    } else if (rawName) {
+      name = rawName;
     }
-    return result;
-  } catch {
+    const picture = (json?.profile_pic || json?.profile_picture_url || null) as string | null;
+    return { name, picture };
+  };
+
+  const formatMessenger = (json: any) => {
+    const fullName = json?.name || (json?.first_name ? `${json.first_name}${json.last_name ? ` ${json.last_name}` : ""}`.trim() : null);
+    const picture = (json?.profile_pic || json?.profile_picture_url || null) as string | null;
+    return { name: fullName || null, picture };
+  };
+
+  // 1. Canal Instagram: InstagramScopedID aceita exclusivamente name, username e profile_pic (first_name/last_name causam erro #100)
+  if (isIgChannel) {
+    try {
+      const json = await graph(
+        `/${encodeURIComponent(userId)}?fields=name,username,profile_pic`,
+        cleanToken,
+        { method: "GET" },
+      );
+      const res = formatInstagram(json);
+      if (res.name || res.picture) return res;
+    } catch (err: any) {
+      try {
+        const json2 = await graph(
+          `/${encodeURIComponent(userId)}?fields=username,profile_pic`,
+          cleanToken,
+          { method: "GET" },
+        );
+        const res2 = formatInstagram(json2);
+        if (res2.name || res2.picture) return res2;
+      } catch (err2: any) {
+        console.warn(`[metaFetchProfile] Perfil restrito ou indisponível no Instagram (${userId}):`, err2?.message || err?.message);
+      }
+    }
     return { name: null, picture: null };
   }
+
+  // 2. Canal Messenger: User PSID aceita name, first_name, last_name, profile_pic (username causa erro #100)
+  if (isMsgChannel) {
+    try {
+      const json = await graph(
+        `/${encodeURIComponent(userId)}?fields=name,first_name,last_name,profile_pic`,
+        cleanToken,
+        { method: "GET" },
+      );
+      const res = formatMessenger(json);
+      if (res.name || res.picture) return res;
+    } catch (err: any) {
+      try {
+        const json2 = await graph(
+          `/${encodeURIComponent(userId)}?fields=name,profile_pic`,
+          cleanToken,
+          { method: "GET" },
+        );
+        const res2 = formatMessenger(json2);
+        if (res2.name || res2.picture) return res2;
+      } catch (err2: any) {
+        console.warn(`[metaFetchProfile] Perfil restrito ou indisponível no Messenger (${userId}):`, err2?.message || err?.message);
+      }
+    }
+    return { name: null, picture: null };
+  }
+
+  // 3. Canal não especificado: tenta campos compatíveis com Instagram primeiro, depois Messenger
+  try {
+    const json = await graph(
+      `/${encodeURIComponent(userId)}?fields=name,username,profile_pic`,
+      cleanToken,
+      { method: "GET" },
+    );
+    const res = formatInstagram(json);
+    if (res.name || res.picture) return res;
+  } catch {
+    try {
+      const json2 = await graph(
+        `/${encodeURIComponent(userId)}?fields=name,first_name,last_name,profile_pic`,
+        cleanToken,
+        { method: "GET" },
+      );
+      const res2 = formatMessenger(json2);
+      if (res2.name || res2.picture) return res2;
+    } catch (err: any) {
+      console.warn(`[metaFetchProfile] Falha ao resolver perfil genérico Meta (${userId}):`, err?.message);
+    }
+  }
+
+  return { name: null, picture: null };
 }
 
 /** Lista as Páginas do Facebook disponíveis em um User Token. */

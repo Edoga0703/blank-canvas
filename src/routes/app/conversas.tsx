@@ -68,6 +68,7 @@ import { canTransferConversation } from "@/lib/tenant";
 import { salvarRelatorioAtendimento, sugerirRelatorioAtendimento, type AtendimentoSituacao } from "@/lib/atendimento-relatorios.functions";
 import { prepareR2Upload } from "@/lib/storage/r2.functions";
 import { syncMetaNow } from "@/lib/meta-content.functions";
+import { backfillMetaProfiles } from "@/lib/meta.functions";
 
 
 export const Route = createFileRoute("/app/conversas")({
@@ -251,6 +252,7 @@ function ConversasPage() {
   const [csatAoFinalizar, setCsatAoFinalizar] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const syncMetaFn = useServerFn(syncMetaNow);
+  const backfillMetaFn = useServerFn(backfillMetaProfiles);
   const [syncingMeta, setSyncingMeta] = useState(false);
   const [agentConfig, setAgentConfig] = useState<{ avatar_traits?: any, avatar_url?: string, nome_agente?: string } | null>(null);
 
@@ -1260,6 +1262,15 @@ function ConversasPage() {
           );
         }
       }
+      // Atualiza nomes e fotos de perfis genéricos (Instagram XXXX, Messenger XXXX)
+      let backfilled = 0;
+      try {
+        const bf = await backfillMetaFn();
+        backfilled = Number(bf?.updated ?? 0);
+      } catch (bfErr) {
+        console.warn("[handleSyncMeta] Erro no backfill de perfis:", bfErr);
+      }
+
       if (companyId) {
         await load(companyId);
         await refreshRecent(companyId);
@@ -1270,10 +1281,13 @@ function ConversasPage() {
           duration: 15_000,
         });
       } else {
+        const details: string[] = [];
+        if (totalMsgs > 0) details.push(`${totalMsgs} mensagens`);
+        if (backfilled > 0) details.push(`${backfilled} perfis atualizados`);
         toast.success(
-          totalMsgs > 0
-            ? `${totalMsgs} mensagens sincronizadas da Meta.`
-            : "Sincronização concluída. Nenhuma mensagem nova foi encontrada.",
+          details.length > 0
+            ? `Sincronização concluída: ${details.join(" e ")}.`
+            : "Sincronização concluída. Nenhuma nova alteração encontrada.",
         );
       }
     } finally {
