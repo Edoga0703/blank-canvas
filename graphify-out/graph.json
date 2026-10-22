@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-22T21:41:48.989258+00:00",
+  "generated_at": "2026-10-22T21:57:31.749422+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -595,7 +595,7 @@
     },
     {
       "path": "src/lib/transcribe.functions.ts",
-      "bytes": 5077
+      "bytes": 5042
     },
     {
       "path": "src/lib/crm-engine.server.ts",
@@ -655,7 +655,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 42607
+      "bytes": 42789
     },
     {
       "path": "src/lib/tracking.functions.ts",
@@ -931,7 +931,7 @@
     },
     {
       "path": "src/lib/agendamentos-dispatch.server.ts",
-      "bytes": 2161
+      "bytes": 2185
     },
     {
       "path": "src/lib/billing.functions.ts",
@@ -1019,7 +1019,7 @@
     },
     {
       "path": "src/lib/ai-prompt.ts",
-      "bytes": 30478
+      "bytes": 30770
     },
     {
       "path": "src/lib/plan.functions.ts",
@@ -1091,7 +1091,7 @@
     },
     {
       "path": "src/lib/wa-dispatch.server.ts",
-      "bytes": 15867
+      "bytes": 15961
     },
     {
       "path": "src/lib/test-disparo.functions.ts",
@@ -1315,7 +1315,7 @@
     },
     {
       "path": "src/lib/uazapi-webhook.server.ts",
-      "bytes": 23112
+      "bytes": 23175
     },
     {
       "path": "src/server/appUserConnections.server.ts",
@@ -2591,7 +2591,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 115465
+      "bytes": 115561
     },
     {
       "path": "src/routes/app/dashboard.tsx",
@@ -2759,7 +2759,7 @@
     },
     {
       "path": "src/routes/api/public/form-submit.ts",
-      "bytes": 6044
+      "bytes": 6078
     },
     {
       "path": "src/routes/api/public/lead-capture.ts",
@@ -2775,11 +2775,11 @@
     },
     {
       "path": "src/routes/api/public/whatsapp-webhook.ts",
-      "bytes": 11621
+      "bytes": 11690
     },
     {
       "path": "src/routes/api/public/meta-webhook.ts",
-      "bytes": 33147
+      "bytes": 33230
     },
     {
       "path": "src/routes/api/public/v1/$.ts",
