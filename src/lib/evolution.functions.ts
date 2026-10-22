@@ -1029,8 +1029,29 @@ export const testAiReply = createServerFn({ method: "POST" })
         model,
       },
     );
-    const { parts, stage } = parseAiOutput(raw, stages);
-    return { reply: parts.join("\n\n"), parts, stage, system };
+    const parsed = parseAiOutput(raw, stages);
+
+    if (parsed.sugestao) {
+      try {
+        await (supabase as any).from("audit_log").insert({
+          company_id: companyId,
+          acao: "ai_prompt_suggestion",
+          detalhes: {
+            numero: "Playground Test",
+            inbound_text: data.message.slice(0, 400),
+            intent: parsed.intent || "NEUTRA",
+            duda: parsed.sugestao.duda,
+            regra_sugerida: parsed.sugestao.regra,
+            status: "pending",
+            created_at: new Date().toISOString(),
+          },
+        });
+      } catch (e: any) {
+        console.warn("[testAiReply] error saving suggestion:", e?.message);
+      }
+    }
+
+    return { reply: parsed.parts.join("\n\n"), parts: parsed.parts, stage: parsed.stage, sugestao: parsed.sugestao, system };
   });
 
 export const handleChatAction = createServerFn({ method: "POST" })

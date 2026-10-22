@@ -20,6 +20,7 @@ export interface StageBrief {
 
 export interface FewShotExample { cliente: string; agente: string }
 export interface FeedbackHint { rating: "up" | "down"; texto: string; nota?: string | null }
+export interface PromptSuggestion { duda: string; regra: string; raw: string }
 
 export interface AgentConfig {
   // IA provider
@@ -469,6 +470,19 @@ Escolha 1 entre as etapas reais do CRM da empresa listadas acima. ` +
 Os marcadores são internos e não aparecem para o cliente.`
   );
 
+  // Sugestões de melhoria / auto-treinamento da IA
+  blocos.push(
+    `SUGESTÃO DE MELHORIA / AMBIGUIDADE (CRÍTICO PARA O APRENDIZADO):
+Se você detectar alguma ambiguidade na fala do cliente (ex: gírias regionais com duplo sentido como 'cancelar' significando 'pagar/liquidar' vs 'dar de baixa', dúvidas de produtos/preços não listados, procedimento indefinido ou falta de regra clara em "REGRAS RÍGIDAS"), ao final de toda a resposta, em uma nova linha, inclua EXATAMENTE o marcador:
+[SUGESTAO: Duda: <explique a ambiguidade ou dúvida encontrada> | Regra: <regra concisa recomendada para ser adicionada ao agente>]
+
+Exemplo:
+[SUGESTAO: Duda: O cliente disse 'cancelar' com menção a pagamento/monto. No espanhol da Venezuela, isso significa 'pagar/liquidar' e não dar baixa. | Regra: Quando o cliente disser 'cancelar' junto com pagamento móvel, monto ou renovação, entender como quitar/pagar a assinatura.]
+
+Se NÃO houver ambiguidade ou dúvida, NUNCA inclua o marcador [SUGESTAO].
+Este marcador é estritamente interno e NUNCA aparece para o cliente.`
+  );
+
   return blocos.filter(Boolean).join("\n\n");
 }
 
@@ -526,7 +540,16 @@ function extraiPedido(text: string): { pedido: PedidoBrief | null; rest: string 
 export function parseAiOutput(
   raw: string,
   stages?: StageBrief[],
-): { parts: string[]; stage: string | null; agendar: AgendarBrief | null; intent: string | null; handoff: boolean; qualified: boolean; pedido: PedidoBrief | null } {
+): {
+  parts: string[];
+  stage: string | null;
+  agendar: AgendarBrief | null;
+  intent: string | null;
+  handoff: boolean;
+  qualified: boolean;
+  pedido: PedidoBrief | null;
+  sugestao: PromptSuggestion | null;
+} {
 
   let text = raw || "";
   let stage: string | null = null;
@@ -585,12 +608,29 @@ export function parseAiOutput(
   const qualified = qualifiedPattern.test(text);
   text = text.replace(qualifiedPattern, "").trim();
 
+  // Detect Suggestion / AI Training Loop (Phase B)
+  const sugestaoMatch = text.match(/\[\s*SUGESTAO\s*:\s*([\s\S]*?)\]/i);
+  let sugestao: PromptSuggestion | null = null;
+  if (sugestaoMatch) {
+    const rawContent = sugestaoMatch[1].trim();
+    text = text.replace(sugestaoMatch[0], "").trim();
+
+    const parts = rawContent.split(/\|\s*Regra\s*:\s*/i);
+    if (parts.length >= 2) {
+      const duda = parts[0].replace(/^Duda\s*:\s*/i, "").trim();
+      const regra = parts[1].trim();
+      sugestao = { duda, regra, raw: rawContent };
+    } else {
+      sugestao = { duda: rawContent, regra: rawContent, raw: rawContent };
+    }
+  }
+
   const parts = text
     .split(PART_SEPARATOR)
     .map((p) => p.trim())
     .filter((p) => p.length > 0)
     .slice(0, 3);
-  return { parts: parts.length ? parts : [text.trim()].filter(Boolean), stage, agendar, intent, handoff, qualified, pedido };
+  return { parts: parts.length ? parts : [text.trim()].filter(Boolean), stage, agendar, intent, handoff, qualified, pedido, sugestao };
 
 }
 

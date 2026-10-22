@@ -24,7 +24,7 @@ export async function processAiResponse(
       numero: number,
       status: "processing",
     })
-    .select("id")
+    .select("id, created_at")
     .maybeSingle();
 
   if (processingError?.code === "23505") {
@@ -109,6 +109,72 @@ export async function processAiResponse(
     }
 
     console.log(`[ai-engine] Using provider=${cfg.ai_provider}, model=${cfg.ai_model} for contact ${number}`);
+
+    // Fase A: Buffer / Debounce de Mensagens
+    // Se o agente tem segundos_buffer configurado (> 0), aguarda para agrupar mensagens sucessivas
+    // enviadas pelo cliente em rajada (burst), respondendo a todas de uma só vez de forma coerente.
+    const bufferSec = Math.max(0, Math.min(60, Number(cfg.segundos_buffer ?? 0)));
+    if (bufferSec > 0) {
+      console.log(`[ai-engine] Buffering message for ${number} (${bufferSec}s) at ${new Date().toISOString()}`);
+      await new Promise((resolve) => setTimeout(resolve, bufferSec * 1000));
+
+      // Verifica se uma mensagem mais recente foi recebida para este contato durante a espera
+      const { data: latestRows } = await (supabaseAdmin as any)
+        .from("ai_message_processing")
+        .select("id, created_at")
+        .eq("company_id", companyId)
+        .eq("numero", number)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const latestRow = latestRows?.[0];
+      const isSuperseded = Boolean(
+        latestRow &&
+        latestRow.id !== processing.id &&
+        new Date(latestRow.created_at).getTime() >= new Date(processing.created_at).getTime()
+      );
+
+      if (isSuperseded) {
+        console.log(`[ai-engine] Debounce: newer message arrived for ${number} (${latestRow?.id} supersedes ${processing.id}). Skipping.`);
+        await (supabaseAdmin as any)
+          .from("ai_message_processing")
+          .update({ status: "skipped", error_message: "superseded_by_newer_message" })
+          .eq("id", processing.id);
+        return;
+      }
+    }
+
+    // Consolidação de mensagens não respondidas (Fase A)
+    // Busca o horário da última resposta de saída para este contato
+    const { data: lastOutgoing } = await (supabaseAdmin as any)
+      .from("mensagens")
+      .select("created_at")
+      .eq("company_id", companyId)
+      .eq("numero", number)
+      .eq("direcao", "saida")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const lastReplyTime = lastOutgoing?.created_at || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    // Busca todas as mensagens de entrada do cliente desde a última resposta
+    const { data: unrepliedMsgs } = await (supabaseAdmin as any)
+      .from("mensagens")
+      .select("id, texto, created_at")
+      .eq("company_id", companyId)
+      .eq("numero", number)
+      .eq("direcao", "entrada")
+      .gt("created_at", lastReplyTime)
+      .order("created_at", { ascending: true });
+
+    const unrepliedList = (unrepliedMsgs ?? []).filter((m: any) => m.texto && m.texto.trim().length > 0);
+    const effectiveIncomingText = unrepliedList.length > 0
+      ? unrepliedList.map((m: any) => m.texto.trim()).join("\n")
+      : incomingText;
+
+    const unrepliedIdSet = new Set(unrepliedList.map((m: any) => m.id));
+    console.log(`[ai-engine] Consolidated incoming text for ${number} (${unrepliedList.length} msgs): "${effectiveIncomingText.slice(0, 80)}..."`);
 
 
     const horarios = cfg.horarios_atendimento as any;
@@ -281,15 +347,16 @@ export async function processAiResponse(
     const umaHoraAtras = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: historyMsgs } = await supabaseAdmin
       .from("mensagens")
-      .select("autor, texto")
+      .select("id, autor, texto")
       .eq("company_id", companyId)
       .eq("numero", number)
       .gt("created_at", umaHoraAtras)
       .order("created_at", { ascending: false })
-      .limit(15); 
+      .limit(20); 
 
 
     const history: ChatMsg[] = (historyMsgs ?? [])
+      .filter((m: any) => !unrepliedIdSet.has(m.id))
       .reverse()
       .map(m => ({
         role: m.autor === "contato" ? "user" : "assistant",
@@ -333,7 +400,7 @@ export async function processAiResponse(
             olistCatalogo = await blocoCatalogoOlist(
               supabaseAdmin,
               companyId,
-              incomingText,
+              effectiveIncomingText,
             );
           }
         }
@@ -357,7 +424,7 @@ export async function processAiResponse(
       [
         { role: "system", content: system },
         ...history,
-        { role: "user", content: incomingText }
+        { role: "user", content: effectiveIncomingText }
       ],
       {
         provider: cfg.ai_provider || "gemini",
@@ -378,7 +445,38 @@ export async function processAiResponse(
     }
 
     const parsed = parseAiOutput(response, stages as any);
-    console.log(`[ai-engine] Parsed intent: ${parsed.intent}, parts count: ${parsed.parts.length}, qualified: ${parsed.qualified}`);
+    console.log(`[ai-engine] Parsed intent: ${parsed.intent}, parts count: ${parsed.parts.length}, qualified: ${parsed.qualified}, sugestao: ${Boolean(parsed.sugestao)}`);
+
+    // Fase B: Registrar sugestão de treinamento / melhoria de prompt se gerada pela IA
+    if (parsed.sugestao) {
+      console.log(`[ai-engine] 💡 AI prompt suggestion detected for ${number}:`, parsed.sugestao);
+      try {
+        await (supabaseAdmin as any).from("audit_log").insert({
+          company_id: companyId,
+          acao: "ai_prompt_suggestion",
+          detalhes: {
+            numero: number,
+            inbound_text: effectiveIncomingText.slice(0, 400),
+            intent: parsed.intent || "NEUTRA",
+            duda: parsed.sugestao.duda,
+            regra_sugerida: parsed.sugestao.regra,
+            status: "pending",
+            created_at: new Date().toISOString(),
+          }
+        });
+
+        await (supabaseAdmin as any).rpc("push_notificacao", {
+          _company_id: companyId,
+          _tipo: "ia_sugestao",
+          _titulo: "💡 Sugerencia de entrenamiento para tu Agente IA",
+          _descricao: parsed.sugestao.duda.slice(0, 180),
+          _link: "/app/agente",
+          _ref_id: `sugestao:${processing.id}`,
+        });
+      } catch (sugErr: any) {
+        console.warn("[ai-engine] Falha ao gravar sugestão de treinamento:", sugErr?.message);
+      }
+    }
     
     const replyParts = parsed.parts.map((part) => part.trim()).filter(Boolean);
     const replyText = replyParts.join("\n\n");

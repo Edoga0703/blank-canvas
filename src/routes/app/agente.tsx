@@ -21,9 +21,9 @@ import { brand } from "@/config/brand";
 import { buildSystemPrompt } from "@/lib/ai-prompt";
 import { testAiReply } from "@/lib/evolution.functions";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 
-
-import { generateAgentConfig, analyzeBusinessBrief, addAgentExample, listAgents, deleteAgent, generateAgentAvatar, updateAgentKnowledgeFiles, saveAgentConfig, createAgent, indexAgentKnowledge, type BriefQuestion } from "@/lib/agent-ai.functions";
+import { generateAgentConfig, analyzeBusinessBrief, addAgentExample, listAgents, deleteAgent, generateAgentAvatar, updateAgentKnowledgeFiles, saveAgentConfig, createAgent, indexAgentKnowledge, listAgentSuggestions, applyAgentSuggestion, dismissAgentSuggestion, type BriefQuestion, type AgentPromptSuggestionItem } from "@/lib/agent-ai.functions";
 import { ensureSession, mensagemErroSessao } from "@/lib/ensure-session";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { MicDictateButton } from "@/components/mic-dictate-button";
@@ -64,6 +64,9 @@ function AgentePage() {
   const generateAvatar = useServerFn(generateAgentAvatar);
   const persistAgent = useServerFn(saveAgentConfig);
   const addAgent = useServerFn(createAgent);
+  const fetchSuggestions = useServerFn(listAgentSuggestions);
+  const applySuggestion = useServerFn(applyAgentSuggestion);
+  const dismissSuggestion = useServerFn(dismissAgentSuggestion);
 
   const [avatarLoading, setAvatarLoading] = useState(false);
 
@@ -92,6 +95,11 @@ function AgentePage() {
   const [palavraPausar, setPalavraPausar] = useState("/pausar");
   const [palavraDespausar, setPalavraDespausar] = useState("/despausar");
   const [responderEmPartes, setResponderEmPartes] = useState(true);
+  const [segundosBuffer, setSegundosBuffer] = useState<number>(3);
+
+  // Sugestões de treinamento da IA (Fase B)
+  const [suggestions, setSuggestions] = useState<AgentPromptSuggestionItem[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
   const [regrasRigidas, setRegrasRigidas] = useState("");
   const [livre, setLivre] = useState("");
@@ -136,6 +144,18 @@ function AgentePage() {
 
 
 
+  const loadSuggestions = useCallback(async (agentId?: string | null) => {
+    try {
+      setLoadingSuggestions(true);
+      const res = await fetchSuggestions({ data: { agentId } });
+      setSuggestions(res || []);
+    } catch (e: any) {
+      console.warn("[agente] Falha ao carregar sugestões:", e?.message);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  }, [fetchSuggestions]);
+
   function applyAgentData(data: any) {
     if (data && data.nome_agente && data.nome_agente.trim() && (data.sobre_empresa || data.descricao_negocio)) {
       setHasConfig(true);
@@ -148,20 +168,25 @@ function AgentePage() {
       setPalavraPausar(data.palavra_pausar || "/pausar");
       setPalavraDespausar(data.palavra_despausar || "/despausar");
       setResponderEmPartes(data.responder_em_partes ?? true);
+      setSegundosBuffer(typeof data.segundos_buffer === "number" ? data.segundos_buffer : 3);
       setRegrasRigidas(data.regras_rigidas || "");
       setPromptPreview(buildSystemPrompt(data as any, { responderEmPartes: data.responder_em_partes ?? true, produtos: [] }));
       setLivre(composeKnowledge(data));
+      loadSuggestions(data.id);
     } else if (data) {
       setCfg(data);
       setActiveAgentId(data.id);
+      setSegundosBuffer(typeof data.segundos_buffer === "number" ? data.segundos_buffer : 3);
       setRegrasRigidas(data.regras_rigidas || "");
       setLivre(composeKnowledge(data));
       // Garante que o prompt preview seja atualizado se a config mudar
       setPromptPreview(buildSystemPrompt(data as any, { responderEmPartes: data.responder_em_partes ?? true, produtos: [] }));
+      loadSuggestions(data.id);
     } else {
       setHasConfig(false);
       setCfg(null);
       setLivre("");
+      setSuggestions([]);
     }
   }
 
@@ -355,6 +380,7 @@ function AgentePage() {
       palavra_pausar: palavraPausar,
       palavra_despausar: palavraDespausar,
       responder_em_partes: responderEmPartes,
+      segundos_buffer: segundosBuffer,
       regras_rigidas: regrasRigidas,
       is_default: tipo === "qualificacao",
       nome: TIPO_LABELS[tipo].label,
@@ -380,6 +406,39 @@ function AgentePage() {
     setPromptPreview(buildSystemPrompt(payload as any, { responderEmPartes, produtos: [] }));
   }
 
+  async function handleApplySuggestion(sug: AgentPromptSuggestionItem) {
+    try {
+      const res = await applySuggestion({
+        data: {
+          suggestionId: sug.id,
+          agentId: activeAgentId,
+          ruleText: sug.regra_sugerida,
+          tipo,
+        },
+      });
+      if (res?.regras_rigidas) {
+        setRegrasRigidas(res.regras_rigidas);
+      } else {
+        const next = regrasRigidas ? `${regrasRigidas}\n- ${sug.regra_sugerida}` : `- ${sug.regra_sugerida}`;
+        setRegrasRigidas(next);
+      }
+      setSuggestions((prev) => prev.filter((s) => s.id !== sug.id));
+      toast.success("¡Regla agregada con éxito a las Reglas Rígidas!");
+    } catch (e: any) {
+      toast.error(e?.message || "Error al aplicar regla sugerida");
+    }
+  }
+
+  async function handleDismissSuggestion(id: string) {
+    try {
+      await dismissSuggestion({ data: { suggestionId: id } });
+      setSuggestions((prev) => prev.filter((s) => s.id !== id));
+      toast.success("Sugerencia descartada");
+    } catch (e: any) {
+      toast.error(e?.message || "Error al descartar sugerencia");
+    }
+  }
+
   async function runTest() {
     const msg = testInput.trim();
     if (!msg || testing) return;
@@ -391,6 +450,10 @@ function AgentePage() {
       const history = chat.map((m) => ({ role: m.role, content: m.content }));
       const r = await test({ data: { message: msg, tipo, history } });
       setChat((c) => [...c, { role: "assistant", content: r.parts.join("\n\n"), parts: r.parts }]);
+      if ((r as any)?.sugestao) {
+        toast.info("💡 La IA detectó una oportunidad de mejora y generó una sugerencia de entrenamiento.");
+        loadSuggestions(activeAgentId);
+      }
     } catch (e: any) {
       toast.error(e?.message || "Falha");
       setChat((c) => c.slice(0, -1));
@@ -1191,28 +1254,62 @@ function AgentePage() {
                     </Section>
 
                     <Section title="Configurações Avançadas">
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                              <Label>Responder em partes</Label>
-                              <p className="text-[10px] text-muted-foreground">Simula comportamento humano no WhatsApp</p>
+                      <div className="space-y-5">
+                        <div className="grid grid-cols-2 gap-6">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-0.5">
+                                <Label>Responder em partes</Label>
+                                <p className="text-[10px] text-muted-foreground">Simula comportamento humano no WhatsApp</p>
+                              </div>
+                              <Switch checked={responderEmPartes} onCheckedChange={setResponderEmPartes} />
                             </div>
-                            <Switch checked={responderEmPartes} onCheckedChange={setResponderEmPartes} />
+                            <div className="space-y-2">
+                              <Label>Telefone para transferência</Label>
+                              <Input value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="Ex: 5511999999999" />
+                            </div>
                           </div>
-                          <div className="space-y-2">
-                            <Label>Telefone para transferência</Label>
-                            <Input value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="Ex: 5511999999999" />
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label>Palavra para pausar IA</Label>
+                              <Input value={palavraPausar} onChange={(e) => setPalavraPausar(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Palavra para despausar IA</Label>
+                              <Input value={palavraDespausar} onChange={(e) => setPalavraDespausar(e.target.value)} />
+                            </div>
                           </div>
                         </div>
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label>Palavra para pausar IA</Label>
-                            <Input value={palavraPausar} onChange={(e) => setPalavraPausar(e.target.value)} />
+
+                        {/* Buffer / Debounce de Mensagens (Fase A) */}
+                        <div className="rounded-xl border border-border/80 bg-muted/20 p-4 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-2">
+                                <Label className="text-sm font-medium">Buffer de Mensagens (Espera antes de responder)</Label>
+                                <Badge variant="secondary" className="font-mono text-xs">{segundosBuffer}s</Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Agrupa mensagens seguidas do cliente (ex: &ldquo;Hola&rdquo;, &ldquo;¿Tienen Netflix?&rdquo;, &ldquo;¿A cómo?&rdquo;) enviadas dentro deste intervalo em uma única resposta completa e coerente. 0 = imediato.
+                              </p>
+                            </div>
                           </div>
-                          <div className="space-y-2">
-                            <Label>Palavra para despausar IA</Label>
-                            <Input value={palavraDespausar} onChange={(e) => setPalavraDespausar(e.target.value)} />
+                          <div className="space-y-2 pt-1">
+                            <Slider
+                              value={[segundosBuffer]}
+                              min={0}
+                              max={30}
+                              step={1}
+                              onValueChange={([val]) => setSegundosBuffer(val)}
+                            />
+                            <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
+                              <button type="button" onClick={() => setSegundosBuffer(0)} className="hover:text-foreground">0s (imediato)</button>
+                              <button type="button" onClick={() => setSegundosBuffer(3)} className="hover:text-foreground">3s</button>
+                              <button type="button" onClick={() => setSegundosBuffer(5)} className="hover:text-foreground font-semibold text-brand">5s (recomendado)</button>
+                              <button type="button" onClick={() => setSegundosBuffer(10)} className="hover:text-foreground">10s</button>
+                              <button type="button" onClick={() => setSegundosBuffer(15)} className="hover:text-foreground">15s</button>
+                              <button type="button" onClick={() => setSegundosBuffer(30)} className="hover:text-foreground">30s</button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1278,6 +1375,105 @@ function AgentePage() {
                         placeholder="Ex: Oi {nome}, tudo certo com o seu pedido? Qualquer coisa é só me chamar por aqui."
                       />
                     </Section>
+                  )}
+
+                  {/* Sugerencias de Entrenamiento / Bucle de Aprendizaje (Fase B) */}
+                  {suggestions.length > 0 && (
+                    <div className="rounded-xl border-2 border-amber-500/40 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-5 space-y-4 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                            <Sparkles className="h-4 w-4 animate-pulse" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                              💡 Sugerencias de Entrenamiento
+                              <Badge className="bg-amber-500 text-white hover:bg-amber-600 font-mono text-[10px]">
+                                {suggestions.length} pendiente{suggestions.length > 1 ? "s" : ""}
+                              </Badge>
+                            </h3>
+                            <p className="text-xs text-muted-foreground">
+                              La IA detectó dudas, expresiones con doble sentido o falta de reglas en chats reales con clientes.
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                          onClick={() => loadSuggestions(activeAgentId)}
+                          disabled={loadingSuggestions}
+                        >
+                          <RefreshCcw className={cn("h-3.5 w-3.5 mr-1", loadingSuggestions && "animate-spin")} />
+                          Actualizar
+                        </Button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {suggestions.map((sug) => (
+                          <div
+                            key={sug.id}
+                            className="rounded-lg border border-border/80 bg-background/90 p-4 space-y-2.5 shadow-xs"
+                          >
+                            <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="font-mono text-[11px] font-medium">
+                                  {sug.numero || "Cliente"}
+                                </Badge>
+                                {sug.intent && (
+                                  <Badge variant="secondary" className="text-[10px]">
+                                    Intención: {sug.intent}
+                                  </Badge>
+                                )}
+                              </div>
+                              <span className="text-[11px] text-muted-foreground font-mono">
+                                {new Date(sug.created_at).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
+                              </span>
+                            </div>
+
+                            {sug.inbound_text && (
+                              <div className="rounded-md bg-muted/50 p-2.5 text-xs text-foreground font-sans border-l-2 border-amber-500">
+                                <span className="font-semibold text-muted-foreground mr-1">Mensaje del cliente:</span>
+                                &ldquo;{sug.inbound_text}&rdquo;
+                              </div>
+                            )}
+
+                            <div className="space-y-1 text-xs">
+                              <span className="font-semibold text-amber-700 dark:text-amber-400">
+                                Duda / Oportunidad de mejora:
+                              </span>
+                              <p className="text-muted-foreground">{sug.duda}</p>
+                            </div>
+
+                            <div className="rounded-md bg-brand/5 border border-brand/20 p-2.5 space-y-1 text-xs">
+                              <span className="font-semibold text-brand">
+                                Regla sugerida para el Agente:
+                              </span>
+                              <p className="font-mono text-[11px] text-foreground">{sug.regra_sugerida}</p>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-1 border-t border-border/40">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                                onClick={() => handleDismissSuggestion(sug.id)}
+                              >
+                                Descartar
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shadow-xs"
+                                onClick={() => handleApplySuggestion(sug)}
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                + Agregar a Reglas Rígidas
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
 
                   <Section title="Regras rígidas (o agente nunca quebra)">

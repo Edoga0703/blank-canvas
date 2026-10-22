@@ -657,3 +657,146 @@ export const createAgent = createServerFn({ method: "POST" })
     }
     return created;
   });
+
+// ────────────────────────────────────────────────────────────────────────
+// AI SUGGESTIONS / TRAINING LOOP (Phase B)
+// ────────────────────────────────────────────────────────────────────────
+export interface AgentPromptSuggestionItem {
+  id: string;
+  numero: string;
+  inbound_text: string;
+  intent: string;
+  duda: string;
+  regra_sugerida: string;
+  status: "pending" | "approved" | "dismissed";
+  created_at: string;
+}
+
+export const listAgentSuggestions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d?: { agentId?: string | null }) => d || {})
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
+
+    const { data, error } = await supabase
+      .from("audit_log")
+      .select("id, acao, detalhes, created_at")
+      .eq("company_id", companyId)
+      .eq("acao", "ai_prompt_suggestion")
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.warn("[listAgentSuggestions] error:", error);
+      return [];
+    }
+
+    const items: AgentPromptSuggestionItem[] = (data ?? [])
+      .map((row: any) => ({
+        id: row.id,
+        numero: String(row.detalhes?.numero || ""),
+        inbound_text: String(row.detalhes?.inbound_text || ""),
+        intent: String(row.detalhes?.intent || "NEUTRA"),
+        duda: String(row.detalhes?.duda || ""),
+        regra_sugerida: String(row.detalhes?.regra_sugerida || ""),
+        status: (row.detalhes?.status as any) || "pending",
+        created_at: row.created_at,
+      }))
+      .filter((s) => s.status === "pending" && s.regra_sugerida.length > 0);
+
+    return items;
+  });
+
+export const applyAgentSuggestion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { suggestionId: string; agentId?: string | null; ruleText: string; tipo?: string }) => {
+    if (!d?.suggestionId || !d?.ruleText?.trim()) throw new Error("Parâmetros inválidos.");
+    return {
+      suggestionId: d.suggestionId,
+      agentId: d.agentId || null,
+      ruleText: d.ruleText.trim(),
+      tipo: d.tipo || "qualificacao",
+    };
+  })
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
+
+    let query = supabase.from("agent_config").select("id, regras_rigidas");
+    if (data.agentId) {
+      query = query.eq("id", data.agentId);
+    } else {
+      query = query.eq("company_id", companyId).eq("tipo", data.tipo);
+    }
+
+    const { data: cfg, error: cfgErr } = await query.maybeSingle();
+    if (cfgErr || !cfg) throw new Error("Configuração do agente não encontrada.");
+
+    const currentRegras = (cfg.regras_rigidas || "").trim();
+    const newRuleFormatted = data.ruleText.startsWith("-") || /^\d+\./.test(data.ruleText)
+      ? data.ruleText
+      : `- ${data.ruleText}`;
+    const updatedRegras = currentRegras ? `${currentRegras}\n${newRuleFormatted}` : newRuleFormatted;
+
+    const { error: upErr } = await supabase
+      .from("agent_config")
+      .update({ regras_rigidas: updatedRegras, updated_at: new Date().toISOString() })
+      .eq("id", cfg.id);
+    if (upErr) throw new Error(`Falha ao atualizar regras do agente: ${upErr.message}`);
+
+    const { data: auditRow } = await supabase
+      .from("audit_log")
+      .select("detalhes")
+      .eq("id", data.suggestionId)
+      .eq("company_id", companyId)
+      .maybeSingle();
+
+    if (auditRow) {
+      await supabase
+        .from("audit_log")
+        .update({
+          detalhes: {
+            ...(auditRow.detalhes || {}),
+            status: "approved",
+            approved_at: new Date().toISOString(),
+          },
+        })
+        .eq("id", data.suggestionId);
+    }
+
+    return { ok: true, regras_rigidas: updatedRegras };
+  });
+
+export const dismissAgentSuggestion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { suggestionId: string }) => {
+    if (!d?.suggestionId) throw new Error("ID da sugestão é obrigatório.");
+    return { suggestionId: d.suggestionId };
+  })
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
+
+    const { data: auditRow } = await supabase
+      .from("audit_log")
+      .select("detalhes")
+      .eq("id", data.suggestionId)
+      .eq("company_id", companyId)
+      .maybeSingle();
+
+    if (auditRow) {
+      await supabase
+        .from("audit_log")
+        .update({
+          detalhes: {
+            ...(auditRow.detalhes || {}),
+            status: "dismissed",
+            dismissed_at: new Date().toISOString(),
+          },
+        })
+        .eq("id", data.suggestionId);
+    }
+
+    return { ok: true };
+  });
