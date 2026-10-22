@@ -1,3 +1,4 @@
+import { normalizePhone } from "@/lib/br-phone";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -81,12 +82,11 @@ export function QrCodeDialog({ open, instanceName, initialQr, onOpenChange, onCo
 
   async function requestPairingCode() {
     if (!instanceName) return;
-    const digits = phone.replace(/\D/g, "").replace(/^55/, "");
-    if (digits.length < 10) {
-      toast.error("Informe o número com DDD.");
+    const normalized = normalizePhone(phone);
+    if (!normalized || normalized.length < 9) {
+      toast.error("Informe um número válido com código de país.");
       return;
     }
-    const normalized = `55${digits}`;
     setRequestingCode(true);
     setPairCode(null);
     try {

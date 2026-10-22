@@ -1,93 +1,78 @@
-import React from "react";
-import { Target, Edit3, Calendar, Users } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
+import { ReactNode } from "react";
+import { TrendingUp, Users, Calendar, Target, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-interface KpiCardProps {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  variation?: number;
-  hero?: boolean;
-}
-
-export function KpiCard({ icon, label, value, variation, hero }: KpiCardProps) {
+export function KpiCard({ title, value, subtitle, icon, highlight }: { title: string; value: string; subtitle: string; icon: ReactNode; highlight?: boolean }) {
   return (
-    <div className={`rounded-2xl border border-[color:var(--hairline)] bg-white p-6 flex flex-col justify-between hover:shadow-md transition-all group ${hero ? 'ring-1 ring-[var(--brand)]/10' : ''}`}>
-      <div className="flex items-center gap-4">
-        <div className={`size-14 rounded-2xl grid place-items-center transition-transform group-hover:scale-110 shadow-inner ${hero ? "bg-blue-50 text-[color:var(--brand)]" : "bg-slate-50 text-slate-400"}`}>
-          {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement<any>, { className: "size-7" }) : icon}
+    <div className={`rounded-2xl border border-[color:var(--hairline)] p-6 space-y-4 shadow-sm transition-all duration-200 hover:shadow-md ${highlight ? "bg-gradient-to-br from-indigo-50/50 via-white to-white" : "bg-white"}`}>
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{title}</p>
+          <p className="text-2xl font-black tracking-tight text-slate-900">{value}</p>
         </div>
-
-        <div>
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
-          <p className={`font-bold tabular-nums tracking-tighter text-slate-900 ${hero ? "text-3xl" : "text-2xl"}`}>
-            {value}
-          </p>
+        <div className={`size-12 rounded-2xl flex items-center justify-center ${highlight ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20" : "bg-slate-50 text-slate-400 border border-slate-100"}`}>
+          {icon}
         </div>
       </div>
-      {variation !== undefined && (
-        <div className="mt-4 flex items-center gap-2">
-          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${variation >= 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
-            {variation > 0 ? "+" : ""}{variation.toFixed(1)}%
-          </span>
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">vs mês anterior</span>
-        </div>
-      )}
+      <div className="flex items-center gap-1.5 pt-2 border-t border-[color:var(--hairline)]">
+        <TrendingUp className="size-3 text-emerald-500" />
+        <span className="text-[10px] text-muted-foreground">{subtitle}</span>
+      </div>
     </div>
   );
 }
 
-interface MetaCardProps {
-  meta: number;
-  receitaMes: number;
-  pct: number;
-  onEdit?: () => void;
-}
-
-export function MetaCard({ meta, receitaMes, pct, onEdit }: MetaCardProps) {
-  const fmtBRL = (cents: number) => (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+export function MetaCard({ title, meta, realizado, perc, icon, color = "indigo" }: { title: string; meta: string; realizado: string; perc: number; icon: ReactNode; color?: "indigo" | "emerald" | "amber" }) {
+  const colorMap = {
+    indigo: "from-indigo-600 to-indigo-500 text-indigo-600 bg-indigo-50 border-indigo-100",
+    emerald: "from-emerald-600 to-emerald-500 text-emerald-600 bg-emerald-50 border-emerald-100",
+    amber: "from-amber-600 to-amber-500 text-amber-600 bg-amber-50 border-amber-100"
+  };
 
   return (
-    <div className="rounded-2xl border border-[color:var(--hairline)] bg-white p-6 relative group overflow-hidden shadow-sm hover:shadow-md transition-all">
-      <div className="absolute top-0 right-0 w-32 h-32 bg-[color:var(--brand)]/5 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform blur-2xl" />
-      
-      <div className="flex items-center justify-between mb-6 relative">
-        <div className="flex items-center gap-4">
-          <div className="size-14 rounded-2xl grid place-items-center bg-blue-50 text-[color:var(--brand)] shadow-inner group-hover:scale-110 transition-transform">
-            <Target className="size-7" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Meta mensal</p>
-            <p className="text-2xl font-bold tabular-nums tracking-tighter text-slate-900">
-              {meta > 0 ? `${pct}%` : "Definir meta"}
-            </p>
+    <div className="rounded-2xl border border-[color:var(--hairline)] bg-white p-6 space-y-6 shadow-sm hover:shadow-md transition-all">
+      <div className="flex items-start justify-between">
+        <div className="space-y-1">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{title}</p>
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-black text-slate-900">{perc}%</span>
+            <span className="text-xs font-bold text-muted-foreground">atingido</span>
           </div>
         </div>
-        {onEdit && (
-          <Button variant="ghost" size="icon" className="size-9 rounded-xl text-[color:var(--brand)] hover:bg-blue-50" onClick={onEdit}>
-            <Edit3 className="size-4" />
-          </Button>
-        )}
+        <div className={`size-12 rounded-2xl border flex items-center justify-center ${colorMap[color].split(" ")[2]} ${colorMap[color].split(" ")[3]}`}>
+          {icon}
+        </div>
       </div>
 
-      <div className="space-y-3 relative">
-        <div className="flex justify-between items-end text-[10px] font-bold uppercase tracking-wider">
-          <span className="text-muted-foreground">Progresso atual</span>
-          <span className="text-[color:var(--brand)] font-bold">{fmtBRL(receitaMes)} <span className="text-slate-300 mx-1">/</span> {fmtBRL(meta)}</span>
-        </div>
-        <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+      <div className="space-y-2">
+        <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden p-0.5">
           <div 
-            className="h-full bg-[color:var(--brand)] transition-all duration-1000" 
-            style={{ width: `${Math.min(100, pct)}%` }}
+            className={`h-full rounded-full bg-gradient-to-r ${colorMap[color].split(" ").slice(0, 2).join(" ")} transition-all duration-500`} 
+            style={{ width: `${Math.min(perc, 100)}%` }} 
           />
         </div>
+        <div className="flex justify-between items-center text-[10px] font-bold text-muted-foreground">
+          <span>{realizado}</span>
+          <span>Meta: {meta}</span>
+        </div>
       </div>
     </div>
   );
 }
 
-export function MetaConfigCard() {
+export function MetaConfigCard({
+  onEdit,
+  periodoLabel,
+  metricaLabel = "Receita ($)",
+  visibilidadeLabel = "Toda a unidade"
+}: {
+  onEdit?: () => void;
+  periodoLabel?: string;
+  metricaLabel?: string;
+  visibilidadeLabel?: string;
+} = {}) {
+  const currentPeriod = periodoLabel || new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date());
+
   return (
     <div className="rounded-2xl border border-[color:var(--hairline)] bg-white p-8 space-y-8 shadow-sm">
       <div className="space-y-1">
@@ -102,7 +87,7 @@ export function MetaConfigCard() {
           </div>
           <div>
             <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Período</p>
-            <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">Agosto de 2026</p>
+            <p className="text-xs font-bold text-slate-800 uppercase tracking-wider capitalize">{currentPeriod}</p>
           </div>
         </div>
 
@@ -112,7 +97,7 @@ export function MetaConfigCard() {
           </div>
           <div>
             <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Métrica principal</p>
-            <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">Receita (BRL)</p>
+            <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">{metricaLabel}</p>
           </div>
         </div>
 
@@ -122,12 +107,15 @@ export function MetaConfigCard() {
           </div>
           <div>
             <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Visibilidade</p>
-            <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">Toda a unidade</p>
+            <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">{visibilidadeLabel}</p>
           </div>
         </div>
       </div>
 
-      <Button className="w-full rounded-2xl h-12 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] uppercase tracking-wider shadow-lg shadow-slate-900/10 mt-4">
+      <Button 
+        onClick={onEdit}
+        className="w-full rounded-2xl h-12 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] uppercase tracking-wider shadow-lg shadow-slate-900/10 mt-4 cursor-pointer"
+      >
         Editar definições
       </Button>
     </div>

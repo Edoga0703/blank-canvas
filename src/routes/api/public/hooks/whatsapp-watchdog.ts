@@ -27,7 +27,7 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-watchdog")({
             const providerName = String(row.provider || row.provider_type || "evolution").toLowerCase();
             const isUazapi = providerName.includes("uazapi");
             // Canais Meta (Instagram/Messenger) não passam por este watchdog.
-            if (/meta|instagram|messenger|wablast|oficial|official/.test(providerName)) continue;
+            if (/meta|instagram|messenger|wablast|oficial|official|lovable|telegram/.test(providerName)) continue;
             if (isUazapi && !row.instance_token) {
               results.push({ name, error: "instance_token ausente" });
               continue;

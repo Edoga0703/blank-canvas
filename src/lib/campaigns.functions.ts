@@ -6,12 +6,10 @@ async function resolveCompanyId(supabase: any, userId: string): Promise<string> 
   return resolveCompanyIdCached(supabase, userId);
 }
 
+import { normalizePhone } from "./br-phone";
 function onlyDigits(v: string) { return String(v || "").replace(/\D/g, ""); }
 function normalizeBr(v: string) {
-  const d = onlyDigits(v);
-  if (!d) return "";
-  if (d.length === 10 || d.length === 11) return "55" + d;
-  return d;
+  return normalizePhone(v);
 }
 
 export const listCampaigns = createServerFn({ method: "GET" })

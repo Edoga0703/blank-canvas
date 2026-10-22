@@ -125,6 +125,22 @@ export const Route = createFileRoute("/api/public/form-submit")({
               if (inst) {
                 const texto = String(form.wa_mensagem).replace(/\{\{nome\}\}/g, nome || "");
                 await waSendText(inst, result.numero, texto);
+
+                const { data: member } = await (supabaseAdmin as any)
+                  .from("company_members")
+                  .select("user_id")
+                  .eq("company_id", form.company_id)
+                  .limit(1)
+                  .maybeSingle();
+
+                await (supabaseAdmin as any).from("mensagens").insert({
+                  company_id: form.company_id,
+                  user_id: member?.user_id || null,
+                  numero: result.numero,
+                  texto,
+                  direcao: "saida",
+                  autor: "automacao",
+                });
               }
             } catch (e: any) {
               console.warn("[form-submit.wa]", e?.message);

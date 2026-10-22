@@ -25,7 +25,6 @@ export function assertCronRequest(request: Request): Response | null {
   const validSecrets = [
     process.env.CRON_SECRET,
     process.env.SUPABASE_SERVICE_ROLE_KEY,
-    process.env.META_WEBHOOK_VERIFY_TOKEN,
   ]
     .map((s) => (s ?? "").trim())
     .filter(Boolean);

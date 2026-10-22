@@ -19,6 +19,7 @@ import { brand } from "@/config/brand";
 import { getPartnerReferralStats, requestPartnerWithdrawal } from "@/lib/parceiros-client.functions";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/app/parceiro")({
   head: () => ({
@@ -35,6 +36,7 @@ function PartnerClientDashboard() {
   const reqWithdraw = useServerFn(requestPartnerWithdrawal);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedRef, setSelectedRef] = useState<any | null>(null);
 
   async function reload(silent = true) {
     if (!silent) setLoading(true);
@@ -235,6 +237,42 @@ function PartnerClientDashboard() {
           </div>
         </div>
       </Card>
+      <Dialog open={!!selectedRef} onOpenChange={(open) => !open && setSelectedRef(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Detalhes da Indicação</DialogTitle>
+            <DialogDescription>Informações da empresa indicada e comissão.</DialogDescription>
+          </DialogHeader>
+          {selectedRef && (
+            <div className="space-y-4 pt-2 text-sm">
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-muted-foreground">Empresa:</span>
+                <span className="font-semibold">{selectedRef.company?.nome || "Empresa Cadastrada"}</span>
+              </div>
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-muted-foreground">ID da Conta:</span>
+                <span className="font-mono text-xs">{selectedRef.company_id}</span>
+              </div>
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-muted-foreground">Data de Cadastro:</span>
+                <span>{new Date(selectedRef.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}</span>
+              </div>
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-muted-foreground">Status de Cobrança:</span>
+                <Badge variant={selectedRef.company?.status_cobranca === "ativo" ? "default" : "secondary"}>
+                  {selectedRef.company?.status_cobranca || "pendente"}
+                </Badge>
+              </div>
+              <div className="flex justify-between pt-1">
+                <span className="text-muted-foreground">Comissão Estimada:</span>
+                <span className="font-bold text-emerald-600">
+                  {selectedRef.company?.status_cobranca === "ativo" ? "Ativa (Recorrente)" : "Aguardando ativação do plano"}
+                </span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

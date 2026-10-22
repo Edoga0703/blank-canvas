@@ -1,3 +1,4 @@
+import { normalizePhone } from "@/lib/br-phone";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -3853,8 +3854,8 @@ function NewConversationDialog({
   function submit(e: React.FormEvent) {
     e.preventDefault();
     const n = normalize(numero);
-    if (n.length < 10) { toast.error("Informe um número válido com DDD."); return; }
-    const withCc = n.startsWith("55") ? n : `55${n}`;
+    if (n.length < 8) { toast.error("Informe um número válido com código internacional ou DDD."); return; }
+    const withCc = normalizePhone(n);
     onStart(withCc, nome.trim() || null);
     setNumero(""); setNome("");
   }

@@ -300,7 +300,7 @@ function ContatosPage() {
             email: (c.email ?? "").toString().trim().toLowerCase(),
             fn: (partes[0] ?? "").toLowerCase(),
             ln: (partes.length > 1 ? partes.slice(1).join(" ") : "").toLowerCase(),
-            country: "br",
+            // Country dinámico o universal\n            country: (c.numero || "").startsWith("58") ? "ve" : (c.numero || "").startsWith("57") ? "co" : (c.numero || "").startsWith("1") ? "us" : (c.numero || "").startsWith("55") ? "br" : "intl",
           };
         }).filter((r) => r.phone || r.email);
         montar("Público Meta", [
@@ -332,7 +332,7 @@ function ContatosPage() {
           { header: "Tags", key: "tags", width: 28 },
           { header: "Etapa", key: "etapa", width: 20 },
           { header: "Responsável", key: "responsavel", width: 24 },
-          { header: "Valor", key: "valor", width: 15, numFmt: '"R$" #,##0.00' },
+          { header: "Valor", key: "valor", width: 15, numFmt: '"$" #,##0.00' },
           { header: "Última interação", key: "ultima", width: 22 },
           { header: "Bloqueado", key: "bloqueado", width: 12 },
           { header: "Informações extras", key: "extras", width: 50 },

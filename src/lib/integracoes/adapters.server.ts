@@ -1,3 +1,4 @@
+import { normalizePhone } from "../br-phone";
 /**
  * Server-only: adaptadores das integrações por chave.
  * Cada serviço expõe apenas o que sabe fazer; o resto do sistema é genérico.
@@ -66,10 +67,8 @@ function form(body: Record<string, string>): RequestInit {
 }
 
 export function normalizaNumero(raw: unknown): string | null {
-  let n = String(raw ?? "").replace(/\D/g, "").slice(0, 15);
-  if (!n) return null;
-  if (n.length === 10 || n.length === 11) n = "55" + n;
-  if (n.length < 12) return null;
+  const n = normalizePhone(raw);
+  if (!n || n.length < 9) return null;
   return n;
 }
 

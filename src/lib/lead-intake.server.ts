@@ -1,3 +1,4 @@
+import { normalizePhone } from "./br-phone";
 // Entrada de leads compartilhada (formulários públicos e integrações).
 // Mantém a mesma regra usada em /api/public/lead-capture.
 
@@ -59,9 +60,8 @@ export type IntakeInput = {
 };
 
 export function normalizeBrNumber(raw: string): string | null {
-  let numero = String(raw ?? "").replace(/\D/g, "").slice(0, 15);
-  if (numero.length === 10 || numero.length === 11) numero = "55" + numero;
-  if (numero.length < 10) return null;
+  const numero = normalizePhone(raw);
+  if (!numero || numero.length < 9) return null;
   return numero;
 }
 

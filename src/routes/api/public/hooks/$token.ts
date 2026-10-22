@@ -1,3 +1,4 @@
+import { normalizePhone } from "@/lib/br-phone";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
@@ -44,10 +45,9 @@ export const Route = createFileRoute("/api/public/hooks/$token")({
 
           const body = bodySchema.parse(await request.json());
           const raw = String(body.numero ?? body.telefone ?? body.phone ?? body.whatsapp ?? "");
-          let numero = raw.replace(/\D/g, "").slice(0, 15);
-          if (numero.length === 10 || numero.length === 11) numero = "55" + numero;
-          if (numero.length < 10) {
-            return cors(new Response('numero inválido. Envie "numero" com DDD, ex: "5511999999999".', { status: 400 }));
+          let numero = normalizePhone(raw);
+          if (!numero || numero.length < 9) {
+            return cors(new Response('numero inválido. Envie "numero" com código internacional (ex: E.164).', { status: 400 }));
           }
 
           const nome = (body.nome ?? body.name ?? "").trim() || null;

@@ -73,8 +73,53 @@ export function parseBrPhone(raw: string): BrPhoneResult {
 }
 
 /** Retorna somente o número normalizado (string vazia quando inválido). */
+/**
+ * Normaliza cualquier número nacional o internacional (E.164).
+ * Respeta prefijos internacionales existentes (58 Venezuela, 57 Colombia, 1 USA, 52 México, etc.).
+ * Si se recibe un número local de 10-11 dígitos sin DDI, aplica DEFAULT_COUNTRY_CODE (por defecto 58 / Venezuela).
+ */
+export function normalizePhone(raw: unknown, fallbackCountryCode?: string): string {
+  let d = String(raw ?? "").replace(/\D/g, "");
+  if (!d) return "";
+  d = d.replace(/^0+/, "");
+
+  // 1. Números internacionales completos (12 a 15 dígitos): ya traen su DDI
+  if (d.length >= 12 && d.length <= 15) {
+    return d;
+  }
+
+  // 2. USA / Canadá (11 dígitos que inician con 1)
+  if (d.length === 11 && d.startsWith("1")) {
+    return d;
+  }
+
+  // 3. 10 u 11 dígitos que ya empiezan con DDI internacional conocido (58, 57, 52, 54, 56, 51, 34)
+  if (d.length >= 10 && d.length <= 11) {
+    const ddi2 = d.slice(0, 2);
+    if (["58", "57", "52", "54", "56", "51", "34"].includes(ddi2)) {
+      return d;
+    }
+  }
+
+  // 4. Si es formato Brasil con DDD válido
+  const br = parseBrPhone(d);
+  if (br.valid && br.numero) {
+    return br.numero;
+  }
+
+  // 5. Local de 10 u 11 dígitos: aplicar DDI por defecto si está definido
+  const envCc = typeof process !== "undefined" && process.env ? (process.env.DEFAULT_COUNTRY_CODE || "58") : "58";
+  const cc = fallbackCountryCode !== undefined ? fallbackCountryCode : envCc;
+  if ((d.length === 10 || d.length === 11) && cc && !d.startsWith(cc)) {
+    return cc + d;
+  }
+
+  return d;
+}
+
+/** Retorna el número normalizado (acepta tanto BR como internacional E.164). */
 export function normalizeBrPhone(raw: string): string {
-  return parseBrPhone(raw).numero;
+  return normalizePhone(raw);
 }
 
 /** Erros de provedor que nunca devem ser retentados. */

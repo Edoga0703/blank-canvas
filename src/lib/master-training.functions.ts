@@ -48,6 +48,16 @@ export const saveTrainingCategory = createServerFn({ method: "POST" })
     return { success: true };
   });
 
+export const deleteTrainingCategory = createServerFn({ method: "POST" })
+  .inputValidator((data: any) => z.object({ id: z.string() }).parse(data))
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ data, context }: any) => {
+    const supabase = context.supabase;
+    const { error } = await supabase.from('training_categories').delete().eq('id', data.id);
+    if (error) throw new Error(error.message);
+    return { success: true };
+  });
+
 export const saveTrainingCourse = createServerFn({ method: "POST" })
   .inputValidator((data: any) => z.object({
     id: z.string().optional(),
@@ -72,6 +82,16 @@ export const saveTrainingCourse = createServerFn({ method: "POST" })
     return { success: true };
   });
 
+export const deleteTrainingCourse = createServerFn({ method: "POST" })
+  .inputValidator((data: any) => z.object({ id: z.string() }).parse(data))
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ data, context }: any) => {
+    const supabase = context.supabase;
+    const { error } = await supabase.from('training_courses').delete().eq('id', data.id);
+    if (error) throw new Error(error.message);
+    return { success: true };
+  });
+
 export const saveTrainingBanner = createServerFn({ method: "POST" })
   .inputValidator((data: any) => z.object({
     id: z.string().optional(),
@@ -92,4 +112,24 @@ export const saveTrainingBanner = createServerFn({ method: "POST" })
     
     if (res.error) throw new Error(res.error.message);
     return { success: true };
+  });
+
+export const deleteTrainingBanner = createServerFn({ method: "POST" })
+  .inputValidator((data: any) => z.object({ id: z.string() }).parse(data))
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ data, context }: any) => {
+    const supabase = context.supabase;
+    const { error } = await supabase.from('training_banners').delete().eq('id', data.id);
+    if (error) throw new Error(error.message);
+    return { success: true };
+  });
+
+export const saveTrainingSettings = createServerFn({ method: "POST" })
+  .inputValidator((data: any) => z.object({
+    accent_color: z.string().optional(),
+    immersive_mode: z.boolean().optional()
+  }).parse(data))
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ data }: any) => {
+    return { success: true, settings: data };
   });

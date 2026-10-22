@@ -1,3 +1,4 @@
+import { normalizePhone } from "./br-phone";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getRequest } from "@tanstack/react-start/server";
@@ -14,15 +15,13 @@ export { resolveCompanyId };
 export const connectWhatsapp = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d?: { instanceName?: string | null; createNew?: boolean; displayName?: string | null; provider?: "evolution" | "uazapi" | null; phone?: string | null }) => {
-    // Telefone (conexão por código de pareamento): só dígitos, com DDI 55 do Brasil.
-    let phone = (d?.phone || "").replace(/\D/g, "");
-    if (phone && !phone.startsWith("55") && phone.length <= 11) phone = `55${phone}`;
+    let phone = normalizePhone(d?.phone || "");
     return {
       instanceName: d?.instanceName?.trim() || null,
       createNew: !!d?.createNew,
       displayName: (d?.displayName || "").toString().trim().slice(0, 60) || null,
       providerOverride: d?.provider === "uazapi" || d?.provider === "evolution" ? d.provider : null,
-      phone: phone.length >= 12 ? phone : null,
+      phone: phone.length >= 9 ? phone : null,
     };
   })
   .handler(async ({ context, data }) => {

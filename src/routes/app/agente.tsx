@@ -83,6 +83,28 @@ function AgentePage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [promptPreview, setPromptPreview] = useState("");
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
+  const [channelStatus, setChannelStatus] = useState({ whatsapp: true, instagram: true, telegram: true });
+
+  const loadHistory = async () => {
+    setLoadingAuditLogs(true);
+    try {
+      const { data: logs } = await supabase
+        .from("audit_log")
+        .select("*")
+        .in("acao", ["ai_response", "copilot_rule_applied", "agent_config_saved", "agent_teach_saved"])
+        .order("created_at", { ascending: false })
+        .limit(25);
+      setAuditLogs(logs || []);
+    } catch (e: any) {
+      console.warn("Erro ao buscar histórico:", e);
+    } finally {
+      setLoadingAuditLogs(false);
+    }
+  };
 
   // PRD interview flow
   type Step = "descrever" | "entrevista" | "pronto";
@@ -1091,10 +1113,20 @@ function AgentePage() {
                   <Settings2 className="size-3.5" /> Configuração avançada
                 </Link>
               </Button>
-              <Button variant="outline" size="sm" className="gap-2 text-xs">
+              <Button 
+                onClick={() => { setHistoryDialogOpen(true); void loadHistory(); }} 
+                variant="outline" 
+                size="sm" 
+                className="gap-2 text-xs cursor-pointer hover:bg-slate-50"
+              >
                 <History className="size-3.5" /> Histórico
               </Button>
-              <Button variant="outline" size="sm" className="gap-2 text-xs">
+              <Button 
+                onClick={() => setPreviewDialogOpen(true)} 
+                variant="outline" 
+                size="sm" 
+                className="gap-2 text-xs cursor-pointer hover:bg-slate-50"
+              >
                 <Eye className="size-3.5" /> Pré-visualizar
               </Button>
               <Button onClick={() => { setCopilotInitialPrompt(null); setCopilotOpen(true); }} size="sm" className="gap-2 text-xs bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-xs">
@@ -1141,9 +1173,11 @@ function AgentePage() {
                         <div className="size-8 rounded-lg bg-blue-50 flex items-center justify-center">
                           <FileText className="size-4 text-blue-600" />
                         </div>
-                        <span className="text-lg font-bold">1</span>
+                        <span className="text-lg font-bold">
+                          {(cfg?.knowledge_files?.length || 0) + (livre?.trim() ? 1 : 0) + (Array.isArray(cfg?.produtos_servicos) ? cfg.produtos_servicos.length : 0)}
+                        </span>
                       </div>
-                      <p className="text-[11px] text-muted-foreground uppercase font-semibold">Fontes</p>
+                      <p className="text-[11px] text-muted-foreground uppercase font-semibold">Fontes vinculadas</p>
                     </div>
                     <div className="p-4 rounded-xl border border-[var(--border)] bg-white space-y-2">
                       <div className="flex items-center justify-between">
@@ -1305,16 +1339,16 @@ function AgentePage() {
                     <Section title="Estatísticas do Agente">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-[var(--panel-2)]">
-                          <span className="text-xs text-muted-foreground">Conversas hoje</span>
-                          <span className="font-bold">24</span>
+                          <span className="text-xs text-muted-foreground">Exemplos treinados</span>
+                          <span className="font-bold">{(cfg?.exemplos_few_shot?.length || 0)}</span>
                         </div>
                         <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-[var(--panel-2)]">
-                          <span className="text-xs text-muted-foreground">Taxa de conversão</span>
-                          <span className="font-bold text-green-600">12%</span>
+                          <span className="text-xs text-muted-foreground">Fontes ativas</span>
+                          <span className="font-bold text-green-600">{(cfg?.knowledge_files?.length || 0) + (livre?.trim() ? 1 : 0)}</span>
                         </div>
                         <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-[var(--panel-2)]">
-                          <span className="text-xs text-muted-foreground">Tempo médio</span>
-                          <span className="font-bold">1.2s</span>
+                          <span className="text-xs text-muted-foreground">Buffer de resposta</span>
+                          <span className="font-bold">{segundosBuffer}s</span>
                         </div>
                       </div>
                     </Section>
@@ -1746,8 +1780,8 @@ function AgentePage() {
                   </Section>
                 </TabsContent>
                 <TabsContent value="canais" className="mt-0 space-y-6">
-                  <Section title="Conectar Canais">
-                    <div className="grid grid-cols-2 gap-4">
+                  <Section title="Conectar Canais de Atendimento">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="p-4 rounded-xl border border-[var(--border)] bg-white space-y-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
@@ -1756,27 +1790,42 @@ function AgentePage() {
                             </div>
                             <div>
                               <h4 className="text-sm font-bold">WhatsApp</h4>
-                              <p className="text-[10px] text-muted-foreground">WhatsApp Business oficial · Lovable</p>
+                              <p className="text-[10px] text-muted-foreground">Uazapi, Evolution, WaBlast, Lovable</p>
                             </div>
                           </div>
-                          <Switch checked={true} />
+                          <Switch checked={channelStatus.whatsapp} onCheckedChange={(val) => setChannelStatus(prev => ({ ...prev, whatsapp: val }))} />
                         </div>
-                        <Button variant="outline" size="sm" className="w-full text-xs" asChild><Link to="/app/conexao">Configurar conexão</Link></Button>
+                        <Button variant="outline" size="sm" className="w-full text-xs" asChild><Link to="/app/conexao">Gerenciar conexões</Link></Button>
                       </div>
-                      <div className="p-4 rounded-xl border border-[var(--border)] bg-white space-y-4 opacity-50">
+                      <div className="p-4 rounded-xl border border-[var(--border)] bg-white space-y-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="size-10 rounded-lg bg-blue-50 flex items-center justify-center">
                               <Share2 className="size-5 text-blue-600" />
                             </div>
                             <div>
-                              <h4 className="text-sm font-bold">Instagram</h4>
-                              <p className="text-[10px] text-muted-foreground">Direct Messages</p>
+                              <h4 className="text-sm font-bold">Instagram Direct</h4>
+                              <p className="text-[10px] text-muted-foreground">Mensagens diretas oficiais</p>
                             </div>
                           </div>
-                          <Switch checked={false} disabled />
+                          <Switch checked={channelStatus.instagram} onCheckedChange={(val) => setChannelStatus(prev => ({ ...prev, instagram: val }))} />
                         </div>
-                        <Button variant="outline" size="sm" className="w-full text-xs" disabled>Em breve</Button>
+                        <Button variant="outline" size="sm" className="w-full text-xs" asChild><Link to="/app/conexao" search={{ tab: "instagram" }}>Configurar canal</Link></Button>
+                      </div>
+                      <div className="p-4 rounded-xl border border-[var(--border)] bg-white space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="size-10 rounded-lg bg-sky-50 flex items-center justify-center">
+                              <Send className="size-5 text-sky-600" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold">Telegram</h4>
+                              <p className="text-[10px] text-muted-foreground">Bot API e chats diretos</p>
+                            </div>
+                          </div>
+                          <Switch checked={channelStatus.telegram} onCheckedChange={(val) => setChannelStatus(prev => ({ ...prev, telegram: val }))} />
+                        </div>
+                        <Button variant="outline" size="sm" className="w-full text-xs" asChild><Link to="/app/conexao" search={{ tab: "telegram" }}>Configurar bot</Link></Button>
                       </div>
                     </div>
                   </Section>
@@ -1840,14 +1889,20 @@ function AgentePage() {
                               </div>
                             ))}
                             
-                            <div className="flex flex-wrap gap-2 mt-1">
-                              <Badge variant="secondary" className="bg-blue-50 text-[9px] text-blue-600 border-none font-normal gap-1">
-                                <FileText className="size-2.5" /> Fonte utilizada: <span className="font-bold">Produtos e serviços</span>
-                              </Badge>
-                              <Badge variant="secondary" className="bg-purple-50 text-[9px] text-purple-600 border-none font-normal gap-1">
-                                <Zap className="size-2.5" /> Regra aplicada: <span className="font-bold">Qualificação inicial</span>
-                              </Badge>
-                            </div>
+                            {(m.fonte || m.regra) && (
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                {m.fonte && (
+                                  <Badge variant="secondary" className="bg-blue-50 text-[9px] text-blue-600 border-none font-normal gap-1">
+                                    <FileText className="size-2.5" /> Fonte: <span className="font-bold">{m.fonte}</span>
+                                  </Badge>
+                                )}
+                                {m.regra && (
+                                  <Badge variant="secondary" className="bg-purple-50 text-[9px] text-purple-600 border-none font-normal gap-1">
+                                    <Zap className="size-2.5" /> Regra: <span className="font-bold">{m.regra}</span>
+                                  </Badge>
+                                )}
+                              </div>
+                            )}
 
                             <button
                               onClick={() => openCorrect(i)}
@@ -1896,10 +1951,39 @@ function AgentePage() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 mt-4">
-                    <Button variant="outline" size="sm" className="text-[10px] h-8 gap-1.5 border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        const lastAssistantIdx = chat.map(m => m.role).lastIndexOf("assistant");
+                        if (lastAssistantIdx === -1) {
+                          toast.error("Nenhuma resposta da IA para marcar como correta.");
+                          return;
+                        }
+                        const userMsg = chat.slice(0, lastAssistantIdx).reverse().find(m => m.role === "user");
+                        const clientText = userMsg ? userMsg.content : "Pergunta de teste";
+                        const agentText = chat[lastAssistantIdx].content;
+                        const nextExamples = [...(Array.isArray(cfg?.exemplos_few_shot) ? cfg.exemplos_few_shot : []), { cliente: clientText, agente: agentText }];
+                        setCfg({ ...cfg, exemplos_few_shot: nextExamples });
+                        toast.success("Resposta marcada como correta e adicionada aos exemplos de estilo!");
+                      }}
+                      className="text-[10px] h-8 gap-1.5 border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800 cursor-pointer"
+                    >
                       <CheckCircle2 className="size-3.5" /> Resposta correta
                     </Button>
-                    <Button variant="outline" size="sm" className="text-[10px] h-8 gap-1.5 border-orange-200 text-orange-700 hover:bg-orange-50 hover:text-orange-800">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        const lastAssistantIdx = chat.map(m => m.role).lastIndexOf("assistant");
+                        if (lastAssistantIdx === -1) {
+                          toast.error("Nenhuma resposta da IA para corrigir ainda.");
+                          return;
+                        }
+                        openCorrect(lastAssistantIdx);
+                      }}
+                      className="text-[10px] h-8 gap-1.5 border-orange-200 text-orange-700 hover:bg-orange-50 hover:text-orange-800 cursor-pointer"
+                    >
                       <Sparkles className="size-3.5" /> Precisa melhorar
                     </Button>
                   </div>
@@ -1909,6 +1993,77 @@ function AgentePage() {
           </Tabs>
         </div>
       </div>
+
+      {/* Dialog de Pré-visualização do System Prompt */}
+      <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="size-5 text-[var(--brand)]" /> Pré-visualizar System Prompt
+            </DialogTitle>
+            <DialogDescription>
+              Prompt completo compilado com as diretrizes da empresa, produtos, regras rígidas e variáveis ativas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto bg-slate-900 text-slate-100 p-4 rounded-xl font-mono text-xs whitespace-pre-wrap select-all">
+            {promptPreview || "Carregando diretrizes do agente..."}
+          </div>
+          <DialogFooter className="flex justify-between items-center sm:justify-between pt-2">
+            <span className="text-xs text-muted-foreground font-mono">
+              ~{Math.round((promptPreview?.length || 0) / 4)} tokens estimados
+            </span>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  navigator.clipboard.writeText(promptPreview);
+                  toast.success("Prompt copiado para a área de transferência!");
+                }}
+              >
+                Copiar Prompt
+              </Button>
+              <Button size="sm" onClick={() => setPreviewDialogOpen(false)}>Fechar</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Histórico de Execuções e Auditoria */}
+      <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="size-5 text-[var(--brand)]" /> Histórico de Ações da IA
+            </DialogTitle>
+            <DialogDescription>
+              Últimas execuções, disparos de regras e alterações de treinamento auditadas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto divide-y">
+            {loadingAuditLogs ? (
+              <div className="py-12 text-center text-muted-foreground">Carregando auditoria...</div>
+            ) : auditLogs.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground">Nenhuma ação registrada no histórico recente.</div>
+            ) : (
+              auditLogs.map((log) => (
+                <div key={log.id} className="py-3 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-700">{log.acao}</p>
+                    <p className="text-xs text-muted-foreground">{log.detalhes?.descricao || log.detalhes?.message || JSON.stringify(log.detalhes || {})}</p>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                    {new Date(log.created_at).toLocaleString("pt-BR")}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+          <DialogFooter className="pt-2">
+            <Button size="sm" onClick={() => setHistoryDialogOpen(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={teachOpen} onOpenChange={setTeachOpen}>
         <DialogContent className="max-w-xl">
