@@ -92,9 +92,9 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
       POST: async ({ request }) => {
         const rawBuf = Buffer.from(await request.arrayBuffer());
         const raw = rawBuf.toString("utf8");
-        const { getMetaAppSecrets } = await import("@/lib/meta-config.server");
+        const { getMetaAppSecrets, isMetaAllowUnsigned } = await import("@/lib/meta-config.server");
         const secrets = (await getMetaAppSecrets()).map(clean).filter(Boolean);
-        const allowUnsigned = process.env["META_ALLOW_UNSIGNED_WEBHOOKS"] === "true";
+        const allowUnsigned = await isMetaAllowUnsigned();
         if (!allowUnsigned && (!secrets.length || !validSignature(rawBuf, request.headers.get("x-hub-signature-256") ?? "", secrets))) {
           console.warn("[meta-webhook] chamada rejeitada: assinatura ausente ou inválida");
           return new Response("Invalid signature", { status: 401 });
@@ -321,6 +321,30 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                   .limit(1)
                   .maybeSingle();
                 if (fallback) inst = fallback;
+              }
+
+              if (!inst && channel === "instagram") {
+                const { data: igFallback } = await (supabaseAdmin as any)
+                  .from("whatsapp_instances")
+                  .select("id,instance_name,webhook_token,provider,company_id,instance_token,user_id")
+                  .eq("provider", "meta_instagram")
+                  .eq("status", "connected")
+                  .order("updated_at", { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+                if (igFallback) inst = igFallback;
+              }
+
+              if (inst && channel === "instagram" && inst.provider !== "meta_instagram") {
+                const { data: correctIg } = await (supabaseAdmin as any)
+                  .from("whatsapp_instances")
+                  .select("id,instance_name,webhook_token,provider,company_id,instance_token,user_id")
+                  .eq("company_id", inst.company_id)
+                  .eq("provider", "meta_instagram")
+                  .eq("status", "connected")
+                  .limit(1)
+                  .maybeSingle();
+                if (correctIg) inst = correctIg;
               }
 
               if (!inst) {

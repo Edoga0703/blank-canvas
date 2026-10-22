@@ -23,10 +23,17 @@ export async function getMetaWebhookVerifyToken() {
   return found ? String(found).trim() : "";
 }
 
+export async function isMetaAllowUnsigned(): Promise<boolean> {
+  if (process.env["META_ALLOW_UNSIGNED_WEBHOOKS"] === "true") return true;
+  const value = await readStoredConfig();
+  return value?.allow_unsigned_webhooks === true || value?.allow_unsigned_webhooks === "true";
+}
+
 export async function getMetaAppSecrets() {
   const envPrimary = String(process.env["META_APP_SECRET"] ?? "").trim();
   const envInstagram = String(process.env["META_APP_SECRET_INSTAGRAM"] ?? "").trim();
-  if (envPrimary && envInstagram) return [envPrimary, envInstagram];
   const value = await readStoredConfig();
-  return [envPrimary || String(value.app_secret ?? "").trim(), envInstagram || String(value.app_secret_instagram ?? "").trim()].filter(Boolean);
+  const dbPrimary = String(value?.app_secret ?? "").trim();
+  const dbInstagram = String(value?.app_secret_instagram ?? value?.instagram_app_secret ?? "").trim();
+  return Array.from(new Set([envPrimary, envInstagram, dbPrimary, dbInstagram])).filter(Boolean);
 }

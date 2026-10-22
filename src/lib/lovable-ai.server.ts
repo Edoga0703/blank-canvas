@@ -64,7 +64,7 @@ export async function lovableAiChat(
     if (!key) throw new Error("Chave de IA não configurada no painel Master (Sistema > Inteligência Artificial).");
     const isDrael = provider === "drael" || key.startsWith("dk-");
     const baseUrl = (gVal.base_url || process.env.OPENAI_BASE_URL || (isDrael ? "https://drael.sh/v1" : "https://api.openai.com/v1")).trim();
-    const model = globalModel || cfg.model || (isDrael ? "drael-v1" : "gpt-4o-mini");
+    const model = isDrael ? "drael-v1" : (globalModel || cfg.model || "gpt-4o-mini");
     return openAiChat(key, model, msgs, 0.1, baseUrl);
   }
   if (provider === "anthropic") {
@@ -73,8 +73,6 @@ export async function lovableAiChat(
     const model = globalModel || cfg.model || "claude-3-5-sonnet-latest";
     return anthropicChat(key, model, msgs);
   }
-
-
 
   // default: Gemini via Lovable Gateway (com retry + fallback de modelo)
   const key = process.env.LOVABLE_API_KEY;
@@ -153,7 +151,8 @@ async function openAiChat(
     throw new Error(`${providerName}: ${res.status} ${t.slice(0, 200)}`);
   }
   const data = await res.json();
-  return data?.choices?.[0]?.message?.content?.toString().trim() || "";
+  const choice = data?.choices?.[0]?.message;
+  return choice?.content?.toString().trim() || choice?.reasoning_content?.toString().trim() || "";
 }
 
 async function anthropicChat(key: string, model: string, messages: ChatMsg[]): Promise<string> {
