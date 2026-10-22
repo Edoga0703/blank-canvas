@@ -1,6 +1,6 @@
 # Design system
 
-Generated: 2026-10-22T17:59:59.864950+00:00
+Generated: 2026-10-22T18:50:13.070398+00:00
 
 ## Tokens
 - --radius-sm: calc(var(--radius) - 4px) (src/styles.css)
@@ -275,6 +275,7 @@ Generated: 2026-10-22T17:59:59.864950+00:00
 - src/components/agenda/shared.tsx
 - src/components/agenda/time-grid.tsx
 - src/components/agente/agent-avatar.tsx
+- src/components/agente/agent-copilot-sheet.tsx
 - src/components/agente/avatar-builder.tsx
 - src/components/agente/avatar-layers/index.tsx
 - src/components/announcement-manager.tsx
