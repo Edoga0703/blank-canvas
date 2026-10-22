@@ -56,6 +56,7 @@ export async function getActiveInstance(companyId: string): Promise<WaInstance |
   if (providerName === "lovable_whatsapp") provider = "lovable_whatsapp";
   else if (providerName === "meta_instagram" || providerType === "meta_instagram") provider = "meta_instagram";
   else if (providerName === "meta_messenger" || providerType === "meta_messenger") provider = "meta_messenger";
+  else if (providerName === "telegram" || providerType === "telegram") provider = "telegram";
   else if (providerType === "wablast") provider = "wablast";
   else if (providerType === "uazapi") provider = "uazapi";
   else {

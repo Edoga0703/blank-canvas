@@ -264,13 +264,14 @@ export async function handleUazapiWebhookInternal(inst: any, normalized: any) {
     // ou o atendente enviou. Sem esta conciliação a conversa mostra duplicado.
     if (fromMe) {
       const dezMinAtras = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const safeText = (text || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
       const { data: jaGravada } = await supabaseAdmin
         .from("mensagens")
         .select("id, autor, whatsapp_message_id")
         .eq("company_id", companyId)
         .eq("numero", number)
         .eq("direcao", "saida")
-        .or(`whatsapp_message_id.eq.${stableMessageId},texto.eq.${encodeURIComponent(text || "")}`)
+        .or(`whatsapp_message_id.eq."${stableMessageId}",texto.eq."${safeText}"`)
         .gt("created_at", dezMinAtras)
         .order("created_at", { ascending: false })
         .limit(1)

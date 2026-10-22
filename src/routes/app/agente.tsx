@@ -87,7 +87,7 @@ function AgentePage() {
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
-  const [channelStatus, setChannelStatus] = useState({ whatsapp: true, instagram: true, telegram: true });
+  const [channelStatus, setChannelStatus] = useState<Record<string, boolean>>({ whatsapp: true, instagram: true, telegram: true });
 
   const loadHistory = async () => {
     setLoadingAuditLogs(true);
@@ -196,6 +196,7 @@ function AgentePage() {
       setHasConfig(true);
       setStep("pronto");
       setCfg(data);
+        if (data?.canais_ativos) setChannelStatus(data.canais_ativos);
       setActiveAgentId(data.id);
       setTipo(data.tipo as AgentTipo);
       setTamanhoResposta((data.tamanho_resposta as any) || "curtas");

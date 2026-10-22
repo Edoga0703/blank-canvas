@@ -318,8 +318,10 @@ export function buildSystemPrompt(
   const stageNames = stages.map((s) => s.nome).join(" | ");
   const stagesFinaisNomes = stages.filter((s) => s.tipo === "ganho" || s.tipo === "perda").map((s) => s.nome);
 
+  const canalNome = opts?.canal || "WhatsApp";
+  const empresaNome = opts?.companyName || c.nome_empresa || "(empresa)";
   const blocos = [
-    `Você é ${c.nome_agente || "um atendente virtual"}, atendendo no WhatsApp da empresa ${c.nome_empresa || "(empresa)"}.`,
+    `Você é ${c.nome_agente || "um atendente virtual"}, atendendo no ${canalNome} da empresa ${empresaNome}. Responda sempre em espanhol (ou no mesmo idioma que o cliente utilizar), como uma pessoa real da equipe conversando pelo ${canalNome} — nunca como um robô, assistente virtual ou IA.`,
     `### INSTRUÇÃO DE PRIORIDADE MÁXIMA (LEIA COM ATENÇÃO) ###`,
     `Você deve agir EXATAMENTE como instruído abaixo. Houve mudanças no motor de IA e é CRÍTICO que você mantenha a consistência.`,
     `1. OBEDEÇA RIGOROSAMENTE as "REGRAS RÍGIDAS". Elas anulam qualquer outra instrução.`,

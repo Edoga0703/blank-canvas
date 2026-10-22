@@ -127,9 +127,10 @@ export const Route = createFileRoute("/api/public/form-submit")({
                 await waSendText(inst, result.numero, texto);
 
                 const { data: member } = await (supabaseAdmin as any)
-                  .from("company_members")
+                  .from("company_user")
                   .select("user_id")
                   .eq("company_id", form.company_id)
+                  .eq("ativo", true)
                   .limit(1)
                   .maybeSingle();
 

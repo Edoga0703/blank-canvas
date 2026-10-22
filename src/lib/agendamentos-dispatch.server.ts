@@ -34,9 +34,10 @@ export async function executeAgendamentosDispatch() {
 
       // Resolver user_id para satisfazer chave NOT NULL na tabela mensagens
       const { data: member } = await (supabaseAdmin as any)
-        .from("company_members")
+        .from("company_user")
         .select("user_id")
         .eq("company_id", row.company_id)
+        .eq("ativo", true)
         .limit(1)
         .maybeSingle();
 

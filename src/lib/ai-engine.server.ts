@@ -509,7 +509,21 @@ export async function processAiResponse(
     }));
     const googleConectado = Boolean(googleIntegration && googleIntegration.conectado);
 
-    // 5. Montar System Prompt
+    // 5. Resolver instância ativa antes de montar o prompt (evita TDZ e chamadas desnecessárias à IA)
+    console.log(`[ai-engine] Loading active instance for contact ${number} (company ${companyId})...`);
+    const inst = await getActiveInstanceForContact(companyId, number, card?.owner_id || card?.user_id);
+    if (!inst) {
+      console.error("[ai-engine] No active instance found to reply");
+      await (supabaseAdmin as any).from("audit_log").insert({
+        company_id: companyId,
+        acao: "ai_error",
+        detalhes: { error: "Nenhuma instância ativa encontrada para responder.", number }
+      });
+      await (supabaseAdmin as any).from("ai_message_processing").update({ status: "skipped", error_message: "no_active_instance" }).eq("id", processing.id);
+      return;
+    }
+    console.log(`[ai-engine] Found instance: ${inst.instance_name} (${inst.provider})`);
+
     const system = buildSystemPrompt(cfg as any, {
       responderEmPartes: cfg.responder_em_partes ?? true,
       stages: stages as any,
@@ -610,19 +624,7 @@ export async function processAiResponse(
     const qualified = parsed.qualified;
 
     // 7. Enviar resposta(s)
-    console.log(`[ai-engine] Loading active instance for contact ${number} (company ${companyId})...`);
-    const inst = await getActiveInstanceForContact(companyId, number, card?.owner_id || card?.user_id);
-    if (!inst) {
-      console.error("[ai-engine] No active instance found to reply");
-      await (supabaseAdmin as any).from("audit_log").insert({
-        company_id: companyId,
-        acao: "ai_error",
-        detalhes: { error: "Nenhuma instância ativa encontrada para responder.", number }
-      });
-      await (supabaseAdmin as any).from("ai_message_processing").update({ status: "skipped", error_message: "no_active_instance" }).eq("id", processing.id);
-      return;
-    }
-    console.log(`[ai-engine] Found instance: ${inst.instance_name} (${inst.provider})`);
+    console.log(`[ai-engine] Preparing dispatch via instance: ${inst.instance_name} (${inst.provider})`);
 
     const { data: instRow } = await supabaseAdmin
       .from("whatsapp_instances")

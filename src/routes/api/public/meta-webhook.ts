@@ -368,13 +368,14 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                   const echoExternalId = String(ev?.message?.mid ?? `meta_echo_${receivedEventId}_${echoRecipientId}`);
 
                   // Reconciliação prévia: se a IA ou sistema já gravou, evita duplicar ou pausar por falso humano
+                  const safeEchoText = (echoText || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
                   const { data: existingEcho } = await (supabaseAdmin as any)
                     .from("mensagens")
                     .select("id")
                     .eq("company_id", inst.company_id)
                     .eq("numero", echoRecipientId)
                     .eq("direcao", "saida")
-                    .or(`whatsapp_message_id.eq.${echoExternalId},texto.eq.${encodeURIComponent(echoText || "")}`)
+                    .or(`whatsapp_message_id.eq."${echoExternalId}",texto.eq."${safeEchoText}"`)
                     .gte("created_at", new Date(Date.now() - 10 * 60 * 1000).toISOString())
                     .limit(1)
                     .maybeSingle();
