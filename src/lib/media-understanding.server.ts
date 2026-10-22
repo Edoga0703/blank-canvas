@@ -22,7 +22,7 @@ async function download(url: string): Promise<{ bytes: Uint8Array; mime: string 
   try {
     const absolute = url.startsWith("http")
       ? url
-      : `${process.env["PUBLIC_BASE_URL"] || ""}${url}`;
+      : `${process.env["PUBLIC_APP_URL"] || process.env["PUBLIC_BASE_URL"] || ""}${url}`;
     if (!absolute.startsWith("http")) return null;
     const res = await fetch(absolute);
     if (!res.ok) return null;
@@ -50,12 +50,12 @@ export async function transcribeIncomingAudio(url: string, mime?: string | null)
   const ext = extMap[finalMime] || "ogg";
 
   const form = new FormData();
-  form.append("model", "google/gemini-3.5-transcribe");
+  form.append("model", "openai/gpt-4o-mini-transcribe");
   form.append("file", new Blob([file.bytes.buffer as ArrayBuffer], { type: finalMime }), `audio.${ext}`);
 
   const res = await fetch(`${GATEWAY}/audio/transcriptions`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${apiKey()}` },
+    headers: { Authorization: `Bearer ${apiKey()}`, "Lovable-API-Key": apiKey() },
     body: form,
   });
   if (!res.ok) {
@@ -95,9 +95,9 @@ export async function describeIncomingFile(
 
   const res = await fetch(`${GATEWAY}/chat/completions`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${apiKey()}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${apiKey()}`, "Lovable-API-Key": apiKey(), "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-3.8-flash",
+      model: "google/gemini-2.5-flash",
       messages: [{ role: "user", content }],
     }),
   });

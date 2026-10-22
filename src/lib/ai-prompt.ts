@@ -238,6 +238,8 @@ export function buildSystemPrompt(
     stages?: StageBrief[];
     googleConectado?: boolean;
     feedback?: FeedbackHint[];
+    feedbackHints?: FeedbackHint[];
+    canal?: string;
     handoffTargetNome?: string | null;
     /** Bloco de catálogo/estoque vindo do ERP Olist (já formatado). */
     olistCatalogo?: string;
@@ -266,7 +268,7 @@ export function buildSystemPrompt(
     : "";
 
   // Feedback (aprendizados)
-  const fb = (opts?.feedback || []).slice(0, 8);
+  const fb = (opts?.feedback || opts?.feedbackHints || []).slice(0, 8);
   const positivos = fb.filter((f) => f.rating === "up");
   const negativos = fb.filter((f) => f.rating === "down");
   const feedbackBloco =
@@ -285,7 +287,7 @@ export function buildSystemPrompt(
       : "";
 
   const fmtItem = (p: ProdutoBrief) => {
-    const preco = p.preco !== undefined && p.preco !== null && p.preco !== "" ? ` — R$ ${p.preco}` : "";
+    const preco = p.preco !== undefined && p.preco !== null && p.preco !== "" ? ` — $ ${p.preco}` : "";
     const desc = p.descricao ? ` (${p.descricao})` : "";
     const sku = p.sku ? ` [sku:${p.sku}]` : "";
     const foto = p.foto_url ? " [tem foto]" : "";
@@ -399,8 +401,8 @@ export function buildSystemPrompt(
 6. Conduza pro próximo passo concreto: agendar, enviar proposta, confirmar pedido, marcar visita, etc.
 7. Respeite SEMPRE o que está em "NÃO pode fazer".
 
-ESTILO DE MENSAGEM (WhatsApp humano):
-- Português do Brasil, tom próximo, sem ser formal demais e sem ser infantil.
+ESTILO DE MENSAGEM:
+- Idioma: ${(!c.idioma || c.idioma.toLowerCase().startsWith("es") || /español|spanish/i.test(c.idioma)) ? "Español natural y cercano (adaptado a los modismos locales del cliente, mensajes cortos estilo chat, sin sonar robótico)" : "Português do Brasil, tom próximo, sem ser formal demais e sem ser infantil."}
 - Mensagens CURTAS, frases naturais, como gente digita no WhatsApp. Nada de textão.
 - Sem markdown pesado, sem listas com bullets, sem emojis em excesso.
 - Não repita o nome do cliente em toda mensagem. Não repita o que ele acabou de dizer.

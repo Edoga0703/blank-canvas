@@ -34,8 +34,8 @@ export function parseBrPhone(raw: string): BrPhoneResult {
   // remove zeros à esquerda (0xx)
   d = d.replace(/^0+/, "");
 
-  // Números internacionais (não-BR): aceita como está, sem validar 9º dígito.
-  if (!d.startsWith("55") && d.length > 11) {
+  // Números internacionais (não-BR): aceita como válido se tem entre 9 e 15 dígitos (formato E.164).
+  if (!d.startsWith("55") && d.length >= 9 && d.length <= 15) {
     return { numero: d, valid: true };
   }
 

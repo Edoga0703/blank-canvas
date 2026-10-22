@@ -64,7 +64,7 @@ export const previewAudience = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
-    let q = supabase.from("crm_cards").select("numero, contato_nome, tags").eq("company_id", companyId);
+    let q = supabase.from("crm_cards").select("numero, nome, tags").eq("company_id", companyId);
     if (data.tags && data.tags.length) q = q.overlaps("tags", data.tags);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
@@ -259,13 +259,13 @@ export const startCampaign = createServerFn({ method: "POST" })
         if (!map.has(num)) map.set(num, r.nome ?? null);
       }
     } else {
-      let q = supabase.from("crm_cards").select("numero, contato_nome, tags").eq("company_id", companyId);
+      let q = supabase.from("crm_cards").select("numero, nome, tags").eq("company_id", companyId);
       if ((c.filtro_tags ?? []).length) q = q.overlaps("tags", c.filtro_tags as string[]);
       const { data: rows } = await q;
       for (const r of (rows ?? []) as any[]) {
         const num = normalizeBr(r.numero);
         if (!num) continue;
-        if (!map.has(num)) map.set(num, r.contato_nome ?? null);
+        if (!map.has(num)) map.set(num, r.nome ?? null);
       }
     }
     if (map.size === 0) throw new Error("Nenhum contato encontrado para disparo.");

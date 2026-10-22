@@ -326,8 +326,9 @@ export const deleteAgent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ context, data }) => {
-    const { supabase } = context;
-    const { error } = await supabase.from("agent_config").delete().eq("id", data.id);
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
+    const { error } = await supabase.from("agent_config").delete().eq("id", data.id).eq("company_id", companyId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -339,7 +340,8 @@ export const updateAgentAvatar = createServerFn({ method: "POST" })
     return d;
   })
   .handler(async ({ context, data }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
     
     // 1. Atualiza o avatar_url no banco de dados
     const { error } = await supabase
@@ -348,7 +350,8 @@ export const updateAgentAvatar = createServerFn({ method: "POST" })
         avatar_traits: data.traits,
         avatar_url: data.avatarUrl || null 
       } as any)
-      .eq("id", data.agentId);
+      .eq("id", data.agentId)
+      .eq("company_id", companyId);
 
     if (error) throw new Error(error.message);
     
@@ -379,14 +382,15 @@ export const generateAgentAvatar = createServerFn({ method: "POST" })
     return d;
   })
   .handler(async ({ context, data }) => {
-    const { supabase } = context;
-
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
 
     // 1. Busca info do agente para compor o prompt se não houver um customizado
     const { data: agent } = await supabase
       .from("agent_config")
       .select("nome_agente, estilo_comunicacao, papel_objetivo, segmento, company_id")
       .eq("id", data.agentId)
+      .eq("company_id", companyId)
       .single();
 
     if (!agent) throw new Error("Agente não encontrado.");
@@ -489,13 +493,15 @@ export const updateAgentKnowledgeFiles = createServerFn({ method: "POST" })
     return d;
   })
   .handler(async ({ context, data }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
     const { error } = await supabase
       .from("agent_config")
       .update({ 
         knowledge_files: data.files 
       } as any)
-      .eq("id", data.agentId);
+      .eq("id", data.agentId)
+      .eq("company_id", companyId);
 
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -512,13 +518,15 @@ export const indexAgentKnowledge = createServerFn({ method: "POST" })
     return { agentId: d.agentId, force: !!d.force };
   })
   .handler(async ({ context, data }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
     const { extractKnowledgeText } = await import("./knowledge-extract.server");
 
     const { data: agent, error: agErr } = await supabase
       .from("agent_config")
       .select("id, knowledge_files")
       .eq("id", data.agentId)
+      .eq("company_id", companyId)
       .maybeSingle();
     if (agErr) throw new Error(agErr.message);
 
@@ -657,7 +665,7 @@ export const createAgent = createServerFn({ method: "POST" })
         user_id: userId,
         nome: data.nome,
         nome_agente: data.nome,
-        tipo: data.tipo ? `${data.tipo}_${Date.now().toString(36)}` : 'custom',
+        tipo: (data.tipo || "qualificacao").toLowerCase(),
         is_default: false,
         sobre_empresa: "",
         papel_objetivo: "",
@@ -751,11 +759,11 @@ export const applyAgentSuggestion = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const companyId = await requireAdminCompany(supabase, userId);
 
-    let query = supabase.from("agent_config").select("id, regras_rigidas");
+    let query = supabase.from("agent_config").select("id, regras_rigidas").eq("company_id", companyId);
     if (data.agentId) {
       query = query.eq("id", data.agentId);
     } else {
-      query = query.eq("company_id", companyId).eq("tipo", data.tipo);
+      query = query.eq("tipo", data.tipo);
     }
 
     const { data: cfg, error: cfgErr } = await query.maybeSingle();
@@ -872,8 +880,8 @@ async function executeSuggestionSimulation(
     query.maybeSingle(),
     supabase.from("crm_stage").select("nome, tipo, ordem").eq("company_id", companyId).order("ordem", { ascending: true }),
     supabase.from("produto").select("nome, preco, descricao, sku, tipo, duracao_min, agendavel, ordem").eq("company_id", companyId).eq("ativo", true).order("ordem", { ascending: true }),
-    supabase.from("agent_feedback").select("rating, texto, mensagem_texto, nota").eq("company_id", companyId).order("created_at", { ascending: false }).limit(8),
-    supabase.from("google_integration").select("id, ativo").eq("company_id", companyId).eq("ativo", true).maybeSingle(),
+    supabase.from("agent_feedback").select("rating, mensagem_texto, nota").eq("company_id", companyId).order("created_at", { ascending: false }).limit(8),
+    supabase.from("google_integration").select("company_id, conectado").eq("company_id", companyId).eq("conectado", true).maybeSingle(),
   ]);
 
   if (!cfg) throw new Error("Configuração do agente não encontrada.");
@@ -903,15 +911,16 @@ async function executeSuggestionSimulation(
 
   const feedbackHints = (fbRows ?? []).map((f: any) => ({
     rating: f.rating === "up" ? "up" : "down",
-    texto: f.texto || f.mensagem_texto || "",
+    texto: f.mensagem_texto || "",
     nota: f.nota || null,
   })).filter((f: any) => f.texto);
-  const googleConectado = Boolean(googleIntegration && googleIntegration.ativo);
+  const googleConectado = Boolean(googleIntegration && googleIntegration.conectado);
 
   const system = buildSystemPrompt(testCfg as any, {
     responderEmPartes: cfg.responder_em_partes ?? true,
     stages,
     produtos,
+    feedback: feedbackHints,
     feedbackHints,
     googleConectado,
   });

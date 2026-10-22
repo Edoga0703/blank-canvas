@@ -51,7 +51,7 @@ export const Route = createFileRoute("/api/public/hooks/agendamentos-dispatch")(
                 numero: row.numero,
                 texto,
                 direcao: "saida",
-                autor: "agendamento",
+                autor: "automacao",
               });
 
               results.push({ id: row.id, ok: true });

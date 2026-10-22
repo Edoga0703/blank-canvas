@@ -167,7 +167,7 @@ export const Route = createFileRoute("/api/public/wablast-webhook")({
             numero: number,
             contato_nome: contactName,
             direcao: isEcho ? "saida" : "entrada",
-            autor: isEcho ? "atendente" : "contato",
+            autor: isEcho ? "humano" : "contato",
             texto: effective,
             midia_tipo: media.kind,
             midia_url: null,

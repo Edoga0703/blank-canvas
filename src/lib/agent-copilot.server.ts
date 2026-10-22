@@ -56,7 +56,7 @@ export async function getAgentCopilotContext(
       .limit(10),
     supabase
       .from("whatsapp_instances")
-      .select("id, instance_name, status, phone_number")
+      .select("id, instance_name, status, numero")
       .eq("company_id", companyId)
       .limit(5),
   ]);

@@ -528,7 +528,15 @@ function AgentePage() {
     setTesting(true);
     try {
       const history = chat.map((m) => ({ role: m.role, content: m.content }));
-      const r = await test({ data: { message: msg, tipo, agentId: activeAgentId, draftCfg: cfg, history } });
+      const liveDraft = {
+        ...(cfg || {}),
+        regras_rigidas: regrasRigidas,
+        sobre_empresa: livre,
+        tamanho_resposta: tamanhoResposta,
+        responder_em_partes: responderEmPartes,
+        segundos_buffer: segundosBuffer,
+      };
+      const r = await test({ data: { message: msg, tipo, agentId: activeAgentId, draftCfg: liveDraft, history } });
       setChat((c) => [...c, { role: "assistant", content: r.parts.join("\n\n"), parts: r.parts }]);
       if ((r as any)?.sugestao) {
         toast.info("💡 La IA detectó una oportunidad de mejora y generó una sugerencia de entrenamiento.");
@@ -2195,9 +2203,7 @@ function Hint({ icon, text }: { icon: React.ReactNode; text: string }) {
 
 function composeKnowledge(data: any): string {
   if (!data) return "";
-  let k = data.sobre_empresa || "";
-  if (data.produtos_servicos) k += "\n\nPRODUTOS E SERVIÇOS:\n" + data.produtos_servicos;
-  return k;
+  return data.sobre_empresa || "";
 }
 
 type ChatMsg = {

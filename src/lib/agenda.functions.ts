@@ -31,9 +31,9 @@ async function enrichMembros(supabaseAdmin: any, rows: any[]) {
   const ids = rows.map((r) => r.user_id);
   const { data: profs } = await supabaseAdmin
     .from("profiles")
-    .select("id, nome, avatar_url")
-    .in("id", ids);
-  const byId = new Map((profs ?? []).map((p: any) => [p.id, p]));
+    .select("user_id, nome, avatar_url")
+    .in("user_id", ids);
+  const byId = new Map((profs ?? []).map((p: any) => [p.user_id, p]));
   return rows.map((r) => ({ ...r, profiles: byId.get(r.user_id) ?? null }));
 }
 
@@ -224,8 +224,9 @@ export const getAgendaData = createServerFn({ method: "POST" })
         .limit(1),
       supabase
         .from("google_integration")
-        .select("id")
+        .select("company_id, conectado")
         .eq("company_id", c.companyId)
+        .eq("conectado", true)
         .limit(1),
       supabase
         .from("agenda_local")

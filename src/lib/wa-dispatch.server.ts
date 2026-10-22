@@ -20,7 +20,8 @@ export type WaProvider =
   | "meta_messenger"
   | "evolution"
   | "uazapi"
-  | "wablast";
+  | "wablast"
+  | "telegram";
 
 export function isMetaProvider(provider?: string | null): boolean {
   return provider === "meta_instagram" || provider === "meta_messenger";
@@ -100,6 +101,7 @@ export async function getActiveInstanceForContact(
     else if (providerName === "meta_messenger" || providerType === "meta_messenger") provider = "meta_messenger";
     else if (providerType === "wablast") provider = "wablast";
     else if (providerType === "uazapi") provider = "uazapi";
+    else if (providerName === "telegram" || providerType === "telegram") provider = "telegram";
 
     return {
       company_id: companyId,
@@ -163,9 +165,9 @@ export async function waPresenceTyping(inst: WaInstance, numero: string, ms: num
 export function assertSendableNumber(numero: string, provider?: WaProvider): string {
   const raw = String(numero || "").trim();
   if (!raw) throw new Error("Destinatário vazio: envio ignorado.");
-  if (provider && isMetaProvider(provider)) {
+  if (provider && (isMetaProvider(provider) || provider === "telegram")) {
     const clean = raw.replace(/^@/, "").trim();
-    if (!clean) throw new Error("Destinatário Meta inválido.");
+    if (!clean) throw new Error("Destinatário Meta/Telegram inválido.");
     return clean;
   }
   if (raw.includes("@g.us")) throw new Error("Destinatário é um grupo: envio ignorado.");
@@ -213,6 +215,10 @@ export async function waSendText(
   if (inst.provider === "wablast") {
     if (!inst.instance_token) throw new Error("WaBlast: API key ausente na conexão");
     return wablastSendText(inst.instance_token, inst.waba_id ?? null, numero, texto);
+  }
+  if (inst.provider === "telegram") {
+    const { tgSendMessage } = await import("./telegram.server");
+    return tgSendMessage(inst.instance_token || "", numero, texto);
   }
   if (inst.provider === "uazapi" && inst.instance_token) {
     return uazSendText(inst.instance_token, numero, texto);

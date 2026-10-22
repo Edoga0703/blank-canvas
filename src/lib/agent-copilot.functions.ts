@@ -110,9 +110,9 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
       const ruleText = String(action.payload?.ruleText || "").trim();
       if (!ruleText) throw new Error("Texto da regra vazio.");
 
-      let query = supabase.from("agent_config").select("id, regras_rigidas");
+      let query = supabase.from("agent_config").select("id, regras_rigidas").eq("company_id", companyId);
       if (data.agentId) query = query.eq("id", data.agentId);
-      else query = query.eq("company_id", companyId).eq("tipo", data.tipo);
+      else query = query.eq("tipo", data.tipo);
 
       const { data: cfg, error: cfgErr } = await query.maybeSingle();
       if (cfgErr || !cfg) throw new Error("Agente não encontrado.");
@@ -196,9 +196,9 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
       let query = supabase.from("agent_config").update({
         ...safeUpdates,
         updated_at: new Date().toISOString(),
-      });
+      }).eq("company_id", companyId);
       if (data.agentId) query = query.eq("id", data.agentId);
-      else query = query.eq("company_id", companyId).eq("tipo", data.tipo);
+      else query = query.eq("tipo", data.tipo);
 
       const { error: confErr } = await query;
       if (confErr) throw new Error(`Falha ao atualizar configurações: ${confErr.message}`);

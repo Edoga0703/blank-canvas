@@ -106,7 +106,7 @@ export async function processAiResponse(
     if (targetAgentId) {
       agentQuery = agentQuery.eq("id", targetAgentId);
     } else {
-      agentQuery = agentQuery.order("is_default", { ascending: false }).order("created_at", { ascending: true });
+      agentQuery = agentQuery.order("is_default", { ascending: false }).order("updated_at", { ascending: true });
     }
 
     const [{ data: cfgRows }, { data: company }] = await Promise.all([
@@ -490,32 +490,34 @@ export async function processAiResponse(
     const [{ data: feedbackRows }, { data: googleIntegration }] = await Promise.all([
       supabaseAdmin
         .from("agent_feedback")
-        .select("rating, texto, nota")
+        .select("rating, mensagem_texto, nota")
         .eq("company_id", companyId)
         .order("created_at", { ascending: false })
         .limit(8),
       supabaseAdmin
         .from("google_integration")
-        .select("id, ativo")
+        .select("company_id, conectado")
         .eq("company_id", companyId)
-        .eq("ativo", true)
+        .eq("conectado", true)
         .maybeSingle()
     ]);
 
     const feedbackHints = (feedbackRows ?? []).map((f: any) => ({
       rating: f.rating === "up" ? "up" : "down",
-      texto: f.texto || "",
+      texto: f.mensagem_texto || "",
       nota: f.nota || null,
     }));
-    const googleConectado = Boolean(googleIntegration && googleIntegration.ativo);
+    const googleConectado = Boolean(googleIntegration && googleIntegration.conectado);
 
     // 5. Montar System Prompt
     const system = buildSystemPrompt(cfg as any, {
       responderEmPartes: cfg.responder_em_partes ?? true,
       stages: stages as any,
       produtos: produtos as any,
+      feedback: feedbackHints,
       feedbackHints,
       googleConectado,
+      canal: inst.provider === "meta_instagram" ? "Instagram Direct" : inst.provider === "meta_messenger" ? "Messenger" : inst.provider === "telegram" ? "Telegram" : "WhatsApp",
       olistCatalogo,
       olistPedido: olistPedidoAtivo,
     });
@@ -554,16 +556,17 @@ export async function processAiResponse(
     // B-06: Agendamento automático quando a IA confirma horário com o cliente
     if (parsed.agendar) {
       try {
+        const inicioIso = parsed.agendar.inicio || new Date().toISOString();
+        const fimIso = parsed.agendar.fim || new Date(new Date(inicioIso).getTime() + 30 * 60_000).toISOString();
         await supabaseAdmin.from("agendamento").insert({
           company_id: companyId,
-          contato_numero: number,
+          card_id: card?.id ?? null,
           titulo: parsed.agendar.titulo || `Agendamento - ${number}`,
-          data_inicio: parsed.agendar.inicio || new Date().toISOString(),
-          data_fim: parsed.agendar.fim || undefined,
+          inicio: inicioIso,
+          fim: fimIso,
           status: "pendente",
-          origem: "ai_bot",
         } as any);
-        console.log(`[ai-engine] Agendamento registrado para ${number} às ${parsed.agendar.inicio}`);
+        console.log(`[ai-engine] Agendamento registrado para ${number} às ${inicioIso}`);
       } catch (agErr: any) {
         console.warn("[ai-engine] Falha ao registrar agendamento automático:", agErr?.message);
       }
@@ -673,6 +676,29 @@ export async function processAiResponse(
       return;
     }
 
+    // Re-checagem de concorrência: se entrou mensagem mais nova para este contato durante a geração do LLM, cancela envio
+    const { data: latestProcCheck } = await (supabaseAdmin as any)
+      .from("ai_message_processing")
+      .select("id, created_at")
+      .eq("company_id", companyId)
+      .eq("numero", number)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (
+      latestProcCheck &&
+      latestProcCheck.id !== processing.id &&
+      new Date(latestProcCheck.created_at).getTime() >= new Date(processing.created_at).getTime()
+    ) {
+      console.log(`[ai-engine] Reply cancelled: newer message arrived during generation for ${number} (${latestProcCheck.id} supersedes ${processing.id})`);
+      await (supabaseAdmin as any)
+        .from("ai_message_processing")
+        .update({ status: "skipped", error_message: "superseded_during_generation" })
+        .eq("id", processing.id);
+      return;
+    }
+
     if (replyText) {
       console.log(`[ai-engine] Sending consolidated reply to ${number}: "${replyText.slice(0, 30)}..."`);
       const typingMs = Math.min(Math.max(replyText.length * 30, 1000), 5000);
@@ -682,6 +708,8 @@ export async function processAiResponse(
         console.warn("[ai-engine] Presence error (ignoring):", e);
       }
       
+      const { extractWhatsappMessageId } = await import("@/lib/evolution-helpers");
+
       // Enviar mensagem (em áudio quando o cliente mandou áudio)
       try {
         let enviouAudio = false;
@@ -691,7 +719,19 @@ export async function processAiResponse(
             const audioB64 = await textToSpeechBase64(replyText);
             if (audioB64) {
               const { waSendAudio } = await import("@/lib/wa-dispatch.server");
-              await waSendAudio(inst, number, audioB64);
+              const audioRes = await waSendAudio(inst, number, audioB64);
+              const audioMsgId = extractWhatsappMessageId(audioRes) || null;
+              await supabaseAdmin.from("mensagens").insert({
+                company_id: companyId,
+                user_id: targetUserId,
+                numero: number,
+                texto: replyText,
+                direcao: "saida",
+                autor: "ia",
+                provider: inst.provider,
+                whatsapp_message_id: audioMsgId,
+                created_at: new Date().toISOString()
+              } as any);
               enviouAudio = true;
               console.log(`[ai-engine] Resposta enviada em áudio para ${number}`);
             }
@@ -703,27 +743,76 @@ export async function processAiResponse(
           const messagesToSend = cfg.responder_em_partes === false ? [replyText] : replyParts;
           for (const message of messagesToSend) {
             const sendResult = await waSendText(inst, number, message);
-            console.log(`[ai-engine] waSendText success for ${number}:`, JSON.stringify(sendResult));
+            const partMsgId = extractWhatsappMessageId(sendResult) || null;
+            await supabaseAdmin.from("mensagens").insert({
+              company_id: companyId,
+              user_id: targetUserId,
+              numero: number,
+              texto: message,
+              direcao: "saida",
+              autor: "ia",
+              provider: inst.provider,
+              whatsapp_message_id: partMsgId,
+              created_at: new Date().toISOString()
+            } as any);
+            console.log(`[ai-engine] waSendText part success for ${number}: id=${partMsgId}`);
           }
         }
       } catch (sendErr: any) {
         console.error(`[ai-engine] waSendText FATAL for ${number}:`, sendErr);
-        throw sendErr; // Será capturado pelo catch principal
+        throw sendErr;
       }
 
-      // Salvar no banco
-      const { error: msgInsertErr } = await supabaseAdmin.from("mensagens").insert({
-        company_id: companyId,
-        user_id: targetUserId,
-        numero: number,
-        texto: replyText,
-        direcao: "saida",
-        autor: "ia",
-        created_at: new Date().toISOString()
-      } as any);
-
-      if (msgInsertErr) {
-        console.error("[ai-engine] Error saving AI message to DB:", msgInsertErr);
+      // Envio de produtos e serviços solicitados no prompt [PRODUTO:sku]
+      if (parsed.produtosSku && parsed.produtosSku.length > 0) {
+        const { waSendMedia } = await import("@/lib/wa-dispatch.server");
+        const skusToSend = parsed.produtosSku.slice(0, 3);
+        for (const sku of skusToSend) {
+          const prod = (produtos as any[]).find((p) => String(p.sku || "").trim().toLowerCase() === sku.toLowerCase());
+          if (prod) {
+            const cardCaption = `*${prod.nome}*${prod.preco ? ` — $ ${prod.preco}` : ""}\n${prod.descricao || ""}`.trim();
+            try {
+              if (prod.foto_url) {
+                const mediaRes = await waSendMedia(inst, number, {
+                  url: prod.foto_url,
+                  type: "image",
+                  caption: cardCaption,
+                });
+                const mediaMsgId = extractWhatsappMessageId(mediaRes) || null;
+                await supabaseAdmin.from("mensagens").insert({
+                  company_id: companyId,
+                  user_id: targetUserId,
+                  numero: number,
+                  texto: cardCaption,
+                  midia_url: prod.foto_url,
+                  midia_tipo: "image",
+                  direcao: "saida",
+                  autor: "ia",
+                  provider: inst.provider,
+                  whatsapp_message_id: mediaMsgId,
+                  created_at: new Date().toISOString()
+                } as any);
+              } else {
+                const textRes = await waSendText(inst, number, cardCaption);
+                const textMsgId = extractWhatsappMessageId(textRes) || null;
+                await supabaseAdmin.from("mensagens").insert({
+                  company_id: companyId,
+                  user_id: targetUserId,
+                  numero: number,
+                  texto: cardCaption,
+                  direcao: "saida",
+                  autor: "ia",
+                  provider: inst.provider,
+                  whatsapp_message_id: textMsgId,
+                  created_at: new Date().toISOString()
+                } as any);
+              }
+              console.log(`[ai-engine] Produto enviado: SKU ${sku} (${prod.nome}) para ${number}`);
+            } catch (prodErr: any) {
+              console.warn(`[ai-engine] Falha ao enviar produto SKU ${sku}:`, prodErr?.message);
+            }
+          }
+        }
       }
 
       // Débito de 1 crédito de IA por resposta enviada (alimenta o monitoramento).

@@ -123,6 +123,35 @@ export const Route = createFileRoute("/api/public/whatsapp-webhook")({
 
           const detectedChannel = payload?.channel || payload?.canal || (inst.provider === "meta_instagram" ? "instagram" : inst.provider === "meta_messenger" ? "messenger" : "whatsapp");
 
+          if (fromMe) {
+            const dezMinAtras = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+            const { data: jaGravada } = await (supabaseAdmin as any)
+              .from("mensagens")
+              .select("id, autor, whatsapp_message_id")
+              .eq("company_id", companyId)
+              .eq("numero", number)
+              .eq("direcao", "saida")
+              .or(`whatsapp_message_id.eq.${stableMessageId},texto.eq.${encodeURIComponent(text || "")}`)
+              .gt("created_at", dezMinAtras)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (jaGravada) {
+              if (!jaGravada.whatsapp_message_id && stableMessageId) {
+                await (supabaseAdmin as any)
+                  .from("mensagens")
+                  .update({ whatsapp_message_id: stableMessageId, status_envio: "enviado" })
+                  .eq("id", jaGravada.id);
+              }
+              console.log(`[whatsapp-webhook] Echo reconciliado (sem duplicar) para ${number}`);
+              return new Response(JSON.stringify({ status: "echo_reconciled" }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" }
+              });
+            }
+          }
+
           const { data: insertedMsg, error: insertErr } = await (supabaseAdmin as any)
             .from("mensagens")
             .insert({

@@ -24,8 +24,8 @@ async function handle(request: Request) {
   if (request.method === "GET") {
     if (resource === "contacts") {
       const { data } = await (supabaseAdmin as any).from("crm_cards")
-        .select("id, numero, contato_nome, tags, stage_id, valor, utm_source, utm_medium, utm_campaign, created_at")
-        .eq("company_id", companyId).order("created_at", { ascending: false }).limit(200);
+        .select("id, numero, nome, tags, stage_id, valor, utm_source, utm_medium, utm_campaign, ultima_em")
+        .eq("company_id", companyId).order("ultima_em", { ascending: false }).limit(200);
       return Response.json({ data: data ?? [] });
     }
     if (resource === "messages") {
@@ -54,7 +54,7 @@ async function handle(request: Request) {
         const { evoSendText } = await import("@/lib/evolution.server");
         await evoSendText(inst.instance_name, numero, texto);
         await (supabaseAdmin as any).from("mensagens").insert({
-          company_id: companyId, user_id: userId, numero, direcao: "saida", autor: "api", texto,
+          company_id: companyId, user_id: userId, numero, direcao: "saida", autor: "automacao", texto,
         });
         return Response.json({ ok: true });
       } catch (e: any) {

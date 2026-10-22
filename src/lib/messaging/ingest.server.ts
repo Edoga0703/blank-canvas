@@ -125,11 +125,9 @@ async function persistMessage(
             ? "contato"
             : event.author === "ai"
               ? "ia"
-              : event.author === "phone"
-                ? "telefone"
-                : event.author === "system"
-                  ? "sistema"
-                  : "humano",
+              : event.author === "system" || event.author === "phone"
+                ? "automacao"
+                : "humano",
         texto: event.text,
         provider: event.provider,
         whatsapp_message_id: event.externalMessageId,

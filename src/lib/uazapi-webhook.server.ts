@@ -270,7 +270,7 @@ export async function handleUazapiWebhookInternal(inst: any, normalized: any) {
         .eq("company_id", companyId)
         .eq("numero", number)
         .eq("direcao", "saida")
-        .eq("texto", text || "")
+        .or(`whatsapp_message_id.eq.${stableMessageId},texto.eq.${encodeURIComponent(text || "")}`)
         .gt("created_at", dezMinAtras)
         .order("created_at", { ascending: false })
         .limit(1)

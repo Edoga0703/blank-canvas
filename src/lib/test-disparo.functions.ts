@@ -69,7 +69,7 @@ export const sendTestMessageToClient = createServerFn({ method: "POST" })
         user_id: userId,
         numero: client.numero,
         direcao: "saida",
-        autor: "atendente",
+        autor: "humano",
         texto: testMessage,
         created_at: new Date().toISOString()
       });

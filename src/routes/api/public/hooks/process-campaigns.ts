@@ -190,7 +190,7 @@ export const Route = createFileRoute("/api/public/hooks/process-campaigns")({
                     numero,
                     contato_nome: t.contato_nome,
                     direcao: "saida",
-                    autor: "sistema",
+                    autor: "automacao",
                     texto,
                     midia_tipo: c.midia_tipo || null,
                     midia_url: c.midia_url_v2 || null,

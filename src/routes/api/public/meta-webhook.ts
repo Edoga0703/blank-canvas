@@ -365,6 +365,24 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                   const rawEchoTs = ev?.timestamp;
                   const numEchoTs = typeof rawEchoTs === "number" ? rawEchoTs : (typeof rawEchoTs === "string" && /^\d+$/.test(rawEchoTs.trim()) ? Number(rawEchoTs.trim()) : NaN);
                   const echoTimestamp = !isNaN(numEchoTs) && numEchoTs > 0 ? (numEchoTs < 10_000_000_000 ? numEchoTs * 1000 : numEchoTs) : Date.now();
+                  const echoExternalId = String(ev?.message?.mid ?? `meta_echo_${receivedEventId}_${echoRecipientId}`);
+
+                  // Reconciliação prévia: se a IA ou sistema já gravou, evita duplicar ou pausar por falso humano
+                  const { data: existingEcho } = await (supabaseAdmin as any)
+                    .from("mensagens")
+                    .select("id")
+                    .eq("company_id", inst.company_id)
+                    .eq("numero", echoRecipientId)
+                    .eq("direcao", "saida")
+                    .or(`whatsapp_message_id.eq.${echoExternalId},texto.eq.${encodeURIComponent(echoText || "")}`)
+                    .gte("created_at", new Date(Date.now() - 10 * 60 * 1000).toISOString())
+                    .limit(1)
+                    .maybeSingle();
+
+                  if (existingEcho?.id) {
+                    continue;
+                  }
+
                   const { data: echoMessage, error: echoError } = await (supabaseAdmin as any).from("mensagens").insert({
                       company_id: inst.company_id,
                       user_id: inst.user_id || null,
