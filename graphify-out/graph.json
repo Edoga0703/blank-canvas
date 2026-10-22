@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-22T17:29:54.696025+00:00",
+  "generated_at": "2026-10-22T17:59:59.864950+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -643,7 +643,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 32650
+      "bytes": 32736
     },
     {
       "path": "src/lib/tracking.functions.ts",
@@ -1135,7 +1135,7 @@
     },
     {
       "path": "src/lib/evolution.functions.ts",
-      "bytes": 54144
+      "bytes": 54253
     },
     {
       "path": "src/lib/integrations.functions.ts",
@@ -1287,7 +1287,7 @@
     },
     {
       "path": "src/lib/agent-ai.functions.ts",
-      "bytes": 33703
+      "bytes": 41895
     },
     {
       "path": "src/lib/uazapi-webhook.server.ts",
@@ -2563,7 +2563,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 94814
+      "bytes": 102248
     },
     {
       "path": "src/routes/app/dashboard.tsx",
@@ -7238,6 +7238,14 @@
     {
       "source": "src/lib/agent-ai.functions.ts",
       "target": "./company-cache"
+    },
+    {
+      "source": "src/lib/agent-ai.functions.ts",
+      "target": "./lovable-ai.server"
+    },
+    {
+      "source": "src/lib/agent-ai.functions.ts",
+      "target": "./ai-prompt"
     },
     {
       "source": "src/lib/uazapi-webhook.server.ts",
