@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-22T21:21:24.496200+00:00",
+  "generated_at": "2026-10-22T21:41:48.989258+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -172,6 +172,10 @@
     {
       "path": "supabase/migrations/20261009060000_full_modules.sql",
       "bytes": 23602
+    },
+    {
+      "path": "supabase/migrations/20261022190000_storage_buckets_and_cron_parity.sql",
+      "bytes": 2060
     },
     {
       "path": "supabase/migrations/20261022180000_audit_fixes_and_parity.sql",
@@ -843,7 +847,7 @@
     },
     {
       "path": "src/lib/campaigns.functions.ts",
-      "bytes": 16356
+      "bytes": 16310
     },
     {
       "path": "src/lib/handoff.functions.ts",
@@ -926,6 +930,10 @@
       "bytes": 10454
     },
     {
+      "path": "src/lib/agendamentos-dispatch.server.ts",
+      "bytes": 2161
+    },
+    {
       "path": "src/lib/billing.functions.ts",
       "bytes": 2887
     },
@@ -959,7 +967,7 @@
     },
     {
       "path": "src/lib/br-phone.ts",
-      "bytes": 3840
+      "bytes": 5437
     },
     {
       "path": "src/lib/signup-welcome.functions.ts",
@@ -991,7 +999,7 @@
     },
     {
       "path": "src/lib/lead-intake.server.ts",
-      "bytes": 7728
+      "bytes": 7679
     },
     {
       "path": "src/lib/whatsapp-logs.functions.ts",
@@ -1019,7 +1027,7 @@
     },
     {
       "path": "src/lib/cron-auth.server.ts",
-      "bytes": 1580
+      "bytes": 1537
     },
     {
       "path": "src/lib/alert-sounds.ts",
@@ -1135,7 +1143,7 @@
     },
     {
       "path": "src/lib/master-training.functions.ts",
-      "bytes": 3168
+      "bytes": 4847
     },
     {
       "path": "src/lib/comercial-range.ts",
@@ -1151,7 +1159,7 @@
     },
     {
       "path": "src/lib/evolution.functions.ts",
-      "bytes": 54532
+      "bytes": 54395
     },
     {
       "path": "src/lib/integrations.functions.ts",
@@ -1499,7 +1507,7 @@
     },
     {
       "path": "src/config/beta.ts",
-      "bytes": 854
+      "bytes": 792
     },
     {
       "path": "src/routes/sitemap[.]xml.ts",
@@ -2043,7 +2051,7 @@
     },
     {
       "path": "src/components/comercial/comercial-widgets.tsx",
-      "bytes": 6594
+      "bytes": 6232
     },
     {
       "path": "src/components/comercial/period-filter.tsx",
@@ -2307,7 +2315,7 @@
     },
     {
       "path": "src/components/conexao/qr-code-dialog.tsx",
-      "bytes": 10916
+      "bytes": 10949
     },
     {
       "path": "src/components/conexao/meta-connect-dialog.tsx",
@@ -2387,7 +2395,7 @@
     },
     {
       "path": "src/lib/integracoes/adapters.server.ts",
-      "bytes": 19319
+      "bytes": 19263
     },
     {
       "path": "src/lib/email-templates/reauthentication.tsx",
@@ -2487,7 +2495,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 188795
+      "bytes": 188852
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -2511,7 +2519,7 @@
     },
     {
       "path": "src/routes/app/parceiro.tsx",
-      "bytes": 10892
+      "bytes": 13152
     },
     {
       "path": "src/routes/app/comercial.tsx",
@@ -2535,7 +2543,7 @@
     },
     {
       "path": "src/routes/app/contatos.tsx",
-      "bytes": 38432
+      "bytes": 38650
     },
     {
       "path": "src/routes/app/integracoes.tsx",
@@ -2583,7 +2591,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 107051
+      "bytes": 115465
     },
     {
       "path": "src/routes/app/dashboard.tsx",
@@ -2603,7 +2611,7 @@
     },
     {
       "path": "src/routes/master/treinamentos.tsx",
-      "bytes": 7892
+      "bytes": 21153
     },
     {
       "path": "src/routes/master/sistema.tsx",
@@ -2751,11 +2759,11 @@
     },
     {
       "path": "src/routes/api/public/form-submit.ts",
-      "bytes": 5446
+      "bytes": 6044
     },
     {
       "path": "src/routes/api/public/lead-capture.ts",
-      "bytes": 8587
+      "bytes": 8484
     },
     {
       "path": "src/routes/api/public/uazapi-webhook.ts",
@@ -2807,15 +2815,15 @@
     },
     {
       "path": "src/routes/api/public/hooks/process-agendamentos.ts",
-      "bytes": 1518
+      "bytes": 961
     },
     {
       "path": "src/routes/api/public/hooks/$token.ts",
-      "bytes": 7506
+      "bytes": 7474
     },
     {
       "path": "src/routes/api/public/hooks/agendamentos-dispatch.ts",
-      "bytes": 3147
+      "bytes": 957
     },
     {
       "path": "src/routes/api/public/hooks/billing-renew.ts",
@@ -2823,7 +2831,7 @@
     },
     {
       "path": "src/routes/api/public/hooks/whatsapp-watchdog.ts",
-      "bytes": 8388
+      "bytes": 8405
     },
     {
       "path": "src/routes/api/public/hooks/process-relatorio-ia.ts",
@@ -5093,6 +5101,10 @@
     },
     {
       "source": "src/lib/campaigns.functions.ts",
+      "target": "./br-phone"
+    },
+    {
+      "source": "src/lib/campaigns.functions.ts",
       "target": "@/integrations/supabase/client.server"
     },
     {
@@ -5552,6 +5564,14 @@
       "target": "@/lib/google.server"
     },
     {
+      "source": "src/lib/agendamentos-dispatch.server.ts",
+      "target": "./wa-dispatch.server"
+    },
+    {
+      "source": "src/lib/agendamentos-dispatch.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
       "source": "src/lib/billing.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -5870,6 +5890,10 @@
     {
       "source": "src/lib/evolution-raw.server.ts",
       "target": "qrcode"
+    },
+    {
+      "source": "src/lib/lead-intake.server.ts",
+      "target": "./br-phone"
     },
     {
       "source": "src/lib/lead-intake.server.ts",
@@ -6426,6 +6450,10 @@
     {
       "source": "src/lib/tags.functions.ts",
       "target": "./company-cache"
+    },
+    {
+      "source": "src/lib/evolution.functions.ts",
+      "target": "./br-phone"
     },
     {
       "source": "src/lib/evolution.functions.ts",
@@ -10149,10 +10177,6 @@
     },
     {
       "source": "src/components/comercial/comercial-widgets.tsx",
-      "target": "@/components/ui/progress"
-    },
-    {
-      "source": "src/components/comercial/comercial-widgets.tsx",
       "target": "@/components/ui/button"
     },
     {
@@ -12497,6 +12521,10 @@
     },
     {
       "source": "src/components/conexao/qr-code-dialog.tsx",
+      "target": "@/lib/br-phone"
+    },
+    {
+      "source": "src/components/conexao/qr-code-dialog.tsx",
       "target": "react"
     },
     {
@@ -12856,6 +12884,10 @@
       "target": "@/lib/plugin-gate.server"
     },
     {
+      "source": "src/lib/integracoes/adapters.server.ts",
+      "target": "../br-phone"
+    },
+    {
       "source": "src/lib/email-templates/reauthentication.tsx",
       "target": "react"
     },
@@ -12986,6 +13018,10 @@
     {
       "source": "src/routes/[.well-known]/oauth-protected-resource.ts",
       "target": "../../lib/mcp/index"
+    },
+    {
+      "source": "src/routes/app/conversas.tsx",
+      "target": "@/lib/br-phone"
     },
     {
       "source": "src/routes/app/conversas.tsx",
@@ -13430,6 +13466,10 @@
     {
       "source": "src/routes/app/parceiro.tsx",
       "target": "@/integrations/supabase/client"
+    },
+    {
+      "source": "src/routes/app/parceiro.tsx",
+      "target": "@/components/ui/dialog"
     },
     {
       "source": "src/routes/app/comercial.tsx",
@@ -15017,6 +15057,18 @@
     },
     {
       "source": "src/routes/master/treinamentos.tsx",
+      "target": "@/components/ui/dialog"
+    },
+    {
+      "source": "src/routes/master/treinamentos.tsx",
+      "target": "@/components/ui/label"
+    },
+    {
+      "source": "src/routes/master/treinamentos.tsx",
+      "target": "@/components/ui/textarea"
+    },
+    {
+      "source": "src/routes/master/treinamentos.tsx",
       "target": "sonner"
     },
     {
@@ -16077,6 +16129,10 @@
     },
     {
       "source": "src/routes/api/public/lead-capture.ts",
+      "target": "@/lib/br-phone"
+    },
+    {
+      "source": "src/routes/api/public/lead-capture.ts",
       "target": "@tanstack/react-router"
     },
     {
@@ -16369,7 +16425,11 @@
     },
     {
       "source": "src/routes/api/public/hooks/process-agendamentos.ts",
-      "target": "@/integrations/supabase/client.server"
+      "target": "@/lib/agendamentos-dispatch.server"
+    },
+    {
+      "source": "src/routes/api/public/hooks/$token.ts",
+      "target": "@/lib/br-phone"
     },
     {
       "source": "src/routes/api/public/hooks/$token.ts",
@@ -16405,11 +16465,7 @@
     },
     {
       "source": "src/routes/api/public/hooks/agendamentos-dispatch.ts",
-      "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/routes/api/public/hooks/agendamentos-dispatch.ts",
-      "target": "@/lib/evolution.server"
+      "target": "@/lib/agendamentos-dispatch.server"
     },
     {
       "source": "src/routes/api/public/hooks/billing-renew.ts",
