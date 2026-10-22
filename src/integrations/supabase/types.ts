@@ -601,6 +601,7 @@ export type Database = {
           avatar_prompt: string | null
           avatar_traits: Json | null
           avatar_url: string | null
+          canais_ativos?: Json | null
           chamar_por_nome: boolean | null
           como_vender: string
           company_id: string
@@ -680,6 +681,8 @@ export type Database = {
           avatar_prompt?: string | null
           avatar_traits?: Json | null
           avatar_url?: string | null
+          canais_ativos?: Json | null
+          canais_ativos?: Json | null
           chamar_por_nome?: boolean | null
           como_vender?: string
           company_id: string

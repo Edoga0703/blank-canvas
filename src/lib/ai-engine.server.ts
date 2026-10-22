@@ -766,50 +766,46 @@ export async function processAiResponse(
       }
 
       // Envio de produtos e serviços solicitados no prompt [PRODUTO:sku]
-      if (parsed.produtosSku && parsed.produtosSku.length > 0) {
+      const requestedSkus = parsed.produtosSku || (parsed as any).productSkus || [];
+      if (requestedSkus.length > 0) {
         const { waSendMedia } = await import("@/lib/wa-dispatch.server");
-        const skusToSend = parsed.produtosSku.slice(0, 3);
+        const skusToSend = requestedSkus.slice(0, 3);
         for (const sku of skusToSend) {
-          const prod = (produtos as any[]).find((p) => String(p.sku || "").trim().toLowerCase() === sku.toLowerCase());
+          const prod = (produtos as any[]).find(
+            (p: any) => String(p.sku || p.id || "").trim().toLowerCase() === String(sku).trim().toLowerCase()
+          );
           if (prod) {
-            const cardCaption = `*${prod.nome}*${prod.preco ? ` — $ ${prod.preco}` : ""}\n${prod.descricao || ""}`.trim();
+            const precoFmt = prod.preco ? `$ ${prod.preco}` : (prod.preco_cents ? `$ ${(prod.preco_cents / 100).toFixed(2)}` : "");
+            const cardCaption = `📦 *${prod.nome}*${precoFmt ? ` — ${precoFmt}` : ""}\n${prod.descricao || ""}`.trim();
+            const prodImg = prod.foto_url || prod.imagem_url || null;
             try {
-              if (prod.foto_url) {
-                const mediaRes = await waSendMedia(inst, number, {
-                  url: prod.foto_url,
+              let prodSendRes: any;
+              if (prodImg) {
+                prodSendRes = await waSendMedia(inst, number, {
+                  url: prodImg,
                   type: "image",
                   caption: cardCaption,
                 });
-                const mediaMsgId = extractWhatsappMessageId(mediaRes) || null;
-                await supabaseAdmin.from("mensagens").insert({
-                  company_id: companyId,
-                  user_id: targetUserId,
-                  numero: number,
-                  texto: cardCaption,
-                  midia_url: prod.foto_url,
-                  midia_tipo: "image",
-                  direcao: "saida",
-                  autor: "ia",
-                  provider: inst.provider,
-                  whatsapp_message_id: mediaMsgId,
-                  created_at: new Date().toISOString()
-                } as any);
               } else {
-                const textRes = await waSendText(inst, number, cardCaption);
-                const textMsgId = extractWhatsappMessageId(textRes) || null;
-                await supabaseAdmin.from("mensagens").insert({
-                  company_id: companyId,
-                  user_id: targetUserId,
-                  numero: number,
-                  texto: cardCaption,
-                  direcao: "saida",
-                  autor: "ia",
-                  provider: inst.provider,
-                  whatsapp_message_id: textMsgId,
-                  created_at: new Date().toISOString()
-                } as any);
+                prodSendRes = await waSendText(inst, number, cardCaption);
               }
-              console.log(`[ai-engine] Produto enviado: SKU ${sku} (${prod.nome}) para ${number}`);
+              const prodMsgId = extractWhatsappMessageId(prodSendRes) || prodSendRes?.id || prodSendRes?.messageId || null;
+              await (supabaseAdmin as any).from("mensagens").insert({
+                company_id: companyId,
+                user_id: targetUserId,
+                numero: number,
+                contato_nome: card?.nome ?? null,
+                direcao: "saida",
+                autor: "ia",
+                texto: cardCaption,
+                midia_url: prodImg,
+                midia_tipo: prodImg ? "image" : null,
+                provider: inst.provider,
+                whatsapp_message_id: prodMsgId,
+                status_envio: "enviado",
+                created_at: new Date().toISOString()
+              });
+              console.log(`[ai-engine] Produto enviado e gravado: SKU ${sku} (${prod.nome}) para ${number}, waId=${prodMsgId}`);
             } catch (prodErr: any) {
               console.warn(`[ai-engine] Falha ao enviar produto SKU ${sku}:`, prodErr?.message);
             }

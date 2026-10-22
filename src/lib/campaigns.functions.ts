@@ -94,7 +94,7 @@ export const previewAudience = createServerFn({ method: "POST" })
       const num = normalizeBr(r.numero);
       if (!num) continue;
       if (bloq.has(num) || ativosNumeros.has(num)) { pulados++; continue; }
-      if (!map.has(num)) map.set(num, { numero: num, nome: r.contato_nome ?? null });
+      if (!map.has(num)) map.set(num, { numero: num, nome: r.nome ?? r.contato_nome ?? null });
     }
     ativos = ativosNumeros.size;
     return { total: map.size, pulados, ativos, sample: Array.from(map.values()).slice(0, 10) };

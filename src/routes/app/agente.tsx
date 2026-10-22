@@ -211,6 +211,7 @@ function AgentePage() {
       loadSuggestions(data.id);
     } else if (data) {
       setCfg(data);
+      if (data?.canais_ativos) setChannelStatus(data.canais_ativos);
       setActiveAgentId(data.id);
       setSegundosBuffer(typeof data.segundos_buffer === "number" ? data.segundos_buffer : 3);
       setRegrasRigidas(data.regras_rigidas || "");
@@ -420,13 +421,15 @@ function AgentePage() {
       regras_rigidas: regrasRigidas,
       is_default: cfg?.is_default ?? (tipo === "qualificacao"),
       nome: cfg?.nome || cfg?.nome_agente || TIPO_LABELS[tipo].label,
+      canais_ativos: channelStatus,
     };
     const { id: _id, user_id: _u, company_id: _c, updated_at: _ua, ...rest } = payload;
     const savePayload = { 
       company_id: companyId, 
       user_id: ctx.user.id, 
       ...rest,
-      nome_agente: cfg.nome_agente || TIPO_LABELS[tipo].label
+      nome_agente: cfg.nome_agente || TIPO_LABELS[tipo].label,
+      canais_ativos: channelStatus,
     };
 
     try {
