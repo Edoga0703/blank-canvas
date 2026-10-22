@@ -137,7 +137,7 @@ function AgentePage() {
 
 
   function applyAgentData(data: any) {
-    if (data && data.nome_agente && data.nome_agente.trim() && data.sobre_empresa) {
+    if (data && data.nome_agente && data.nome_agente.trim() && (data.sobre_empresa || data.descricao_negocio)) {
       setHasConfig(true);
       setStep("pronto");
       setCfg(data);
