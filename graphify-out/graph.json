@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-22T19:30:25.151940+00:00",
+  "generated_at": "2026-10-22T21:07:22.320910+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -172,6 +172,10 @@
     {
       "path": "supabase/migrations/20261009060000_full_modules.sql",
       "bytes": 23602
+    },
+    {
+      "path": "supabase/migrations/20261022180000_audit_fixes_and_parity.sql",
+      "bytes": 1771
     },
     {
       "path": ".lovable/mcp/manifest.json",
@@ -587,7 +591,7 @@
     },
     {
       "path": "src/lib/transcribe.functions.ts",
-      "bytes": 5112
+      "bytes": 5077
     },
     {
       "path": "src/lib/crm-engine.server.ts",
@@ -647,7 +651,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 38321
+      "bytes": 42607
     },
     {
       "path": "src/lib/tracking.functions.ts",
@@ -731,7 +735,7 @@
     },
     {
       "path": "src/lib/agent-copilot.server.ts",
-      "bytes": 8346
+      "bytes": 8340
     },
     {
       "path": "src/lib/company-cache.ts",
@@ -839,7 +843,7 @@
     },
     {
       "path": "src/lib/campaigns.functions.ts",
-      "bytes": 16380
+      "bytes": 16356
     },
     {
       "path": "src/lib/handoff.functions.ts",
@@ -907,7 +911,7 @@
     },
     {
       "path": "src/lib/agenda.functions.ts",
-      "bytes": 43282
+      "bytes": 43347
     },
     {
       "path": "src/lib/session-middleware.ts",
@@ -931,7 +935,7 @@
     },
     {
       "path": "src/lib/media-understanding.server.ts",
-      "bytes": 6270
+      "bytes": 6362
     },
     {
       "path": "src/lib/agent-copilot.functions.ts",
@@ -955,7 +959,7 @@
     },
     {
       "path": "src/lib/br-phone.ts",
-      "bytes": 3800
+      "bytes": 3840
     },
     {
       "path": "src/lib/signup-welcome.functions.ts",
@@ -1007,7 +1011,7 @@
     },
     {
       "path": "src/lib/ai-prompt.ts",
-      "bytes": 30183
+      "bytes": 30478
     },
     {
       "path": "src/lib/plan.functions.ts",
@@ -1079,11 +1083,11 @@
     },
     {
       "path": "src/lib/wa-dispatch.server.ts",
-      "bytes": 15543
+      "bytes": 15867
     },
     {
       "path": "src/lib/test-disparo.functions.ts",
-      "bytes": 3132
+      "bytes": 3129
     },
     {
       "path": "src/lib/support-automation.server.ts",
@@ -1299,11 +1303,11 @@
     },
     {
       "path": "src/lib/agent-ai.functions.ts",
-      "bytes": 43113
+      "bytes": 43665
     },
     {
       "path": "src/lib/uazapi-webhook.server.ts",
-      "bytes": 23045
+      "bytes": 23112
     },
     {
       "path": "src/server/appUserConnections.server.ts",
@@ -2347,7 +2351,7 @@
     },
     {
       "path": "src/lib/messaging/ingest.server.ts",
-      "bytes": 15855
+      "bytes": 15809
     },
     {
       "path": "src/lib/messaging/media-archive.server.ts",
@@ -2483,7 +2487,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 188817
+      "bytes": 188795
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -2579,7 +2583,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 106889
+      "bytes": 107051
     },
     {
       "path": "src/routes/app/dashboard.tsx",
@@ -2731,7 +2735,7 @@
     },
     {
       "path": "src/routes/api/public/wablast-webhook.ts",
-      "bytes": 8877
+      "bytes": 8874
     },
     {
       "path": "src/routes/api/public/ai-health.ts",
@@ -2763,15 +2767,15 @@
     },
     {
       "path": "src/routes/api/public/whatsapp-webhook.ts",
-      "bytes": 10322
+      "bytes": 11621
     },
     {
       "path": "src/routes/api/public/meta-webhook.ts",
-      "bytes": 32239
+      "bytes": 33147
     },
     {
       "path": "src/routes/api/public/v1/$.ts",
-      "bytes": 3915
+      "bytes": 3911
     },
     {
       "path": "src/routes/api/public/hooks/process-retry-queue.ts",
@@ -2787,7 +2791,7 @@
     },
     {
       "path": "src/routes/api/public/hooks/process-campaigns.ts",
-      "bytes": 13385
+      "bytes": 13387
     },
     {
       "path": "src/routes/api/public/hooks/google-calendar.ts",
@@ -2811,7 +2815,7 @@
     },
     {
       "path": "src/routes/api/public/hooks/agendamentos-dispatch.ts",
-      "bytes": 3149
+      "bytes": 3147
     },
     {
       "path": "src/routes/api/public/hooks/billing-renew.ts",
@@ -4145,7 +4149,15 @@
     },
     {
       "source": "src/lib/ai-engine.server.ts",
+      "target": "@/lib/evolution-helpers"
+    },
+    {
+      "source": "src/lib/ai-engine.server.ts",
       "target": "@/lib/media-understanding.server"
+    },
+    {
+      "source": "src/lib/ai-engine.server.ts",
+      "target": "@/lib/wa-dispatch.server"
     },
     {
       "source": "src/lib/ai-engine.server.ts",
@@ -6206,6 +6218,10 @@
     {
       "source": "src/lib/wa-dispatch.server.ts",
       "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/wa-dispatch.server.ts",
+      "target": "./telegram.server"
     },
     {
       "source": "src/lib/wa-dispatch.server.ts",
