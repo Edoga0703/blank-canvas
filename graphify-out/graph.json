@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-22T16:39:16.333129+00:00",
+  "generated_at": "2026-10-22T17:29:54.696025+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -643,7 +643,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 28338
+      "bytes": 32650
     },
     {
       "path": "src/lib/tracking.functions.ts",
@@ -995,7 +995,7 @@
     },
     {
       "path": "src/lib/ai-prompt.ts",
-      "bytes": 27970
+      "bytes": 29827
     },
     {
       "path": "src/lib/plan.functions.ts",
@@ -1135,7 +1135,7 @@
     },
     {
       "path": "src/lib/evolution.functions.ts",
-      "bytes": 53445
+      "bytes": 54144
     },
     {
       "path": "src/lib/integrations.functions.ts",
@@ -1287,7 +1287,7 @@
     },
     {
       "path": "src/lib/agent-ai.functions.ts",
-      "bytes": 28569
+      "bytes": 33703
     },
     {
       "path": "src/lib/uazapi-webhook.server.ts",
@@ -2563,7 +2563,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 83695
+      "bytes": 94814
     },
     {
       "path": "src/routes/app/dashboard.tsx",
@@ -14618,6 +14618,10 @@
     {
       "source": "src/routes/app/agente.tsx",
       "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/routes/app/agente.tsx",
+      "target": "@/components/ui/slider"
     },
     {
       "source": "src/routes/app/agente.tsx",
