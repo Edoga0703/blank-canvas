@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-22T21:57:31.749422+00:00",
+  "generated_at": "2026-10-22T22:49:28.027754+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -175,7 +175,7 @@
     },
     {
       "path": "supabase/migrations/20261022190000_storage_buckets_and_cron_parity.sql",
-      "bytes": 2060
+      "bytes": 2268
     },
     {
       "path": "supabase/migrations/20261022180000_audit_fixes_and_parity.sql",
@@ -655,7 +655,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 42789
+      "bytes": 42729
     },
     {
       "path": "src/lib/tracking.functions.ts",
@@ -847,7 +847,7 @@
     },
     {
       "path": "src/lib/campaigns.functions.ts",
-      "bytes": 16310
+      "bytes": 16320
     },
     {
       "path": "src/lib/handoff.functions.ts",
@@ -1643,7 +1643,7 @@
     },
     {
       "path": "src/integrations/supabase/types.ts",
-      "bytes": 209206
+      "bytes": 209320
     },
     {
       "path": "src/integrations/supabase/client.ts",
@@ -2051,7 +2051,7 @@
     },
     {
       "path": "src/components/comercial/comercial-widgets.tsx",
-      "bytes": 6232
+      "bytes": 7132
     },
     {
       "path": "src/components/comercial/period-filter.tsx",
@@ -2591,7 +2591,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 115561
+      "bytes": 115703
     },
     {
       "path": "src/routes/app/dashboard.tsx",
