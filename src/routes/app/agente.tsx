@@ -33,6 +33,7 @@ import { Pencil } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AvatarBuilder } from "@/components/agente/avatar-builder";
 import { AgentAvatar } from "@/components/agente/agent-avatar";
+import { AgentCopilotSheet } from "@/components/agente/agent-copilot-sheet";
 
 import { cn } from "@/lib/utils";
 
@@ -139,6 +140,8 @@ function AgentePage() {
   const [teachText, setTeachText] = useState("");
   const [teachSaving, setTeachSaving] = useState(false);
   const [avatarBuilderOpen, setAvatarBuilderOpen] = useState(false);
+  const [copilotOpen, setCopilotOpen] = useState(false);
+  const [copilotInitialPrompt, setCopilotInitialPrompt] = useState<string | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const saveKnowledgeFiles = useServerFn(updateAgentKnowledgeFiles);
   const indexKnowledge = useServerFn(indexAgentKnowledge);
@@ -1087,6 +1090,9 @@ function AgentePage() {
               <Button variant="outline" size="sm" className="gap-2 text-xs">
                 <Eye className="size-3.5" /> Pré-visualizar
               </Button>
+              <Button onClick={() => { setCopilotInitialPrompt(null); setCopilotOpen(true); }} size="sm" className="gap-2 text-xs bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-xs">
+                <Sparkles className="size-3.5" /> Entrenar con Copilot IA
+              </Button>
               <Button onClick={save} disabled={saving} size="sm" className="gap-2 text-xs bg-[var(--brand)] hover:bg-[var(--brand)]/90">
                 {saving ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />} 
                 Salvar alterações
@@ -1396,6 +1402,37 @@ function AgentePage() {
 
                 
                 <TabsContent value="fluxo" className="mt-0 space-y-6">
+                  {/* Banner Copilot Entrenador */}
+                  <div className="rounded-xl border border-violet-500/30 bg-gradient-to-r from-violet-500/10 via-indigo-500/5 to-transparent p-5 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-sm">
+                          <Sparkles className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                            AI Studio Copilot
+                            <Badge variant="outline" className="text-[10px] bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/30">
+                              Arquitecto y Entrenador
+                            </Badge>
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            Configura productos, redacta reglas y resuelve dudas de clientes hablando directamente con la IA.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="h-8 text-xs gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-xs shrink-0"
+                        onClick={() => {
+                          setCopilotInitialPrompt(null);
+                          setCopilotOpen(true);
+                        }}
+                      >
+                        <Sparkles className="h-3.5 w-3.5" /> Abrir Chat de Entrenamiento
+                      </Button>
+                    </div>
+                  </div>
                   <Section title="Mensagem inicial (abertura padrão)">
                     <div className="space-y-2">
                       <Textarea
@@ -1587,16 +1624,29 @@ function AgentePage() {
                             )}
 
                             <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-border/40">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs gap-1.5 text-brand hover:bg-brand/10 border-brand/30"
-                                onClick={() => handleSimulateFix(sug)}
-                                disabled={isSimulating}
-                              >
-                                <RefreshCcw className={cn("h-3 w-3", isSimulating && "animate-spin")} />
-                                {isSimulating ? "Simulando respuesta..." : "🧪 Simular Fix (Before vs After)"}
-                              </Button>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  onClick={() => {
+                                    setCopilotInitialPrompt(`Analiza esta duda del cliente: "${sug.inbound_text || ""}". Duda: "${sug.duda || ""}". ¿Cómo redactarías una regla óptima para que el agente responda bien y sin romper otras intenciones?`);
+                                    setCopilotOpen(true);
+                                  }}
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs gap-1 border-violet-500/30 text-violet-700 dark:text-violet-300 hover:bg-violet-500/10"
+                                >
+                                  <Sparkles className="size-3" /> Resolver con Copilot
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs gap-1.5 text-brand hover:bg-brand/10 border-brand/30"
+                                  onClick={() => handleSimulateFix(sug)}
+                                  disabled={isSimulating}
+                                >
+                                  <RefreshCcw className={cn("h-3 w-3", isSimulating && "animate-spin")} />
+                                  {isSimulating ? "Simulando respuesta..." : "🧪 Simular Fix (Before vs After)"}
+                                </Button>
+                              </div>
 
                               <div className="flex items-center gap-2">
                                 <Button
@@ -2010,6 +2060,20 @@ function AgentePage() {
         onSuccess={(url, traits) => {
           setCfg((prev: any) => ({ ...prev, avatar_url: url, avatar_traits: traits }));
           setAgents(prev => prev.map(a => a.id === activeAgentId ? { ...a, avatar_url: url, avatar_traits: traits } : a));
+        }}
+      />
+      <AgentCopilotSheet
+        open={copilotOpen}
+        onOpenChange={setCopilotOpen}
+        agentId={activeAgentId}
+        agentName={cfg?.nome_agente || "Agente"}
+        tipo={tipo}
+        initialPrompt={copilotInitialPrompt}
+        onRuleApplied={() => {
+          loadAgents(activeAgentId || undefined);
+        }}
+        onCatalogUpdated={() => {
+          toast.success("Catálogo actualizado con éxito");
         }}
       />
     </div>
