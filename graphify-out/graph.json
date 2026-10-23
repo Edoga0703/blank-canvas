@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-23T20:27:36.466855+00:00",
+  "generated_at": "2026-10-23T20:45:56.230576+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -1167,7 +1167,7 @@
     },
     {
       "path": "src/lib/evolution.functions.ts",
-      "bytes": 39585
+      "bytes": 39727
     },
     {
       "path": "src/lib/integrations.functions.ts",
@@ -6458,6 +6458,10 @@
     {
       "source": "src/lib/evolution.functions.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/evolution.functions.ts",
+      "target": "./dapi.server"
     },
     {
       "source": "src/lib/evolution.functions.ts",
