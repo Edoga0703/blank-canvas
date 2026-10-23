@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-23T10:38:41.608286+00:00",
+  "generated_at": "2026-10-23T11:07:58.373548+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -67,7 +67,7 @@
     },
     {
       "path": "package.json",
-      "bytes": 4126
+      "bytes": 4127
     },
     {
       "path": "components.json",
@@ -659,7 +659,7 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 11320
+      "bytes": 12950
     },
     {
       "path": "src/lib/ai-engine.server.ts",
@@ -1167,7 +1167,7 @@
     },
     {
       "path": "src/lib/evolution.functions.ts",
-      "bytes": 59897
+      "bytes": 60094
     },
     {
       "path": "src/lib/integrations.functions.ts",
@@ -1511,7 +1511,7 @@
     },
     {
       "path": "src/config/brand.ts",
-      "bytes": 408
+      "bytes": 409
     },
     {
       "path": "src/config/beta.ts",
@@ -2463,7 +2463,7 @@
     },
     {
       "path": "src/lib/messaging/providers/dapi.server.ts",
-      "bytes": 4256
+      "bytes": 6513
     },
     {
       "path": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
@@ -2755,7 +2755,7 @@
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
-      "bytes": 11569
+      "bytes": 14286
     },
     {
       "path": "src/routes/api/public/wablast-webhook.ts",
@@ -6269,23 +6269,19 @@
     },
     {
       "source": "src/lib/wa-dispatch.server.ts",
-      "target": "./dapi.server"
-    },
-    {
-      "source": "src/lib/wa-dispatch.server.ts",
-      "target": "./dapi.server"
-    },
-    {
-      "source": "src/lib/wa-dispatch.server.ts",
-      "target": "./dapi.server"
-    },
-    {
-      "source": "src/lib/wa-dispatch.server.ts",
       "target": "./telegram.server"
     },
     {
       "source": "src/lib/wa-dispatch.server.ts",
+      "target": "./dapi.server"
+    },
+    {
+      "source": "src/lib/wa-dispatch.server.ts",
       "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/wa-dispatch.server.ts",
+      "target": "./dapi.server"
     },
     {
       "source": "src/lib/wa-dispatch.server.ts",
@@ -6298,6 +6294,10 @@
     {
       "source": "src/lib/wa-dispatch.server.ts",
       "target": "./evolution.server"
+    },
+    {
+      "source": "src/lib/wa-dispatch.server.ts",
+      "target": "./dapi.server"
     },
     {
       "source": "src/lib/test-disparo.functions.ts",
