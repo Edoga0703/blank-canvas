@@ -66,7 +66,7 @@ import { Forward } from "lucide-react";
 import { useFeatureEnabled } from "@/hooks/use-feature-flags";
 import { canTransferConversation } from "@/lib/tenant";
 import { salvarRelatorioAtendimento, sugerirRelatorioAtendimento, type AtendimentoSituacao } from "@/lib/atendimento-relatorios.functions";
-import { prepareR2Upload } from "@/lib/storage/r2.functions";
+import { prepareR2Upload, uploadR2Direct } from "@/lib/storage/r2.functions";
 import { syncMetaNow } from "@/lib/meta-content.functions";
 import { backfillMetaProfiles } from "@/lib/meta.functions";
 
@@ -2781,6 +2781,7 @@ function Composer({
   const sendMediaFn = useServerFn(sendWhatsappMedia);
   const sendAudioFn = useServerFn(sendWhatsappAudio);
   const prepareUploadFn = useServerFn(prepareR2Upload);
+  const uploadDirectFn = useServerFn(uploadR2Direct);
   const fetchProdutos = useServerFn(listProdutos);
   const toggleFavFn = useServerFn(toggleQuickReplyFavorito);
   const deleteQrFn = useServerFn(deleteQuickReply);
@@ -3022,18 +3023,34 @@ function Composer({
 
   async function uploadToStorage(file: Blob, ext: string, originalName?: string, mimeOverride?: string): Promise<{ url: string; storageKey: string }> {
     const mimeType = mimeOverride || file.type || "application/octet-stream";
-    const target = await prepareUploadFn({ data: {
-      fileName: originalName || `archivo.${ext}`,
-      mimeType,
-      sizeBytes: file.size,
-    } });
-    const response = await fetch(target.uploadUrl, {
-      method: "PUT",
-      headers: { "Content-Type": target.mimeType },
-      body: file,
-    });
-    if (!response.ok) throw new Error(`R2 rechazó el archivo (${response.status}).`);
-    return { url: target.downloadUrl, storageKey: target.storageKey };
+    try {
+      const target = await prepareUploadFn({ data: {
+        fileName: originalName || `archivo.${ext}`,
+        mimeType,
+        sizeBytes: file.size,
+      } });
+      const response = await fetch(target.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": target.mimeType },
+        body: file,
+      });
+      if (!response.ok) throw new Error(`R2 rechazó el archivo (${response.status}).`);
+      return { url: target.downloadUrl, storageKey: target.storageKey };
+    } catch (directErr: any) {
+      console.warn("[uploadToStorage] Direct PUT failed, attempting server upload fallback:", directErr?.message);
+      const reader = new FileReader();
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const fallbackTarget = await uploadDirectFn({ data: {
+        fileName: originalName || `archivo.${ext}`,
+        mimeType,
+        base64: base64Data,
+      } });
+      return { url: fallbackTarget.downloadUrl, storageKey: fallbackTarget.storageKey };
+    }
   }
 
   /** Reduz fotos grandes (câmera de celular) antes de subir. */
