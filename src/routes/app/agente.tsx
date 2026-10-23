@@ -1,4 +1,8 @@
 import { createFileRoute, redirect, Link, useNavigate } from "@tanstack/react-router";
+import { z } from "zod";
+import { startGoogleOAuth, disconnectGoogle } from "@/lib/google.functions";
+import { saveDepartmentMenu } from "@/lib/department-menu.functions";
+import { Calendar, Sliders, ShieldAlert, Cpu } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HelpTip } from "@/components/help-tip";
 import { useEffect, useRef, useState, useMemo, useCallback, useReducer } from "react";
@@ -37,8 +41,14 @@ import { AgentCopilotSheet } from "@/components/agente/agent-copilot-sheet";
 
 import { cn } from "@/lib/utils";
 
+const searchSchema = z.object({
+  id: z.string().optional(),
+  tab: z.string().optional(),
+});
+
 export const Route = createFileRoute("/app/agente")({
   head: () => ({ meta: [{ title: `${brand.name} — Agente IA Studio` }] }),
+  validateSearch: (search: Record<string, unknown>) => searchSchema.parse(search),
   component: AgentePage,
 });
 
@@ -54,10 +64,35 @@ const TIPO_LABELS: Record<AgentTipo, { label: string; sub: string }> = {
 
 function AgentePage() {
   const ctx = Route.useRouteContext();
+  const search = Route.useSearch();
+  const searchAgentId = search?.id;
+  const searchTab = search?.tab;
   const navigate = useNavigate();
   const companyId = ctx.company?.id;
   const fetchAgents = useServerFn(listAgents);
   const removeAgent = useServerFn(deleteAgent);
+  const saveMenu = useServerFn(saveDepartmentMenu);
+  const gStart = useServerFn(startGoogleOAuth);
+  const gDisc = useServerFn(disconnectGoogle);
+
+  const [activeTab, setActiveTab] = useState<string>(searchTab || "conhecimento");
+  const [aiProvider, setAiProvider] = useState("gemini");
+  const [aiModel, setAiModel] = useState("google/gemini-2.0-flash-exp");
+  const [temperatura, setTemperatura] = useState(0.5);
+  const [agendamentoAtivo, setAgendamentoAtivo] = useState(false);
+  const [servicosAgendaveis, setServicosAgendaveis] = useState("");
+  const [duracaoPadrao, setDuracaoPadrao] = useState("30 min");
+  const [horariosDisponiveis, setHorariosDisponiveis] = useState("");
+  const [antecedenciaMin, setAntecedenciaMin] = useState("2 horas");
+  const [menuSetoresAtivo, setMenuSetoresAtivo] = useState(false);
+  const [menuSetoresTexto, setMenuSetoresTexto] = useState("");
+  const [menuSetoresOpcoes, setMenuSetoresOpcoes] = useState<{ numero: string; department_id: string; label: string }[]>([]);
+  const [olistCatalogo, setOlistCatalogo] = useState(false);
+  const [departments, setDepartments] = useState<{ id: string; nome: string }[]>([]);
+  const [produtos, setProdutos] = useState<any[]>([]);
+  const [stages, setStages] = useState<any[]>([]);
+  const [googleIntegration, setGoogleIntegration] = useState<any>(null);
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
   const generate = useServerFn(generateAgentConfig);
   const analyze = useServerFn(analyzeBusinessBrief);
   const test = useServerFn(testAiReply);
@@ -89,15 +124,69 @@ function AgentePage() {
   const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
   const [channelStatus, setChannelStatus] = useState<Record<string, boolean>>({ whatsapp: true, instagram: true, telegram: true });
 
+  useEffect(() => {
+    if (searchTab && ["visao", "conhecimento", "comportamento", "fluxo", "canais", "avancado", "analises"].includes(searchTab)) {
+      setActiveTab(searchTab);
+    }
+  }, [searchTab]);
+
+  useEffect(() => {
+    if (!companyId) return;
+    void (async () => {
+      try {
+        const [{ data: deps }, { data: prods }, { data: stgs }, { data: g }] = await Promise.all([
+          supabase.from("department").select("id,nome").eq("company_id", companyId).eq("ativo", true).order("nome"),
+          supabase.from("produto").select("id,nome,preco,ativo").eq("company_id", companyId).order("ordem", { ascending: true }),
+          supabase.from("crm_stage").select("id,nome,cor,ordem").eq("company_id", companyId).order("ordem", { ascending: true }),
+          supabase.from("google_integration").select("company_id,email,conectado,calendar_id,expiry,updated_at").eq("company_id", companyId).maybeSingle(),
+        ]);
+        if (deps) setDepartments(deps);
+        if (prods) setProdutos(prods);
+        if (stgs) setStages(stgs);
+        setGoogleIntegration(g || null);
+      } catch (err) {
+        console.warn("[agente] Erro ao carregar dados auxiliares:", err);
+      }
+    })();
+  }, [companyId]);
+
+  async function handleConnectGoogle() {
+    setConnectingGoogle(true);
+    try {
+      const r: any = await gStart({});
+      if (!r.ok) return toast.error(r.error || "Falha ao conectar Google");
+      window.location.href = r.url;
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao conectar Google Agenda");
+    } finally {
+      setConnectingGoogle(false);
+    }
+  }
+
+  async function handleDisconnectGoogle() {
+    setConnectingGoogle(true);
+    try {
+      await gDisc({});
+      toast.success("Google Agenda desconectado.");
+      setGoogleIntegration(null);
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao desconectar Google Agenda");
+    } finally {
+      setConnectingGoogle(false);
+    }
+  }
+
   const loadHistory = async () => {
     setLoadingAuditLogs(true);
     try {
-      const { data: logs } = await supabase
+      let q = supabase
         .from("audit_log")
         .select("*")
         .in("acao", ["ai_response", "copilot_rule_applied", "agent_config_saved", "agent_teach_saved"])
         .order("created_at", { ascending: false })
         .limit(25);
+      if (companyId) q = q.eq("company_id", companyId);
+      const { data: logs } = await q;
       setAuditLogs(logs || []);
     } catch (e: any) {
       console.warn("Erro ao buscar histórico:", e);
@@ -208,8 +297,32 @@ function AgentePage() {
       setRegrasRigidas(data.regras_rigidas || "");
       setPromptPreview(buildSystemPrompt(data as any, { responderEmPartes: data.responder_em_partes ?? true, produtos: [] }));
       setLivre(composeKnowledge(data));
+      setAiProvider(data.ai_provider || "gemini");
+      setAiModel(data.ai_model || "google/gemini-2.0-flash-exp");
+      setTemperatura(typeof data.temperatura === "number" ? data.temperatura : 0.5);
+      setAgendamentoAtivo(Boolean(data.agendamento_ativo));
+      setServicosAgendaveis(data.servicos_agendaveis || "");
+      setDuracaoPadrao(data.duracao_padrao || "30 min");
+      setHorariosDisponiveis(data.horarios_disponiveis || "");
+      setAntecedenciaMin(data.antecedencia_min || "2 horas");
+      setMenuSetoresAtivo(Boolean(data.menu_setores_ativo));
+      setMenuSetoresTexto(data.menu_setores_texto || "");
+      setMenuSetoresOpcoes(Array.isArray(data.menu_setores_opcoes) ? data.menu_setores_opcoes : []);
+      setOlistCatalogo(Boolean(data.olist_catalogo));
       loadSuggestions(data.id);
     } else if (data) {
+      setAiProvider(data.ai_provider || "gemini");
+      setAiModel(data.ai_model || "google/gemini-2.0-flash-exp");
+      setTemperatura(typeof data.temperatura === "number" ? data.temperatura : 0.5);
+      setAgendamentoAtivo(Boolean(data.agendamento_ativo));
+      setServicosAgendaveis(data.servicos_agendaveis || "");
+      setDuracaoPadrao(data.duracao_padrao || "30 min");
+      setHorariosDisponiveis(data.horarios_disponiveis || "");
+      setAntecedenciaMin(data.antecedencia_min || "2 horas");
+      setMenuSetoresAtivo(Boolean(data.menu_setores_ativo));
+      setMenuSetoresTexto(data.menu_setores_texto || "");
+      setMenuSetoresOpcoes(Array.isArray(data.menu_setores_opcoes) ? data.menu_setores_opcoes : []);
+      setOlistCatalogo(Boolean(data.olist_catalogo));
       setCfg(data);
       if (data?.canais_ativos) setChannelStatus(data.canais_ativos);
       setActiveAgentId(data.id);
@@ -341,12 +454,14 @@ function AgentePage() {
 
 
   useEffect(() => { 
-    if (activeAgentId) {
+    if (searchAgentId) {
+      void loadAgents(searchAgentId);
+    } else if (activeAgentId) {
       void reload(); 
     } else if (companyId) {
       void loadAgents();
     }
-  }, [companyId, activeAgentId]);
+  }, [companyId, searchAgentId, activeAgentId]);
 
 
 
@@ -422,20 +537,58 @@ function AgentePage() {
       is_default: cfg?.is_default ?? (tipo === "qualificacao"),
       nome: cfg?.nome || cfg?.nome_agente || TIPO_LABELS[tipo].label,
       canais_ativos: channelStatus,
+      ai_provider: aiProvider,
+      ai_model: aiModel,
+      temperatura,
+      agendamento_ativo: agendamentoAtivo,
+      servicos_agendaveis: servicosAgendaveis,
+      duracao_padrao: duracaoPadrao,
+      horarios_disponiveis: horariosDisponiveis,
+      antecedencia_min: antecedenciaMin,
+      menu_setores_ativo: menuSetoresAtivo,
+      menu_setores_texto: menuSetoresTexto,
+      menu_setores_opcoes: menuSetoresOpcoes,
+      olist_catalogo: olistCatalogo,
     };
     const { id: _id, user_id: _u, company_id: _c, updated_at: _ua, ...rest } = payload;
     const savePayload = { 
       company_id: companyId, 
       user_id: ctx.user.id, 
       ...rest,
-      nome_agente: cfg.nome_agente || TIPO_LABELS[tipo].label,
+      nome_agente: cfg?.nome_agente || TIPO_LABELS[tipo].label,
       canais_ativos: channelStatus,
+      ai_provider: aiProvider,
+      ai_model: aiModel,
+      temperatura,
+      agendamento_ativo: agendamentoAtivo,
+      servicos_agendaveis: servicosAgendaveis,
+      duracao_padrao: duracaoPadrao,
+      horarios_disponiveis: horariosDisponiveis,
+      antecedencia_min: antecedenciaMin,
+      menu_setores_ativo: menuSetoresAtivo,
+      menu_setores_texto: menuSetoresTexto,
+      menu_setores_opcoes: menuSetoresOpcoes,
+      olist_catalogo: olistCatalogo,
     };
 
     try {
       await ensureSession();
       const res = await persistAgent({ data: { id: activeAgentId, payload: savePayload } });
+      const targetAgentId = activeAgentId || (res as any)?.id;
       if (!activeAgentId && (res as any)?.id) setActiveAgentId((res as any).id);
+
+      if (targetAgentId && menuSetoresAtivo) {
+        try {
+          await saveMenu({ data: {
+            agent_config_id: targetAgentId,
+            ativo: Boolean(menuSetoresAtivo),
+            texto: String(menuSetoresTexto || ""),
+            opcoes: menuSetoresOpcoes,
+          } });
+        } catch (menuErr) {
+          console.warn("[agente.save] Aviso ao salvar menu de setores:", menuErr);
+        }
+      }
     } catch (e: any) {
       setSaving(false);
       return toast.error(mensagemErroSessao(e, "Falha ao salvar configuração"));
@@ -545,8 +698,8 @@ function AgentePage() {
     }
   }
 
-  async function runTest() {
-    const msg = testInput.trim();
+  async function runTest(overrideMsg?: string) {
+    const msg = (typeof overrideMsg === "string" ? overrideMsg : testInput).trim();
     if (!msg || testing) return;
     const nextChat: ChatMsg[] = [...chat, { role: "user", content: msg }];
     setChat(nextChat);
@@ -561,6 +714,12 @@ function AgentePage() {
         tamanho_resposta: tamanhoResposta,
         responder_em_partes: responderEmPartes,
         segundos_buffer: segundosBuffer,
+        ai_provider: aiProvider,
+        ai_model: aiModel,
+        temperatura,
+        agendamento_ativo: agendamentoAtivo,
+        menu_setores_ativo: menuSetoresAtivo,
+        olist_catalogo: olistCatalogo,
       };
       const r = await test({ data: { message: msg, tipo, agentId: activeAgentId, draftCfg: liveDraft, history } });
       setChat((c) => [...c, { role: "assistant", content: r.parts.join("\n\n"), parts: r.parts }]);
@@ -1041,12 +1200,13 @@ function AgentePage() {
         </div>
 
         <div className="text-center">
-          <Link
-            to="/app/agente-avancado"
-            className="text-xs text-muted-foreground underline cursor-pointer"
+          <button
+            type="button"
+            onClick={() => { setStep("pronto"); setActiveTab("avancado"); }}
+            className="text-xs text-muted-foreground underline cursor-pointer hover:text-foreground"
           >
             Prefiro preencher tudo manualmente (edição avançada)
-          </Link>
+          </button>
         </div>
         </div>
       </div>
@@ -1109,13 +1269,13 @@ function AgentePage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-2 text-xs" asChild>
-                <Link
-                  to="/app/agente-avancado"
-                  search={{ id: activeAgentId || undefined }}
-                >
-                  <Settings2 className="size-3.5" /> Configuração avançada
-                </Link>
+              <Button 
+                variant={activeTab === "avancado" ? "default" : "outline"} 
+                size="sm" 
+                className="gap-2 text-xs cursor-pointer" 
+                onClick={() => setActiveTab("avancado")}
+              >
+                <Settings2 className="size-3.5" /> Configuração avançada
               </Button>
               <Button 
                 onClick={() => { setHistoryDialogOpen(true); void loadHistory(); }} 
@@ -1143,13 +1303,14 @@ function AgentePage() {
             </div>
           </div>
 
-          <Tabs defaultValue="conhecimento" className="w-full">
-            <TabsList className="w-full justify-start bg-transparent border-b border-[var(--border)] rounded-none h-12 p-0 gap-8">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="w-full justify-start bg-transparent border-b border-[var(--border)] rounded-none h-12 p-0 gap-6 overflow-x-auto">
               <TabsTrigger value="visao" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">Visão geral</TabsTrigger>
               <TabsTrigger value="conhecimento" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">Conhecimento</TabsTrigger>
               <TabsTrigger value="comportamento" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">Comportamento</TabsTrigger>
               <TabsTrigger value="fluxo" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">Treinamento</TabsTrigger>
               <TabsTrigger value="canais" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">Canais</TabsTrigger>
+              <TabsTrigger value="avancado" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">Avançado</TabsTrigger>
               <TabsTrigger value="analises" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">Análises</TabsTrigger>
             </TabsList>
 
@@ -1229,18 +1390,70 @@ function AgentePage() {
                       </CollapsibleContent>
                     </Collapsible>
                     
-                    <KnowledgeCard 
-                      icon={<ShoppingBag className="size-4" />} 
-                      title="Catálogo de Produtos" 
-                      description="Integrado automaticamente com o módulo de Catálogo"
-                      badge="Automático"
-                    />
-                    <KnowledgeCard 
-                      icon={<Share2 className="size-4" />} 
-                      title="Fluxo de CRM" 
-                      description="Regras de movimentação automática entre etapas do funil"
-                      badge="Automático"
-                    />
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <div className="w-full">
+                          <KnowledgeCard 
+                            icon={<ShoppingBag className="size-4" />} 
+                            title="Catálogo de Produtos" 
+                            description={produtos.length > 0 ? `${produtos.length} produto(s) sincronizado(s) no sistema` : "Integrado com o catálogo de produtos e serviços"}
+                            badge={produtos.length > 0 ? `${produtos.length} produtos` : "Automático"}
+                          />
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2 p-4 rounded-xl border border-[var(--border)] bg-white space-y-4">
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-semibold">Consultar e recomendar catálogo</p>
+                            <p className="text-xs text-muted-foreground">Permite que a IA consulte fotos, descrições e preços para sugerir itens aos clientes.</p>
+                          </div>
+                          <Switch 
+                            checked={olistCatalogo} 
+                            onCheckedChange={setOlistCatalogo} 
+                          />
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t">
+                          <span className="text-xs text-muted-foreground">
+                            {produtos.filter(p => p.ativo !== false).length} de {produtos.length} produtos ativos
+                          </span>
+                          <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                            <Link to="/app/catalogo">Gerenciar Catálogo</Link>
+                          </Button>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <div className="w-full">
+                          <KnowledgeCard 
+                            icon={<Share2 className="size-4" />} 
+                            title="Fluxo de CRM" 
+                            description={stages.length > 0 ? `${stages.length} etapas ativas no funil de vendas` : "Regras de movimentação automática entre etapas"}
+                            badge={stages.length > 0 ? `${stages.length} etapas` : "Automático"}
+                          />
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2 p-4 rounded-xl border border-[var(--border)] bg-white space-y-4">
+                        <div>
+                          <p className="text-sm font-semibold">Movimentação Inteligente no Kanban</p>
+                          <p className="text-xs text-muted-foreground">A IA analisa o diálogo em tempo real e avança o contato automaticamente conforme a intenção do cliente.</p>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {stages.map((stg: any) => (
+                            <Badge key={stg.id} variant="secondary" className="text-xs flex items-center gap-1">
+                              <span className="size-1.5 rounded-full" style={{ backgroundColor: stg.cor || '#2563EB' }} />
+                              {stg.nome}
+                            </Badge>
+                          ))}
+                        </div>
+                        <div className="flex items-center justify-end pt-2 border-t">
+                          <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                            <Link to="/app/crm">Abrir Funil de CRM</Link>
+                          </Button>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   </div>
 
                   <div className="space-y-3">
@@ -1835,6 +2048,319 @@ function AgentePage() {
                   </Section>
                 </TabsContent>
 
+                <TabsContent value="avancado" className="mt-0 space-y-6">
+                  {/* 1. Provedor e Modelo da IA */}
+                  <Section title="Cérebro da IA (Provedor, Modelo e Raciocínio)" icon={<Cpu className="size-4 text-purple-600" />}>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label>Provedor de Inteligência</Label>
+                        <Select value={aiProvider} onValueChange={(val) => {
+                          setAiProvider(val);
+                          if (val === "openai") setAiModel("gpt-4o-mini");
+                          else if (val === "anthropic") setAiModel("claude-3-5-sonnet-latest");
+                          else setAiModel("google/gemini-2.0-flash-exp");
+                        }}>
+                          <SelectTrigger className="bg-white">
+                            <SelectValue placeholder="Selecione o provedor" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="gemini">Google Gemini (Nativo / Recomendado)</SelectItem>
+                            <SelectItem value="openai">OpenAI (GPT-4o / GPT-4o mini)</SelectItem>
+                            <SelectItem value="anthropic">Anthropic (Claude 3.5)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[11px] text-muted-foreground">Provedor centralizado com alta velocidade de inferência e redundância ativa.</p>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label>Modelo de Linguagem (LLM)</Label>
+                        <Select value={aiModel} onValueChange={setAiModel}>
+                          <SelectTrigger className="bg-white">
+                            <SelectValue placeholder="Selecione o modelo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {aiProvider === "gemini" && (
+                              <>
+                                <SelectItem value="google/gemini-2.0-flash-exp">Gemini 2.0 Flash (Ultrarrápido — Padrão)</SelectItem>
+                                <SelectItem value="google/gemini-1.5-flash">Gemini 1.5 Flash (Equilibrado)</SelectItem>
+                                <SelectItem value="google/gemini-1.5-pro">Gemini 1.5 Pro (Raciocínio Profundo)</SelectItem>
+                              </>
+                            )}
+                            {aiProvider === "openai" && (
+                              <>
+                                <SelectItem value="gpt-4o-mini">GPT-4o mini (Rápido e Econômico)</SelectItem>
+                                <SelectItem value="gpt-4o">GPT-4o (Premium Multi-modal)</SelectItem>
+                                <SelectItem value="gpt-4.1-mini">GPT-4.1 mini</SelectItem>
+                              </>
+                            )}
+                            {aiProvider === "anthropic" && (
+                              <>
+                                <SelectItem value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet (Excelente escrita humana)</SelectItem>
+                                <SelectItem value="claude-3-5-haiku-latest">Claude 3.5 Haiku (Rápido e conciso)</SelectItem>
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[11px] text-muted-foreground">O modelo selecionado é usado tanto no atendimento ao vivo quanto no simulador.</p>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 space-y-2 border-t">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs">Nível de Criatividade / Temperatura: {temperatura}</Label>
+                        <Badge variant="outline" className="text-[10px]">
+                          {temperatura <= 0.3 ? "Conservador / Factual" : temperatura <= 0.6 ? "Equilibrado (Vendas)" : "Criativo / Extrovertido"}
+                        </Badge>
+                      </div>
+                      <Slider
+                        value={[temperatura * 100]}
+                        min={0}
+                        max={100}
+                        step={5}
+                        onValueChange={(val) => setTemperatura(val[0] / 100)}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between text-[10px] text-muted-foreground">
+                        <span>0.0 Factual (Seguir regras ao pé da letra)</span>
+                        <span>0.5 Padrão</span>
+                        <span>1.0 Criativo (Mais expansivo)</span>
+                      </div>
+                    </div>
+                  </Section>
+
+                  {/* 2. Agendamento Automático */}
+                  <Section title="Agendamento Inteligente (Google Calendar & Reuniões)" icon={<Calendar className="size-4 text-blue-600" />}>
+                    <div className="flex items-center justify-between pb-3 border-b">
+                      <div>
+                        <h4 className="text-sm font-semibold">Ativar Agendamento Automático pela IA</h4>
+                        <p className="text-xs text-muted-foreground">A IA detecta pedidos de reunião, consulta horários e agenda direto na sua agenda.</p>
+                      </div>
+                      <Switch checked={agendamentoAtivo} onCheckedChange={setAgendamentoAtivo} />
+                    </div>
+
+                    {agendamentoAtivo && (
+                      <div className="space-y-4 pt-2">
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Serviços ou tipos de reunião agendáveis</Label>
+                            <Input
+                              value={servicosAgendaveis}
+                              onChange={(e) => setServicosAgendaveis(e.target.value)}
+                              placeholder="Ex: Demonstração do CRM, Consultoria de Vendas"
+                              className="bg-white text-xs"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Duração padrão da reunião</Label>
+                            <Select value={duracaoPadrao} onValueChange={setDuracaoPadrao}>
+                              <SelectTrigger className="bg-white text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="15 min">15 minutos</SelectItem>
+                                <SelectItem value="30 min">30 minutos (Recomendado)</SelectItem>
+                                <SelectItem value="45 min">45 minutos</SelectItem>
+                                <SelectItem value="1 hora">1 hora</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Horários disponíveis para a IA oferecer</Label>
+                            <Input
+                              value={horariosDisponiveis}
+                              onChange={(e) => setHorariosDisponiveis(e.target.value)}
+                              placeholder="Ex: Seg a Sex das 09h às 18h"
+                              className="bg-white text-xs"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Antecedência mínima para agendar</Label>
+                            <Input
+                              value={antecedenciaMin}
+                              onChange={(e) => setAntecedenciaMin(e.target.value)}
+                              placeholder="Ex: 2 horas, 1 dia"
+                              className="bg-white text-xs"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="p-3 rounded-xl border border-[var(--border)] bg-[var(--panel-2)]/30 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="size-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                              <Calendar className="size-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold">Google Calendar</p>
+                              <p className="text-[11px] text-muted-foreground">
+                                {googleIntegration?.conectado 
+                                  ? `Conectado como ${googleIntegration.email || 'Google Conta'}`
+                                  : "Conecte sua agenda para sincronização bidirecional em tempo real."}
+                              </p>
+                            </div>
+                          </div>
+                          {googleIntegration?.conectado ? (
+                            <Button variant="outline" size="sm" className="h-7 text-xs text-red-600 hover:bg-red-50" onClick={handleDisconnectGoogle} disabled={connectingGoogle}>
+                              Desconectar
+                            </Button>
+                          ) : (
+                            <Button size="sm" className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white" onClick={handleConnectGoogle} disabled={connectingGoogle}>
+                              {connectingGoogle ? <Loader2 className="size-3 animate-spin mr-1" /> : null} Conectar Google Agenda
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </Section>
+
+                  {/* 3. Menu Automático por Setores */}
+                  <Section title="Menu Automático por Setores / Departamentos" icon={<Sliders className="size-4 text-emerald-600" />}>
+                    <div className="flex items-center justify-between pb-3 border-b">
+                      <div>
+                        <h4 className="text-sm font-semibold">Menu Interativo de Auto-atendimento</h4>
+                        <p className="text-xs text-muted-foreground">Apresenta opções numeradas (1, 2, 3...) para direcionar o cliente ao setor correto.</p>
+                      </div>
+                      <Switch checked={menuSetoresAtivo} onCheckedChange={setMenuSetoresAtivo} />
+                    </div>
+
+                    {menuSetoresAtivo && (
+                      <div className="space-y-4 pt-2">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Mensagem inicial do menu</Label>
+                          <Textarea
+                            value={menuSetoresTexto}
+                            onChange={(e) => setMenuSetoresTexto(e.target.value)}
+                            placeholder="Olá! Seja bem-vindo à nossa empresa. Para agilizar o seu atendimento, digite o número da opção desejada:"
+                            rows={3}
+                            className="bg-white text-xs"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs font-semibold">Opções numéricas de encaminhamento</Label>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs gap-1"
+                              onClick={() => {
+                                const nextNum = String(menuSetoresOpcoes.length + 1);
+                                const availableDep = departments.find(d => !menuSetoresOpcoes.some(o => o.department_id === d.id)) || departments[0];
+                                if (!availableDep) return toast.error("Cadastre departamentos em Configurações > Departamentos para vincular.");
+                                setMenuSetoresOpcoes([...menuSetoresOpcoes, { numero: nextNum, department_id: availableDep.id, label: availableDep.nome }]);
+                              }}
+                            >
+                              <Plus className="size-3" /> Adicionar opção
+                            </Button>
+                          </div>
+
+                          {menuSetoresOpcoes.length === 0 ? (
+                            <div className="p-4 rounded-xl border border-dashed text-center text-xs text-muted-foreground">
+                              Nenhuma opção cadastrada. Clique em "Adicionar opção" para criar opções como 1 - Vendas, 2 - Suporte.
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              {menuSetoresOpcoes.map((opt, idx) => (
+                                <div key={idx} className="flex items-center gap-2 p-2 rounded-lg border bg-white">
+                                  <div className="size-7 rounded bg-[var(--brand)] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                                    {opt.numero}
+                                  </div>
+                                  <Input
+                                    value={opt.label}
+                                    onChange={(e) => {
+                                      const updated = [...menuSetoresOpcoes];
+                                      updated[idx] = { ...updated[idx], label: e.target.value };
+                                      setMenuSetoresOpcoes(updated);
+                                    }}
+                                    placeholder="Rótulo (ex: Falar com Vendas)"
+                                    className="h-8 text-xs flex-1"
+                                  />
+                                  <Select
+                                    value={opt.department_id}
+                                    onValueChange={(val) => {
+                                      const updated = [...menuSetoresOpcoes];
+                                      const dep = departments.find(d => d.id === val);
+                                      updated[idx] = { ...updated[idx], department_id: val, label: updated[idx].label || dep?.nome || "Setor" };
+                                      setMenuSetoresOpcoes(updated);
+                                    }}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs w-48 bg-white"><SelectValue placeholder="Setor destino" /></SelectTrigger>
+                                    <SelectContent>
+                                      {departments.map(d => (
+                                        <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-8 text-muted-foreground hover:text-red-600"
+                                    onClick={() => {
+                                      setMenuSetoresOpcoes(menuSetoresOpcoes.filter((_, i) => i !== idx));
+                                    }}
+                                  >
+                                    <Trash2 className="size-3.5" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </Section>
+
+                  {/* 4. Segurança e Transbordo */}
+                  <Section title="Segurança Operacional e Comandos de Pausa" icon={<ShieldAlert className="size-4 text-orange-600" />}>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Comando para pausar a IA na conversa</Label>
+                        <Input
+                          value={palavraPausar}
+                          onChange={(e) => setPalavraPausar(e.target.value)}
+                          placeholder="/pausar"
+                          className="bg-white text-xs font-mono"
+                        />
+                        <p className="text-[11px] text-muted-foreground">O atendente pode digitar esse comando no chat para calar o robô.</p>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Comando para despausar a IA</Label>
+                        <Input
+                          value={palavraDespausar}
+                          onChange={(e) => setPalavraDespausar(e.target.value)}
+                          placeholder="/despausar"
+                          className="bg-white text-xs font-mono"
+                        />
+                        <p className="text-[11px] text-muted-foreground">Restaura as respostas automáticas da IA imediatamente.</p>
+                      </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-4 pt-2 border-t">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Telefone para transbordo humano</Label>
+                        <Input
+                          value={telefone}
+                          onChange={(e) => setTelefone(e.target.value)}
+                          placeholder="Ex: +58 412 1234567 ou 5511999999999"
+                          className="bg-white text-xs"
+                        />
+                        <p className="text-[11px] text-muted-foreground">Quando a IA não souber responder ou o cliente pedir atendente, encaminha para este número.</p>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 rounded-xl border bg-white">
+                        <div>
+                          <Label className="text-xs font-semibold">Dividir mensagens em partes</Label>
+                          <p className="text-[11px] text-muted-foreground">Envia parágrafos separados com pequenas pausas naturais.</p>
+                        </div>
+                        <Switch checked={responderEmPartes} onCheckedChange={setResponderEmPartes} />
+                      </div>
+                    </div>
+                  </Section>
+                </TabsContent>
+
                 <TabsContent value="analises" className="mt-0 space-y-6">
                   <Section title="Desempenho da IA">
                     <div className="h-[300px] flex items-center justify-center border-2 border-dashed border-[var(--border)] rounded-xl bg-[var(--panel)]/30">
@@ -1860,7 +2386,35 @@ function AgentePage() {
                       <Button variant="ghost" size="sm" onClick={() => setChat([])} className="h-7 text-[10px] gap-1">
                         <RefreshCcw className="size-3" /> Novo teste
                       </Button>
-                      <Badge variant="outline" className="text-[9px] py-0 h-5">Novo lead <ChevronDown className="size-2 ml-1" /></Badge>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 cursor-pointer">
+                            <UserCircle2 className="size-3" />
+                            <span>Simular lead</span>
+                            <ChevronDown className="size-2.5 opacity-60" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-64 text-xs">
+                          <DropdownMenuItem className="cursor-pointer" onClick={() => void runTest("Olá, vi o anúncio de vocês e gostaria de saber mais informações.")}>
+                            💬 Lead Frio (Primeiro contato)
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="cursor-pointer" onClick={() => void runTest("Olá! Quais produtos ou serviços vocês têm e quais os valores?")}>
+                            🏷️ Dúvida de Preço / Catálogo
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="cursor-pointer" onClick={() => void runTest("Vocês atendem ou entregam na minha região? Qual o prazo e frete?")}>
+                            🚚 Dúvida de Entrega / Região
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="cursor-pointer" onClick={() => void runTest("Gostaria de agendar um horário para esta semana, vocês têm vaga?")}>
+                            📅 Agendamento de Horário
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="cursor-pointer" onClick={() => void runTest("Achei um pouco caro em comparação a outros. Teria algum desconto?")}>
+                            🤝 Negociação / Objeção
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="cursor-pointer" onClick={() => void runTest("Olá, fiz uma compra e estou com uma dúvida sobre meu pedido.")}>
+                            🛡️ Pós-venda / Suporte
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
 
@@ -1958,7 +2512,7 @@ function AgentePage() {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      onClick={() => {
+                      onClick={async () => {
                         const lastAssistantIdx = chat.map(m => m.role).lastIndexOf("assistant");
                         if (lastAssistantIdx === -1) {
                           toast.error("Nenhuma resposta da IA para marcar como correta.");
@@ -1968,8 +2522,13 @@ function AgentePage() {
                         const clientText = userMsg ? userMsg.content : "Pergunta de teste";
                         const agentText = chat[lastAssistantIdx].content;
                         const nextExamples = [...(Array.isArray(cfg?.exemplos_few_shot) ? cfg.exemplos_few_shot : []), { cliente: clientText, agente: agentText }];
-                        setCfg({ ...cfg, exemplos_few_shot: nextExamples });
-                        toast.success("Resposta marcada como correta e adicionada aos exemplos de estilo!");
+                        setCfg((prev: any) => ({ ...prev, exemplos_few_shot: nextExamples }));
+                        try {
+                          await saveExample({ data: { tipo, cliente: clientText, agente: agentText, agentId: activeAgentId || undefined } });
+                          toast.success("Resposta salva como exemplo de treinamento da IA!");
+                        } catch (err: any) {
+                          toast.success("Resposta marcada como correta nos exemplos!");
+                        }
                       }}
                       className="text-[10px] h-8 gap-1.5 border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800 cursor-pointer"
                     >
