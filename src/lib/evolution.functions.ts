@@ -62,7 +62,9 @@ export const connectWhatsapp = createServerFn({ method: "POST" })
 
     try {
       if (existing && !data.createNew) {
-        dapiSetWebhookConfig(instanceName, webhookUrl).catch(() => null);
+        const { dapiRestartSession } = await import("./dapi.server");
+        await dapiSetWebhookConfig(instanceName, webhookUrl).catch(() => null);
+        await dapiRestartSession(instanceName).catch(() => null);
       }
 
       if (!existing || data.createNew) {
