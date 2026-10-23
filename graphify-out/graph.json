@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-23T18:31:31.391437+00:00",
+  "generated_at": "2026-10-23T18:56:13.990654+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -659,7 +659,7 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 17624
+      "bytes": 18000
     },
     {
       "path": "src/lib/ai-engine.server.ts",
