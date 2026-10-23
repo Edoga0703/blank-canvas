@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-23T00:13:18.882066+00:00",
+  "generated_at": "2026-10-23T03:58:05.238545+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -739,7 +739,7 @@
     },
     {
       "path": "src/lib/agent-copilot.server.ts",
-      "bytes": 8340
+      "bytes": 9885
     },
     {
       "path": "src/lib/company-cache.ts",
@@ -759,7 +759,7 @@
     },
     {
       "path": "src/lib/lovable-ai.server.ts",
-      "bytes": 7895
+      "bytes": 7887
     },
     {
       "path": "src/lib/permissions.ts",
@@ -947,7 +947,7 @@
     },
     {
       "path": "src/lib/agent-copilot.functions.ts",
-      "bytes": 9844
+      "bytes": 9856
     },
     {
       "path": "src/lib/sheets.functions.ts",
@@ -2239,7 +2239,7 @@
     },
     {
       "path": "src/components/agente/agent-copilot-sheet.tsx",
-      "bytes": 15513
+      "bytes": 16232
     },
     {
       "path": "src/components/agente/agent-avatar.tsx",
