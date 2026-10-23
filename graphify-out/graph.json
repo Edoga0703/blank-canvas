@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-23T18:56:13.990654+00:00",
+  "generated_at": "2026-10-23T19:41:49.107801+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -659,7 +659,7 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 18000
+      "bytes": 19581
     },
     {
       "path": "src/lib/ai-engine.server.ts",
@@ -1167,7 +1167,7 @@
     },
     {
       "path": "src/lib/evolution.functions.ts",
-      "bytes": 39205
+      "bytes": 39585
     },
     {
       "path": "src/lib/integrations.functions.ts",
@@ -2319,11 +2319,11 @@
     },
     {
       "path": "src/components/conexao/nova-conexao-dialog.tsx",
-      "bytes": 14980
+      "bytes": 16394
     },
     {
       "path": "src/components/conexao/qr-code-dialog.tsx",
-      "bytes": 10882
+      "bytes": 11900
     },
     {
       "path": "src/components/conexao/meta-connect-dialog.tsx",
@@ -2563,7 +2563,7 @@
     },
     {
       "path": "src/routes/app/conexao.tsx",
-      "bytes": 23626
+      "bytes": 25534
     },
     {
       "path": "src/routes/app/relatorios.tsx",
@@ -4134,6 +4134,10 @@
     {
       "source": "src/lib/master.functions.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/dapi.server.ts",
+      "target": "qrcode"
     },
     {
       "source": "src/lib/ai-engine.server.ts",
