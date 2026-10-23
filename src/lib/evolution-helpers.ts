@@ -191,13 +191,14 @@ export async function getInstanceForContact(
   return preferred;
 }
 
-export function buildWebhookUrl(token?: string | null, _provider: string = "dapi") {
+export function buildWebhookUrl(token?: string | null, _provider: string = "dapi", origin?: string | null) {
   const publicOrigin = (
+    origin ||
     process.env.PUBLIC_APP_URL ||
     process.env.PUBLIC_BASE_URL ||
     process.env.APP_URL ||
     process.env.VITE_PUBLIC_APP_URL ||
-    "https://project-blank-github.lovable.app"
+    "https://capiconversa.com"
   ).replace(/\/+$/, "");
   const tokenQuery = token ? `?t=${encodeURIComponent(token)}` : "";
   return `${publicOrigin}/api/public/dapi-webhook${tokenQuery}`;

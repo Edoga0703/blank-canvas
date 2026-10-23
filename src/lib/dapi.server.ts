@@ -252,25 +252,17 @@ export async function dapiGetPairingCode(
 }
 
 /**
- * Configura o actualiza la URL del webhook de una sesión en D-API sin reiniciar el contenedor.
- * Envía enabled: true y webhookUrl según contrato de /sessions/{sessionId}/webhook-config.
+ * Configura o actualiza la URL del webhook de una sesión en D-API.
+ * Usa POST /sessions/{sessionId}/webhook con { webhookUrl } verificado en la API de D-API.
  */
 export async function dapiSetWebhookConfig(
   sessionId: string,
   webhookUrl: string,
 ): Promise<{ success: boolean; raw?: any }> {
   try {
-    const res = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/webhook-config`, {
+    const res = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/webhook`, {
       method: "POST",
-      body: JSON.stringify({
-        enabled: true,
-        webhookUrl,
-      }),
-    }).catch(() => {
-      return dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/webhook`, {
-        method: "PUT",
-        body: JSON.stringify({ enabled: true, webhookUrl }),
-      });
+      body: JSON.stringify({ webhookUrl }),
     });
     return { success: res?.success ?? true, raw: res };
   } catch (err: any) {
