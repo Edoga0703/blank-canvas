@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-23T11:07:58.373548+00:00",
+  "generated_at": "2026-10-23T18:31:31.391437+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -615,7 +615,7 @@
     },
     {
       "path": "src/lib/contact-card.functions.ts",
-      "bytes": 4983
+      "bytes": 4082
     },
     {
       "path": "src/lib/invoices.functions.ts",
@@ -655,11 +655,11 @@
     },
     {
       "path": "src/lib/master.functions.ts",
-      "bytes": 52255
+      "bytes": 52250
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 12950
+      "bytes": 17624
     },
     {
       "path": "src/lib/ai-engine.server.ts",
@@ -707,7 +707,7 @@
     },
     {
       "path": "src/lib/message-actions.functions.ts",
-      "bytes": 5930
+      "bytes": 3630
     },
     {
       "path": "src/lib/telegram.functions.ts",
@@ -735,7 +735,7 @@
     },
     {
       "path": "src/lib/uazapi-test.functions.ts",
-      "bytes": 5277
+      "bytes": 2993
     },
     {
       "path": "src/lib/sectors.functions.ts",
@@ -759,7 +759,7 @@
     },
     {
       "path": "src/lib/prospeccao.functions.ts",
-      "bytes": 22972
+      "bytes": 23003
     },
     {
       "path": "src/lib/announcements.functions.ts",
@@ -811,7 +811,7 @@
     },
     {
       "path": "src/lib/evolution-helpers.ts",
-      "bytes": 13026
+      "bytes": 9138
     },
     {
       "path": "src/lib/sector-assignment.server.ts",
@@ -823,7 +823,7 @@
     },
     {
       "path": "src/lib/inbound-automation.server.ts",
-      "bytes": 3593
+      "bytes": 3631
     },
     {
       "path": "src/lib/quick-replies.functions.ts",
@@ -831,7 +831,7 @@
     },
     {
       "path": "src/lib/plan-limits.server.ts",
-      "bytes": 6004
+      "bytes": 5759
     },
     {
       "path": "src/lib/user-scope.ts",
@@ -855,7 +855,7 @@
     },
     {
       "path": "src/lib/campaigns.functions.ts",
-      "bytes": 16320
+      "bytes": 16378
     },
     {
       "path": "src/lib/handoff.functions.ts",
@@ -883,7 +883,7 @@
     },
     {
       "path": "src/lib/plugin-gate.server.ts",
-      "bytes": 1998
+      "bytes": 1959
     },
     {
       "path": "src/lib/admin-crm.functions.ts",
@@ -923,7 +923,7 @@
     },
     {
       "path": "src/lib/agenda.functions.ts",
-      "bytes": 43347
+      "bytes": 43035
     },
     {
       "path": "src/lib/session-middleware.ts",
@@ -951,7 +951,7 @@
     },
     {
       "path": "src/lib/media-understanding.server.ts",
-      "bytes": 6362
+      "bytes": 6935
     },
     {
       "path": "src/lib/agent-copilot.functions.ts",
@@ -963,7 +963,7 @@
     },
     {
       "path": "src/lib/provider-monitor.server.ts",
-      "bytes": 7699
+      "bytes": 6220
     },
     {
       "path": "src/lib/wablast.server.ts",
@@ -975,7 +975,7 @@
     },
     {
       "path": "src/lib/br-phone.ts",
-      "bytes": 5437
+      "bytes": 6471
     },
     {
       "path": "src/lib/signup-welcome.functions.ts",
@@ -1051,11 +1051,11 @@
     },
     {
       "path": "src/lib/provider-monitor.functions.ts",
-      "bytes": 1824
+      "bytes": 1822
     },
     {
       "path": "src/lib/team.functions.ts",
-      "bytes": 26168
+      "bytes": 26251
     },
     {
       "path": "src/lib/finance.functions.ts",
@@ -1091,7 +1091,7 @@
     },
     {
       "path": "src/lib/phone-thread.server.ts",
-      "bytes": 2693
+      "bytes": 1894
     },
     {
       "path": "src/lib/route-guards.ts",
@@ -1099,11 +1099,11 @@
     },
     {
       "path": "src/lib/wa-dispatch.server.ts",
-      "bytes": 17079
+      "bytes": 11042
     },
     {
       "path": "src/lib/test-disparo.functions.ts",
-      "bytes": 3129
+      "bytes": 3175
     },
     {
       "path": "src/lib/support-automation.server.ts",
@@ -1119,7 +1119,7 @@
     },
     {
       "path": "src/lib/forward.functions.ts",
-      "bytes": 11669
+      "bytes": 10242
     },
     {
       "path": "src/lib/master-overview.server.ts",
@@ -1147,7 +1147,7 @@
     },
     {
       "path": "src/lib/plugins-fixos.ts",
-      "bytes": 250
+      "bytes": 211
     },
     {
       "path": "src/lib/master-training.functions.ts",
@@ -1159,7 +1159,7 @@
     },
     {
       "path": "src/lib/hsm-templates.functions.ts",
-      "bytes": 12102
+      "bytes": 16810
     },
     {
       "path": "src/lib/tags.functions.ts",
@@ -1167,7 +1167,7 @@
     },
     {
       "path": "src/lib/evolution.functions.ts",
-      "bytes": 60094
+      "bytes": 39205
     },
     {
       "path": "src/lib/integrations.functions.ts",
@@ -1195,7 +1195,7 @@
     },
     {
       "path": "src/lib/lead-photo.server.ts",
-      "bytes": 2736
+      "bytes": 2669
     },
     {
       "path": "src/lib/kanban-engine.server.ts",
@@ -1223,7 +1223,7 @@
     },
     {
       "path": "src/lib/plugin-store.functions.ts",
-      "bytes": 10762
+      "bytes": 10811
     },
     {
       "path": "src/lib/comercial-export.ts",
@@ -1243,7 +1243,7 @@
     },
     {
       "path": "src/lib/department-menu.server.ts",
-      "bytes": 3593
+      "bytes": 4625
     },
     {
       "path": "src/lib/meta-sync.server.ts",
@@ -1263,7 +1263,7 @@
     },
     {
       "path": "src/lib/chat-media.functions.ts",
-      "bytes": 6659
+      "bytes": 6886
     },
     {
       "path": "src/lib/session-persistence.ts",
@@ -1291,7 +1291,7 @@
     },
     {
       "path": "src/lib/whatsapp-fleet.server.ts",
-      "bytes": 4549
+      "bytes": 4598
     },
     {
       "path": "src/lib/ensure-session.ts",
@@ -1315,7 +1315,7 @@
     },
     {
       "path": "src/lib/grupos.functions.ts",
-      "bytes": 7099
+      "bytes": 5144
     },
     {
       "path": "src/lib/agent-ai.functions.ts",
@@ -1591,7 +1591,7 @@
     },
     {
       "path": "src/routes/wa.callback.tsx",
-      "bytes": 3075
+      "bytes": 3112
     },
     {
       "path": "src/routes/reset-senha.tsx",
@@ -1719,7 +1719,7 @@
     },
     {
       "path": "src/components/templates/template-form-dialog.tsx",
-      "bytes": 9140
+      "bytes": 9732
     },
     {
       "path": "src/components/plugins/google-sheets-panel.tsx",
@@ -1743,7 +1743,7 @@
     },
     {
       "path": "src/components/plugins/plugin-detail-dialog.tsx",
-      "bytes": 19499
+      "bytes": 19437
     },
     {
       "path": "src/components/plugins/google-calendar-panel.tsx",
@@ -2303,7 +2303,7 @@
     },
     {
       "path": "src/components/master/clientes-lista.tsx",
-      "bytes": 50687
+      "bytes": 50769
     },
     {
       "path": "src/components/master/alerts-bell.tsx",
@@ -2319,15 +2319,15 @@
     },
     {
       "path": "src/components/conexao/nova-conexao-dialog.tsx",
-      "bytes": 14172
+      "bytes": 14980
     },
     {
       "path": "src/components/conexao/qr-code-dialog.tsx",
-      "bytes": 10949
+      "bytes": 10882
     },
     {
       "path": "src/components/conexao/meta-connect-dialog.tsx",
-      "bytes": 6413
+      "bytes": 6442
     },
     {
       "path": "src/components/agente/avatar-layers/index.tsx",
@@ -2367,7 +2367,7 @@
     },
     {
       "path": "src/lib/messaging/ingest.server.ts",
-      "bytes": 15809
+      "bytes": 19172
     },
     {
       "path": "src/lib/messaging/media-archive.server.ts",
@@ -2383,7 +2383,7 @@
     },
     {
       "path": "src/lib/messaging/contracts.ts",
-      "bytes": 2649
+      "bytes": 2606
     },
     {
       "path": "src/lib/storage/r2.server.ts",
@@ -2451,7 +2451,7 @@
     },
     {
       "path": "src/lib/mcp/tools/send-whatsapp.ts",
-      "bytes": 2377
+      "bytes": 2513
     },
     {
       "path": "src/lib/mcp/tools/list-conversations.ts",
@@ -2527,11 +2527,11 @@
     },
     {
       "path": "src/routes/app/templates.tsx",
-      "bytes": 15944
+      "bytes": 15963
     },
     {
       "path": "src/routes/app/parceiro.tsx",
-      "bytes": 13152
+      "bytes": 13225
     },
     {
       "path": "src/routes/app/comercial.tsx",
@@ -2563,7 +2563,7 @@
     },
     {
       "path": "src/routes/app/conexao.tsx",
-      "bytes": 26332
+      "bytes": 23626
     },
     {
       "path": "src/routes/app/relatorios.tsx",
@@ -2583,7 +2583,7 @@
     },
     {
       "path": "src/routes/app/campanhas.tsx",
-      "bytes": 33941
+      "bytes": 35679
     },
     {
       "path": "src/routes/app/plugins.tsx",
@@ -2603,7 +2603,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 148782
+      "bytes": 148908
     },
     {
       "path": "src/routes/app/dashboard.tsx",
@@ -2715,7 +2715,7 @@
     },
     {
       "path": "src/routes/master/diagnostico.tsx",
-      "bytes": 15697
+      "bytes": 15691
     },
     {
       "path": "src/routes/oauth/sheets/return.tsx",
@@ -2751,15 +2751,15 @@
     },
     {
       "path": "src/routes/api/public/lovable-whatsapp.ts",
-      "bytes": 2691
+      "bytes": 387
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
-      "bytes": 14286
+      "bytes": 17358
     },
     {
       "path": "src/routes/api/public/wablast-webhook.ts",
-      "bytes": 8874
+      "bytes": 404
     },
     {
       "path": "src/routes/api/public/ai-health.ts",
@@ -2783,7 +2783,7 @@
     },
     {
       "path": "src/routes/api/public/uazapi-webhook.ts",
-      "bytes": 12595
+      "bytes": 385
     },
     {
       "path": "src/routes/api/public/meta-oauth.callback.ts",
@@ -2791,7 +2791,7 @@
     },
     {
       "path": "src/routes/api/public/whatsapp-webhook.ts",
-      "bytes": 11690
+      "bytes": 387
     },
     {
       "path": "src/routes/api/public/meta-webhook.ts",
@@ -2799,11 +2799,11 @@
     },
     {
       "path": "src/routes/api/public/v1/$.ts",
-      "bytes": 3911
+      "bytes": 3774
     },
     {
       "path": "src/routes/api/public/hooks/process-retry-queue.ts",
-      "bytes": 14133
+      "bytes": 9575
     },
     {
       "path": "src/routes/api/public/hooks/process-kanban-reguas.ts",
@@ -2815,7 +2815,7 @@
     },
     {
       "path": "src/routes/api/public/hooks/process-campaigns.ts",
-      "bytes": 13387
+      "bytes": 16249
     },
     {
       "path": "src/routes/api/public/hooks/google-calendar.ts",
@@ -2847,7 +2847,7 @@
     },
     {
       "path": "src/routes/api/public/hooks/whatsapp-watchdog.ts",
-      "bytes": 8405
+      "bytes": 5237
     },
     {
       "path": "src/routes/api/public/hooks/process-relatorio-ia.ts",
@@ -3881,10 +3881,6 @@
     },
     {
       "source": "src/lib/contact-card.functions.ts",
-      "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/lib/contact-card.functions.ts",
       "target": "./billing/access.server"
     },
     {
@@ -3897,11 +3893,7 @@
     },
     {
       "source": "src/lib/contact-card.functions.ts",
-      "target": "./evolution.server"
-    },
-    {
-      "source": "src/lib/contact-card.functions.ts",
-      "target": "./uazapi.server"
+      "target": "./wa-dispatch.server"
     },
     {
       "source": "src/lib/invoices.functions.ts",
@@ -4338,18 +4330,6 @@
     {
       "source": "src/lib/message-actions.functions.ts",
       "target": "./company-cache"
-    },
-    {
-      "source": "src/lib/message-actions.functions.ts",
-      "target": "./evolution.server"
-    },
-    {
-      "source": "src/lib/message-actions.functions.ts",
-      "target": "./evolution.server"
-    },
-    {
-      "source": "src/lib/message-actions.functions.ts",
-      "target": "./evolution.server"
     },
     {
       "source": "src/lib/telegram.functions.ts",
@@ -4920,10 +4900,6 @@
       "target": "./company-cache"
     },
     {
-      "source": "src/lib/evolution-helpers.ts",
-      "target": "./whatsapp-connection"
-    },
-    {
       "source": "src/lib/sector-assignment.server.ts",
       "target": "./distribution.functions"
     },
@@ -5445,11 +5421,7 @@
     },
     {
       "source": "src/lib/agenda.functions.ts",
-      "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/lib/agenda.functions.ts",
-      "target": "./evolution.server"
+      "target": "./wa-dispatch.server"
     },
     {
       "source": "src/lib/agenda.functions.ts",
@@ -6097,7 +6069,7 @@
     },
     {
       "source": "src/lib/team.functions.ts",
-      "target": "./evolution.server"
+      "target": "./dapi.server"
     },
     {
       "source": "src/lib/team.functions.ts",
@@ -6216,10 +6188,6 @@
       "target": "@/lib/br-phone"
     },
     {
-      "source": "src/lib/phone-thread.server.ts",
-      "target": "./uazapi.server"
-    },
-    {
       "source": "src/lib/route-guards.ts",
       "target": "@tanstack/react-router"
     },
@@ -6230,22 +6198,6 @@
     {
       "source": "src/lib/wa-dispatch.server.ts",
       "target": "@/lib/br-phone"
-    },
-    {
-      "source": "src/lib/wa-dispatch.server.ts",
-      "target": "@/lib/evolution.server"
-    },
-    {
-      "source": "src/lib/wa-dispatch.server.ts",
-      "target": "@/lib/uazapi.server"
-    },
-    {
-      "source": "src/lib/wa-dispatch.server.ts",
-      "target": "@/lib/wablast.server"
-    },
-    {
-      "source": "src/lib/wa-dispatch.server.ts",
-      "target": "@/lib/messaging/provider-registry.server"
     },
     {
       "source": "src/lib/wa-dispatch.server.ts",
@@ -6262,10 +6214,6 @@
     {
       "source": "src/lib/wa-dispatch.server.ts",
       "target": "./meta.server"
-    },
-    {
-      "source": "src/lib/wa-dispatch.server.ts",
-      "target": "./dapi.server"
     },
     {
       "source": "src/lib/wa-dispatch.server.ts",
@@ -6289,11 +6237,7 @@
     },
     {
       "source": "src/lib/wa-dispatch.server.ts",
-      "target": "./uazapi.server"
-    },
-    {
-      "source": "src/lib/wa-dispatch.server.ts",
-      "target": "./evolution.server"
+      "target": "./dapi.server"
     },
     {
       "source": "src/lib/wa-dispatch.server.ts",
@@ -6313,7 +6257,7 @@
     },
     {
       "source": "src/lib/test-disparo.functions.ts",
-      "target": "./evolution.server"
+      "target": "./dapi.server"
     },
     {
       "source": "src/lib/support-automation.server.ts",
@@ -6378,14 +6322,6 @@
     {
       "source": "src/lib/forward.functions.ts",
       "target": "./wa-dispatch.server"
-    },
-    {
-      "source": "src/lib/forward.functions.ts",
-      "target": "./evolution.server"
-    },
-    {
-      "source": "src/lib/forward.functions.ts",
-      "target": "./uazapi.server"
     },
     {
       "source": "src/lib/master-overview.server.ts",
@@ -6469,11 +6405,19 @@
     },
     {
       "source": "src/lib/hsm-templates.functions.ts",
-      "target": "@/lib/wablast.server"
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/hsm-templates.functions.ts",
+      "target": "@/lib/dapi.server"
     },
     {
       "source": "src/lib/hsm-templates.functions.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/hsm-templates.functions.ts",
+      "target": "@/lib/dapi.server"
     },
     {
       "source": "src/lib/tags.functions.ts",
@@ -6501,27 +6445,7 @@
     },
     {
       "source": "src/lib/evolution.functions.ts",
-      "target": "@tanstack/react-start/server"
-    },
-    {
-      "source": "src/lib/evolution.functions.ts",
-      "target": "./whatsapp-connection"
-    },
-    {
-      "source": "src/lib/evolution.functions.ts",
       "target": "./evolution-helpers"
-    },
-    {
-      "source": "src/lib/evolution.functions.ts",
-      "target": "./evolution.server"
-    },
-    {
-      "source": "src/lib/evolution.functions.ts",
-      "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/lib/evolution.functions.ts",
-      "target": "./dapi.server"
     },
     {
       "source": "src/lib/evolution.functions.ts",
@@ -6533,11 +6457,7 @@
     },
     {
       "source": "src/lib/evolution.functions.ts",
-      "target": "./evolution.server"
-    },
-    {
-      "source": "src/lib/evolution.functions.ts",
-      "target": "./evolution.server"
+      "target": "./dapi.server"
     },
     {
       "source": "src/lib/evolution.functions.ts",
@@ -6549,11 +6469,7 @@
     },
     {
       "source": "src/lib/evolution.functions.ts",
-      "target": "./evolution.server"
-    },
-    {
-      "source": "src/lib/evolution.functions.ts",
-      "target": "./evolution.server"
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/evolution.functions.ts",
@@ -6561,15 +6477,23 @@
     },
     {
       "source": "src/lib/evolution.functions.ts",
-      "target": "./evolution.server"
+      "target": "./dapi.server"
     },
     {
       "source": "src/lib/evolution.functions.ts",
-      "target": "./evolution.server"
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/evolution.functions.ts",
-      "target": "./evolution.server"
+      "target": "./dapi.server"
+    },
+    {
+      "source": "src/lib/evolution.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/evolution.functions.ts",
+      "target": "./dapi.server"
     },
     {
       "source": "src/lib/evolution.functions.ts",
@@ -6597,10 +6521,6 @@
     },
     {
       "source": "src/lib/evolution.functions.ts",
-      "target": "./evolution.server"
-    },
-    {
-      "source": "src/lib/evolution.functions.ts",
       "target": "./wa-dispatch.server"
     },
     {
@@ -6625,10 +6545,6 @@
     },
     {
       "source": "src/lib/evolution.functions.ts",
-      "target": "./evolution.server"
-    },
-    {
-      "source": "src/lib/evolution.functions.ts",
       "target": "./wa-dispatch.server"
     },
     {
@@ -6653,10 +6569,6 @@
     },
     {
       "source": "src/lib/evolution.functions.ts",
-      "target": "./evolution.server"
-    },
-    {
-      "source": "src/lib/evolution.functions.ts",
       "target": "./wa-dispatch.server"
     },
     {
@@ -6666,14 +6578,6 @@
     {
       "source": "src/lib/evolution.functions.ts",
       "target": "./outbound-queue.server"
-    },
-    {
-      "source": "src/lib/evolution.functions.ts",
-      "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/lib/evolution.functions.ts",
-      "target": "@/lib/lead-photo.server"
     },
     {
       "source": "src/lib/evolution.functions.ts",
@@ -6690,18 +6594,6 @@
     {
       "source": "src/lib/evolution.functions.ts",
       "target": "./plan-features"
-    },
-    {
-      "source": "src/lib/evolution.functions.ts",
-      "target": "./evolution.server"
-    },
-    {
-      "source": "src/lib/evolution.functions.ts",
-      "target": "./evolution.server"
-    },
-    {
-      "source": "src/lib/evolution.functions.ts",
-      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/evolution.functions.ts",
@@ -6778,10 +6670,6 @@
     {
       "source": "src/lib/lead-photo.server.ts",
       "target": "crypto"
-    },
-    {
-      "source": "src/lib/lead-photo.server.ts",
-      "target": "@/lib/uazapi.server"
     },
     {
       "source": "src/lib/kanban-engine.server.ts",
@@ -6956,6 +6844,10 @@
       "target": "./wa-dispatch.server"
     },
     {
+      "source": "src/lib/department-menu.server.ts",
+      "target": "./evolution-helpers"
+    },
+    {
       "source": "src/lib/meta-sync.server.ts",
       "target": "@/lib/meta.server"
     },
@@ -7081,7 +6973,7 @@
     },
     {
       "source": "src/lib/chat-media.functions.ts",
-      "target": "./incoming-media.server"
+      "target": "./dapi.server"
     },
     {
       "source": "src/lib/chat-media.functions.ts",
@@ -7321,11 +7213,11 @@
     },
     {
       "source": "src/lib/grupos.functions.ts",
-      "target": "@/integrations/supabase/client.server"
+      "target": "./dapi.server"
     },
     {
       "source": "src/lib/grupos.functions.ts",
-      "target": "./uazapi.server"
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/grupos.functions.ts",
@@ -7337,15 +7229,7 @@
     },
     {
       "source": "src/lib/grupos.functions.ts",
-      "target": "./uazapi.server"
-    },
-    {
-      "source": "src/lib/grupos.functions.ts",
       "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/lib/grupos.functions.ts",
-      "target": "./uazapi.server"
     },
     {
       "source": "src/lib/agent-ai.functions.ts",
@@ -12537,10 +12421,6 @@
     },
     {
       "source": "src/components/conexao/nova-conexao-dialog.tsx",
-      "target": "@tanstack/react-start"
-    },
-    {
-      "source": "src/components/conexao/nova-conexao-dialog.tsx",
       "target": "@/components/ui/dialog"
     },
     {
@@ -12566,14 +12446,6 @@
     {
       "source": "src/components/conexao/nova-conexao-dialog.tsx",
       "target": "lucide-react"
-    },
-    {
-      "source": "src/components/conexao/nova-conexao-dialog.tsx",
-      "target": "@/integrations/supabase/client"
-    },
-    {
-      "source": "src/components/conexao/nova-conexao-dialog.tsx",
-      "target": "@/lib/addons.functions"
     },
     {
       "source": "src/components/conexao/qr-code-dialog.tsx",
@@ -12886,6 +12758,14 @@
     {
       "source": "src/lib/messaging/ingest.server.ts",
       "target": "@/lib/messaging/lovable-whatsapp.generated.server"
+    },
+    {
+      "source": "src/lib/messaging/ingest.server.ts",
+      "target": "@/lib/messaging/media-archive.server"
+    },
+    {
+      "source": "src/lib/messaging/ingest.server.ts",
+      "target": "@/lib/dapi.server"
     },
     {
       "source": "src/lib/messaging/media-archive.server.ts",
@@ -14037,15 +13917,7 @@
     },
     {
       "source": "src/routes/app/conexao.tsx",
-      "target": "@/lib/messaging/lovable-connection.functions"
-    },
-    {
-      "source": "src/routes/app/conexao.tsx",
       "target": "@/lib/meta.functions"
-    },
-    {
-      "source": "src/routes/app/conexao.tsx",
-      "target": "@/lib/wablast.functions"
     },
     {
       "source": "src/routes/app/relatorios.tsx",
@@ -16056,14 +15928,6 @@
       "target": "@tanstack/react-router"
     },
     {
-      "source": "src/routes/api/public/lovable-whatsapp.ts",
-      "target": "@/lib/messaging/lovable-whatsapp.generated.server"
-    },
-    {
-      "source": "src/routes/api/public/lovable-whatsapp.ts",
-      "target": "@/lib/messaging/ingest.server"
-    },
-    {
       "source": "src/routes/api/public/dapi-webhook.ts",
       "target": "@tanstack/react-router"
     },
@@ -16074,10 +15938,6 @@
     {
       "source": "src/routes/api/public/dapi-webhook.ts",
       "target": "@/lib/messaging/ingest.server"
-    },
-    {
-      "source": "src/routes/api/public/dapi-webhook.ts",
-      "target": "@/lib/messaging/contracts"
     },
     {
       "source": "src/routes/api/public/dapi-webhook.ts",
@@ -16090,14 +15950,6 @@
     {
       "source": "src/routes/api/public/wablast-webhook.ts",
       "target": "@tanstack/react-router"
-    },
-    {
-      "source": "src/routes/api/public/wablast-webhook.ts",
-      "target": "@/lib/wablast.server"
-    },
-    {
-      "source": "src/routes/api/public/wablast-webhook.ts",
-      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/routes/api/public/ai-health.ts",
@@ -16184,18 +16036,6 @@
       "target": "@tanstack/react-router"
     },
     {
-      "source": "src/routes/api/public/uazapi-webhook.ts",
-      "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/routes/api/public/uazapi-webhook.ts",
-      "target": "@/lib/jid"
-    },
-    {
-      "source": "src/routes/api/public/uazapi-webhook.ts",
-      "target": "@/lib/uazapi-webhook.server"
-    },
-    {
       "source": "src/routes/api/public/meta-oauth.callback.ts",
       "target": "@tanstack/react-router"
     },
@@ -16210,26 +16050,6 @@
     {
       "source": "src/routes/api/public/whatsapp-webhook.ts",
       "target": "@tanstack/react-router"
-    },
-    {
-      "source": "src/routes/api/public/whatsapp-webhook.ts",
-      "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/routes/api/public/whatsapp-webhook.ts",
-      "target": "@/lib/jid"
-    },
-    {
-      "source": "src/routes/api/public/whatsapp-webhook.ts",
-      "target": "@/lib/crm-engine.server"
-    },
-    {
-      "source": "src/routes/api/public/whatsapp-webhook.ts",
-      "target": "@/lib/evolution.server"
-    },
-    {
-      "source": "src/routes/api/public/whatsapp-webhook.ts",
-      "target": "@/lib/inbound-automation.server"
     },
     {
       "source": "src/routes/api/public/meta-webhook.ts",
@@ -16289,7 +16109,7 @@
     },
     {
       "source": "src/routes/api/public/v1/$.ts",
-      "target": "@/lib/evolution.server"
+      "target": "@/lib/wa-dispatch.server"
     },
     {
       "source": "src/routes/api/public/hooks/process-retry-queue.ts",
@@ -16301,18 +16121,6 @@
     },
     {
       "source": "src/routes/api/public/hooks/process-retry-queue.ts",
-      "target": "@/lib/whatsapp-connection"
-    },
-    {
-      "source": "src/routes/api/public/hooks/process-retry-queue.ts",
-      "target": "@/lib/br-phone"
-    },
-    {
-      "source": "src/routes/api/public/hooks/process-retry-queue.ts",
-      "target": "@/lib/evolution.server"
-    },
-    {
-      "source": "src/routes/api/public/hooks/process-retry-queue.ts",
       "target": "@/lib/evolution-helpers"
     },
     {
@@ -16321,27 +16129,15 @@
     },
     {
       "source": "src/routes/api/public/hooks/process-retry-queue.ts",
-      "target": "@/lib/jid"
+      "target": "@/lib/br-phone"
     },
     {
       "source": "src/routes/api/public/hooks/process-retry-queue.ts",
       "target": "@/lib/wa-dispatch.server"
-    },
-    {
-      "source": "src/routes/api/public/hooks/process-retry-queue.ts",
-      "target": "@/lib/wa-dispatch.server"
-    },
-    {
-      "source": "src/routes/api/public/hooks/process-retry-queue.ts",
-      "target": "@/lib/wablast.server"
     },
     {
       "source": "src/routes/api/public/hooks/process-retry-queue.ts",
       "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/routes/api/public/hooks/process-retry-queue.ts",
-      "target": "@/lib/alerts.server"
     },
     {
       "source": "src/routes/api/public/hooks/process-kanban-reguas.ts",
@@ -16517,15 +16313,7 @@
     },
     {
       "source": "src/routes/api/public/hooks/whatsapp-watchdog.ts",
-      "target": "@/lib/evolution.server"
-    },
-    {
-      "source": "src/routes/api/public/hooks/whatsapp-watchdog.ts",
-      "target": "@/lib/uazapi.server"
-    },
-    {
-      "source": "src/routes/api/public/hooks/whatsapp-watchdog.ts",
-      "target": "@/lib/alerts.server"
+      "target": "@/lib/dapi.server"
     },
     {
       "source": "src/routes/api/public/hooks/whatsapp-watchdog.ts",
