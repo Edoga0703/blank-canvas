@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-23T21:55:24.977376+00:00",
+  "generated_at": "2026-10-23T22:12:56.892375+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -2391,7 +2391,7 @@
     },
     {
       "path": "src/lib/storage/r2.functions.ts",
-      "bytes": 895
+      "bytes": 2062
     },
     {
       "path": "src/lib/integracoes/runtime.server.ts",
@@ -2507,7 +2507,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 189490
+      "bytes": 190261
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -12814,6 +12814,10 @@
     {
       "source": "src/lib/storage/r2.functions.ts",
       "target": "@/lib/company-cache"
+    },
+    {
+      "source": "src/lib/storage/r2.functions.ts",
+      "target": "@/lib/storage/r2.server"
     },
     {
       "source": "src/lib/storage/r2.functions.ts",
