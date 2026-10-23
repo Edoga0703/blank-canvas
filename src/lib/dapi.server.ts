@@ -84,6 +84,42 @@ export interface DapiSessionStatus {
 }
 
 /**
+ * Normaliza cualquier salida de QR de D-API a un Data URI base64 válido (data:image/png;base64,...)
+ * para que el navegador SIEMPRE pueda renderizarlo dentro de <img src={qr} /> sin romperse.
+ * Si recibe una URL o cadena raw de WhatsApp (e.g. https://wa.me/settings/linked_devices/... o 2@123...),
+ * la convierte a un PNG Data URI usando la biblioteca oficial 'qrcode'.
+ */
+export async function normalizeQrToDataUrl(raw: string | null | undefined): Promise<string | null> {
+  if (!raw) return null;
+  const trimmed = String(raw).trim();
+  if (!trimmed) return null;
+
+  // 1. Ya es un data URI de imagen válido
+  if (trimmed.startsWith("data:image/")) {
+    return trimmed;
+  }
+
+  // 2. Es un base64 directo de PNG o JPEG (cabecera típica de PNG iVBORw0KGgo o JPEG /9j/)
+  if (trimmed.startsWith("iVBORw0KGgo") || trimmed.startsWith("/9j/")) {
+    return `data:image/png;base64,${trimmed}`;
+  }
+
+  // 3. Es una URL o string de emparejamiento de WhatsApp (e.g. https://wa.me/... o 2@...)
+  try {
+    const { default: QRCode } = await import("qrcode");
+    const dataUrl = await QRCode.toDataURL(trimmed, {
+      margin: 2,
+      width: 320,
+      color: { dark: "#000000", light: "#ffffff" },
+    });
+    return dataUrl;
+  } catch (err: any) {
+    console.warn("[dapi.server] Erro ao converter string QR via lib qrcode:", err?.message);
+    return null;
+  }
+}
+
+/**
  * Crea una nueva sesión en D-API para un tenant/instancia.
  * Soporta connectionMode "qr" o "pair" (con pairPhone).
  */
@@ -114,10 +150,19 @@ export async function dapiCreateSession(params: DapiCreateSessionParams): Promis
     body: JSON.stringify(body),
   });
 
+  const candidate =
+    res?.qrCodeImage ||
+    res?.qrcode ||
+    res?.qrCode ||
+    res?.session?.qrCodeImage ||
+    res?.data?.qrCodeImage ||
+    null;
+  const qrcode = await normalizeQrToDataUrl(candidate);
+
   return {
     success: res?.success ?? true,
     sessionId: params.sessionId,
-    qrcode: res?.qrcode || res?.qrCodeImage || null,
+    qrcode,
     status: res?.status || "connecting",
   };
 }
@@ -134,23 +179,31 @@ export async function dapiGetQr(sessionId: string): Promise<{
 }> {
   try {
     const res = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/qr`);
-    let qrcode = res?.qrcode || res?.qrCodeImage || res?.data?.qrcode || null;
-    if (qrcode && !qrcode.startsWith("data:") && !qrcode.startsWith("http")) {
-      qrcode = `data:image/png;base64,${qrcode}`;
-    }
+    const candidate =
+      res?.qrCodeImage ||
+      res?.qrcode ||
+      res?.qrCode ||
+      res?.data?.qrCodeImage ||
+      res?.data?.qrcode ||
+      null;
+    const qrcode = await normalizeQrToDataUrl(candidate);
     return {
-      success: res?.success ?? true,
+      success: !!qrcode,
       qrcode,
-      status: res?.status || "connecting",
+      status: res?.status || (qrcode ? "connecting" : "initialising"),
     };
   } catch {
     try {
       const alt = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/qr-code`);
-      let qrcode = alt?.qrcode || alt?.qrCodeImage || alt?.data?.qrcode || null;
-      if (qrcode && !qrcode.startsWith("data:") && !qrcode.startsWith("http")) {
-        qrcode = `data:image/png;base64,${qrcode}`;
-      }
-      return { success: true, qrcode, status: alt?.status || "connecting" };
+      const candidate =
+        alt?.qrCodeImage ||
+        alt?.qrcode ||
+        alt?.qrCode ||
+        alt?.data?.qrCodeImage ||
+        alt?.data?.qrcode ||
+        null;
+      const qrcode = await normalizeQrToDataUrl(candidate);
+      return { success: !!qrcode, qrcode, status: alt?.status || "connecting" };
     } catch {
       return { success: false, qrcode: null, status: "error" };
     }
@@ -292,10 +345,15 @@ export async function dapiGetStatus(sessionId: string): Promise<DapiSessionStatu
     });
     const sessionObj = res?.session || res?.data?.session || null;
     const payload = res?.data || res;
-    let qrcode = payload?.qrcode || payload?.qrCodeImage || sessionObj?.qrCode || res?.qrcode || res?.qrCodeImage || null;
-    if (qrcode && !qrcode.startsWith("data:") && !qrcode.startsWith("http")) {
-      qrcode = `data:image/png;base64,${qrcode}`;
-    }
+    const candidateQr =
+      payload?.qrCodeImage ||
+      res?.qrCodeImage ||
+      sessionObj?.qrCodeImage ||
+      payload?.qrcode ||
+      res?.qrcode ||
+      sessionObj?.qrCode ||
+      null;
+    const qrcode = await normalizeQrToDataUrl(candidateQr);
     const rawStatus = sessionObj?.status || payload?.status || res?.status || (sessionObj?.connected || payload?.connected || res?.connected ? "connected" : "disconnected");
     const numero = sessionObj?.phone || sessionObj?.number || sessionObj?.phoneNumber || res?.profile?.phone || payload?.numero || payload?.phoneNumber || payload?.phone || res?.numero || null;
     return {

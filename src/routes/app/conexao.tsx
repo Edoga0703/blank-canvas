@@ -51,9 +51,9 @@ type Instance = {
 };
 
 const PROVIDER_LABEL: Record<string, string> = {
-  dapi: "WhatsApp (D-API)",
-  dapi_official: "WhatsApp Oficial Meta (D-API)",
-  official: "WhatsApp Oficial Meta (D-API)",
+  dapi: "WhatsApp Não Oficial (QR / Celular)",
+  dapi_official: "WhatsApp API Oficial Meta (Cloud API)",
+  official: "WhatsApp API Oficial Meta (Cloud API)",
   meta_instagram: "Instagram Direct",
   meta_messenger: "Facebook Messenger",
   telegram: "Telegram",
@@ -100,7 +100,7 @@ function ConexoesPage() {
 
   useEffect(() => {
     const anyPending = instances.some(
-      (i) => i.status !== "connected" && i.provider === "dapi",
+      (i) => i.status !== "connected" && (i.provider === "dapi" || !i.provider),
     );
     if (anyPending) {
       if (!pollRef.current) pollRef.current = setInterval(() => { void refresh(true); }, 5000);
@@ -140,7 +140,9 @@ function ConexoesPage() {
         if (inst.status !== "connected") {
           try {
             const r: any = await check({ data: { instanceName: inst.instance_name } });
-            if (r?.qrBase64) setQrByInstance((prev) => ({ ...prev, [inst.instance_name]: r.qrBase64 }));
+            if (r?.qrBase64 && typeof r.qrBase64 === "string" && r.qrBase64.startsWith("data:image/")) {
+              setQrByInstance((prev) => ({ ...prev, [inst.instance_name]: r.qrBase64 }));
+            }
             if (r?.status === "connected") setQrByInstance((prev) => ({ ...prev, [inst.instance_name]: null }));
           } catch {}
         } else {
@@ -251,6 +253,8 @@ function ConexoesPage() {
   type Channel = {
     key: string;
     title: string;
+    desc?: string;
+    badge?: string;
     icon: React.ReactNode;
     match: (i: Instance) => boolean;
     onIntegrate: () => void;
@@ -260,17 +264,28 @@ function ConexoesPage() {
   const channels: Channel[] = [
     {
       key: "dapi",
-      title: "WhatsApp (D-API)",
+      title: "WhatsApp (QR Code / Pareamento)",
+      desc: "Não Oficial · Conecte seu celular físico em segundos com QR Code",
+      badge: "Não Oficial",
       icon: <WhatsAppGlyph className="size-6 text-emerald-500" />,
       match: (i) => {
         const p = i.provider ?? i.provider_type ?? "dapi";
-        const officialCardSeparate = pluginAtivo("meta-official-api");
-        if (officialCardSeparate && (p === "dapi_official" || p === "official" || i.provider_type === "oficial_meta")) {
-          return false;
-        }
-        return p === "dapi" || p === "dapi_official";
+        return (p === "dapi" || !p) && p !== "dapi_official" && p !== "official";
       },
       onIntegrate: () => { setInitialProvider("dapi"); setNewConnOpen(true); },
+      multi: true,
+    },
+    {
+      key: "dapi_official",
+      title: "WhatsApp API Oficial Meta (Cloud API)",
+      desc: "Oficial Meta · Sem risco de bloqueio, com templates HSM e selo",
+      badge: "API Oficial Meta",
+      icon: <WhatsAppGlyph className="size-6 text-[#25D366]" />,
+      match: (i) => {
+        const p = i.provider ?? i.provider_type;
+        return p === "dapi_official" || p === "official";
+      },
+      onIntegrate: () => { setInitialProvider("oficial_meta"); setNewConnOpen(true); },
       multi: true,
     },
   ];
@@ -279,6 +294,8 @@ function ConexoesPage() {
     channels.push({
       key: "telegram",
       title: pluginName("telegram", "Telegram"),
+      desc: "Conexão de bot via BotFather",
+      badge: "Bot API",
       icon: <TelegramGlyph className="size-6 text-[#229ED9]" />,
       match: (i) => i.provider === "telegram",
       onIntegrate: () => setTelegramOpen(true),
@@ -290,6 +307,8 @@ function ConexoesPage() {
     channels.push({
       key: "instagram",
       title: pluginName("instagram", "Instagram Direct"),
+      desc: "Mensagens diretas do Instagram via Meta Graph API",
+      badge: "Oficial Meta",
       icon: <InstagramGlyph className="size-6 text-[#E4405F]" />,
       match: (i) => i.provider === "meta_instagram",
       onIntegrate: () => setMetaDialog("instagram"),
@@ -298,20 +317,11 @@ function ConexoesPage() {
     channels.push({
       key: "messenger",
       title: pluginName("messenger", "Facebook Messenger"),
+      desc: "Páginas do Facebook via Meta Graph API",
+      badge: "Oficial Meta",
       icon: <MessengerGlyph className="size-6 text-[#0084FF]" />,
       match: (i) => i.provider === "meta_messenger",
       onIntegrate: () => setMetaDialog("facebook"),
-      multi: true,
-    });
-  }
-
-  if (pluginAtivo("meta-official-api")) {
-    channels.push({
-      key: "official",
-      title: pluginName("meta-official-api", "WhatsApp API Oficial (D-API Meta)"),
-      icon: <WhatsAppGlyph className="size-6 text-[#25D366]" />,
-      match: (i) => i.provider === "dapi_official" || i.provider_type === "dapi_official",
-      onIntegrate: () => { setInitialProvider("oficial_meta"); setNewConnOpen(true); },
       multi: true,
     });
   }
@@ -330,11 +340,24 @@ function ConexoesPage() {
               {totalConectadas > 0 ? `${totalConectadas} conta(s) conectada(s)` : "Nenhuma conta conectada ainda."}
             </p>
           </div>
-          {!plan.loading && (
-            <div className="hidden sm:block">
-              <PlanUsageBadge label="conexões WhatsApp" used={waUsed} limit={waLimit} />
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {!plan.loading && (
+              <div className="hidden sm:block">
+                <PlanUsageBadge label="conexões WhatsApp" used={waUsed} limit={waLimit} />
+              </div>
+            )}
+            <Button
+              size="sm"
+              className="gap-1.5"
+              onClick={() => {
+                setInitialProvider(null);
+                setNewConnOpen(true);
+              }}
+              disabled={!canAdd}
+            >
+              <Plus className="size-4" /> Nova Conexão
+            </Button>
+          </div>
         </div>
 
         {instances.length > 3 && (
@@ -359,10 +382,17 @@ function ConexoesPage() {
                     {ch.icon}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="font-semibold text-sm truncate">{ch.title}</div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-sm truncate">{ch.title}</span>
+                      {ch.badge && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal text-muted-foreground">
+                          {ch.badge}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">
                       {accounts.length === 0
-                        ? FREE_KEYS.includes(ch.key) ? "Nenhuma conta · grátis" : "Nenhuma conta"
+                        ? ch.desc || (FREE_KEYS.includes(ch.key) ? "Nenhuma conta · grátis" : "Nenhuma conta")
                         : `${accounts.length} conta${accounts.length > 1 ? "s" : ""}`}
                     </div>
                   </div>
@@ -387,13 +417,22 @@ function ConexoesPage() {
                     {accounts.map((inst) => {
                       const isBusy = busy === inst.instance_name;
                       const isOpen = expanded === inst.instance_name;
-                      const isOfficial = inst.provider === "dapi_official" || inst.provider_type === "dapi_official";
+                      const isOfficial = inst.provider === "dapi_official" || inst.provider_type === "dapi_official" || inst.provider === "official";
                       return (
                         <div key={inst.instance_name} className="bg-muted/20">
                           <div className="flex flex-wrap items-center gap-2 px-4 py-2.5">
                             <button className="flex items-center gap-2 min-w-0 flex-1 text-left" onClick={() => setExpanded(isOpen ? null : inst.instance_name)}>
                               <span className="text-sm font-medium truncate">{inst.display_name || inst.numero || "Nova conexão"}</span>
                               <StatusBadge status={inst.status} paused={inst.paused} />
+                              {isOfficial ? (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-blue-500/10 text-blue-700 border-blue-500/30">
+                                  API Oficial Meta
+                                </Badge>
+                              ) : inst.provider === "dapi" ? (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-emerald-500/10 text-emerald-700 border-emerald-500/30">
+                                  QR Code (Não Oficial)
+                                </Badge>
+                              ) : null}
                             </button>
                             <div className="flex items-center gap-0.5 shrink-0">
                               {isOfficial ? (

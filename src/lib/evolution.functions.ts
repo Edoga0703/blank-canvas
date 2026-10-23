@@ -81,8 +81,16 @@ export const connectWhatsapp = createServerFn({ method: "POST" })
         const pairRes = await dapiGetPairingCode(instanceName, data.phone);
         pairingCode = pairRes.code || null;
       } else if (!qrBase64) {
-        const qrRes = await dapiGetQr(instanceName);
-        qrBase64 = qrRes.qrcode || null;
+        // En D-API el contenedor tarda de 1 a 3 segundos en generar la primera imagen del QR.
+        // Hacemos hasta 3 intentos breves (1s c/u) para que la respuesta ya devuelva el QR listo.
+        for (let attempt = 0; attempt < 3; attempt++) {
+          await new Promise((res) => setTimeout(res, 1000));
+          const qrRes = await dapiGetQr(instanceName);
+          if (qrRes.qrcode) {
+            qrBase64 = qrRes.qrcode;
+            break;
+          }
+        }
       }
     } catch (dErr: any) {
       console.warn("[dapi.connectWhatsapp] Erro na sessão D-API:", dErr?.message);

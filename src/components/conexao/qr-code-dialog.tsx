@@ -30,7 +30,7 @@ export function QrCodeDialog({ open, instanceName, initialQr, onOpenChange, onCo
   const check = useServerFn(checkWhatsappStatus);
   const connect = useServerFn(connectWhatsapp);
   const [mode, setMode] = useState<Mode>("qr");
-  const [qr, setQr] = useState<string | null>(initialQr ?? null);
+  const [qr, setQr] = useState<string | null>(initialQr && initialQr.startsWith("data:image/") ? initialQr : null);
   const [status, setStatus] = useState<string>("connecting");
   const [refreshing, setRefreshing] = useState(false);
   const [phone, setPhone] = useState("");
@@ -39,7 +39,7 @@ export function QrCodeDialog({ open, instanceName, initialQr, onOpenChange, onCo
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    setQr(initialQr ?? null);
+    setQr(initialQr && initialQr.startsWith("data:image/") ? initialQr : null);
     setStatus("connecting");
     setPairCode(null);
     setPhone("");
@@ -54,27 +54,38 @@ export function QrCodeDialog({ open, instanceName, initialQr, onOpenChange, onCo
     const tick = async () => {
       try {
         const r: any = await check({ data: { instanceName } });
-        if (r?.qrBase64) setQr(r.qrBase64);
+        if (r?.qrBase64 && typeof r.qrBase64 === "string" && r.qrBase64.startsWith("data:image/")) {
+          setQr(r.qrBase64);
+        }
         if (r?.status) setStatus(r.status);
         if (r?.status === "connected") {
-          toast.success("WhatsApp conectado!");
+          toast.success("WhatsApp conectado com sucesso!");
           onConnected?.();
           onOpenChange(false);
         }
       } catch {}
     };
     void tick();
-    pollRef.current = setInterval(tick, 3000);
+    pollRef.current = setInterval(tick, 2500);
     return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
   }, [open, instanceName]);
 
   async function refreshQr() {
     if (!instanceName) return;
     setRefreshing(true);
+    setQr(null);
     try {
       const r: any = await connect({ data: { instanceName, createNew: false } });
-      if (r?.qrBase64) setQr(r.qrBase64);
-      toast.message("QR Code atualizado.");
+      if (r?.qrBase64 && typeof r.qrBase64 === "string" && r.qrBase64.startsWith("data:image/")) {
+        setQr(r.qrBase64);
+        toast.message("QR Code atualizado.");
+      } else {
+        const s: any = await check({ data: { instanceName } });
+        if (s?.qrBase64 && typeof s.qrBase64 === "string" && s.qrBase64.startsWith("data:image/")) {
+          setQr(s.qrBase64);
+          toast.message("QR Code atualizado.");
+        }
+      }
     } catch (e: any) {
       toast.error(e?.message || "Falha ao atualizar QR");
     } finally { setRefreshing(false); }
@@ -155,13 +166,24 @@ export function QrCodeDialog({ open, instanceName, initialQr, onOpenChange, onCo
 
         {mode === "qr" ? (
           <div className="flex flex-col items-center gap-4 py-2">
-            <div className="bg-white p-3 rounded-xl border w-fit">
-              {qr ? (
-                <img src={qr} alt="QR Code WhatsApp" className="size-64 object-contain" />
+            <div className="bg-white p-3 rounded-xl border w-fit shadow-xs">
+              {qr && qr.startsWith("data:image/") ? (
+                <img
+                  src={qr}
+                  alt="QR Code WhatsApp"
+                  className="size-64 object-contain rounded-md"
+                  onError={() => setQr(null)}
+                />
               ) : (
-                <div className="size-64 flex flex-col items-center justify-center text-muted-foreground gap-2">
-                  <Loader2 className="size-8 animate-spin" />
-                  <span className="text-xs">Gerando QR Code…</span>
+                <div className="size-64 flex flex-col items-center justify-center text-muted-foreground gap-3">
+                  <Loader2 className="size-8 animate-spin text-primary" />
+                  <span className="text-xs font-medium text-center">
+                    Gerando QR Code…
+                    <br />
+                    <span className="text-[11px] text-muted-foreground font-normal">
+                      Inicializando pod D-API
+                    </span>
+                  </span>
                 </div>
               )}
             </div>

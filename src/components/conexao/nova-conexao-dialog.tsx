@@ -38,20 +38,31 @@ type ProviderCard = {
 const PROVIDERS: ProviderCard[] = [
   {
     key: "dapi",
-    name: "WhatsApp QR Code (D-API)",
-    price: "Incluído",
-    desc: "Conexão via D-API SaaS unificada com IP dedicada, QR Code ou código de 8 dígitos.",
-    bullets: ["Pareamento por QR Code ou código de 8 dígitos", "Envio de mídia e áudio", "Reconexão automática"],
+    name: "WhatsApp Não Oficial (QR Code / Celular)",
+    price: "Instantâneo",
+    desc: "Conecte seu celular físico em segundos escaneando o QR Code ou digitando o número para receber código de 8 dígitos.",
+    bullets: [
+      "Sem burocracia ou aprovação da Meta",
+      "Pareamento por QR Code ou código de 8 dígitos",
+      "Envio de mensagens, áudios PTT e mídias",
+      "Reconexão automática com proxy dedicado",
+    ],
     icon: <QrCode className="size-6" />,
-    badge: { label: "Recomendado", className: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30" },
+    badge: { label: "Não Oficial · Celular", className: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30" },
   },
   {
     key: "oficial_meta",
-    name: "WhatsApp API Oficial (D-API Meta Cloud)",
-    price: "Oficial",
-    desc: "WhatsApp Business Cloud API oficial via D-API (Embedded Signup / Popup Hospedado ou Credenciais WABA).",
-    bullets: ["API Oficial Meta Cloud via D-API", "Selo verificado e Embedded Signup", "Templates oficiais HSM"],
+    name: "WhatsApp API Oficial Meta (Cloud API)",
+    price: "Oficial Meta",
+    desc: "WhatsApp Business Cloud API oficial via D-API. Conexão corporativa direta com a Meta sem precisar de celular ligado.",
+    bullets: [
+      "API Oficial Cloud Meta (sem risco de bloqueio)",
+      "Popup Hospedado (Embedded Signup em 1 clique)",
+      "Compatível com Templates HSM aprovados",
+      "Selo de verificação da empresa",
+    ],
     icon: <Sparkles className="size-6" />,
+    badge: { label: "Oficial Meta Cloud", className: "bg-blue-500/15 text-blue-700 border-blue-500/30" },
   },
 ];
 
@@ -140,11 +151,26 @@ export function NovaConexaoDialog({
         <DialogHeader>
           <DialogTitle>Nova Conexão WhatsApp (D-API)</DialogTitle>
           <DialogDescription>
-            {!selected
-              ? "Escolha a modalidade de conexão D-API para o seu WhatsApp."
-              : "Configure sua conexão WhatsApp via D-API."}
+            Escolha entre conexão instantânea para celular físico (Não Oficial) ou conexão corporativa direta da Meta (Oficial Cloud API).
           </DialogDescription>
         </DialogHeader>
+
+        <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+          <button
+            type="button"
+            onClick={() => setSelected("dapi")}
+            className={`flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${selected === "dapi" ? "bg-background shadow-xs text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <QrCode className="size-3.5" /> WhatsApp Não Oficial (QR / Celular)
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelected("oficial_meta")}
+            className={`flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${selected === "oficial_meta" ? "bg-background shadow-xs text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Sparkles className="size-3.5" /> WhatsApp API Oficial (Meta Cloud)
+          </button>
+        </div>
 
         {!selected && (
           <div className="grid gap-3 md:grid-cols-2">
