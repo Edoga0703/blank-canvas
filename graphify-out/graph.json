@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-23T19:41:49.107801+00:00",
+  "generated_at": "2026-10-23T20:27:36.466855+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -659,7 +659,7 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 19581
+      "bytes": 19307
     },
     {
       "path": "src/lib/ai-engine.server.ts",
@@ -811,7 +811,7 @@
     },
     {
       "path": "src/lib/evolution-helpers.ts",
-      "bytes": 9138
+      "bytes": 9160
     },
     {
       "path": "src/lib/sector-assignment.server.ts",
