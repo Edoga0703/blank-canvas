@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-23T20:45:56.230576+00:00",
+  "generated_at": "2026-10-23T21:55:24.977376+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -639,7 +639,7 @@
     },
     {
       "path": "src/lib/support-kb.ts",
-      "bytes": 14807
+      "bytes": 14840
     },
     {
       "path": "src/lib/openai-usage.functions.ts",
@@ -659,7 +659,7 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 19307
+      "bytes": 20075
     },
     {
       "path": "src/lib/ai-engine.server.ts",
@@ -1743,7 +1743,7 @@
     },
     {
       "path": "src/components/plugins/plugin-detail-dialog.tsx",
-      "bytes": 19437
+      "bytes": 19427
     },
     {
       "path": "src/components/plugins/google-calendar-panel.tsx",
@@ -2387,7 +2387,7 @@
     },
     {
       "path": "src/lib/storage/r2.server.ts",
-      "bytes": 9639
+      "bytes": 10095
     },
     {
       "path": "src/lib/storage/r2.functions.ts",
@@ -2463,7 +2463,7 @@
     },
     {
       "path": "src/lib/messaging/providers/dapi.server.ts",
-      "bytes": 6513
+      "bytes": 7757
     },
     {
       "path": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
@@ -2755,7 +2755,7 @@
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
-      "bytes": 17358
+      "bytes": 18389
     },
     {
       "path": "src/routes/api/public/wablast-webhook.ts",
