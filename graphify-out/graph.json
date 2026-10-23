@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-23T03:58:05.238545+00:00",
+  "generated_at": "2026-10-23T09:47:59.160474+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -175,7 +175,7 @@
     },
     {
       "path": "supabase/migrations/20261022190000_storage_buckets_and_cron_parity.sql",
-      "bytes": 2268
+      "bytes": 2342
     },
     {
       "path": "supabase/migrations/20261022180000_audit_fixes_and_parity.sql",
@@ -1311,7 +1311,7 @@
     },
     {
       "path": "src/lib/agent-ai.functions.ts",
-      "bytes": 43665
+      "bytes": 44531
     },
     {
       "path": "src/lib/uazapi-webhook.server.ts",
