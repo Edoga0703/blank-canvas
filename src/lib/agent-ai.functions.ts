@@ -612,13 +612,42 @@ export const saveAgentConfig = createServerFn({ method: "POST" })
     const { id: _i, company_id: _c, user_id: _u, updated_at: _ua, created_at: _ca, ...rest } = data.payload as any;
     const row: any = { ...rest, company_id: companyId, user_id: userId };
 
+    async function executeSafeMutation(isUpdate: boolean, targetId?: string) {
+      const payloadToSave = { ...row };
+      let lastError: any = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        let res: any;
+        if (isUpdate) {
+          res = await supabase
+            .from("agent_config")
+            .update(payloadToSave)
+            .eq("id", targetId)
+            .eq("company_id", companyId);
+        } else {
+          res = await supabase
+            .from("agent_config")
+            .insert(payloadToSave)
+            .select("id")
+            .single();
+        }
+        if (!res.error) {
+          return res.data || { id: targetId };
+        }
+        lastError = res.error;
+        // Se a coluna não existe no cache do schema do Supabase, remove-a e tenta salvar o restante
+        const match = res.error.message?.match(/Could not find the '([^']+)' column/i);
+        if (match && match[1] && match[1] in payloadToSave) {
+          console.warn(`[saveAgentConfig] Removendo campo desconhecido '${match[1]}' e tentando salvar novamente.`);
+          delete payloadToSave[match[1]];
+          continue;
+        }
+        break;
+      }
+      throw new Error(lastError?.message || "Falha ao salvar configuração do agente.");
+    }
+
     if (data.id) {
-      const { error } = await supabase
-        .from("agent_config")
-        .update(row)
-        .eq("id", data.id)
-        .eq("company_id", companyId);
-      if (error) throw new Error(error.message);
+      await executeSafeMutation(true, data.id);
       return { id: data.id };
     }
 
@@ -631,20 +660,11 @@ export const saveAgentConfig = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (existing?.id) {
-      const { error: upErr } = await supabase
-        .from("agent_config")
-        .update(row)
-        .eq("id", existing.id);
-      if (upErr) throw new Error(upErr.message);
+      await executeSafeMutation(true, existing.id);
       return { id: existing.id };
     }
 
-    const { data: saved, error } = await supabase
-      .from("agent_config")
-      .insert(row)
-      .select("id")
-      .single();
-    if (error) throw new Error(error.message);
+    const saved = await executeSafeMutation(false);
     return { id: saved?.id };
   });
 

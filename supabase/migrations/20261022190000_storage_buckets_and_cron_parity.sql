@@ -54,6 +54,7 @@ BEGIN
   END IF;
 END $$;
 
--- Columna de canales activos persistidos para Studio
+-- Columna de canales activos y temperatura persistidos para Studio
 ALTER TABLE public.agent_config
-  ADD COLUMN IF NOT EXISTS canais_ativos jsonb DEFAULT '{"whatsapp": true, "instagram": true, "telegram": true}'::jsonb;
+  ADD COLUMN IF NOT EXISTS canais_ativos jsonb DEFAULT '{"whatsapp": true, "instagram": true, "telegram": true}'::jsonb,
+  ADD COLUMN IF NOT EXISTS temperatura numeric DEFAULT 0.7;
