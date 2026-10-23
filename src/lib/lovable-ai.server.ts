@@ -35,7 +35,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function lovableAiChat(
   messages: ChatMsg[],
-  modelOrConfig: string | AiProviderConfig = "google/gemini-2.0-flash-exp",
+  modelOrConfig: string | AiProviderConfig = "google/gemini-2.5-flash",
 ): Promise<string> {
   const cfg: AiProviderConfig =
     typeof modelOrConfig === "string"
@@ -77,7 +77,7 @@ export async function lovableAiChat(
   // default: Gemini via Lovable Gateway (com retry + fallback de modelo)
   const key = process.env.LOVABLE_API_KEY;
   if (!key) throw new Error("LOVABLE_API_KEY ausente.");
-  const principal = cfg.model || "google/gemini-2.0-flash-exp";
+  const principal = cfg.model || "google/gemini-2.5-flash";
   const fallback = "google/gemini-1.5-flash";
 
   let ultimoErro: Error | null = null;

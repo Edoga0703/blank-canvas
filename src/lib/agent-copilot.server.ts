@@ -108,6 +108,15 @@ export function buildCopilotSystemPrompt(context: {
 
   return `Eres el "AI Studio Copilot", el Consultor Senior de Inteligencia Artificial y Arquitecto de Agentes NATIVO dentro del CRM Capiconversa.
 
+CONTEXTO DE TU ENTORNO:
+- Estás conversando directamente con el ADMINISTRADOR DEL CRM dentro de un panel web (React Web UI) en su navegador.
+- NO eres el bot de WhatsApp atendiendo a clientes finales ni estás ejecutándote dentro de un webhook de mensajería.
+- NUNCA atribuyas problemas de este chat a "buffers de 4 segundos de WhatsApp", "micro-cortes de red de Meta" o "límites de canal". Si un mensaje del usuario parece incompleto, indícaselo con naturalidad y pídele que continúe la idea.
+
+EXHAUSTIVIDAD OBLIGATORIA:
+- Cuando el usuario te entregue un listado de productos, precios o reglas, DEBES PROCESAR Y GENERAR ACCIONES PARA TODOS Y CADA UNO DE ELLOS.
+- No resumas, no omitas ni reduzcas la lista a solo 2 o 3 opciones. Si te proporcionan 5 productos, genera los 5 en la acción 'catalog'. Si te proporcionan 4 reglas, genera las 4 en la acción 'rule'.
+
 TU MISIÓN:
 Ayudar al administrador o dueño del negocio a configurar, entrenar, auditar y optimizar su agente de atención al cliente (que atiende en Instagram Direct, WhatsApp, Telegram, etc.) de forma conversacional, amigable y profesional.
 
@@ -204,26 +213,47 @@ export function parseCopilotOutput(rawText: string): CopilotTurnResult {
   }
 
   if (match) {
+    const rawJson = match[1].trim();
+    let parsed: any = null;
+
     try {
-      const parsed = JSON.parse(match[1]);
-      if (Array.isArray(parsed)) {
-        for (const item of parsed) {
-          if (item?.type && item?.title) {
-            proposals.push({
-              type: item.type,
-              title: String(item.title),
-              description: String(item.description || ""),
-              status: "pending",
-              payload: item.payload || {},
-            });
-          }
+      parsed = JSON.parse(rawJson);
+    } catch {
+      // 1. Tenta limpar trailing commas e comentários
+      try {
+        const cleaned = rawJson
+          .replace(/,\s*([}\]])/g, "$1")
+          .replace(/\/\*[\s\S]*?\*\/|([^:]|^)\/\/.*$/gm, "");
+        parsed = JSON.parse(cleaned);
+      } catch {
+        // 2. Fallback resiliente: extrai blocos individuais de ação se o JSON geral estiver truncado
+        parsed = [];
+        const itemRegex = /{\s*"type"\s*:\s*"(?:catalog|rule|config|simulation|audit)"[\s\S]*?}(?=\s*,\s*{|\s*\]|\s*$)/g;
+        let m: RegExpExecArray | null;
+        while ((m = itemRegex.exec(rawJson)) !== null) {
+          try {
+            parsed.push(JSON.parse(m[0]));
+          } catch {}
         }
       }
-      // Remueve el bloque de código JSON para que el chat quede limpio para el usuario
-      reply = rawText.replace(match[0], "").trim();
-    } catch (e) {
-      console.warn("[parseCopilotOutput] JSON actions parse error:", e);
     }
+
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      for (const item of parsed) {
+        if (item?.type && item?.title) {
+          proposals.push({
+            type: item.type,
+            title: String(item.title),
+            description: String(item.description || ""),
+            status: "pending",
+            payload: item.payload || {},
+          });
+        }
+      }
+    }
+
+    // Remueve el bloque de código JSON para que el chat quede limpio para el usuario
+    reply = rawText.replace(match[0], "").trim();
   }
 
   return {

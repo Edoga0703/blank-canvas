@@ -382,27 +382,36 @@ Puedo ayudarte a:
         </div>
 
         {/* Input Bar */}
-        <div className="p-4 border-t border-border bg-background flex items-center gap-2">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Pregúntale algo al Copilot o pega tu catálogo/regla..."
-            className="min-h-[44px] max-h-32 text-xs resize-none"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-          />
-          <Button
-            size="icon"
-            className="h-10 w-10 shrink-0 bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 shadow-sm"
-            onClick={() => handleSend()}
-            disabled={!input.trim() || loading}
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          </Button>
+        <div className="p-4 border-t border-border bg-background flex flex-col gap-1.5">
+          <div className="flex items-center gap-2">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Pregúntale algo al Copilot o pega tu catálogo/regla..."
+              className="min-h-[44px] max-h-32 text-xs resize-none"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  if ((e.nativeEvent as any)?.isComposing) return;
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+            />
+            <Button
+              size="icon"
+              className="h-10 w-10 shrink-0 bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 shadow-sm"
+              onClick={() => handleSend()}
+              disabled={!input.trim() || loading}
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
+          </div>
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground/75 px-1">
+            <span>
+              Presiona <kbd className="font-mono bg-muted/80 px-1 py-0.5 rounded text-[9px] border border-border/50">Enter</kbd> para enviar o <kbd className="font-mono bg-muted/80 px-1 py-0.5 rounded text-[9px] border border-border/50">Shift + Enter</kbd> para nueva línea
+            </span>
+            <span className="text-violet-600 dark:text-violet-400 font-medium">Modelo con Razonamiento</span>
+          </div>
         </div>
       </SheetContent>
     </Sheet>

@@ -75,7 +75,7 @@ export const askAgentCopilot = createServerFn({ method: "POST" })
       ],
       {
         provider: agentCtx.agent?.ai_provider || "gemini",
-        model: agentCtx.agent?.ai_model || undefined,
+        model: agentCtx.agent?.ai_model || "google/gemini-2.5-flash",
       }
     );
 
@@ -259,7 +259,7 @@ Responda em formato JSON:
         { role: "system", content: system },
         { role: "user", content: `REGRAS RÍGIDAS ATUAIS:\n${cfg.regras_rigidas}` },
       ],
-      { provider: "gemini", model: "google/gemini-2.0-flash-exp" }
+      { provider: "gemini", model: "google/gemini-2.5-flash" }
     );
 
     let result = { has_conflicts: false, summary: "Regras analisadas com sucesso.", recommendations: [] };
