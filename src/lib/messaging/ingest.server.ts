@@ -134,9 +134,9 @@ async function persistMessage(
         provider: connection.provider || event.provider,
         whatsapp_message_id: event.externalMessageId,
         provider_timestamp: event.occurredAt,
-        midia_url: event.attachments[0]?.storageKey
-          ? (event.attachments[0]?.storageUrl ?? null)
-          : (event.attachments[0]?.providerUrl ?? null),
+        midia_url: event.attachments[0]?.storageUrl || event.attachments[0]?.providerUrl || null, // R2 storageUrl ou URL original do provedor
+
+
         midia_tipo: event.attachments[0]?.kind ?? null,
         midia_mime: event.attachments[0]?.mimeType ?? null,
         midia_nome: event.attachments[0]?.fileName ?? null,

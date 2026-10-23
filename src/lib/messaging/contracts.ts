@@ -9,7 +9,15 @@ export type MessagingProviderId = (typeof MESSAGING_PROVIDERS)[number];
 export type MessageDirection = "incoming" | "outgoing";
 export type MessageAuthor = "contact" | "human" | "ai" | "phone" | "system";
 export type MessageKind =
-  "text" | "image" | "audio" | "video" | "document" | "location" | "contact" | "unknown";
+  | "text"
+  | "image"
+  | "audio"
+  | "video"
+  | "document"
+  | "location"
+  | "contact"
+  | "sticker"
+  | "unknown";
 export type DeliveryStatus = "queued" | "sent" | "delivered" | "read" | "failed";
 
 export type MessageAttachment = {

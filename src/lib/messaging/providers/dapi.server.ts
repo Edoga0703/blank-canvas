@@ -177,14 +177,15 @@ export const dapiProvider: MessagingProvider = {
       const attachments: any[] = [];
       const dataType = String(data.type || "text").toLowerCase();
 
-      if (["image", "audio", "video", "document"].includes(dataType)) {
-        kind = dataType;
+      if (["image", "audio", "video", "document", "sticker"].includes(dataType)) {
+        const attachmentKind = dataType === "sticker" ? "sticker" : dataType;
+        kind = attachmentKind;
         attachments.push({
-          kind: dataType,
+          kind: attachmentKind,
           externalId: externalMessageId,
-          providerUrl: data.media_url || null,
-          mimeType: data.media_data?.mimetype || data.mimetype || null,
-          fileName: data.media_data?.filename || data.filename || null,
+          providerUrl: data.media_url || data.media_data?.early_media_url || null,
+          mimeType: data.media_data?.mimetype || data.mimetype || (dataType === "sticker" ? "image/webp" : null),
+          fileName: data.media_data?.filename || data.filename || (dataType === "sticker" ? "sticker.webp" : null),
         });
       }
 

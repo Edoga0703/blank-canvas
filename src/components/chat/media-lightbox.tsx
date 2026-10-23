@@ -71,7 +71,7 @@ export function MediaLightbox() {
     };
   }, []);
 
-  const isImage = media?.tipo === "image";
+  const isImage = media?.tipo === "image" || media?.tipo === "sticker";
   const isVideo = media?.tipo === "video";
   const isAudio = media?.tipo === "audio";
 

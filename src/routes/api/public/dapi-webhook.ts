@@ -303,6 +303,11 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
                 // Mensaje enviado manualmente desde el teléfono físico: registrar y pausar la IA
                 const nowIso = new Date().toISOString();
 
+                const outDataType = String(data.type || "text").toLowerCase();
+                const isOutMedia = ["image", "audio", "video", "document", "sticker"].includes(outDataType);
+                const outMediaUrl = data.media_url || data.media_data?.early_media_url || null;
+                const outMime = data.media_data?.mimetype || data.mimetype || (outDataType === "sticker" ? "image/webp" : null);
+
                 await supabaseAdmin.from("mensagens").insert({
                   company_id: inst.company_id,
                   user_id: (inst as any).user_id ?? null,
@@ -310,7 +315,12 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
                   provider: (inst as any).provider || "dapi",
                   numero: phone,
                   contato_nome: contactName,
-                  texto: text || "📱 Mensagem enviada pelo celular",
+                  texto: text || (outDataType === "sticker" ? "Sticker" : "📱 Mensagem enviada pelo celular"),
+                  midia_tipo: isOutMedia ? (outDataType === "sticker" ? "sticker" : outDataType) : null,
+                  midia_url: outMediaUrl,
+                  midia_mime: outMime,
+                  midia_nome: data.media_data?.filename || data.filename || (outDataType === "sticker" ? "sticker.webp" : null),
+                  raw_payload: body,
                   direcao: "saida",
                   autor: "humano",
                   whatsapp_message_id: messageId,
@@ -342,10 +352,10 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
             // Mensaje entrante del cliente (fromMe === false)
             const dataType = String(data.type || "text").toLowerCase();
             let mediaUrl: string | null = data.media_url || null;
-            let mimeType: string | null = data.media_data?.mimetype || data.mimetype || null;
+            let mimeType: string | null = data.media_data?.mimetype || data.mimetype || (dataType === "sticker" ? "image/webp" : null);
             let text = extractDapiText(data);
 
-            if (["image", "audio", "video", "document"].includes(dataType)) {
+            if (["image", "audio", "video", "document", "sticker"].includes(dataType)) {
               // Si D-API no envió URL directa, descargamos el binario base64 pasando direct_path y media_key
               if (!mediaUrl) {
                 const downloaded = await dapiDownloadMedia(sessionId, messageId, {

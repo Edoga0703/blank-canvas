@@ -688,7 +688,7 @@ function ConversasPage() {
   // PostgREST limita 1000 linhas por request. Buscamos em páginas para manter
   // TODO o histórico da conta disponível (sem cortar conversas antigas).
   const MSG_COLS =
-    "id,numero,contato_nome,direcao,autor,texto,created_at,user_id,midia_url,midia_tipo,midia_mime,midia_nome,reacao,editado_em,whatsapp_message_id,reply_to_id,status_envio,provider";
+    "id,numero,contato_nome,direcao,autor,texto,created_at,user_id,midia_url,midia_tipo,midia_mime,midia_nome,reacao,editado_em,whatsapp_message_id,reply_to_id,status_envio,provider,raw_payload";
 
   // Paginação por cursor (keyset): OFFSET profundo fazia o banco reler tudo a
   // cada página e era a principal causa da lentidão ao abrir Conversas.
@@ -2636,7 +2636,10 @@ function Bubble({ m, quoted, companyId, onReply, agentTraits, agentAvatarUrl }: 
             </div>
           )}
           {!media && m.midia_tipo && (
-            <ChatMedia messageId={m.id} tipo={m.midia_tipo} url={null} nome={m.midia_nome} outbound={isOut} onOpen={openMediaLightbox} />
+            <ChatMedia messageId={m.id} tipo={m.midia_tipo} url={m.midia_url || null} nome={m.midia_nome} outbound={isOut} onOpen={openMediaLightbox} />
+          )}
+          {!media && !m.midia_tipo && (m.texto === "Sticker" || (m as any).raw_payload?.data?.type === "sticker") && (
+            <ChatMedia messageId={m.id} tipo="sticker" url={(m as any).raw_payload?.data?.media_url || null} nome="Sticker" outbound={isOut} onOpen={openMediaLightbox} />
           )}
           {!media && !m.midia_tipo && !m.texto && m.whatsapp_message_id && (
             <ChatMedia messageId={m.id} tipo="unknown" url={null} nome={null} outbound={isOut} onOpen={openMediaLightbox} />
@@ -2656,7 +2659,7 @@ function Bubble({ m, quoted, companyId, onReply, agentTraits, agentAvatarUrl }: 
               </div>
             </div>
           ) : (
-            m.texto && !(media && (media.tipo === "audio" || (media.tipo === "document" && m.texto.startsWith("📎")))) && (
+            m.texto && !(m.midia_tipo === "sticker" || media?.tipo === "sticker" || (m.texto === "Sticker" && ((m as any).raw_payload?.data?.media_url || (m as any).raw_payload?.data?.type === "sticker"))) && !(media && (media.tipo === "audio" || (media.tipo === "document" && m.texto.startsWith("📎")))) && (
               parseLocationText(m.texto)
                 ? <ChatLocation loc={parseLocationText(m.texto)!} outbound={isOut} />
                 : (

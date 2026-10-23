@@ -16,53 +16,74 @@ type Props = {
 };
 
 /**
- * Renderiza imagem/vídeo/documento do chat.
- * URLs assinadas do storage expiram — quando a mídia falha, pedimos ao servidor
- * uma URL nova (ou o download da mídia no provedor) e trocamos a origem.
+ * Renderiza imagem/vídeo/áudio/sticker/documento do chat.
+ * Tenta carregar pelo endpoint de mídia direto ou pela URL fornecida.
+ * Se falhar, consulta o servidor para renovar o acesso ou baixar do provedor.
  */
 export function ChatMedia({ messageId, tipo, url, nome, outbound, onOpen }: Props) {
   const resolveFn = useServerFn(resolveChatMediaUrl);
-  const [src, setSrc] = useState<string | null>(url);
+  const directEndpoint = messageId ? `/api/public/chat-media?id=${messageId}` : null;
+  const initialUrl = url || directEndpoint;
+
+  const [src, setSrc] = useState<string | null>(initialUrl);
   const [resolvedTipo, setResolvedTipo] = useState(tipo);
-  const [state, setState] = useState<"ok" | "loading" | "failed">(url ? "ok" : "loading");
-  // Limite de tentativas automáticas: evita laço infinito quando a mídia
-  // reassinada continua sem renderizar (objeto ausente/criptografado).
+  const [loading, setLoading] = useState(!initialUrl);
+  const [failed, setFailed] = useState(false);
+
   const attempts = useRef(0);
   const MAX_AUTO = 2;
 
   async function recover(manual = false) {
-    if (state === "loading") return;
     if (!manual && attempts.current >= MAX_AUTO) {
-      setState("failed");
+      setFailed(true);
+      setLoading(false);
       return;
     }
     if (manual) attempts.current = 0;
     attempts.current += 1;
-    setState("loading");
+    setLoading(true);
+    setFailed(false);
     try {
       const res: any = await resolveFn({ data: { messageId } });
       if (res?.url) {
         setSrc(res.url);
         if (res.tipo) setResolvedTipo(res.tipo);
-        setState("ok");
+        setLoading(false);
+        setFailed(false);
         return;
       }
-    } catch {
-      /* ignora */
+    } catch (err) {
+      console.error("[ChatMedia] recover error:", err);
     }
-    setState("failed");
+    setLoading(false);
+    setFailed(true);
   }
 
   useEffect(() => {
     attempts.current = 0;
-    if (!url) void recover();
-  }, [url, messageId]);
+    if (url) {
+      setSrc(url);
+      setLoading(false);
+      setFailed(false);
+    } else if (directEndpoint) {
+      setSrc(directEndpoint);
+      setLoading(false);
+      setFailed(false);
+    } else {
+      void recover(true);
+    }
+  }, [url, messageId, directEndpoint]);
 
+  if (loading) {
+    return (
+      <div className="mb-1.5 flex items-center gap-2 rounded-md bg-black/10 px-2 py-1.5 text-[12px]">
+        <Loader2 className="size-4 animate-spin" /> Recuperando mídia…
+      </div>
+    );
+  }
 
-  if (state === "failed" || !src) {
-    // Sem tipo conhecido e sem mídia recuperável = evento que o WhatsApp não
-    // entrega de volta (figurinha antiga, reação, etc.).
-    const exhausted = tipo === "unknown" && attempts.current >= MAX_AUTO;
+  if (failed || !src) {
+    const exhausted = (tipo === "unknown" || tipo === "sticker") && attempts.current >= MAX_AUTO;
     return (
       <button
         type="button"
@@ -76,11 +97,17 @@ export function ChatMedia({ messageId, tipo, url, nome, outbound, onOpen }: Prop
     );
   }
 
-
-  if (state === "loading") {
+  if (resolvedTipo === "sticker") {
     return (
-      <div className="mb-1.5 flex items-center gap-2 rounded-md bg-black/10 px-2 py-1.5 text-[12px]">
-        <Loader2 className="size-4 animate-spin" /> Recuperando mídia…
+      <div className="mb-1.5 -mx-1 select-none flex items-center justify-start">
+        <img
+          src={src}
+          alt={nome ?? "Sticker"}
+          className="size-36 object-contain bg-transparent rounded-none drop-shadow-sm pointer-events-auto cursor-pointer hover:scale-105 transition-transform"
+          loading="lazy"
+          onClick={() => onOpen?.({ url: src!, tipo: "sticker", nome: nome ?? "Sticker" })}
+          onError={() => void recover()}
+        />
       </div>
     );
   }
@@ -101,7 +128,12 @@ export function ChatMedia({ messageId, tipo, url, nome, outbound, onOpen }: Prop
         onClick={() => onOpen?.({ url: src!, tipo: "image", nome })}
         className="block mb-1.5 -mx-1 -mt-1 cursor-zoom-in"
       >
-        <img src={src} alt={nome ?? "Imagem"} className="rounded-lg max-h-64 w-auto" onError={() => void recover()} />
+        <img
+          src={src}
+          alt={nome ?? "Imagem"}
+          className="rounded-lg max-h-64 w-auto"
+          onError={() => void recover()}
+        />
       </button>
     );
   }
