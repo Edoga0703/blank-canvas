@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-22T23:18:49.244114+00:00",
+  "generated_at": "2026-10-23T00:13:18.882066+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -2531,7 +2531,7 @@
     },
     {
       "path": "src/routes/app/agente-avancado.tsx",
-      "bytes": 48314
+      "bytes": 693
     },
     {
       "path": "src/routes/app/publicacoes.tsx",
@@ -2591,7 +2591,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 115703
+      "bytes": 148782
     },
     {
       "path": "src/routes/app/dashboard.tsx",
@@ -13637,99 +13637,7 @@
     },
     {
       "source": "src/routes/app/agente-avancado.tsx",
-      "target": "react"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@tanstack/react-start"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@/lib/ensure-session"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@/integrations/supabase/client"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@/components/ui/button"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@/components/ui/label"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@/components/ui/input"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@/components/ui/textarea"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@/components/ui/switch"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@/components/ui/slider"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@/components/ui/tabs"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@/components/ui/select"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "sonner"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "lucide-react"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@/config/brand"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@/lib/ai-prompt"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@/lib/evolution.functions"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@/lib/google.functions"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@/components/ui/initials-avatar"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@/hooks/use-plan-features"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@tanstack/react-router"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
       "target": "zod"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@/lib/department-menu.functions"
-    },
-    {
-      "source": "src/routes/app/agente-avancado.tsx",
-      "target": "@/hooks/use-capacidades"
     },
     {
       "source": "src/routes/app/publicacoes.tsx",
@@ -14694,6 +14602,22 @@
     {
       "source": "src/routes/app/agente.tsx",
       "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/app/agente.tsx",
+      "target": "zod"
+    },
+    {
+      "source": "src/routes/app/agente.tsx",
+      "target": "@/lib/google.functions"
+    },
+    {
+      "source": "src/routes/app/agente.tsx",
+      "target": "@/lib/department-menu.functions"
+    },
+    {
+      "source": "src/routes/app/agente.tsx",
+      "target": "lucide-react"
     },
     {
       "source": "src/routes/app/agente.tsx",
