@@ -15,6 +15,8 @@ import {
 import { getMessagingProvider } from "@/lib/messaging/provider-registry.server";
 
 export type WaProvider =
+  | "dapi"
+  | "dapi_official"
   | "lovable_whatsapp"
   | "meta_instagram"
   | "meta_messenger"
@@ -53,7 +55,9 @@ export async function getActiveInstance(companyId: string): Promise<WaInstance |
   const providerType = (inst as any).provider_type as string | null;
   const providerName = String((inst as any).provider || providerType || "evolution");
   let provider: WaProvider = "evolution";
-  if (providerName === "lovable_whatsapp") provider = "lovable_whatsapp";
+  if (providerName === "dapi" || providerType === "dapi") provider = "dapi";
+  else if (providerName === "dapi_official" || providerType === "dapi_official") provider = "dapi_official";
+  else if (providerName === "lovable_whatsapp") provider = "lovable_whatsapp";
   else if (providerName === "meta_instagram" || providerType === "meta_instagram") provider = "meta_instagram";
   else if (providerName === "meta_messenger" || providerType === "meta_messenger") provider = "meta_messenger";
   else if (providerName === "telegram" || providerType === "telegram") provider = "telegram";
@@ -177,7 +181,7 @@ export function assertSendableNumber(numero: string, provider?: WaProvider): str
   if (/[a-zA-Z]/.test(base)) {
     throw new Error(`Destinatário inválido (não é um número): ${raw}`);
   }
-  if (provider === "lovable_whatsapp") {
+  if (provider === "lovable_whatsapp" || provider === "dapi" || provider === "dapi_official") {
     const digits = base.replace(/\D/g, "");
     if (!/^[1-9]\d{7,14}$/.test(digits)) {
       throw new Error(`Número inválido para WhatsApp Business: ${raw}. Use DDI + número, somente dígitos.`);
@@ -203,6 +207,22 @@ export async function waSendText(
     await assertMetaWindowForInstance(inst, numero);
     const { metaSendText } = await import("./meta.server");
     return metaSendText(inst.instance_token, numero, texto);
+  }
+  if (inst.provider === "dapi" || inst.provider === "dapi_official") {
+    const { dapiSendText } = await import("./dapi.server");
+    return dapiSendText(inst.instance_name, numero, texto, options?.replyToExternalMessageId);
+  }
+  if (inst.provider === "dapi" || inst.provider === "dapi_official") {
+    const { dapiSendMedia } = await import("./dapi.server");
+    return dapiSendMedia(inst.instance_name, numero, media);
+  }
+  if (inst.provider === "dapi" || inst.provider === "dapi_official") {
+    const { dapiSendAudio } = await import("./dapi.server");
+    return dapiSendAudio(inst.instance_name, numero, audioBase64OrUrl);
+  }
+  if (inst.provider === "dapi" || inst.provider === "dapi_official") {
+    const { dapiSendTemplate } = await import("./dapi.server");
+    return dapiSendTemplate(inst.instance_name, numero, template);
   }
   if (inst.provider === "lovable_whatsapp") {
     const result = await getMessagingProvider("lovable_whatsapp").sendText({

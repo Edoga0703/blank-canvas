@@ -6870,6 +6870,8 @@ export type Database = {
         | "past_due"
         | "canceled"
       whatsapp_provider_type:
+        | "dapi"
+        | "dapi_official"
         | "lovable_whatsapp"
         | "meta_direct"
         | "evolution"
@@ -7034,6 +7036,8 @@ export const Constants = {
         "canceled",
       ],
       whatsapp_provider_type: [
+        "dapi",
+        "dapi_official",
         "lovable_whatsapp",
         "meta_direct",
         "evolution",

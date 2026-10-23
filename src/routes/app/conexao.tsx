@@ -50,6 +50,8 @@ type Instance = {
 };
 
 const PROVIDER_LABEL: Record<string, string> = {
+  dapi: "WhatsApp (D-API SaaS)",
+  dapi_official: "WhatsApp Oficial Meta (D-API)",
   lovable_whatsapp: "WhatsApp Business oficial",
   evolution: "WhatsApp Web",
   uazapi: "WhatsApp Premium",
@@ -138,10 +140,10 @@ function ConexoesPage() {
     } catch (e: any) { if (!silent) toast.error(e?.message || "Erro ao carregar conexões"); }
   }
 
-  async function doCreate(displayName: string, provider?: "evolution" | "uazapi") {
+  async function doCreate(displayName: string, provider?: "evolution" | "uazapi" | "dapi") {
     setCreating(true);
     try {
-      const r: any = await connect({ data: { instanceName: null, createNew: true, displayName, provider: provider ?? null } });
+      const r: any = await connect({ data: { instanceName: null, createNew: true, displayName, provider: provider ?? "dapi" } });
       if (r?.error) { toast.error(r.error); return; }
       const instanceName = r?.instanceName as string;
       if (instanceName) {
@@ -240,7 +242,7 @@ function ConexoesPage() {
   }
 
   const FREE_KEYS = ["instagram", "messenger", "telegram", "uazapi"];
-  const WA_KEYS = ["lovable_whatsapp", "evolution", "uazapi", "official"];
+  const WA_KEYS = ["dapi", "dapi_official", "lovable_whatsapp", "evolution", "uazapi", "official"];
   const waInstances = instances.filter((i) => WA_KEYS.includes((i.provider ?? "evolution") as string) || i.provider_type === "oficial_meta");
   const waUsed = waInstances.length;
   const waLimit = plan.limites.instancias;

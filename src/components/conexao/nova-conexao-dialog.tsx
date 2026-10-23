@@ -10,7 +10,7 @@ import { CheckCircle2, Loader2, QrCode, Sparkles, ArrowLeft, Lock, ExternalLink 
 import { supabase } from "@/integrations/supabase/client";
 import { listAddonsPublic, listMyAddons, type AddonProduct } from "@/lib/addons.functions";
 
-type ProviderKey = "evolution" | "uazapi" | "oficial_meta";
+type ProviderKey = "dapi" | "evolution" | "uazapi" | "oficial_meta";
 
 type Props = {
   open: boolean;
@@ -35,11 +35,11 @@ type ProviderCard = {
 
 const PROVIDERS: ProviderCard[] = [
   {
-    key: "uazapi",
+    key: "dapi",
     addonTipo: null,
     name: "WhatsApp QR Code",
     fallbackPrice: "Grátis",
-    desc: "Conexão via QR Code com infra dedicada e reconexão automática.",
+    desc: "Conexão via D-API SaaS unificada com IP dedicada, QR Code ou código de 8 dígitos.",
     bullets: ["Pareamento por QR Code", "Envio de mídia e áudio", "Reconexão automática"],
     icon: <QrCode className="size-6" />,
     badge: { label: "Recomendado", className: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30" },

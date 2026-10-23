@@ -1,4 +1,5 @@
 export const MESSAGING_PROVIDERS = [
+  "dapi",
   "lovable_whatsapp",
   "meta_direct",
   "evolution",

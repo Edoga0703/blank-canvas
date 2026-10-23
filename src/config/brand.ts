@@ -1,7 +1,7 @@
 // Identidade visual centralizada do produto.
 export const brand = {
   name: "Capiversa",
-  version: "1.1.8",
+  version: "1.1.9",
   tagline: "Atención, ventas e IA en un solo lugar",
   primary: "#2563EB",
   primaryOklch: "0.55 0.23 264",

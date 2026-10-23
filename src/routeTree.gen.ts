@@ -82,6 +82,7 @@ import { Route as WaCallbackRouteImport } from './routes/wa.callback'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as ApiPublicAiHealthRouteImport } from './routes/api/public/ai-health'
+import { Route as ApiPublicDapiWebhookRouteImport } from './routes/api/public/dapi-webhook'
 import { Route as ApiPublicFormSubmitRouteImport } from './routes/api/public/form-submit'
 import { Route as ApiPublicGoogleCallbackRouteImport } from './routes/api/public/google-callback'
 import { Route as ApiPublicGoogleMarketingCallbackRouteImport } from './routes/api/public/google-marketing-callback'
@@ -490,6 +491,11 @@ const ApiPublicAiHealthRoute = ApiPublicAiHealthRouteImport.update({
   path: '/api/public/ai-health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicDapiWebhookRoute = ApiPublicDapiWebhookRouteImport.update({
+  id: '/api/public/dapi-webhook',
+  path: '/api/public/dapi-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicFormSubmitRoute = ApiPublicFormSubmitRouteImport.update({
   id: '/api/public/form-submit',
   path: '/api/public/form-submit',
@@ -774,6 +780,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/ai-health': typeof ApiPublicAiHealthRoute
+  '/api/public/dapi-webhook': typeof ApiPublicDapiWebhookRoute
   '/api/public/form-submit': typeof ApiPublicFormSubmitRoute
   '/api/public/google-callback': typeof ApiPublicGoogleCallbackRoute
   '/api/public/google-marketing-callback': typeof ApiPublicGoogleMarketingCallbackRoute
@@ -885,6 +892,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/ai-health': typeof ApiPublicAiHealthRoute
+  '/api/public/dapi-webhook': typeof ApiPublicDapiWebhookRoute
   '/api/public/form-submit': typeof ApiPublicFormSubmitRoute
   '/api/public/google-callback': typeof ApiPublicGoogleCallbackRoute
   '/api/public/google-marketing-callback': typeof ApiPublicGoogleMarketingCallbackRoute
@@ -999,6 +1007,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/ai-health': typeof ApiPublicAiHealthRoute
+  '/api/public/dapi-webhook': typeof ApiPublicDapiWebhookRoute
   '/api/public/form-submit': typeof ApiPublicFormSubmitRoute
   '/api/public/google-callback': typeof ApiPublicGoogleCallbackRoute
   '/api/public/google-marketing-callback': typeof ApiPublicGoogleMarketingCallbackRoute
@@ -1114,6 +1123,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/ai-health'
+    | '/api/public/dapi-webhook'
     | '/api/public/form-submit'
     | '/api/public/google-callback'
     | '/api/public/google-marketing-callback'
@@ -1225,6 +1235,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/ai-health'
+    | '/api/public/dapi-webhook'
     | '/api/public/form-submit'
     | '/api/public/google-callback'
     | '/api/public/google-marketing-callback'
@@ -1338,6 +1349,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/ai-health'
+    | '/api/public/dapi-webhook'
     | '/api/public/form-submit'
     | '/api/public/google-callback'
     | '/api/public/google-marketing-callback'
@@ -1402,6 +1414,7 @@ export interface RootRouteChildren {
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicAiHealthRoute: typeof ApiPublicAiHealthRoute
+  ApiPublicDapiWebhookRoute: typeof ApiPublicDapiWebhookRoute
   ApiPublicFormSubmitRoute: typeof ApiPublicFormSubmitRoute
   ApiPublicGoogleCallbackRoute: typeof ApiPublicGoogleCallbackRoute
   ApiPublicGoogleMarketingCallbackRoute: typeof ApiPublicGoogleMarketingCallbackRoute
@@ -1953,6 +1966,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/dapi-webhook': {
+      id: '/api/public/dapi-webhook'
+      path: '/api/public/dapi-webhook'
+      fullPath: '/api/public/dapi-webhook'
+      preLoaderRoute: typeof ApiPublicDapiWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/form-submit': {
       id: '/api/public/form-submit'
       path: '/api/public/form-submit'
@@ -2378,6 +2398,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicAiHealthRoute: ApiPublicAiHealthRoute,
+  ApiPublicDapiWebhookRoute: ApiPublicDapiWebhookRoute,
   ApiPublicFormSubmitRoute: ApiPublicFormSubmitRoute,
   ApiPublicGoogleCallbackRoute: ApiPublicGoogleCallbackRoute,
   ApiPublicGoogleMarketingCallbackRoute: ApiPublicGoogleMarketingCallbackRoute,

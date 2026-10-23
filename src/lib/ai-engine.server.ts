@@ -572,15 +572,19 @@ export async function processAiResponse(
       try {
         const inicioIso = parsed.agendar.inicio || new Date().toISOString();
         const fimIso = parsed.agendar.fim || new Date(new Date(inicioIso).getTime() + 30 * 60_000).toISOString();
-        await supabaseAdmin.from("agendamento").insert({
+        await supabaseAdmin.from("mensagem_agendada").insert({
           company_id: companyId,
           card_id: card?.id ?? null,
+          numero: number,
+          nome_lead: card?.nome_contato ?? null,
           titulo: parsed.agendar.titulo || `Agendamento - ${number}`,
-          inicio: inicioIso,
-          fim: fimIso,
-          status: "pendente",
+          agendado_para: inicioIso,
+          fim_em: fimIso,
+          status: "agendado",
+          tipo: "compromisso",
+          origem: "ia",
         } as any);
-        console.log(`[ai-engine] Agendamento registrado para ${number} às ${inicioIso}`);
+        console.log(`[ai-engine] Agendamento registrado para ${number} às ${inicioIso} em mensagem_agendada`);
       } catch (agErr: any) {
         console.warn("[ai-engine] Falha ao registrar agendamento automático:", agErr?.message);
       }

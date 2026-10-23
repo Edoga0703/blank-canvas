@@ -14,13 +14,13 @@ export { resolveCompanyId };
 
 export const connectWhatsapp = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d?: { instanceName?: string | null; createNew?: boolean; displayName?: string | null; provider?: "evolution" | "uazapi" | null; phone?: string | null }) => {
+  .inputValidator((d?: { instanceName?: string | null; createNew?: boolean; displayName?: string | null; provider?: "dapi" | "dapi_official" | "evolution" | "uazapi" | null; phone?: string | null }) => {
     let phone = normalizePhone(d?.phone || "");
     return {
       instanceName: d?.instanceName?.trim() || null,
       createNew: !!d?.createNew,
       displayName: (d?.displayName || "").toString().trim().slice(0, 60) || null,
-      providerOverride: d?.provider === "uazapi" || d?.provider === "evolution" ? d.provider : null,
+      providerOverride: d?.provider || null,
       phone: phone.length >= 9 ? phone : null,
     };
   })
@@ -44,15 +44,81 @@ export const connectWhatsapp = createServerFn({ method: "POST" })
     // Uazapi é o único provedor de QR oferecido hoje. Só usamos Evolution quando
     // explicitamente pedido OU quando a empresa realmente já tem uma conexão legada
     // Evolution — nunca por causa de um wa_provider desatualizado no cadastro.
-    let provider: "evolution" | "uazapi" = data.providerOverride ?? "uazapi";
-    if (!data.providerOverride && (companyRow as any)?.wa_provider === "evolution") {
-      const { data: legacy } = await (supabase as any)
+    const chosen = (data.providerOverride || (companyRow as any)?.wa_provider || "dapi").toLowerCase();
+    const isLegacy = chosen === "evolution" || chosen === "uazapi";
+    const provider: string = isLegacy ? chosen : "dapi";
+
+    // FLUXO PRINCIPAL SAAS: D-API (WhatsApp QR Code / Pairing Code)
+    if (provider === "dapi" || provider === "dapi_official") {
+      const { supabaseAdmin: sbAdminTok } = await import("@/integrations/supabase/client.server");
+      const { dapiCreateSession, dapiGetQr, dapiGetPairingCode, dapiGetStatus } = await import("./dapi.server");
+
+      const existingQuery = (sbAdminTok as any)
         .from("whatsapp_instances")
-        .select("id")
+        .select("id, instance_name, status, numero, webhook_token")
         .eq("company_id", companyId)
-        .eq("provider", "evolution")
-        .limit(1);
-      if ((legacy ?? []).length > 0) provider = "evolution";
+        .in("provider", ["dapi", "dapi_official"]);
+
+      const { data: dRows } = await (data.instanceName
+        ? existingQuery.eq("instance_name", data.instanceName).limit(1)
+        : existingQuery.order("updated_at", { ascending: false }));
+
+      const existing = data.createNew ? null : (dRows?.[0] ?? null);
+      const instanceName = existing?.instance_name || `dapi_${companyId.replace(/-/g, "").slice(0, 8)}_${crypto.randomUUID().slice(0, 4)}`;
+      const webhookToken = existing?.webhook_token || crypto.randomUUID();
+      const publicUrl = process.env.PUBLIC_APP_URL || process.env.PUBLIC_BASE_URL || "https://project-blank-github.lovable.app";
+      const webhookUrl = `${publicUrl.replace(/\/+$/, "")}/api/public/dapi-webhook?t=${webhookToken}`;
+
+      let qrBase64: string | null = null;
+      let pairingCode: string | null = null;
+
+      // Cria ou reconecta sessão em D-API
+      try {
+        if (!existing || data.createNew) {
+          const createRes = await dapiCreateSession({
+            sessionId: instanceName,
+            type: "unofficial",
+            connectionMode: data.phone ? "pairing" : "qr",
+            webhookUrl,
+            phoneNumber: data.phone || undefined,
+          });
+          qrBase64 = createRes.qrcode || null;
+        }
+
+        if (data.phone) {
+          const pairRes = await dapiGetPairingCode(instanceName, data.phone);
+          pairingCode = pairRes.code || null;
+        } else if (!qrBase64) {
+          const qrRes = await dapiGetQr(instanceName);
+          qrBase64 = qrRes.qrcode || null;
+        }
+      } catch (dErr: any) {
+        console.warn("[dapi.connectWhatsapp] Erro na sessão D-API:", dErr?.message);
+      }
+
+      await (sbAdminTok as any).from("whatsapp_instances").upsert(
+        {
+          company_id: companyId,
+          user_id: userId,
+          instance_name: instanceName,
+          display_name: data.displayName || "WhatsApp D-API",
+          status: "connecting",
+          webhook_token: webhookToken,
+          provider: "dapi",
+          provider_type: "dapi",
+          last_state_at: new Date().toISOString(),
+        },
+        { onConflict: "instance_name" },
+      );
+
+      return {
+        instanceName,
+        qrBase64,
+        code: null,
+        pairingCode,
+        state: "connecting",
+        webhookUrl,
+      };
     }
 
 
@@ -238,6 +304,34 @@ export const checkWhatsappStatus = createServerFn({ method: "POST" })
       : query.order("updated_at", { ascending: false }));
     const row = sortInstances(rows ?? [])[0] ?? null;
     if (!row) return { status: "disconnected", state: null, numero: null, qrBase64: null, code: null };
+
+    // Verificação de status via D-API
+    if (row.provider === "dapi" || row.provider === "dapi_official" || String(row.instance_name || "").startsWith("dapi_")) {
+      const { dapiGetStatus, dapiGetQr } = await import("./dapi.server");
+      const dStatus = await dapiGetStatus(row.instance_name);
+      let currentQr = dStatus.qrcode || null;
+      if (dStatus.status === "connecting" && !currentQr) {
+        const qrRes = await dapiGetQr(row.instance_name);
+        currentQr = qrRes.qrcode || null;
+      }
+      if (dStatus.status === "connected" && row.status !== "connected") {
+        await (sbAdminTok as any)
+          .from("whatsapp_instances")
+          .update({
+            status: "connected",
+            numero: dStatus.numero || row.numero,
+            last_state_at: new Date().toISOString(),
+          })
+          .eq("instance_name", row.instance_name);
+      }
+      return {
+        status: dStatus.status || row.status || "disconnected",
+        state: dStatus.status,
+        numero: dStatus.numero || row.numero || null,
+        qrBase64: dStatus.status === "connecting" ? currentQr : null,
+        code: null,
+      };
+    }
 
     let state: string | null = null;
     let currentQr: string | null = null;
@@ -1160,4 +1254,44 @@ export const syncWhatsappHistory = createServerFn({ method: "POST" })
     }
 
     return { ok: true, synced: formatted.length };
+  });
+
+export const connectDapiOfficial = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { displayName?: string; wabaId: string; phoneNumberId: string; accessToken: string }) => d)
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const companyId = await resolveCompanyId(supabase, userId);
+    const { dapiCreateOfficialConnection } = await import("./dapi.server");
+    const { supabaseAdmin: sbAdminTok } = await import("@/integrations/supabase/client.server");
+
+    const instanceName = `dapi_meta_${companyId.replace(/-/g, "").slice(0, 8)}_${crypto.randomUUID().slice(0, 4)}`;
+    const webhookToken = crypto.randomUUID();
+    const publicUrl = process.env.PUBLIC_APP_URL || process.env.PUBLIC_BASE_URL || "https://project-blank-github.lovable.app";
+    const webhookUrl = `${publicUrl.replace(/\/+$/, "")}/api/public/dapi-webhook?t=${webhookToken}`;
+
+    await dapiCreateOfficialConnection({
+      sessionId: instanceName,
+      wabaId: data.wabaId,
+      phoneNumberId: data.phoneNumberId,
+      accessToken: data.accessToken,
+      webhookUrl,
+    });
+
+    await (sbAdminTok as any).from("whatsapp_instances").insert({
+      company_id: companyId,
+      user_id: userId,
+      instance_name: instanceName,
+      display_name: data.displayName || "WhatsApp Oficial Meta",
+      status: "connected",
+      webhook_token: webhookToken,
+      provider: "dapi_official",
+      provider_type: "dapi_official",
+      waba_id: data.wabaId,
+      phone_number_id: data.phoneNumberId,
+      instance_token: data.accessToken,
+      last_state_at: new Date().toISOString(),
+    });
+
+    return { success: true, instanceName };
   });
