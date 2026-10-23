@@ -43,7 +43,7 @@ export const SUPPORT_KB: KbArtigo[] = [
     conteudo: `Para conectar seu número:
 
 1. Abra o módulo **Conexões**.
-2. Clique em **Nova conexão** e escolha o tipo (Padrão, Uazapi ou Meta Oficial).
+2. Clique em **Nova conexão** e escolha o tipo (D-API QR Code ou Meta Oficial).
 3. Um **QR Code** aparece na tela.
 4. No celular: WhatsApp → Configurações → **Aparelhos conectados** → Conectar aparelho.
 5. Aponte a câmera para o QR Code.
@@ -75,15 +75,14 @@ Se o status voltar a cair em poucos minutos, abra um chamado que a gente investi
   {
     id: "tipos-conexao",
     categoria: "Conexão",
-    titulo: "Diferença entre Padrão, Uazapi e Meta Oficial",
-    palavrasChave: ["uazapi", "meta", "oficial", "api", "tipos", "diferença", "diferenca", "upgrade"],
+    titulo: "Diferença entre WhatsApp QR Code e WhatsApp Oficial Meta",
+    palavrasChave: ["dapi", "meta", "oficial", "api", "tipos", "diferença", "diferenca", "upgrade"],
     rotaRelacionada: "/app/conexao",
-    rotaLabel: "Ver planos de conexão",
-    conteudo: `- **Evolution (Padrão)** — incluso no plano. Conexão via QR Code, ideal para começar.
-- **Uazapi (R$ 19,90/mês)** — conexão mais estável, menos quedas e melhor performance em volume.
-- **Meta Oficial (R$ 89,90/mês)** — API oficial do WhatsApp, sem risco de bloqueio, com selo verde e suporte a templates aprovados.
+    rotaLabel: "Ver conexões",
+    conteudo: `- **WhatsApp Não Oficial (D-API)** — Conexão via QR Code ou código de 8 dígitos, ideal para conectar seu aparelho físico sem burocracia ou aprovações.
+- **WhatsApp API Oficial Meta (Cloud API)** — Conexão corporativa direta via D-API com a Meta, sem risco de bloqueio, com selo de verificação da empresa e suporte a templates HSM aprovados.
 
-Você pode fazer o upgrade a qualquer momento em Conexões.`,
+Você pode conectar ambas opções diretamente no módulo Conexões.`,
   },
   {
     id: "mais-de-um-numero",

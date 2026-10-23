@@ -19,14 +19,24 @@ export type StoredMediaObject = {
   sha256: string;
 };
 
+const R2_DEFAULTS: Record<string, string> = {
+  R2_ACCOUNT_ID: "3bc2408cba1eadcd78d9ccdb0a8c987d",
+  R2_ACCESS_KEY_ID: "a0048ab1cf7078594e2057b9b31131de",
+  R2_SECRET_ACCESS_KEY: "328e9326f2e6adad6740f7ea6d1cf64ded1d4727e95408ad5fb4451ff5d29a3c",
+  R2_BUCKET: "capiversa-media",
+  R2_MAX_FILE_BYTES: "52428800",
+  R2_SIGNED_URL_TTL_SECONDS: "900",
+};
+
 function required(name: string): string {
-  const value = process.env[name]?.trim();
+  const value = process.env[name]?.trim() || R2_DEFAULTS[name];
   if (!value) throw new Error(`Falta la variable de servidor ${name} para usar Cloudflare R2.`);
   return value;
 }
 
 function positiveInteger(name: string, fallback: number): number {
-  const parsed = Number(process.env[name] || fallback);
+  const envVal = process.env[name]?.trim() || R2_DEFAULTS[name];
+  const parsed = Number(envVal || fallback);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
@@ -36,7 +46,7 @@ function getConfig(): R2Config {
     accessKeyId: required("R2_ACCESS_KEY_ID"),
     secretAccessKey: required("R2_SECRET_ACCESS_KEY"),
     bucket: required("R2_BUCKET"),
-    publicBaseUrl: process.env["R2_PUBLIC_BASE_URL"]?.trim().replace(/\/$/, "") || null,
+    publicBaseUrl: (process.env["R2_PUBLIC_BASE_URL"]?.trim() || "").replace(/\/$/, "") || null,
     maxFileBytes: positiveInteger("R2_MAX_FILE_BYTES", 50 * 1024 * 1024),
     signedUrlTtlSeconds: Math.min(604800, positiveInteger("R2_SIGNED_URL_TTL_SECONDS", 900)),
   };
@@ -44,7 +54,7 @@ function getConfig(): R2Config {
 
 export function isR2Configured(): boolean {
   return ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET"].every((name) =>
-    Boolean(process.env[name]?.trim()),
+    Boolean(process.env[name]?.trim() || R2_DEFAULTS[name]),
   );
 }
 

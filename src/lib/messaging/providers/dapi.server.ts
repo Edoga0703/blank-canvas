@@ -30,13 +30,40 @@ function parseParticipant(participant: any): { jid: string; phone: string; name:
     return { jid, phone, name: null };
   }
   if (typeof participant === "object") {
-    const jid = String(participant.jid || participant.id || participant.phone || participant.number || "").trim();
+    const jid = String(participant.jid || participant.id || participant.phone || participant.number || participant.remoteJid || "").trim();
     const rawName = participant.name || participant.pushName || participant.notify || null;
     const name = rawName ? String(rawName).trim() : null;
     const phone = (participant.phone || participant.number || jid.split("@")[0] || "").replace(/\D/g, "");
     return { jid, phone, name };
   }
   return { jid: "", phone: "", name: null };
+}
+
+function extractText(data: any): string {
+  if (!data) return "";
+  if (typeof data.message === "string") return data.message.trim();
+  if (typeof data.text === "string") return data.text.trim();
+  if (typeof data.body === "string") return data.body.trim();
+  if (typeof data.caption === "string") return data.caption.trim();
+  if (typeof data.media_data?.caption === "string") return data.media_data.caption.trim();
+
+  if (data.message && typeof data.message === "object") {
+    const m = data.message;
+    if (typeof m.conversation === "string") return m.conversation.trim();
+    if (typeof m.extendedTextMessage?.text === "string") return m.extendedTextMessage.text.trim();
+    if (typeof m.text === "string") return m.text.trim();
+    if (typeof m.imageMessage?.caption === "string") return m.imageMessage.caption.trim();
+    if (typeof m.videoMessage?.caption === "string") return m.videoMessage.caption.trim();
+    if (typeof m.documentMessage?.caption === "string") return m.documentMessage.caption.trim();
+  }
+
+  if (data.type === "list_response") {
+    return String(data.data?.selected_row_id || data.data?.title || "").trim();
+  }
+  if (data.type === "button_response" || data.type === "interactive") {
+    return String(data.data?.selected_button_id || data.data?.selected_row_id || data.data?.title || "").trim();
+  }
+  return "";
 }
 
 export const dapiProvider: MessagingProvider = {
@@ -119,9 +146,9 @@ export const dapiProvider: MessagingProvider = {
     }
 
     // Eventos de mensajes entrantes y salientes
-    if (eventName === "messages.received" || eventName === "messages.sent") {
-      const fromMe = Boolean(data.fromMe);
-      const senderPart = parseParticipant(data.from || data.sender);
+    if (eventName === "messages.received" || eventName === "messages.upsert" || eventName === "messages.sent") {
+      const fromMe = Boolean(data.fromMe ?? data.key?.fromMe);
+      const senderPart = parseParticipant(data.from || data.sender || data.key?.remoteJid || data.remoteJid);
       const recipientPart = parseParticipant(data.to || data.recipient_id || data.recipient);
 
       const isGroup = Boolean(
@@ -161,15 +188,7 @@ export const dapiProvider: MessagingProvider = {
         });
       }
 
-      const text = String(
-        data.message ||
-        data.text ||
-        data.body ||
-        data.media_data?.caption ||
-        data.caption ||
-        (dataType === "list_response" ? data.data?.selected_row_id || "" : "") ||
-        ""
-      ).trim();
+      const text = extractText(data);
 
       return [
         {

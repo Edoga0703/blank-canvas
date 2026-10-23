@@ -260,11 +260,30 @@ export async function dapiSetWebhookConfig(
   webhookUrl: string,
 ): Promise<{ success: boolean; raw?: any }> {
   try {
-    const res = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/webhook`, {
+    // 1. Endpoint base de webhook
+    const resBase = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/webhook`, {
       method: "POST",
       body: JSON.stringify({ webhookUrl }),
-    });
-    return { success: res?.success ?? true, raw: res };
+    }).catch(() => null);
+
+    // 2. Endpoint per_event verificado de D-API
+    const resConfig = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/webhook-config`, {
+      method: "POST",
+      body: JSON.stringify({
+        enabled: true,
+        type: "per_event",
+        events: {
+          "messages.received": { enabled: true, webhookUrl },
+          "messages.sent": { enabled: true, webhookUrl },
+          "message.delivered": { enabled: true, webhookUrl },
+          "message.read": { enabled: true, webhookUrl },
+          "connection.status": { enabled: true, webhookUrl },
+        },
+      }),
+    }).catch(() => null);
+
+    const ok = Boolean(resConfig?.success ?? resBase?.success ?? true);
+    return { success: ok, raw: { base: resBase, config: resConfig } };
   } catch (err: any) {
     console.warn(`[dapi.server] Advertencia al configurar webhook para sesión ${sessionId}:`, err?.message);
     return { success: false, raw: err?.message };

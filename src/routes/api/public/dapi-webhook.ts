@@ -16,7 +16,7 @@ function parseDapiParticipant(participant: any): { jid: string; phone: string; n
     return { jid, phone, name: null };
   }
   if (typeof participant === "object") {
-    const jid = String(participant.jid || participant.id || participant.phone || participant.number || "").trim();
+    const jid = String(participant.jid || participant.id || participant.phone || participant.number || participant.remoteJid || "").trim();
     const rawName = participant.name || participant.pushName || participant.notify || null;
     const name = rawName ? String(rawName).trim() : null;
     const phone = (participant.phone || participant.number || jid.split("@")[0] || "").replace(/\D/g, "");
@@ -87,6 +87,33 @@ async function isAutomatedOrExistingEcho(params: {
   return Boolean(recentAiMsg || activeAiProc);
 }
 
+function extractDapiText(data: any): string {
+  if (!data) return "";
+  if (typeof data.message === "string") return data.message.trim();
+  if (typeof data.text === "string") return data.text.trim();
+  if (typeof data.body === "string") return data.body.trim();
+  if (typeof data.caption === "string") return data.caption.trim();
+  if (typeof data.media_data?.caption === "string") return data.media_data.caption.trim();
+
+  if (data.message && typeof data.message === "object") {
+    const m = data.message;
+    if (typeof m.conversation === "string") return m.conversation.trim();
+    if (typeof m.extendedTextMessage?.text === "string") return m.extendedTextMessage.text.trim();
+    if (typeof m.text === "string") return m.text.trim();
+    if (typeof m.imageMessage?.caption === "string") return m.imageMessage.caption.trim();
+    if (typeof m.videoMessage?.caption === "string") return m.videoMessage.caption.trim();
+    if (typeof m.documentMessage?.caption === "string") return m.documentMessage.caption.trim();
+  }
+
+  if (data.type === "list_response") {
+    return String(data.data?.selected_row_id || data.data?.title || "").trim();
+  }
+  if (data.type === "button_response" || data.type === "interactive") {
+    return String(data.data?.selected_button_id || data.data?.selected_row_id || data.data?.title || "").trim();
+  }
+  return "";
+}
+
 export const Route = createFileRoute("/api/public/dapi-webhook")({
   server: {
     handlers: {
@@ -103,7 +130,7 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
             return new Response("Invalid JSON payload", { status: 400 });
           }
 
-          const sessionId = String(body.sessionId || body.session || "").trim();
+          const sessionId = String(body.sessionId || body.session || body.instance || body.instanceId || "").trim();
           if (!sessionId) {
             return new Response("Missing sessionId in webhook body", { status: 400 });
           }
@@ -202,9 +229,9 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
           }
 
           // 3. Manejo de mensajes (messages.received, messages.sent)
-          if (eventName === "messages.received" || eventName === "messages.sent") {
-            const fromMe = Boolean(data.fromMe) || eventName === "messages.sent";
-            const senderPart = parseDapiParticipant(data.from || data.sender);
+          if (eventName === "messages.received" || eventName === "messages.upsert" || eventName === "messages.sent") {
+            const fromMe = Boolean(data.fromMe ?? data.key?.fromMe) || eventName === "messages.sent";
+            const senderPart = parseDapiParticipant(data.from || data.sender || data.key?.remoteJid || data.remoteJid);
             const recipientPart = parseDapiParticipant(data.to || data.recipient_id || data.recipient);
 
             const isGroup = Boolean(
@@ -222,7 +249,7 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
               });
             }
 
-            const messageId = String(data.id || data.message_id || body.traceId || `dapi_${Date.now()}`);
+            const messageId = String(data.id || data.message_id || data.key?.id || body.traceId || `dapi_${Date.now()}`);
             const activeParticipant = fromMe ? recipientPart : senderPart;
             const phone = activeParticipant.phone;
 
@@ -316,18 +343,7 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
             const dataType = String(data.type || "text").toLowerCase();
             let mediaUrl: string | null = data.media_url || null;
             let mimeType: string | null = data.media_data?.mimetype || data.mimetype || null;
-            let text = String(
-              data.message ||
-              data.text ||
-              data.body ||
-              data.media_data?.caption ||
-              data.caption ||
-              (dataType === "list_response" ? data.data?.selected_row_id || data.data?.title || "" : "") ||
-              (dataType === "button_response" || dataType === "interactive"
-                ? data.data?.selected_button_id || data.data?.selected_row_id || data.data?.title || ""
-                : "") ||
-              ""
-            ).trim();
+            let text = extractDapiText(data);
 
             if (["image", "audio", "video", "document"].includes(dataType)) {
               // Si D-API no envió URL directa, descargamos el binario base64 pasando direct_path y media_key
