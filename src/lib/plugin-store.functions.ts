@@ -74,7 +74,7 @@ function diasRestantes(iso: string | null): number | null {
 
 // Plugins que continuam sempre disponíveis (nunca podem ser bloqueados),
 // para garantir zero impacto em clientes que já operam com esses canais.
-const SEMPRE_DISPONIVEIS = new Set(["whatsapp-evolution", "whatsapp-uazapi"]);
+const SEMPRE_DISPONIVEIS = new Set<string>([]);
 
 export const listStorePlugins = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -93,7 +93,7 @@ export const listStorePlugins = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
 
     const byPlugin = new Map<string, any>((installed ?? []).map((r: any) => [r.plugin_id, r]));
-    return (plugins ?? []).map((p: any) => {
+    return (plugins ?? []).filter((p: any) => !["whatsapp-evolution", "whatsapp-uazapi"].includes(p.slug)).map((p: any) => {
       const cp = byPlugin.get(p.id);
       const forcado = SEMPRE_DISPONIVEIS.has(p.slug);
 

@@ -46,13 +46,12 @@ async function handle(request: Request) {
       const numero = String(body.numero || "").replace(/\D/g, "");
       const texto = String(body.texto || "");
       if (!numero || !texto) return new Response(JSON.stringify({ error: "numero e texto obrigatórios" }), { status: 400 });
-      const { data: inst } = await (supabaseAdmin as any).from("whatsapp_instances")
-        .select("instance_name, status").eq("company_id", companyId).maybeSingle();
-      if (!inst || inst.status !== "open") return new Response(JSON.stringify({ error: "WhatsApp não conectado" }), { status: 400 });
+      const { getActiveInstance, waSendText } = await import("@/lib/wa-dispatch.server");
+      const inst = await getActiveInstance(companyId);
+      if (!inst) return new Response(JSON.stringify({ error: "WhatsApp não conectado" }), { status: 400 });
       if (!userId) return new Response(JSON.stringify({ error: "Token sem owner; recrie o token." }), { status: 400 });
       try {
-        const { evoSendText } = await import("@/lib/evolution.server");
-        await evoSendText(inst.instance_name, numero, texto);
+        await waSendText(inst, numero, texto);
         await (supabaseAdmin as any).from("mensagens").insert({
           company_id: companyId, user_id: userId, numero, direcao: "saida", autor: "automacao", texto,
         });

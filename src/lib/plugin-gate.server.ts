@@ -5,7 +5,7 @@
  */
 
 // Capacidades que nunca podem ser bloqueadas (canais/módulos essenciais).
-const SEMPRE_LIBERADAS = new Set<string>(["whatsapp-evolution", "whatsapp-uazapi"]);
+const SEMPRE_LIBERADAS = new Set<string>([]);
 
 function assinaturaValida(cp: any, gratuito: boolean): boolean {
   if (gratuito) return true;

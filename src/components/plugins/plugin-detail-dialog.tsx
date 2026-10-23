@@ -300,7 +300,7 @@ export function PluginDetailDialog({
                     </Button>
                   )}
                 </div>
-              ) : plugin.status === "em_breve" || plugin.slug === "instagram" || plugin.slug === "messenger" ? (
+              ) : plugin.status === "em_breve" ? (
                 <Button 
                   className="w-full h-11 text-base font-semibold rounded-xl bg-muted text-muted-foreground cursor-not-allowed" 
                   disabled

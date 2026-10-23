@@ -22,7 +22,7 @@ export const Route = createFileRoute("/master/diagnostico")({
   component: DiagnosticoPage,
 });
 
-type Key = "uazapi";
+type Key = "dapi";
 type Sample = { t: number; ok: boolean; latencyMs: number };
 
 const HISTORY_KEY = "master_provider_history";
@@ -117,7 +117,7 @@ function DiagnosticoPage() {
 
   async function runAll() {
     setLoading("all");
-    await test("uazapi");
+    await test("dapi");
     setLoading(null);
   }
 
@@ -164,7 +164,7 @@ function DiagnosticoPage() {
       )}
 
       {uaz ? (
-        <StatusStrip p={uaz} samples={samples} result={results.uazapi} auto={auto} onSaved={() => void refresh()} />
+        <StatusStrip p={uaz} samples={samples} result={results.dapi} auto={auto} onSaved={() => void refresh()} />
       ) : (
         <Card className="rounded-2xl p-6 text-sm text-muted-foreground">Consultando a API…</Card>
       )}

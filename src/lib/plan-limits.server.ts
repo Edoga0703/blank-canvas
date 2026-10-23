@@ -89,10 +89,7 @@ export async function getCompanyUsage(companyId: string): Promise<CompanyUsage> 
       .from("whatsapp_instances")
       .select("instance_name", { count: "exact", head: true })
       .eq("company_id", companyId)
-      .not("provider", "in", '("meta_instagram","meta_messenger","telegram")')
-      // Uma tentativa Uazapi que falhou antes de devolver/persistir o token não
-      // representa uma conexão e não pode consumir o limite do plano.
-      .or("provider.neq.uazapi,instance_token.not.is.null"),
+      .in("provider", ["dapi", "dapi_official"]),
     supabaseAdmin.from("company_user").select("id", { count: "exact", head: true }).eq("company_id", companyId).eq("ativo", true),
     supabaseAdmin.from("crm_cards").select("id", { count: "exact", head: true }).eq("company_id", companyId),
     supabaseAdmin

@@ -92,7 +92,7 @@ function TemplatesPage() {
   async function handleSync() {
     try {
       const r: any = await syncFn({ data: { instanceId: instanceId === "all" ? undefined : instanceId } });
-      if (r.ok) toast.success(`${r.imported} templates sincronizados`);
+      if (r.ok) { toast.success(`${r.imported} templates sincronizados`); void reload(); }
       else toast.info(r.reason ?? "Sincronização indisponível");
     } catch (e: any) { toast.error(e?.message ?? "Erro"); }
   }

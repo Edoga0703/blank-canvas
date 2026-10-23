@@ -58,18 +58,16 @@ export async function storeLeadPhoto(
   }
 }
 
-/** Busca a foto na uazapi e persiste, atualizando o card. */
+/** Persiste foto remota se fornecida e atualiza o card do lead. */
 export async function syncLeadPhoto(
   admin: any,
   companyId: string,
   cardId: string,
   numero: string,
-  instanceToken: string,
+  remotePhotoUrl?: string | null,
 ): Promise<string | null> {
-  const { uazFetchProfilePic } = await import("@/lib/uazapi.server");
-  const remote = await uazFetchProfilePic(instanceToken, numero);
-  if (!remote) return null;
-  const url = await storeLeadPhoto(admin, companyId, numero, remote);
+  if (!remotePhotoUrl || !remotePhotoUrl.startsWith("http")) return null;
+  const url = await storeLeadPhoto(admin, companyId, numero, remotePhotoUrl);
   if (!url) return null;
   await admin.from("crm_cards")
     .update({ foto_url: url, foto_atualizada_em: new Date().toISOString() })

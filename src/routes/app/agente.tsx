@@ -577,7 +577,7 @@ function AgentePage() {
       const targetAgentId = activeAgentId || (res as any)?.id;
       if (!activeAgentId && (res as any)?.id) setActiveAgentId((res as any).id);
 
-      if (targetAgentId && menuSetoresAtivo) {
+      if (targetAgentId) {
         try {
           await saveMenu({ data: {
             agent_config_id: targetAgentId,
@@ -2007,7 +2007,7 @@ function AgentePage() {
                             </div>
                             <div>
                               <h4 className="text-sm font-bold">WhatsApp</h4>
-                              <p className="text-[10px] text-muted-foreground">Uazapi, Evolution, WaBlast, Lovable</p>
+                              <p className="text-[10px] text-muted-foreground">D-API QR Code & API Oficial Meta</p>
                             </div>
                           </div>
                           <Switch checked={channelStatus.whatsapp} onCheckedChange={(val) => setChannelStatus(prev => ({ ...prev, whatsapp: val }))} />
@@ -2081,6 +2081,7 @@ function AgentePage() {
                           <SelectContent>
                             {aiProvider === "gemini" && (
                               <>
+                                <SelectItem value="google/gemini-2.5-flash">Gemini 2.5 Flash (Raciocínio + Velocidade — Recomendado)</SelectItem>
                                 <SelectItem value="google/gemini-2.0-flash-exp">Gemini 2.0 Flash (Ultrarrápido — Padrão)</SelectItem>
                                 <SelectItem value="google/gemini-1.5-flash">Gemini 1.5 Flash (Equilibrado)</SelectItem>
                                 <SelectItem value="google/gemini-1.5-pro">Gemini 1.5 Pro (Raciocínio Profundo)</SelectItem>

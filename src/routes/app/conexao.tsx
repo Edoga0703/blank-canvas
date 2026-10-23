@@ -17,7 +17,7 @@ import { InstagramGlyph, MessengerGlyph, WhatsAppGlyph, TelegramGlyph } from "@/
 import { brand } from "@/config/brand";
 import { betaConfig } from "@/config/beta";
 import {
-  connectWhatsapp, checkWhatsappStatus, disconnectWhatsapp, deleteWhatsapp,
+  connectWhatsapp, connectDapiOfficial, checkWhatsappStatus, disconnectWhatsapp, deleteWhatsapp,
   reconfigureWebhook, listWhatsappInstances,
   setWhatsappPaused,
 } from "@/lib/evolution.functions";
@@ -29,39 +29,39 @@ import { MetaOAuthHandler } from "@/components/conexao/meta-oauth-handler";
 import { listStorePlugins } from "@/lib/plugin-store.functions";
 import { TelegramConnectDialog } from "@/components/conexao/telegram-connect-dialog";
 import { MetaConnectDialog } from "@/components/conexao/meta-connect-dialog";
-import { registerLovableWhatsappConnection } from "@/lib/messaging/lovable-connection.functions";
-
 
 export const Route = createFileRoute("/app/conexao")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: typeof search?.tab === "string" ? search.tab : undefined,
+  }),
   head: () => ({ meta: [{ title: `${brand.name} — Conexões` }] }),
   component: ConexoesPage,
 });
 
-type Instance = { 
-  instance_name: string; 
-  display_name?: string | null; 
-  status: string; 
-  numero: string | null; 
-  updated_at?: string; 
-  paused?: boolean; 
-  provider?: string | null; 
+type Instance = {
+  instance_name: string;
+  display_name?: string | null;
+  status: string;
+  numero: string | null;
+  updated_at?: string;
+  paused?: boolean;
+  provider?: string | null;
   provider_type?: string | null;
   canal?: string | null;
 };
 
 const PROVIDER_LABEL: Record<string, string> = {
-  dapi: "WhatsApp (D-API SaaS)",
+  dapi: "WhatsApp (D-API)",
   dapi_official: "WhatsApp Oficial Meta (D-API)",
-  lovable_whatsapp: "WhatsApp Business oficial",
-  evolution: "WhatsApp Web",
-  uazapi: "WhatsApp Premium",
-  official: "WhatsApp Oficial",
-  meta: "Meta (FB/IG)",
+  official: "WhatsApp Oficial Meta (D-API)",
+  meta_instagram: "Instagram Direct",
+  meta_messenger: "Facebook Messenger",
   telegram: "Telegram",
 };
 
 function ConexoesPage() {
   const connect = useServerFn(connectWhatsapp);
+  const connectOfficial = useServerFn(connectDapiOfficial);
   const check = useServerFn(checkWhatsappStatus);
   const disconnect = useServerFn(disconnectWhatsapp);
   const removeInstance = useServerFn(deleteWhatsapp);
@@ -70,8 +70,6 @@ function ConexoesPage() {
   const [metaDialog, setMetaDialog] = useState<"facebook" | "instagram" | null>(null);
   const setPaused = useServerFn(setWhatsappPaused);
   const listInstances = useServerFn(listWhatsappInstances);
-  const registerLovable = useServerFn(registerLovableWhatsappConnection);
-  
 
   const plan = usePlanFeatures();
   const listPlugins = useServerFn(listStorePlugins);
@@ -83,21 +81,26 @@ function ConexoesPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [newConnOpen, setNewConnOpen] = useState(false);
-  const [initialProvider, setInitialProvider] = useState<any>(null);
+  const [initialProvider, setInitialProvider] = useState<"dapi" | "oficial_meta" | null>(null);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "connected" | "connecting" | "disconnected" | "paused">("all");
   const [qrDialog, setQrDialog] = useState<{ instanceName: string; qr: string | null } | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const routeSearch = Route.useSearch();
 
   useEffect(() => {
     void refresh();
     void loadPlugins();
+    if (routeSearch?.tab === "instagram") setMetaDialog("instagram");
+    else if (routeSearch?.tab === "facebook" || routeSearch?.tab === "messenger") setMetaDialog("facebook");
+    else if (routeSearch?.tab === "telegram") setTelegramOpen(true);
+    else if (routeSearch?.tab === "whatsapp") { setInitialProvider(null); setNewConnOpen(true); }
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, []);
+  }, [routeSearch?.tab]);
 
   useEffect(() => {
     const anyPending = instances.some(
-      (i) => i.status !== "connected" && i.provider !== "lovable_whatsapp",
+      (i) => i.status !== "connected" && i.provider === "dapi",
     );
     if (anyPending) {
       if (!pollRef.current) pollRef.current = setInterval(() => { void refresh(true); }, 5000);
@@ -121,12 +124,19 @@ function ConexoesPage() {
         return {
           ...i,
           status,
-          canal: i.provider === "meta_instagram" ? "instagram" : i.provider === "meta_messenger" ? "messenger" : i.provider === "telegram" ? "telegram" : null
+          canal:
+            i.provider === "meta_instagram"
+              ? "instagram"
+              : i.provider === "meta_messenger"
+                ? "messenger"
+                : i.provider === "telegram"
+                  ? "telegram"
+                  : "whatsapp",
         };
       });
       setInstances(list);
       for (const inst of list) {
-        if (inst.provider === "lovable_whatsapp") continue;
+        if (inst.provider !== "dapi") continue;
         if (inst.status !== "connected") {
           try {
             const r: any = await check({ data: { instanceName: inst.instance_name } });
@@ -140,19 +150,17 @@ function ConexoesPage() {
     } catch (e: any) { if (!silent) toast.error(e?.message || "Erro ao carregar conexões"); }
   }
 
-  async function doCreate(displayName: string, provider?: "evolution" | "uazapi" | "dapi") {
+  async function doCreate(displayName: string) {
     setCreating(true);
     try {
-      const r: any = await connect({ data: { instanceName: null, createNew: true, displayName, provider: provider ?? "dapi" } });
+      const r: any = await connect({ data: { instanceName: null, createNew: true, displayName, provider: "dapi" } });
       if (r?.error) { toast.error(r.error); return; }
       const instanceName = r?.instanceName as string;
       if (instanceName) {
         if (r?.qrBase64) setQrByInstance((prev) => ({ ...prev, [instanceName]: r.qrBase64 }));
-        // Batched: fecha o popup de "Nova Conexão" e abre o de QR no mesmo render.
         setQrDialog({ instanceName, qr: r?.qrBase64 ?? null });
         setNewConnOpen(false);
       }
-      // refresh em background para não atrasar a abertura do QR
       void plan.refresh();
       void refresh(true);
     } catch (e: any) { toast.error(e?.message || "Falha ao criar conexão"); }
@@ -160,9 +168,13 @@ function ConexoesPage() {
   }
 
   async function doReconnect(inst: Instance) {
+    if (inst.provider === "dapi_official" || inst.provider_type === "dapi_official") {
+      await doReconfWebhook(inst);
+      return;
+    }
     setBusy(inst.instance_name);
     try {
-      const r: any = await connect({ data: { instanceName: inst.instance_name, createNew: false } });
+      const r: any = await connect({ data: { instanceName: inst.instance_name, createNew: false, provider: "dapi" } });
       if (r?.qrBase64) setQrByInstance((prev) => ({ ...prev, [inst.instance_name]: r.qrBase64 }));
       setQrDialog({ instanceName: inst.instance_name, qr: r?.qrBase64 ?? null });
       await refresh(true);
@@ -209,60 +221,28 @@ function ConexoesPage() {
     finally { setBusy(null); }
   }
 
-
   async function doReconfWebhook(inst: Instance) {
     setBusy(inst.instance_name);
     try {
       await reconfWebhook({ data: { instanceName: inst.instance_name } as any });
-      toast.success("Webhook reconfigurado.");
-    } catch (e: any) { toast.error(e?.message || "Falha ao reconfigurar webhook"); }
+      toast.success("Webhook D-API sincronizado.");
+    } catch (e: any) { toast.error(e?.message || "Falha ao sincronizar webhook"); }
     finally { setBusy(null); }
   }
 
-
-
-
-  // Nome exibido = nome do plugin instalado (cadastrado na Loja de Plugins)
   function pluginName(slug: string, fallback: string) {
     return plugins.find((p) => p.slug === slug)?.nome || fallback;
   }
-  const PROVIDER_SLUG: Record<string, string> = {
-    lovable_whatsapp: "lovable-whatsapp",
-    evolution: "whatsapp-evolution",
-    uazapi: "whatsapp-uazapi",
-    telegram: "telegram",
-    meta_instagram: "instagram",
-    meta_messenger: "messenger",
-    official: "meta-official-api",
-  };
-  function providerLabel(provider?: string | null) {
-    const key = provider || "evolution";
-    const slug = PROVIDER_SLUG[key];
-    return (slug ? pluginName(slug, PROVIDER_LABEL[key] || "WhatsApp Web") : PROVIDER_LABEL[key]) || "WhatsApp Web";
-  }
 
-  const FREE_KEYS = ["instagram", "messenger", "telegram", "uazapi"];
-  const WA_KEYS = ["dapi", "dapi_official", "lovable_whatsapp", "evolution", "uazapi", "official"];
-  const waInstances = instances.filter((i) => WA_KEYS.includes((i.provider ?? "evolution") as string) || i.provider_type === "oficial_meta");
+  const FREE_KEYS = ["instagram", "messenger", "telegram"];
+  const WA_KEYS = ["dapi", "dapi_official"];
+  const waInstances = instances.filter((i) => WA_KEYS.includes((i.provider ?? "dapi") as string));
   const waUsed = waInstances.length;
   const waLimit = plan.limites.instancias;
   const canAddWa = waLimit >= 2147483647 || waUsed < waLimit;
-  const waProviderAtivo = (waInstances[0]?.provider ?? null) as string | null;
-  // Exclusividade Evolution ↔ Uazapi só vale em planos de 1 conexão.
-  // Com limite maior que 1, o cliente pode usar as duas APIs ao mesmo tempo.
-  const exclusivo = waLimit <= 1;
-  const bloqueadoPor = (key: string) =>
-    exclusivo && WA_KEYS.includes(key) && waProviderAtivo && waProviderAtivo !== key
-      ? waProviderAtivo === "uazapi" ? "WhatsApp Premium" : waProviderAtivo === "evolution" ? "WhatsApp Web" : "outra conexão"
-      : null;
-  const canAddChannel = (key: string) =>
-    key === "lovable_whatsapp" || FREE_KEYS.includes(key)
-      ? true
-      : canAddWa && !bloqueadoPor(key);
+  const canAddChannel = (key: string) => (FREE_KEYS.includes(key) ? true : canAddWa);
   const canAdd = canAddWa;
 
-
-  // Só aparece em Conexões o plugin realmente instalado, ativo, liberado e publicado.
   const pluginAtivo = (slug: string) =>
     plugins.some(
       (p) => p.slug === slug && p.instalado && p.ativo && p.liberado !== false && p.status === "ativo",
@@ -277,50 +257,34 @@ function ConexoesPage() {
     multi?: boolean;
   };
 
-  const channels: Channel[] = betaConfig.lovableWhatsAppOnly
-    ? [
-        {
-          key: "lovable_whatsapp",
-          title: "WhatsApp Business oficial",
-          icon: <WhatsAppGlyph className="size-6 text-[#25D366]" />,
-          match: (i) => i.provider === "lovable_whatsapp",
-          onIntegrate: async () => {
-            setCreating(true);
-            try {
-              await registerLovable({ data: {} });
-              await refresh(true);
-              window.open("https://lovable.dev/connectors", "_blank", "noopener,noreferrer");
-              toast.info("Conecta WhatsApp Business en Lovable. El primer evento confirmará la conexión en Capiversa.");
-            } catch (error: any) {
-              toast.error(error?.message || "No se pudo preparar la conexión oficial");
-            } finally {
-              setCreating(false);
-            }
-          },
-          multi: false,
-        },
-      ]
-    : [
-        {
-          key: "uazapi",
-          title: pluginName("whatsapp-uazapi", "WhatsApp"),
-          icon: <WhatsAppGlyph className="size-6 text-emerald-500" />,
-          // Incluye conexiones antiguas para conservar compatibilidad futura.
-          match: (i) => (i.provider ?? "uazapi") === "uazapi" || i.provider === "evolution",
-          onIntegrate: () => { setInitialProvider("uazapi"); setNewConnOpen(true); },
-          multi: true,
-        },
-      ];
+  const channels: Channel[] = [
+    {
+      key: "dapi",
+      title: "WhatsApp (D-API)",
+      icon: <WhatsAppGlyph className="size-6 text-emerald-500" />,
+      match: (i) => {
+        const p = i.provider ?? i.provider_type ?? "dapi";
+        const officialCardSeparate = pluginAtivo("meta-official-api");
+        if (officialCardSeparate && (p === "dapi_official" || p === "official" || i.provider_type === "oficial_meta")) {
+          return false;
+        }
+        return p === "dapi" || p === "dapi_official";
+      },
+      onIntegrate: () => { setInitialProvider("dapi"); setNewConnOpen(true); },
+      multi: true,
+    },
+  ];
 
-
-  if (!betaConfig.lovableWhatsAppOnly && pluginAtivo("telegram")) channels.push({
-    key: "telegram",
-    title: pluginName("telegram", "Telegram"),
-    icon: <TelegramGlyph className="size-6 text-[#229ED9]" />,
-    match: (i) => i.provider === "telegram",
-    onIntegrate: () => setTelegramOpen(true),
-    multi: true,
-  });
+  if (pluginAtivo("telegram")) {
+    channels.push({
+      key: "telegram",
+      title: pluginName("telegram", "Telegram"),
+      icon: <TelegramGlyph className="size-6 text-[#229ED9]" />,
+      match: (i) => i.provider === "telegram",
+      onIntegrate: () => setTelegramOpen(true),
+      multi: true,
+    });
+  }
 
   if (betaConfig.metaChannelsEnabled) {
     channels.push({
@@ -341,25 +305,22 @@ function ConexoesPage() {
     });
   }
 
-
-  if (!betaConfig.lovableWhatsAppOnly && pluginAtivo("meta-official-api")) channels.push({
-    key: "official",
-    title: pluginName("meta-official-api", "WhatsApp API Oficial (Meta)"),
-    icon: <WhatsAppGlyph className="size-6 text-[#25D366]" />,
-    match: (i) => i.provider === "official" || i.provider_type === "oficial_meta",
-    onIntegrate: () => { setInitialProvider("oficial_meta"); setNewConnOpen(true); },
-    multi: true,
-  });
-
-
+  if (pluginAtivo("meta-official-api")) {
+    channels.push({
+      key: "official",
+      title: pluginName("meta-official-api", "WhatsApp API Oficial (D-API Meta)"),
+      icon: <WhatsAppGlyph className="size-6 text-[#25D366]" />,
+      match: (i) => i.provider === "dapi_official" || i.provider_type === "dapi_official",
+      onIntegrate: () => { setInitialProvider("oficial_meta"); setNewConnOpen(true); },
+      multi: true,
+    });
+  }
 
   const totalConectadas = instances.filter((i) => i.status === "connected").length;
 
   return (
     <TooltipProvider delayDuration={200}>
       <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6 px-0 sm:px-4">
-
-        {/* Título + subtítulo */}
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
@@ -376,7 +337,6 @@ function ConexoesPage() {
           )}
         </div>
 
-        {/* Busca (só quando há muitas contas) */}
         {instances.length > 3 && (
           <div className="relative w-full sm:max-w-sm">
             <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -384,7 +344,6 @@ function ConexoesPage() {
           </div>
         )}
 
-        {/* Cards de canal — cada card carrega suas próprias contas */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {channels.map((ch) => {
             const accounts = instances.filter(ch.match).filter((i) => {
@@ -402,11 +361,9 @@ function ConexoesPage() {
                   <div className="min-w-0 flex-1">
                     <div className="font-semibold text-sm truncate">{ch.title}</div>
                     <div className="text-xs text-muted-foreground">
-                      {bloqueadoPor(ch.key) && accounts.length === 0
-                        ? `Bloqueado — você já usa ${bloqueadoPor(ch.key)}`
-                        : accounts.length === 0
-                          ? FREE_KEYS.includes(ch.key) ? "Nenhuma conta · grátis" : "Nenhuma conta"
-                          : `${accounts.length} conta${accounts.length > 1 ? "s" : ""}`}
+                      {accounts.length === 0
+                        ? FREE_KEYS.includes(ch.key) ? "Nenhuma conta · grátis" : "Nenhuma conta"
+                        : `${accounts.length} conta${accounts.length > 1 ? "s" : ""}`}
                     </div>
                   </div>
                   {accounts.length === 0 ? (
@@ -430,7 +387,7 @@ function ConexoesPage() {
                     {accounts.map((inst) => {
                       const isBusy = busy === inst.instance_name;
                       const isOpen = expanded === inst.instance_name;
-                      const managedByLovable = inst.provider === "lovable_whatsapp";
+                      const isOfficial = inst.provider === "dapi_official" || inst.provider_type === "dapi_official";
                       return (
                         <div key={inst.instance_name} className="bg-muted/20">
                           <div className="flex flex-wrap items-center gap-2 px-4 py-2.5">
@@ -439,32 +396,26 @@ function ConexoesPage() {
                               <StatusBadge status={inst.status} paused={inst.paused} />
                             </button>
                             <div className="flex items-center gap-0.5 shrink-0">
-                              {managedByLovable ? (
-                                <IconAction
-                                  tip="Administrar en Lovable"
-                                  onClick={() => window.open("https://lovable.dev/connectors", "_blank", "noopener,noreferrer")}
-                                  disabled={isBusy}
-                                >
+                              {isOfficial ? (
+                                <IconAction tip="Sincronizar Webhook Oficial" onClick={() => doReconfWebhook(inst)} disabled={isBusy}>
                                   <Plug className="size-4" />
                                 </IconAction>
-                              ) : (
+                              ) : inst.provider === "dapi" ? (
                                 <IconAction tip="Reconectar / Gerar QR" onClick={() => doReconnect(inst)} disabled={isBusy}>
                                   <QrCode className="size-4" />
                                 </IconAction>
-                              )}
+                              ) : null}
                               <IconAction tip={inst.paused ? "Retomar" : "Pausar"} onClick={() => doTogglePause(inst)} disabled={isBusy || inst.status !== "connected"}>
                                 {inst.paused ? <Play className="size-4" /> : <Pause className="size-4" />}
                               </IconAction>
-                              {!managedByLovable && inst.status === "connected" && (
+                              {inst.status === "connected" && (inst.provider === "dapi" || isOfficial) && (
                                 <IconAction tip="Desconectar" onClick={() => doDisconnect(inst)} disabled={isBusy}>
                                   <Power className="size-4" />
                                 </IconAction>
                               )}
-                              {!managedByLovable && (
-                                <IconAction tip="Excluir conexão" onClick={() => doDelete(inst)} disabled={isBusy} destructive>
-                                  <Trash2 className="size-4" />
-                                </IconAction>
-                              )}
+                              <IconAction tip="Excluir conexão" onClick={() => doDelete(inst)} disabled={isBusy} destructive>
+                                <Trash2 className="size-4" />
+                              </IconAction>
                               <Button variant="ghost" size="icon" className="size-8" onClick={() => setExpanded(isOpen ? null : inst.instance_name)}>
                                 {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                               </Button>
@@ -474,7 +425,7 @@ function ConexoesPage() {
                             <div className="grid grid-cols-2 gap-3 px-4 pb-4 text-sm border-t pt-3">
                               <DetailRow label="Nome" value={inst.display_name || "—"} />
                               <DetailRow label="Número" value={inst.numero || "—"} />
-                              <DetailRow label="Status" value={inst.status} />
+                              <DetailRow label="Provedor" value={PROVIDER_LABEL[inst.provider || "dapi"] || "D-API"} />
                               <DetailRow label="Última atualização" value={inst.updated_at ? new Date(inst.updated_at).toLocaleString() : "—"} />
                             </div>
                           )}
@@ -490,15 +441,13 @@ function ConexoesPage() {
 
         {!canAdd && (
           <p className="text-xs text-muted-foreground text-center">
-            {exclusivo
+            {waLimit <= 1
               ? "Seu plano permite 1 conexão de WhatsApp."
               : "Você atingiu o limite de conexões WhatsApp do seu plano."}
           </p>
         )}
 
-        {/* Retorno do login da Meta — as contas aparecem nos cards dos plugins */}
         <MetaOAuthHandler onConnected={() => void refresh()} />
-
 
         <MetaConnectDialog
           open={!!metaDialog}
@@ -512,7 +461,6 @@ function ConexoesPage() {
           onConnected={() => void refresh()}
         />
 
-
         <NovaConexaoDialog
           open={newConnOpen}
           onOpenChange={(v) => {
@@ -521,22 +469,19 @@ function ConexoesPage() {
           }}
           initialProvider={initialProvider}
           creating={creating}
-          onCreateEvolution={async (displayName) => {
-            await doCreate(displayName, "evolution");
+          onCreateDapi={async (displayName) => {
+            await doCreate(displayName);
           }}
-          onCreateUazapi={async (displayName) => {
-            await doCreate(displayName, "uazapi");
-          }}
-          onStartOficialMeta={async () => {
+          onCreateDapiOfficial={async (params) => {
             setCreating(true);
             try {
-              const { startWablastOnboarding } = await import("@/lib/wablast.functions");
-              const redirectUri = `${window.location.origin}/wa/callback`;
-              const sess = await startWablastOnboarding({ data: { redirectUri } });
+              await connectOfficial({ data: params });
               setNewConnOpen(false);
-              window.location.href = sess.embed_url;
+              await refresh(true);
+              await plan.refresh();
+              toast.success("WhatsApp Oficial (Meta Cloud API) conectado via D-API!");
             } catch (e: any) {
-              toast.error(e?.message || "Falha ao iniciar conexão oficial");
+              toast.error(e?.message || "Falha ao conectar WhatsApp Oficial");
             } finally {
               setCreating(false);
             }
@@ -550,12 +495,10 @@ function ConexoesPage() {
           onOpenChange={(v) => { if (!v) setQrDialog(null); }}
           onConnected={() => { void refresh(true); void plan.refresh(); }}
         />
-
       </div>
     </TooltipProvider>
   );
 }
-
 
 function StatusBadge({ status, paused }: { status: string; paused?: boolean }) {
   if (paused) return <Badge variant="outline" className="bg-amber-500/15 text-amber-700 border-amber-500/30 gap-1.5"><Pause className="size-3" /> Pausada</Badge>;
@@ -572,7 +515,7 @@ function IconAction({ children, tip, onClick, disabled, destructive }: { childre
           variant="ghost"
           size="icon"
           className={`size-8 ${destructive ? "text-destructive hover:text-destructive hover:bg-destructive/10" : ""}`}
-          onClick={(e) => { e.stopPropagation(); onClick(); }}
+          onClick={onClick}
           disabled={disabled}
         >
           {children}
@@ -585,9 +528,9 @@ function IconAction({ children, tip, onClick, disabled, destructive }: { childre
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="font-medium break-all">{value}</span>
+    <div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="font-medium truncate">{value}</div>
     </div>
   );
 }

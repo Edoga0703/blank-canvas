@@ -4,10 +4,6 @@ import { phoneVariants, normalizeBrPhone } from "@/lib/br-phone";
 
 export type ThreadNumero = { numero: string; found: boolean };
 
-/**
- * Procura, entre as variantes do número, a que já é usada pela empresa
- * (card do CRM ou mensagens). Se nenhuma existir, devolve o número normalizado.
- */
 export async function resolveThread(admin: any, companyId: string, numero: string): Promise<ThreadNumero> {
   const variants = phoneVariants(numero);
   const fallback = normalizeBrPhone(numero) || (variants[0] ?? String(numero || "").replace(/\D/g, ""));
@@ -40,28 +36,12 @@ export async function resolveThreadNumero(admin: any, companyId: string, numero:
   return (await resolveThread(admin, companyId, numero)).numero;
 }
 
-/**
- * Número a usar no envio e no registro da conversa.
- * 1) reaproveita a conversa já existente (qualquer variante do número);
- * 2) sendo conversa nova, pergunta ao provedor qual é o WhatsApp real.
- */
 export async function canonicalOutboundNumero(
   admin: any,
   companyId: string,
   numero: string,
-  inst?: { provider?: string | null; provider_type?: string | null; instance_token?: string | null } | null,
+  _inst?: { provider?: string | null; provider_type?: string | null; instance_token?: string | null } | null,
 ): Promise<string> {
   const thread = await resolveThread(admin, companyId, numero);
-  if (thread.found) return thread.numero;
-
-  const provider = String(inst?.provider ?? inst?.provider_type ?? "").toLowerCase();
-  const token = inst?.instance_token ?? null;
-  if (provider === "uazapi" && token) {
-    try {
-      const { uazResolveNumber } = await import("./uazapi.server");
-      const real = await uazResolveNumber(token, thread.numero);
-      if (real) return real;
-    } catch { /* best-effort */ }
-  }
   return thread.numero;
 }

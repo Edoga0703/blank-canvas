@@ -47,7 +47,7 @@ export const listHsmInstances = createServerFn({ method: "GET" })
       .from("whatsapp_instances")
       .select("id,instance_name,display_name,numero,provider_type,status,waba_id,phone_number_id")
       .eq("company_id", companyId)
-      .in("provider_type", ["oficial_meta", "wablast"])
+      .in("provider_type", ["dapi_official", "oficial_meta"])
       .order("updated_at", { ascending: false });
     return data ?? [];
   });
@@ -156,7 +156,86 @@ export const saveHsmTemplate = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const companyId = await cid(context.supabase, context.userId);
-    const status: HsmStatus = data.submitToMeta ? "pendente" : "rascunho";
+    let status: HsmStatus = data.submitToMeta ? "pendente" : "rascunho";
+    let metaTemplateId: string | null = null;
+    let metaUltimoErro: string | null = null;
+
+    if (data.submitToMeta && data.instance_id) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: inst } = await (supabaseAdmin as any)
+        .from("whatsapp_instances")
+        .select("id,instance_name,provider,provider_type,waba_id,instance_token")
+        .eq("id", data.instance_id)
+        .eq("company_id", companyId)
+        .maybeSingle();
+
+      if (inst) {
+        const components: any[] = [];
+        if (data.header_tipo === "TEXT" && data.header_conteudo) {
+          components.push({ type: "HEADER", format: "TEXT", text: data.header_conteudo });
+        } else if (data.header_tipo === "MEDIA" && data.header_conteudo) {
+          components.push({ type: "HEADER", format: "IMAGE", example: { header_handle: [data.header_conteudo] } });
+        }
+        components.push({ type: "BODY", text: data.corpo });
+        if (data.rodape) {
+          components.push({ type: "FOOTER", text: data.rodape });
+        }
+        if (Array.isArray(data.botoes) && data.botoes.length > 0) {
+          components.push({
+            type: "BUTTONS",
+            buttons: data.botoes.map((b: HsmButton) => {
+              if (b.type === "URL") return { type: "URL", text: b.texto, url: b.valor || "https://example.com" };
+              if (b.type === "PHONE") return { type: "PHONE_NUMBER", text: b.texto, phone_number: b.valor || "+5511999999999" };
+              return { type: "QUICK_REPLY", text: b.texto };
+            }),
+          });
+        }
+
+        const { dapiCreateTemplate } = await import("@/lib/dapi.server");
+        const dapiRes = await dapiCreateTemplate((inst as any).instance_name, {
+          name: data.nome,
+          category: data.categoria,
+          language: data.idioma,
+          components,
+        });
+
+        if (dapiRes.success && dapiRes.id) {
+          metaTemplateId = String(dapiRes.id);
+          if (String(dapiRes.status || "").toUpperCase() === "APPROVED") status = "aprovado";
+        } else if ((inst as any).waba_id && (inst as any).instance_token) {
+          try {
+            const metaRes = await fetch(
+              `https://graph.facebook.com/v21.0/${encodeURIComponent((inst as any).waba_id)}/message_templates`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${(inst as any).instance_token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  name: data.nome,
+                  category: data.categoria,
+                  language: data.idioma,
+                  components,
+                }),
+              },
+            );
+            const metaJson: any = await metaRes.json().catch(() => ({}));
+            if (metaRes.ok && metaJson?.id) {
+              metaTemplateId = String(metaJson.id);
+              if (String(metaJson.status || "").toUpperCase() === "APPROVED") status = "aprovado";
+            } else if (metaJson?.error?.message) {
+              metaUltimoErro = String(metaJson.error.message);
+            }
+          } catch (err: any) {
+            metaUltimoErro = err?.message ?? "Erro na comunicação com a Meta Graph API";
+          }
+        } else if (dapiRes.error) {
+          metaUltimoErro = dapiRes.error;
+        }
+      }
+    }
+
     const payload: any = {
       company_id: companyId,
       instance_id: data.instance_id,
@@ -170,6 +249,8 @@ export const saveHsmTemplate = createServerFn({ method: "POST" })
       botoes: data.botoes,
       variaveis: data.variaveis,
       status,
+      ...(metaTemplateId ? { meta_template_id: metaTemplateId } : {}),
+      ...(metaUltimoErro ? { meta_ultimo_erro: metaUltimoErro } : {}),
     };
     if (data.id) {
       const { error } = await context.supabase
@@ -178,7 +259,7 @@ export const saveHsmTemplate = createServerFn({ method: "POST" })
         .eq("id", data.id)
         .eq("company_id", companyId);
       if (error) throw new Error(error.message);
-      return { ok: true, id: data.id };
+      return { ok: true, id: data.id, status, metaTemplateId };
     }
     const { data: ins, error } = await context.supabase
       .from("message_hsm_template")
@@ -186,7 +267,7 @@ export const saveHsmTemplate = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
-    return { ok: true, id: ins!.id };
+    return { ok: true, id: ins!.id, status, metaTemplateId };
   });
 
 export const deleteHsmTemplate = createServerFn({ method: "POST" })
@@ -208,76 +289,104 @@ export const deleteHsmTemplate = createServerFn({ method: "POST" })
 
 export const syncHsmTemplatesFromMeta = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { instanceId?: string }) => ({ instanceId: d?.instanceId ?? null }))
+  .inputValidator((d: { instanceId?: string }) => ({ instanceId: d?.instanceId && d.instanceId !== "all" ? d.instanceId : null }))
   .handler(async ({ context, data }) => {
-    if (!data.instanceId) return { ok: false, imported: 0, reason: "Selecione uma conexão." };
     const companyId = await cid(context.supabase, context.userId);
-    const { data: inst } = await context.supabase
-      .from("whatsapp_instances")
-      .select("id,provider_type,waba_id")
-      .eq("id", data.instanceId)
-      .eq("company_id", companyId)
-      .maybeSingle();
-    if (!inst) return { ok: false, imported: 0, reason: "Conexão não encontrada." };
-    if ((inst as any).provider_type !== "wablast") {
-      return { ok: false, imported: 0, reason: "Sincronização automática disponível apenas para conexões WaBlast." };
-    }
-    if (!(inst as any).waba_id) {
-      return { ok: false, imported: 0, reason: "WABA ID ausente — reconecte a conta WaBlast." };
-    }
-    const { wablastListTemplates } = await import("@/lib/wablast.server");
-    let resp: any;
-    try { resp = await wablastListTemplates((inst as any).waba_id); }
-    catch (e: any) { return { ok: false, imported: 0, reason: e?.message || "Falha ao consultar WaBlast." }; }
-    const list: any[] = Array.isArray(resp) ? resp : (resp?.data ?? resp?.templates ?? []);
-    let imported = 0;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    for (const t of list) {
-      const nome = String(t.name || t.nome || "").toLowerCase();
-      if (!SLUG_RE.test(nome)) continue;
-      const components: any[] = t.components || [];
-      const bodyComp = components.find((c: any) => (c.type || "").toUpperCase() === "BODY");
-      const headerComp = components.find((c: any) => (c.type || "").toUpperCase() === "HEADER");
-      const footerComp = components.find((c: any) => (c.type || "").toUpperCase() === "FOOTER");
-      const buttonsComp = components.find((c: any) => (c.type || "").toUpperCase() === "BUTTONS");
-      const statusRaw = String(t.status || "").toUpperCase();
-      const status: HsmStatus = statusRaw === "APPROVED" ? "aprovado"
-        : statusRaw === "REJECTED" ? "reprovado"
-        : statusRaw === "PENDING" ? "pendente" : "rascunho";
-      const payload: any = {
-        company_id: companyId,
-        instance_id: (inst as any).id,
-        nome,
-        categoria: String(t.category || "MARKETING").toUpperCase(),
-        idioma: t.language || "pt_BR",
-        header_tipo: headerComp ? (headerComp.format === "TEXT" ? "TEXT" : "MEDIA") : "NONE",
-        header_conteudo: headerComp?.text ?? null,
-        corpo: bodyComp?.text ?? "",
-        rodape: footerComp?.text ?? null,
-        botoes: (buttonsComp?.buttons ?? []).map((b: any) => ({
-          type: (b.type || "QUICK_REPLY").toUpperCase(),
-          texto: b.text ?? "",
-          valor: b.url || b.phone_number || undefined,
-        })),
-        variaveis: {},
-        status,
-        meta_template_id: t.id ?? null,
-      };
-      const { data: existing } = await (supabaseAdmin as any)
-        .from("message_hsm_template")
-        .select("id")
-        .eq("company_id", companyId)
-        .eq("instance_id", (inst as any).id)
-        .eq("nome", nome)
-        .maybeSingle();
-      const op = existing?.id
-        ? (supabaseAdmin as any).from("message_hsm_template").update(payload).eq("id", existing.id)
-        : (supabaseAdmin as any).from("message_hsm_template").insert(payload);
-      const { error } = await op;
-      if (!error) imported++;
 
+    let instancesToSync: any[] = [];
+    if (data.instanceId) {
+      const { data: inst } = await (supabaseAdmin as any)
+        .from("whatsapp_instances")
+        .select("id,instance_name,provider,provider_type,waba_id,instance_token")
+        .eq("id", data.instanceId)
+        .eq("company_id", companyId)
+        .maybeSingle();
+      if (!inst) return { ok: false, imported: 0, reason: "Conexão não encontrada." };
+      instancesToSync = [inst];
+    } else {
+      const { data: allOfficial } = await (supabaseAdmin as any)
+        .from("whatsapp_instances")
+        .select("id,instance_name,provider,provider_type,waba_id,instance_token")
+        .eq("company_id", companyId)
+        .in("provider_type", ["dapi_official", "oficial_meta"]);
+      instancesToSync = allOfficial ?? [];
+      if (instancesToSync.length === 0) {
+        return { ok: false, imported: 0, reason: "Nenhuma conexão API Oficial (D-API Meta Cloud) cadastrada." };
+      }
     }
-    return { ok: true, imported, total: list.length };
+
+    const { dapiListTemplates } = await import("@/lib/dapi.server");
+    let imported = 0;
+    let totalFound = 0;
+
+    for (const inst of instancesToSync) {
+      const prov = String((inst as any).provider || (inst as any).provider_type || "");
+      if (!["dapi_official", "oficial_meta"].includes(prov)) continue;
+
+      let list: any[] = await dapiListTemplates((inst as any).instance_name);
+      if (list.length === 0 && (inst as any).waba_id && (inst as any).instance_token) {
+        try {
+          const metaRes = await fetch(
+            `https://graph.facebook.com/v21.0/${encodeURIComponent((inst as any).waba_id)}/message_templates?limit=100`,
+            { headers: { Authorization: `Bearer ${(inst as any).instance_token}` } },
+          );
+          if (metaRes.ok) {
+            const metaJson: any = await metaRes.json();
+            list = Array.isArray(metaJson?.data) ? metaJson.data : [];
+          }
+        } catch (e: any) {
+          console.warn("[syncHsmTemplatesFromMeta] Graph API fallback error:", e?.message);
+        }
+      }
+
+      totalFound += list.length;
+      for (const t of list) {
+        const nome = String(t.name || t.nome || "").toLowerCase();
+        if (!SLUG_RE.test(nome)) continue;
+        const components: any[] = t.components || [];
+        const bodyComp = components.find((c: any) => (c.type || "").toUpperCase() === "BODY");
+        const headerComp = components.find((c: any) => (c.type || "").toUpperCase() === "HEADER");
+        const footerComp = components.find((c: any) => (c.type || "").toUpperCase() === "FOOTER");
+        const buttonsComp = components.find((c: any) => (c.type || "").toUpperCase() === "BUTTONS");
+        const statusRaw = String(t.status || "").toUpperCase();
+        const status: HsmStatus = statusRaw === "APPROVED" ? "aprovado"
+          : statusRaw === "REJECTED" ? "reprovado"
+          : statusRaw === "PENDING" ? "pendente" : "rascunho";
+        const payload: any = {
+          company_id: companyId,
+          instance_id: (inst as any).id,
+          nome,
+          categoria: String(t.category || "MARKETING").toUpperCase(),
+          idioma: t.language || "pt_BR",
+          header_tipo: headerComp ? (headerComp.format === "TEXT" ? "TEXT" : "MEDIA") : "NONE",
+          header_conteudo: headerComp?.text ?? null,
+          corpo: bodyComp?.text ?? "",
+          rodape: footerComp?.text ?? null,
+          botoes: (buttonsComp?.buttons ?? []).map((b: any) => ({
+            type: (b.type || "QUICK_REPLY").toUpperCase(),
+            texto: b.text ?? "",
+            valor: b.url || b.phone_number || undefined,
+          })),
+          variaveis: {},
+          status,
+          meta_template_id: t.id ?? null,
+        };
+        const { data: existing } = await (supabaseAdmin as any)
+          .from("message_hsm_template")
+          .select("id")
+          .eq("company_id", companyId)
+          .eq("instance_id", (inst as any).id)
+          .eq("nome", nome)
+          .maybeSingle();
+        const op = existing?.id
+          ? (supabaseAdmin as any).from("message_hsm_template").update(payload).eq("id", existing.id)
+          : (supabaseAdmin as any).from("message_hsm_template").insert(payload);
+        const { error } = await op;
+        if (!error) imported++;
+      }
+    }
+    return { ok: true, imported, total: totalFound };
   });
 
 

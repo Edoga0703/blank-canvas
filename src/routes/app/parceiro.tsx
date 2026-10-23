@@ -74,7 +74,7 @@ function PartnerClientDashboard() {
         <p className="text-muted-foreground mb-6">
           Entre em contato com o suporte para ativar seu painel de parceiro e começar a lucrar com indicações.
         </p>
-        <Button onClick={() => window.open(`https://wa.me/5511999999999`, "_blank")}>
+        <Button onClick={() => window.dispatchEvent(new CustomEvent("support:open"))}>
           Falar com suporte
         </Button>
       </Card>
@@ -205,7 +205,7 @@ function PartnerClientDashboard() {
                     </Badge>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setSelectedRef(ref)} title="Ver detalhes da indicação">
                       <ArrowRight className="size-4 text-muted-foreground" />
                     </Button>
                   </td>

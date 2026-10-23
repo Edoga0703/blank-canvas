@@ -21,7 +21,7 @@ export async function processInboundAutomation(
 
   // 0) Se a mensagem recebida for áudio, a IA não deve responder ou alucinar.
   // Pausa a IA para este contato e encaminha para atenção humana.
-  if (params.isAudioMessage || texto === "[ÁUDIO]") {
+  if ((params.isAudioMessage && (!texto || texto === "[ÁUDIO]")) || texto === "[ÁUDIO]") {
     console.log(`[inbound] Áudio recebido de ${numero}. Pausando IA e encaminhando para atendimento humano.`);
     try {
       await admin.from("contact_pause").upsert(

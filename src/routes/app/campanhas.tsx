@@ -22,7 +22,7 @@ import {
 import { toast } from "sonner";
 import {
   Loader2, Plus, Play, Pause, Trash2, X, Send, Eye, Download,
-  Upload, MessageSquare, CheckCircle2, BookOpen, AlertTriangle, RefreshCw, Search,
+  Upload, MessageSquare, CheckCircle2, BookOpen, AlertTriangle, RefreshCw, Search, Pencil,
 } from "lucide-react";
 import { brand } from "@/config/brand";
 import * as XLSX from "xlsx";
@@ -69,10 +69,8 @@ type Connection = {
 type Template = { id: string; atalho: string; texto: string };
 
 function providerLabel(pt: string) {
-  if (pt === "lovable_whatsapp") return "WhatsApp oficial · Lovable";
-  if (pt === "oficial_meta" || pt === "official") return "API Oficial";
-  if (pt === "uazapi") return "Uazapi";
-  return "Evolution";
+  if (pt === "dapi_official" || pt === "oficial_meta" || pt === "official") return "API Oficial (D-API)";
+  return "WhatsApp (D-API)";
 }
 
 function relativeTime(iso?: string | null) {
@@ -157,6 +155,36 @@ function CampanhasPage() {
       return true;
     }).slice(0, perPage);
   }, [rows, q, statusFilter, perPage]);
+
+  function openEdit(c: any) {
+    setEditing({
+      id: c.id,
+      nome: c.nome ?? "",
+      descricao: c.descricao ?? "",
+      mensagem: c.mensagem ?? "",
+      agendado_para: c.agendado_para ? String(c.agendado_para).slice(0, 16) : "",
+      filtro_tags: Array.isArray(c.filtro_tags) ? c.filtro_tags : [],
+      intervalo_min_seg: c.intervalo_min_seg ?? 5,
+      intervalo_max_seg: c.intervalo_max_seg ?? 20,
+      pausa_apos_envios: c.pausa_apos_envios ?? 50,
+      pausa_duracao_min: c.pausa_duracao_min ?? 10,
+      janela_dias: Array.isArray(c.janela_dias) ? c.janela_dias : [1, 2, 3, 4, 5],
+      janela_hora_ini: c.janela_hora_ini ?? "09:00",
+      janela_hora_fim: c.janela_hora_fim ?? "18:00",
+      timezone: c.timezone ?? "America/Sao_Paulo",
+      limite_diario: c.limite_diario ?? 200,
+      aquecimento_ativo: Boolean(c.aquecimento_ativo),
+      aquecimento_dia_inicio: c.aquecimento_dia_inicio ?? null,
+      simular_digitacao: c.simular_digitacao !== false,
+      pular_ativos_dias: c.pular_ativos_dias ?? 15,
+      origem_destinatarios: c.origem_destinatarios ?? "tags",
+      custom_targets: Array.isArray(c.custom_targets) ? c.custom_targets : [],
+      whatsapp_instance_id: c.whatsapp_instance_id ?? conns[0]?.id ?? null,
+      velocidade_msg_seg: c.velocidade_msg_seg ?? 20,
+      template_id: c.template_id ?? "",
+    });
+    setOpen(true);
+  }
 
   function openNew() {
     setEditing({
@@ -284,7 +312,7 @@ function CampanhasPage() {
   }
 
   const selectedConn = conns.find((c) => c.id === editing?.whatsapp_instance_id);
-  const isOfficial = selectedConn?.provider_type === "oficial_meta" || selectedConn?.provider_type === "official";
+  const isOfficial = selectedConn?.provider_type === "dapi_official" || selectedConn?.provider_type === "oficial_meta" || selectedConn?.provider_type === "official";
   const activeTpls = isOfficial ? hsmTpls : tpls;
 
   useEffect(() => {
@@ -412,12 +440,17 @@ function CampanhasPage() {
                         <Play className="size-4" />
                       </Button>
                     )}
+                    {(c.status === "rascunho" || c.status === "agendada" || c.status === "pausada") && (
+                      <Button size="icon" variant="ghost" title="Editar campanha" onClick={() => openEdit(c)}>
+                        <Pencil className="size-4" />
+                      </Button>
+                    )}
                     {(c.status === "agendada" || c.status === "enviando" || c.status === "pausada") && (
-                      <Button size="icon" variant="ghost" onClick={async () => { if (confirm("Cancelar campanha?")) { await cancel({ data: { id: c.id } }); await refresh(); } }}>
+                      <Button size="icon" variant="ghost" title="Cancelar campanha" onClick={async () => { if (confirm("Cancelar campanha?")) { await cancel({ data: { id: c.id } }); await refresh(); } }}>
                         <X className="size-4" />
                       </Button>
                     )}
-                    <Button size="icon" variant="ghost" className="text-red-600" onClick={async () => { if (confirm("Excluir campanha?")) { await remove({ data: { id: c.id } }); await refresh(); } }}>
+                    <Button size="icon" variant="ghost" className="text-red-600" title="Excluir campanha" onClick={async () => { if (confirm("Excluir campanha?")) { await remove({ data: { id: c.id } }); await refresh(); } }}>
                       <Trash2 className="size-4" />
                     </Button>
                     <Button size="icon" variant="ghost" onClick={() => exportCampaignCsv(c.id)}>

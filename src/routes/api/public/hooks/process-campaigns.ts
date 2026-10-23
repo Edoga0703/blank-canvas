@@ -16,7 +16,7 @@ export const Route = createFileRoute("/api/public/hooks/process-campaigns")({
         try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const {
-            getActiveInstance, waSendText, waSendMedia, waPresenceTyping,
+            getActiveInstance, waSendText, waSendMedia, waSendTemplate, waPresenceTyping,
             spin, normalizeBrNumber, inWindow, warmupLimit,
           } = await import("@/lib/wa-dispatch.server");
 
@@ -38,8 +38,32 @@ export const Route = createFileRoute("/api/public/hooks/process-campaigns")({
           const hoje = new Date().toISOString().slice(0, 10);
 
           for (const c of (due ?? []) as any[]) {
-            // 1) Instância ativa e conectada
-            const inst = await getActiveInstance(c.company_id);
+            // 1) Instância ativa e conectada (prioriza c.whatsapp_instance_id se definida na campanha)
+            let inst = null;
+            if (c.whatsapp_instance_id) {
+              const { data: specificInst } = await supabaseAdmin
+                .from("whatsapp_instances")
+                .select("instance_name, instance_token, status, paused, provider, provider_type, phone_number_id, waba_id")
+                .eq("id", c.whatsapp_instance_id)
+                .eq("company_id", c.company_id)
+                .maybeSingle();
+              if (specificInst && ["connected", "open"].includes(String(specificInst.status))) {
+                const pt = String(specificInst.provider || specificInst.provider_type || "dapi");
+                inst = {
+                  company_id: c.company_id,
+                  instance_name: specificInst.instance_name,
+                  instance_token: specificInst.instance_token ?? null,
+                  provider: (pt === "dapi_official" ? "dapi_official" : pt === "dapi" ? "dapi" : pt) as any,
+                  status: specificInst.status,
+                  paused: !!specificInst.paused,
+                  phone_number_id: specificInst.phone_number_id ?? null,
+                  waba_id: specificInst.waba_id ?? null,
+                };
+              }
+            }
+            if (!inst) {
+              inst = await getActiveInstance(c.company_id);
+            }
             if (!inst || inst.paused) {
               processed.push({ id: c.id, skipped: "sem_whatsapp" });
               // adia 2min para tentar de novo
@@ -165,8 +189,38 @@ export const Route = createFileRoute("/api/public/hooks/process-campaigns")({
                   await new Promise((r) => setTimeout(r, dur));
                 }
 
-                // 11) Envio (mídia opcional; senão texto)
-                if (c.midia_url_v2 && c.midia_tipo) {
+                // 11) Envio (HSM Template para API Oficial; mídia opcional; senão texto)
+                if (inst.provider === "dapi_official") {
+                  const { data: hsmTpl } = await supabaseAdmin
+                    .from("message_hsm_template")
+                    .select("nome, idioma, corpo")
+                    .eq("company_id", c.company_id)
+                    .eq("status", "aprovado")
+                    .or(`corpo.eq."${String(c.mensagem || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"')}",nome.eq."${String(c.mensagem || "").trim().toLowerCase()}"`)
+                    .limit(1)
+                    .maybeSingle();
+
+                  if (hsmTpl?.nome) {
+                    const hasVars = /\{\{\s*1\s*\}\}/.test(hsmTpl.corpo || "");
+                    const components = hasVars
+                      ? [{ type: "body", parameters: [{ type: "text", text: t.contato_nome || "Cliente" }] }]
+                      : [];
+                    await waSendTemplate(inst, numero, {
+                      name: hsmTpl.nome,
+                      language: hsmTpl.idioma || "pt_BR",
+                      components,
+                    });
+                  } else if (c.midia_url_v2 && c.midia_tipo) {
+                    await waSendMedia(inst, numero, {
+                      url: c.midia_url_v2,
+                      type: c.midia_tipo,
+                      caption: texto,
+                      fileName: c.midia_nome ?? undefined,
+                    });
+                  } else {
+                    await waSendText(inst, numero, texto);
+                  }
+                } else if (c.midia_url_v2 && c.midia_tipo) {
                   await waSendMedia(inst, numero, {
                     url: c.midia_url_v2,
                     type: c.midia_tipo,

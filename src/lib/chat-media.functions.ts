@@ -29,7 +29,7 @@ export const resolveChatMediaUrl = createServerFn({ method: "POST" })
 
     const { data: msg } = await supabase
       .from("mensagens")
-      .select("id,numero,midia_url,midia_tipo,midia_mime,midia_nome,whatsapp_message_id")
+      .select("id,numero,provider,midia_url,midia_tipo,midia_mime,midia_nome,whatsapp_message_id")
       .eq("id", data.messageId)
       .eq("company_id", companyId)
       .maybeSingle();
@@ -55,6 +55,9 @@ export const resolveChatMediaUrl = createServerFn({ method: "POST" })
     if (attachment?.storage_url) {
       return { url: attachment.storage_url, tipo: attachment.kind || msg.midia_tipo };
     }
+    if (attachment?.provider_url && (attachment.provider_url.startsWith("http") || attachment.provider_url.startsWith("data:"))) {
+      return { url: attachment.provider_url, tipo: attachment.kind || msg.midia_tipo };
+    }
 
     // 2) Mídia legada no Supabase Storage: basta reassinar
     const path = storagePathFromUrl(msg.midia_url);
@@ -67,47 +70,38 @@ export const resolveChatMediaUrl = createServerFn({ method: "POST" })
       return { url: null as string | null, tipo: msg.midia_tipo };
     }
 
-    // 3) Sem mídia salva: tenta rebaixar do provedor legado (Uazapi)
+    if (msg.midia_url && (msg.midia_url.startsWith("http") || msg.midia_url.startsWith("data:"))) {
+      return { url: msg.midia_url, tipo: msg.midia_tipo };
+    }
+
+    // 3) Sem mídia salva: tenta baixar via D-API
     if (!msg.whatsapp_message_id) return { url: null as string | null, tipo: msg.midia_tipo };
 
     const { data: inst } = await supabaseAdmin
       .from("whatsapp_instances")
-      .select("instance_token")
+      .select("instance_name,provider")
       .eq("company_id", companyId)
-      .not("instance_token", "is", null)
+      .in("provider", ["dapi", "dapi_official"])
+      .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (!inst?.instance_token) return { url: null as string | null, tipo: msg.midia_tipo };
 
-    const { storeIncomingUazapiMedia } = await import("./incoming-media.server");
-    const stored = await storeIncomingUazapiMedia({
-      instanceToken: inst.instance_token,
-      companyId,
-      number: msg.numero,
-      messageId: String(msg.whatsapp_message_id),
-      message: null,
-      fallbackMime: msg.midia_mime,
-    });
-    if (!stored) return { url: null as string | null, tipo: msg.midia_tipo };
-
-    const mime = stored.mime.toLowerCase();
-    const inferredType = msg.midia_tipo || (
-      mime.startsWith("image/") ? "image" :
-      mime.startsWith("video/") ? "video" :
-      mime.startsWith("audio/") ? "audio" : "document"
-    );
-
-    await supabaseAdmin
-      .from("mensagens")
-      .update({
-        midia_url: stored.url,
-        midia_tipo: inferredType,
-        midia_mime: stored.mime,
-        midia_nome: msg.midia_nome || stored.name,
-      } as any)
-      .eq("id", msg.id);
-
-    return { url: stored.url, tipo: inferredType };
+    if (!inst?.instance_name) return { url: null as string | null, tipo: msg.midia_tipo };
+    const { dapiDownloadMedia } = await import("./dapi.server");
+    const dl = await dapiDownloadMedia(inst.instance_name, String(msg.whatsapp_message_id));
+    if (dl?.base64) {
+      const mime = (dl.mimetype || msg.midia_mime || "application/octet-stream").toLowerCase();
+      const inferredType = msg.midia_tipo || (
+        mime.startsWith("image/") ? "image" :
+        mime.startsWith("video/") ? "video" :
+        mime.startsWith("audio/") ? "audio" : "document"
+      );
+      const dataUrl = String(dl.base64).startsWith("data:")
+        ? String(dl.base64)
+        : `data:${mime};base64,${dl.base64}`;
+      return { url: dataUrl, tipo: inferredType };
+    }
+    return { url: null as string | null, tipo: msg.midia_tipo };
   });
 
 export type ConversationMediaItem = {
@@ -155,7 +149,7 @@ export const getConversationMedia = createServerFn({ method: "POST" })
     const out: ConversationMediaItem[] = [];
     for (const m of msgs ?? []) {
       const path = storagePathFromUrl(m.midia_url);
-      const url = path ? signedByUrl.get(path) : null;
+      const url = path ? signedByUrl.get(path) : m.midia_url;
       if (!url || !/^https?:\/\//i.test(url)) continue;
       out.push({
         id: m.id,

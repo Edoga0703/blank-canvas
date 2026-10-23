@@ -1,5 +1,6 @@
 import { assignCardToSector } from "./sector-assignment.server";
 import { getActiveInstance, waSendText } from "./wa-dispatch.server";
+import { extractWhatsappMessageId } from "./evolution-helpers";
 
 type Admin = any;
 type MenuOption = { numero: string; department_id: string; label: string };
@@ -8,16 +9,44 @@ function normalizeChoice(text: string) {
   return text.trim().replace(/[^0-9]/g, "");
 }
 
+async function resolveMenuUserId(admin: Admin, companyId: string, numero: string): Promise<string | null> {
+  const { data: card } = await admin
+    .from("crm_cards")
+    .select("owner_id, user_id")
+    .eq("company_id", companyId)
+    .eq("numero", numero)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (card?.owner_id) return card.owner_id as string;
+  if (card?.user_id) return card.user_id as string;
+
+  const { data: member } = await admin
+    .from("company_user")
+    .select("user_id")
+    .eq("company_id", companyId)
+    .eq("ativo", true)
+    .limit(1)
+    .maybeSingle();
+  return (member?.user_id as string | undefined) ?? null;
+}
+
 async function sendFixedMenu(admin: Admin, companyId: string, numero: string, text: string) {
   const instance = await getActiveInstance(companyId);
   if (!instance) throw new Error("Nenhuma conexão ativa para enviar o menu de setores.");
-  await waSendText(instance, numero, text);
+  const sendRes = await waSendText(instance, numero, text);
+  const waId = extractWhatsappMessageId(sendRes) || (sendRes as any)?.id || null;
+  const userId = await resolveMenuUserId(admin, companyId, numero);
   await admin.from("mensagens").insert({
     company_id: companyId,
+    user_id: userId,
     numero,
     texto: text,
     direcao: "saida",
     autor: "ia",
+    provider: instance.provider,
+    whatsapp_message_id: waId,
+    status_envio: "enviado",
     created_at: new Date().toISOString(),
   });
 }

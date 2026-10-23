@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { resolveCompanyIdCached } from "./company-cache";
+import { dapiSendText } from "./dapi.server";
 
 export type GrupoWhatsapp = {
   jid: string;
@@ -11,17 +12,17 @@ export type GrupoWhatsapp = {
   ultima_em: string | null;
 };
 
-async function instanciaUazapi(admin: any, companyId: string) {
+async function instanciaDapi(admin: any, companyId: string) {
   const { data } = await admin
     .from("whatsapp_instances")
-    .select("id,instance_name,instance_token,provider,status")
-    .eq("company_id", companyId);
+    .select("id,instance_name,provider,status")
+    .eq("company_id", companyId)
+    .in("provider", ["dapi", "dapi_official"]);
   const lista = (data ?? []) as any[];
-  const uaz = lista.filter((i) => String(i.provider ?? "").toLowerCase() === "uazapi" && i.instance_token);
-  return uaz.find((i) => i.status === "connected") ?? uaz[0] ?? null;
+  return lista.find((i) => i.status === "connected") ?? lista[0] ?? null;
 }
 
-/** Grupos da conexão WhatsApp da empresa (sincroniza com a Uazapi quando possível). */
+/** Grupos da conexão WhatsApp da empresa. */
 export const listarGrupos = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<GrupoWhatsapp[]> => {
@@ -36,30 +37,6 @@ export const listarGrupos = createServerFn({ method: "GET" })
       .maybeSingle();
     if (!(company as any)?.grupos_ativos) return [];
 
-    const inst = await instanciaUazapi(supabaseAdmin, companyId);
-    if (inst) {
-      try {
-        const { uazListGroups } = await import("./uazapi.server");
-        const grupos = await uazListGroups(inst.instance_token);
-        if (grupos.length) {
-          await (supabaseAdmin as any).from("whatsapp_grupo").upsert(
-            grupos.map((g) => ({
-              company_id: companyId,
-              instance_id: inst.id,
-              jid: g.jid,
-              nome: g.nome,
-              foto_url: g.foto_url,
-              participantes: g.participantes,
-              updated_at: new Date().toISOString(),
-            })),
-            { onConflict: "company_id,jid" },
-          );
-        }
-      } catch (e: any) {
-        console.warn("[grupos] sincronização falhou:", e?.message);
-      }
-    }
-
     const { data } = await (supabaseAdmin as any)
       .from("whatsapp_grupo")
       .select("jid,nome,foto_url,participantes,ultima_em")
@@ -69,7 +46,7 @@ export const listarGrupos = createServerFn({ method: "GET" })
     return (data ?? []) as GrupoWhatsapp[];
   });
 
-/** Envia uma mensagem de texto para um grupo do WhatsApp. */
+/** Envia uma mensagem de texto para um grupo do WhatsApp via D-API. */
 export const enviarMensagemGrupo = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ jid: z.string().min(5), texto: z.string().min(1) }))
@@ -86,15 +63,14 @@ export const enviarMensagemGrupo = createServerFn({ method: "POST" })
     if (!(company as any)?.grupos_ativos) throw new Error("Grupos não estão habilitados nesta conta.");
     if (!data.jid.includes("@g.us")) throw new Error("Destino inválido: não é um grupo.");
 
-    const inst = await instanciaUazapi(supabaseAdmin, companyId);
-    if (!inst) throw new Error("Nenhuma conexão de WhatsApp disponível para enviar ao grupo.");
+    const inst = await instanciaDapi(supabaseAdmin, companyId);
+    if (!inst) throw new Error("Nenhuma conexão de WhatsApp (D-API) disponível para enviar ao grupo.");
 
     const { assinaturaPrefixo } = await import("./user-scope");
     const prefixo = await assinaturaPrefixo(supabaseAdmin, userId, companyId);
     const texto = `${prefixo}${data.texto}`;
 
-    const { uazSendText } = await import("./uazapi.server");
-    const res: any = await uazSendText(inst.instance_token, data.jid, texto);
+    const res: any = await dapiSendText(inst.instance_name, data.jid, texto);
 
     const { data: msg } = await supabaseAdmin
       .from("mensagens")
@@ -107,7 +83,7 @@ export const enviarMensagemGrupo = createServerFn({ method: "POST" })
         texto,
         grupo_jid: data.jid,
         status_envio: "enviado",
-        whatsapp_message_id: res?.id ?? res?.key?.id ?? null,
+        whatsapp_message_id: res?.id ?? null,
         created_at: new Date().toISOString(),
       } as any)
       .select("id")
@@ -154,40 +130,14 @@ export const detalhesGrupo = createServerFn({ method: "GET" })
       .eq("jid", data.jid)
       .maybeSingle();
 
-    let info: any = null;
-    const inst = await instanciaUazapi(supabaseAdmin, companyId);
-    if (inst) {
-      try {
-        const { uazGroupInfo } = await import("./uazapi.server");
-        info = await uazGroupInfo(inst.instance_token, data.jid);
-      } catch (e: any) {
-        console.warn("[grupos] detalhes falharam:", e?.message);
-      }
-    }
-
-    if (info && (info.nome || info.lista?.length)) {
-      await (supabaseAdmin as any).from("whatsapp_grupo").upsert(
-        {
-          company_id: companyId,
-          instance_id: inst?.id ?? null,
-          jid: data.jid,
-          nome: info.nome ?? row?.nome ?? null,
-          foto_url: info.foto_url ?? row?.foto_url ?? null,
-          participantes: info.participantes ?? row?.participantes ?? null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "company_id,jid" },
-      );
-    }
-
-    if (!info && !row) return null;
+    if (!row) return null;
     return {
       jid: data.jid,
-      nome: info?.nome ?? row?.nome ?? null,
-      foto_url: info?.foto_url ?? row?.foto_url ?? null,
-      participantes: info?.participantes ?? row?.participantes ?? null,
+      nome: row?.nome ?? null,
+      foto_url: row?.foto_url ?? null,
+      participantes: row?.participantes ?? null,
       ultima_em: row?.ultima_em ?? null,
-      descricao: info?.descricao ?? null,
-      lista: (info?.lista ?? []) as GrupoParticipante[],
+      descricao: null,
+      lista: [],
     };
   });

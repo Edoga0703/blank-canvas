@@ -20,6 +20,20 @@ function toBase64(bytes: Uint8Array): string {
 
 async function download(url: string): Promise<{ bytes: Uint8Array; mime: string } | null> {
   try {
+    if (!url) return null;
+    // Suporte direto a Data URIs Base64 (ex: retornados por dapiDownloadMedia)
+    if (url.startsWith("data:")) {
+      const commaIdx = url.indexOf(",");
+      if (commaIdx === -1) return null;
+      const meta = url.slice(0, commaIdx);
+      const b64 = url.slice(commaIdx + 1);
+      const mimeMatch = meta.match(/^data:([^;,]+)/i);
+      const mime = mimeMatch?.[1] || "application/octet-stream";
+      const buf = new Uint8Array(Buffer.from(b64, "base64"));
+      if (!buf.byteLength) return null;
+      return { bytes: buf, mime };
+    }
+
     const absolute = url.startsWith("http")
       ? url
       : `${process.env["PUBLIC_APP_URL"] || process.env["PUBLIC_BASE_URL"] || ""}${url}`;

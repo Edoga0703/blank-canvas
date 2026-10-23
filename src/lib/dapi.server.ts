@@ -1,12 +1,12 @@
 /**
- * Cliente servidor para D-API WhatsApp (https://docs.d-api.cloud/whatsapp/introducao).
- * Proveedor unificado para WhatsApp No Oficial (QR / Pairing Code) y Oficial (Meta Cloud API).
+ * Cliente servidor para D-API WhatsApp (https://docs.d-api.cloud/whatsapp/introducao) — v1.1.14.
+ * Proveedor unificado para WhatsApp No Oficial (QR / Pairing Code) y Oficial SaaS (Meta Cloud API).
  */
 
 const DEFAULT_BASE_URL = "https://api.d-api.cloud/api/v1";
 
 function getBaseUrl(): string {
-  let url = process.env.DAPI_BASE_URL || DEFAULT_BASE_URL;
+  const url = process.env.DAPI_BASE_URL || DEFAULT_BASE_URL;
   return url.replace(/\/+$/, "");
 }
 
@@ -23,7 +23,7 @@ function getHeaders(): Record<string, string> {
   return {
     "Authorization": key,
     "Content-Type": "application/json",
-    "User-Agent": "Capiconversa-CRM/1.1.10",
+    "User-Agent": "Capiconversa-CRM/1.1.13",
   };
 }
 
@@ -124,6 +124,7 @@ export async function dapiCreateSession(params: DapiCreateSessionParams): Promis
 
 /**
  * Obtiene el QR Code actual de una sesión.
+ * Consulta primero la ruta canónica GET /sessions/{sessionId}/qr y usa /qr-code como fallback.
  * Normaliza a formato data URI base64 para renderizar directo en <img src={qr} />.
  */
 export async function dapiGetQr(sessionId: string): Promise<{
@@ -132,7 +133,7 @@ export async function dapiGetQr(sessionId: string): Promise<{
   status: string;
 }> {
   try {
-    const res = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/qr-code`);
+    const res = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/qr`);
     let qrcode = res?.qrcode || res?.qrCodeImage || res?.data?.qrcode || null;
     if (qrcode && !qrcode.startsWith("data:") && !qrcode.startsWith("http")) {
       qrcode = `data:image/png;base64,${qrcode}`;
@@ -142,11 +143,10 @@ export async function dapiGetQr(sessionId: string): Promise<{
       qrcode,
       status: res?.status || "connecting",
     };
-  } catch (err: any) {
-    // Fallback alternativo a /sessions/{sessionId}/qr
+  } catch {
     try {
-      const alt = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/qr`);
-      let qrcode = alt?.qrcode || alt?.qrCodeImage || null;
+      const alt = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/qr-code`);
+      let qrcode = alt?.qrcode || alt?.qrCodeImage || alt?.data?.qrcode || null;
       if (qrcode && !qrcode.startsWith("data:") && !qrcode.startsWith("http")) {
         qrcode = `data:image/png;base64,${qrcode}`;
       }
@@ -200,6 +200,7 @@ export async function dapiGetPairingCode(
 
 /**
  * Configura o actualiza la URL del webhook de una sesión en D-API sin reiniciar el contenedor.
+ * Envía enabled: true y webhookUrl según contrato de /sessions/{sessionId}/webhook-config.
  */
 export async function dapiSetWebhookConfig(
   sessionId: string,
@@ -208,7 +209,15 @@ export async function dapiSetWebhookConfig(
   try {
     const res = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/webhook-config`, {
       method: "POST",
-      body: JSON.stringify({ webhookUrl }),
+      body: JSON.stringify({
+        enabled: true,
+        webhookUrl,
+      }),
+    }).catch(() => {
+      return dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/webhook`, {
+        method: "PUT",
+        body: JSON.stringify({ enabled: true, webhookUrl }),
+      });
     });
     return { success: res?.success ?? true, raw: res };
   } catch (err: any) {
@@ -218,34 +227,52 @@ export async function dapiSetWebhookConfig(
 }
 
 /**
- * Conecta una cuenta oficial de Meta Cloud API.
+ * Conecta una cuenta oficial de Meta Cloud API (API Oficial para SaaS).
+ * Soporta tanto sesiones creadas/vinculadas por Popup Hospedado (postMessage)
+ * como creación directa en POST /sessions con type: "cloud_api".
  */
 export async function dapiCreateOfficialConnection(params: {
   sessionId: string;
-  wabaId: string;
-  phoneNumberId: string;
-  accessToken: string;
+  wabaId?: string;
+  phoneNumberId?: string;
+  accessToken?: string;
   webhookUrl?: string;
 }): Promise<{ success: boolean; sessionId: string; status: string }> {
   const body: Record<string, any> = {
     sessionId: params.sessionId,
     type: "cloud_api",
-    wabaId: params.wabaId,
-    phoneNumberId: params.phoneNumberId,
-    accessToken: params.accessToken,
   };
+  if (params.wabaId) body.wabaId = params.wabaId;
+  if (params.phoneNumberId) body.phoneNumberId = params.phoneNumberId;
+  if (params.accessToken) body.accessToken = params.accessToken;
   if (params.webhookUrl) body.webhookUrl = params.webhookUrl;
 
-  const res = await dapiFetch<any>("/official/connections", {
+  // Si la sesión ya fue creada por el Popup Hospedado de D-API, sincronizamos su webhook
+  if (!params.accessToken && params.webhookUrl) {
+    await dapiSetWebhookConfig(params.sessionId, params.webhookUrl).catch(() => null);
+    const st = await dapiGetStatus(params.sessionId).catch(() => null);
+    if (st?.success) {
+      return {
+        success: true,
+        sessionId: params.sessionId,
+        status: st.status || "connected",
+      };
+    }
+  }
+
+  const res = await dapiFetch<any>("/sessions", {
     method: "POST",
     body: JSON.stringify(body),
   }).catch(() => {
-    // Si no existe /official/connections, intenta /sessions con type: cloud_api
-    return dapiFetch<any>("/sessions", {
+    return dapiFetch<any>("/official/connections", {
       method: "POST",
       body: JSON.stringify(body),
     });
   });
+
+  if (params.webhookUrl) {
+    await dapiSetWebhookConfig(params.sessionId, params.webhookUrl).catch(() => null);
+  }
 
   return {
     success: res?.success ?? true,
@@ -256,19 +283,23 @@ export async function dapiCreateOfficialConnection(params: {
 
 /**
  * Consulta el estado actual de la sesión.
+ * Usa GET /sessions/{sessionId}/status con fallback a GET /sessions/{sessionId}.
  */
 export async function dapiGetStatus(sessionId: string): Promise<DapiSessionStatus> {
   try {
-    const res = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/status`);
-    let qrcode = res?.qrcode || res?.qrCodeImage || null;
+    const res = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/status`).catch(() => {
+      return dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}`);
+    });
+    const payload = res?.data || res;
+    let qrcode = payload?.qrcode || payload?.qrCodeImage || res?.qrcode || res?.qrCodeImage || null;
     if (qrcode && !qrcode.startsWith("data:") && !qrcode.startsWith("http")) {
       qrcode = `data:image/png;base64,${qrcode}`;
     }
     return {
       success: true,
-      status: res?.status || (res?.connected ? "connected" : "disconnected"),
+      status: payload?.status || res?.status || (payload?.connected || res?.connected ? "connected" : "disconnected"),
       qrcode,
-      numero: res?.numero || res?.phoneNumber || res?.phone || null,
+      numero: payload?.numero || payload?.phoneNumber || payload?.phone || res?.numero || res?.phoneNumber || null,
       raw: res,
     };
   } catch (err: any) {
@@ -324,7 +355,6 @@ export async function dapiSendText(
     method: "POST",
     body: JSON.stringify(payload),
   }).catch(() => {
-    // Fallback a /messages/text
     return dapiFetch<any>("/messages/text", {
       method: "POST",
       body: JSON.stringify(payload),
@@ -337,6 +367,8 @@ export async function dapiSendText(
 
 /**
  * Envío de multimedia (imagen, video, audio ptt o documento).
+ * Soporta tanto la convención /messages/send/{type} como /messages/{type}
+ * y envía propiedades compatibles (image + imageUrl, audio + audioUrl, etc.).
  */
 export async function dapiSendMedia(
   sessionId: string,
@@ -352,35 +384,52 @@ export async function dapiSendMedia(
 ): Promise<{ id: string; provider: string; raw: any }> {
   const cleanTo = to.replace(/\D/g, "");
 
-  let endpoint = "/messages/send/image";
+  let primaryEndpoint = "/messages/send/image";
+  let fallbackEndpoint = "/messages/image";
   const body: Record<string, any> = {
     sessionId,
     to: cleanTo,
   };
 
   if (media.type === "image") {
-    endpoint = "/messages/send/image";
+    primaryEndpoint = "/messages/send/image";
+    fallbackEndpoint = "/messages/image";
     body.image = media.url;
+    body.imageUrl = media.url;
     if (media.caption) body.caption = media.caption;
   } else if (media.type === "audio") {
-    endpoint = "/messages/send/audio";
+    primaryEndpoint = "/messages/send/audio";
+    fallbackEndpoint = "/messages/audio";
     body.audio = media.url;
-    body.ptt = media.ptt ?? true; // Voice note por defecto para IA
+    body.audioUrl = media.url;
+    body.ptt = media.ptt ?? true;
   } else if (media.type === "video") {
-    endpoint = "/messages/send/video";
+    primaryEndpoint = "/messages/send/video";
+    fallbackEndpoint = "/messages/video";
     body.video = media.url;
+    body.videoUrl = media.url;
     if (media.caption) body.caption = media.caption;
   } else {
-    endpoint = "/messages/send/document";
+    primaryEndpoint = "/messages/send/document";
+    fallbackEndpoint = "/messages/document";
     body.document = media.url;
-    if (media.fileName) body.fileName = media.fileName;
+    body.documentUrl = media.url;
+    if (media.fileName) {
+      body.fileName = media.fileName;
+      body.filename = media.fileName;
+    }
     if (media.mime) body.mimetype = media.mime;
     if (media.caption) body.caption = media.caption;
   }
 
-  const res = await dapiFetch<any>(endpoint, {
+  const res = await dapiFetch<any>(primaryEndpoint, {
     method: "POST",
     body: JSON.stringify(body),
+  }).catch(() => {
+    return dapiFetch<any>(fallbackEndpoint, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
   });
 
   const id = res?.id || res?.messageId || res?.data?.id || `dapi_${Date.now()}`;
@@ -419,6 +468,7 @@ export async function dapiSendTemplate(
     sessionId,
     to: cleanTo,
     templateName: template.name,
+    name: template.name,
     language: template.language,
     components: template.components || [],
   };
@@ -438,20 +488,95 @@ export async function dapiSendTemplate(
 }
 
 /**
- * Descarga el contenido multimedia de un mensaje recibido en base64 o buffer.
+ * Lista las plantillas HSM de una sesión oficial en D-API.
+ */
+/**
+ * Crea y envía para aprobación una plantilla HSM en una sesión oficial de D-API / Meta Cloud API.
+ */
+export async function dapiCreateTemplate(
+  sessionId: string,
+  template: {
+    name: string;
+    category: string;
+    language: string;
+    components: any[];
+  },
+): Promise<{ success: boolean; id?: string | null; status?: string; error?: string; raw?: any }> {
+  try {
+    const payload = {
+      sessionId,
+      name: template.name,
+      category: template.category,
+      language: template.language,
+      components: template.components,
+    };
+    const res = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/templates`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }).catch(() => {
+      return dapiFetch<any>(`/templates`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+    });
+    const id = res?.id || res?.templateId || res?.data?.id || null;
+    const status = res?.status || res?.data?.status || "PENDING";
+    return { success: true, id, status, raw: res };
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Error al enviar plantilla a D-API" };
+  }
+}
+
+export async function dapiListTemplates(sessionId: string): Promise<any[]> {
+  try {
+    const res = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/templates`).catch(() => {
+      return dapiFetch<any>(`/templates?sessionId=${encodeURIComponent(sessionId)}`);
+    });
+    if (Array.isArray(res)) return res;
+    if (Array.isArray(res?.data)) return res.data;
+    if (Array.isArray(res?.templates)) return res.templates;
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export interface DapiMediaDownloadMeta {
+  direct_path?: string | null;
+  media_key?: string | null;
+  mimetype?: string | null;
+  url?: string | null;
+}
+
+/**
+ * Descarga el contenido multimedia de un mensaje recibido en base64.
+ * Incluye direct_path, media_key y mimetype del evento cuando están presentes,
+ * conforme al contrato POST /api/v1/media/download de D-API.
  */
 export async function dapiDownloadMedia(
   sessionId: string,
   messageId: string,
-): Promise<{ base64?: string; mimetype?: string } | null> {
+  mediaMeta?: DapiMediaDownloadMeta,
+): Promise<{ base64?: string; mimetype?: string; media_url?: string } | null> {
   try {
+    const payload: Record<string, any> = {
+      sessionId,
+      messageId,
+      base64: true,
+    };
+    if (mediaMeta?.direct_path) payload.direct_path = mediaMeta.direct_path;
+    if (mediaMeta?.media_key) payload.media_key = mediaMeta.media_key;
+    if (mediaMeta?.mimetype) payload.mimetype = mediaMeta.mimetype;
+    if (mediaMeta?.url) payload.url = mediaMeta.url;
+
     const res = await dapiFetch<any>("/media/download", {
       method: "POST",
-      body: JSON.stringify({ sessionId, messageId, base64: true }),
+      body: JSON.stringify(payload),
     });
     return {
       base64: res?.base64 || res?.data || null,
-      mimetype: res?.mimetype || res?.mime || null,
+      mimetype: res?.mimetype || res?.mime || mediaMeta?.mimetype || null,
+      media_url: res?.media_url || res?.url || null,
     };
   } catch (err: any) {
     console.warn("[dapi.server] Error descargando multimedia:", err?.message);

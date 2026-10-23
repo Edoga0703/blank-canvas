@@ -78,16 +78,20 @@ export function MetaConnectDialog({
                 </span>
               </button>
 
-              <div className="w-full text-left flex items-start gap-3 rounded-xl border border-dashed p-3 opacity-70">
+              <button
+                type="button"
+                onClick={() => setStep("steps")}
+                className="w-full text-left flex items-start gap-3 rounded-xl border p-3 hover:bg-muted/40 transition-colors"
+              >
                 <span className="size-9 rounded-full bg-[#E4405F]/10 flex items-center justify-center shrink-0">
                   <Instagram className="size-4 text-[#E4405F]" />
                 </span>
                 <span className="min-w-0">
-                  <span className="block font-medium text-sm">Integrar via Instagram <span className="text-[10px] uppercase tracking-wide text-muted-foreground">— em breve</span></span>
-                  <span className="block text-xs text-muted-foreground">Conexão direta, sem necessidade de vínculo com uma página do Facebook.</span>
-                  <span className="block text-xs font-medium mt-0.5">Recomendado para contas com menor volume de dados.</span>
+                  <span className="block font-medium text-sm">Integrar via Instagram Direct</span>
+                  <span className="block text-xs text-muted-foreground">Conecte sua conta profissional do Instagram via Meta OAuth oficial.</span>
+                  <span className="block text-xs font-medium mt-0.5">Recomendado para contas comerciais e criadores.</span>
                 </span>
-              </div>
+              </button>
             </div>
 
             <div className="flex justify-start">

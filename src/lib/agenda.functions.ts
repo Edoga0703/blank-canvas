@@ -898,23 +898,15 @@ export const acaoMensagem = createServerFn({ method: "POST" })
     }
 
     // enviar agora / reenviar
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { evoSendText } = await import("./evolution.server");
-    const { data: insts } = await (supabaseAdmin as any)
-      .from("whatsapp_instances")
-      .select("instance_name")
-      .eq("company_id", c.companyId)
-      .eq("status", "connected")
-      .order("updated_at", { ascending: false })
-      .limit(1);
-    const inst = insts?.[0];
+    const { getActiveInstance, waSendText } = await import("./wa-dispatch.server");
+    const inst = await getActiveInstance(c.companyId);
     if (!inst?.instance_name) {
       throw new Error("Nenhuma conexão de WhatsApp ativa. Conecte o WhatsApp antes de enviar.");
     }
     let texto = row.mensagem as string;
     if (row.link_reuniao && !texto.includes(row.link_reuniao)) texto = `${texto}\n\n${row.link_reuniao}`;
     try {
-      await evoSendText(inst.instance_name, row.numero, texto);
+      await waSendText(inst, row.numero, texto);
       await supabase
         .from("mensagem_agendada")
         .update({ status: "enviado", enviado_em: new Date().toISOString(), erro: null, motivo_falha: null })

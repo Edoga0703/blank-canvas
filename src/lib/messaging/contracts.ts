@@ -1,10 +1,7 @@
 export const MESSAGING_PROVIDERS = [
   "dapi",
-  "lovable_whatsapp",
+  "dapi_official",
   "meta_direct",
-  "evolution",
-  "uazapi",
-  "wablast",
 ] as const;
 
 export type MessagingProviderId = (typeof MESSAGING_PROVIDERS)[number];

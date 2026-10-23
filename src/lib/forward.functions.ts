@@ -146,25 +146,12 @@ export const encaminharMensagem = createServerFn({ method: "POST" })
     }
 
     const { getInstanceForContact, extractWhatsappMessageId } = await import("./evolution-helpers");
-    const { waSendAudio } = await import("./wa-dispatch.server");
-    const { evoSendText, evoSendMedia } = await import("./evolution.server");
-    const { uazSendText, uazSendMedia, uazSendAudio } = await import("./uazapi.server");
+    const { waSendText, waSendMedia, waSendAudio } = await import("./wa-dispatch.server");
     const mediaTypeEnvio = (midiaTipo === "image" || midiaTipo === "video" || midiaTipo === "document")
       ? midiaTipo : "document";
     const mimeEnvio = (msg as any).midia_mime ?? "application/octet-stream";
 
-    let instGrupo: any = null;
-    if (destinos.some((d) => d.includes("@g.us"))) {
-      const { data: company } = await supabaseAdmin
-        .from("company").select("grupos_ativos").eq("id", perfil.companyId).maybeSingle();
-      if (!(company as any)?.grupos_ativos) throw new Error("Grupos não estão habilitados nesta conta.");
-      const { data: lista } = await supabaseAdmin
-        .from("whatsapp_instances")
-        .select("instance_name,instance_token,provider,status")
-        .eq("company_id", perfil.companyId);
-      const uaz = ((lista ?? []) as any[]).filter((i) => String(i.provider ?? "").toLowerCase() === "uazapi" && i.instance_token);
-      instGrupo = uaz.find((i) => i.status === "connected") ?? uaz[0] ?? null;
-    }
+    const instGrupo: any = null;
 
     const resultados: { numero: string; ok: boolean; erro?: string }[] = [];
 
@@ -179,46 +166,34 @@ export const encaminharMensagem = createServerFn({ method: "POST" })
         let waId: string | null = null;
 
         if (grupo) {
-          if (!instGrupo) throw new Error("Nenhuma conexão disponível para enviar ao grupo.");
-          if (midiaTipo === "audio") {
-            const resp: any = await uazSendAudio(instGrupo.instance_token, destino, midiaUrl!, mimeEnvio);
-            waId = extractWhatsappMessageId(resp);
-          } else if (midiaTipo) {
-            const resp: any = await uazSendMedia(instGrupo.instance_token, destino, {
-              mediatype: mediaTypeEnvio, media: midiaUrl!, mimetype: mimeEnvio,
-              fileName: (msg as any).midia_nome ?? undefined,
-              caption: texto || undefined,
-            });
-            waId = extractWhatsappMessageId(resp);
-          } else {
-            const resp: any = await uazSendText(instGrupo.instance_token, destino, texto);
-            waId = extractWhatsappMessageId(resp);
-          }
+          throw new Error("O envio para grupos está desabilitado na D-API.");
         } else {
           const inst = await getInstanceForContact(
             supabaseAdmin, perfil.companyId, destino,
-            "instance_name,status,numero,provider,instance_token", userId,
+            "instance_name,status,numero,provider,provider_type,instance_token", userId,
           );
           if (!inst?.instance_name) throw new Error("Conexão não disponível para este contato.");
+          const rawProv = String((inst as any).provider || (inst as any).provider_type || "dapi").toLowerCase();
+          const waInst = {
+            company_id: perfil.companyId,
+            instance_name: inst.instance_name,
+            instance_token: (inst as any).instance_token ?? null,
+            provider: (rawProv === "dapi_official" ? "dapi_official" : rawProv === "meta_instagram" || rawProv === "meta_messenger" || rawProv === "telegram" ? rawProv : "dapi") as any,
+            status: (inst as any).status ?? "connected",
+            paused: false,
+          };
           if (midiaTipo === "audio") {
-            const waInst = {
-              instance_name: inst.instance_name,
-              instance_token: (inst as any).instance_token ?? null,
-              provider: (String((inst as any).provider ?? "evolution").toLowerCase() === "uazapi" ? "uazapi" : "evolution") as any,
-              status: (inst as any).status ?? "connected",
-              paused: false,
-            };
             const resp: any = await waSendAudio(waInst as any, destino, midiaUrl!);
             waId = extractWhatsappMessageId(resp);
           } else if (midiaTipo) {
-            const resp: any = await evoSendMedia(inst.instance_name, destino, {
-              mediatype: mediaTypeEnvio, media: midiaUrl!, mimetype: mimeEnvio,
+            const resp: any = await waSendMedia(waInst as any, destino, {
+              type: mediaTypeEnvio, url: midiaUrl!, mime: mimeEnvio,
               fileName: (msg as any).midia_nome ?? undefined,
               caption: texto || undefined,
             });
             waId = extractWhatsappMessageId(resp);
           } else {
-            const resp: any = await evoSendText(inst.instance_name, destino, texto);
+            const resp: any = await waSendText(waInst as any, destino, texto);
             waId = extractWhatsappMessageId(resp);
           }
         }

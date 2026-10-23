@@ -1,4 +1,4 @@
-export type ProviderKey = "uazapi";
+export type ProviderKey = "dapi";
 
 export type ProviderHealth = {
   provider: ProviderKey;
@@ -28,7 +28,6 @@ export type ProvidersHealthResult = {
 
 const LATENCY_DEGRADED_MS = 2500;
 
-/** Tenta ler o limite de instâncias direto da resposta do provedor. */
 export function detectCapacity(parsed: any): number | undefined {
   const candidates = [
     parsed?.limit, parsed?.max_instances, parsed?.maxInstances, parsed?.instance_limit,
@@ -88,6 +87,7 @@ async function ping(url: string, headers: Record<string, string>) {
 
 function countRemote(parsed: any): number | undefined {
   if (Array.isArray(parsed)) return parsed.length;
+  if (Array.isArray(parsed?.sessions)) return parsed.sessions.length;
   if (Array.isArray(parsed?.instances)) return parsed.instances.length;
   if (Array.isArray(parsed?.data)) return parsed.data.length;
   return undefined;
@@ -98,61 +98,20 @@ export async function collectProvidersHealth(): Promise<ProvidersHealthResult> {
 
   const { data: rows } = await (supabaseAdmin as any)
     .from("whatsapp_instances")
-    .select("instance_name, provider, provider_type, status, paused");
+    .select("instance_name, provider, provider_type, status, paused")
+    .in("provider", ["dapi", "dapi_official"]);
 
   const local = (rows ?? []) as any[];
-  const stats = (key: ProviderKey) => {
-    const list = local.filter((r) => {
-      const p = String(r.provider || r.provider_type || "uazapi").toLowerCase();
-      return p.includes(key);
-    });
-    return {
-      instancesLocal: list.length,
-      connected: list.filter((r) => r.status === "connected" && !r.paused).length,
-      connecting: list.filter((r) => r.status === "connecting").length,
-      disconnected: list.filter((r) => r.status === "disconnected" && !r.paused).length,
-      paused: list.filter((r) => !!r.paused).length,
-    };
-  };
+  const stats = () => ({
+    instancesLocal: local.length,
+    connected: local.filter((r) => r.status === "connected" && !r.paused).length,
+    connecting: local.filter((r) => r.status === "connecting").length,
+    disconnected: local.filter((r) => r.status === "disconnected" && !r.paused).length,
+    paused: local.filter((r) => !!r.paused).length,
+  });
 
   const checkedAt = new Date().toISOString();
   const manualCapacity = await getProviderCapacityConfig();
-
-  const uazapiUrl = (process.env.UAZAPI_URL || "").replace(/\/+$/, "");
-  const uazapiToken = process.env.UAZAPI_ADMIN_TOKEN || "";
-
-  const uazFirst = uazapiUrl && uazapiToken ? await ping(`${uazapiUrl}/instance/all`, { admintoken: uazapiToken }) : null;
-
-
-  // Garbage collection: instâncias que existem no servidor Uazapi mas não têm
-  // registro local (sobras de tentativas de conexão) consomem slot da capacidade
-  // e inflam a contagem. Removemos as órfãs criadas há mais de 15 minutos.
-  let uaz = uazFirst;
-  if (uaz?.ok && uazapiUrl && uazapiToken) {
-    const remoteList: any[] = Array.isArray(uaz.parsed)
-      ? uaz.parsed
-      : Array.isArray((uaz.parsed as any)?.instances)
-        ? (uaz.parsed as any).instances
-        : [];
-    const localNames = new Set(local.map((r) => String(r.instance_name || "")));
-    const cutoff = Date.now() - 15 * 60 * 1000;
-    const orphans = remoteList.filter((i) => {
-      const name = String(i?.name || "");
-      if (!name || localNames.has(name)) return false;
-      const created = Date.parse(i?.created || "") || 0;
-      return created > 0 && created < cutoff && !!i?.token;
-    });
-    if (orphans.length) {
-      await Promise.all(
-        orphans.map((i) =>
-          fetch(`${uazapiUrl}/instance`, { method: "DELETE", headers: { token: String(i.token) } })
-            .catch((e) => console.warn("[uazapi.pruneOrphan]", i?.name, e?.message)),
-        ),
-      );
-      const refreshed = await ping(`${uazapiUrl}/instance/all`, { admintoken: uazapiToken });
-      if (refreshed.ok) uaz = refreshed;
-    }
-  }
 
   function build(
     provider: ProviderKey,
@@ -162,7 +121,7 @@ export async function collectProvidersHealth(): Promise<ProvidersHealthResult> {
     r: Awaited<ReturnType<typeof ping>> | null,
     missingMsg: string,
   ): ProviderHealth {
-    const s = stats(provider);
+    const s = stats();
     const manual = manualCapacity[provider];
     if (!configured || !r) {
       return {
@@ -181,10 +140,10 @@ export async function collectProvidersHealth(): Promise<ProvidersHealthResult> {
       ? degraded
         ? `Operacional, porém lento (${r.latencyMs} ms).`
         : remote !== undefined
-          ? `Operacional — ${remote} instância(s) no provedor.`
+          ? `Operacional — ${remote} sessão(ões) na D-API.`
           : "Operacional."
       : authFail
-        ? "Credenciais inválidas ou expiradas."
+        ? "Credenciais inválidas ou expiradas (DAPI_API_KEY)."
         : r.status
           ? `Servidor respondeu HTTP ${r.status}.`
           : `Sem resposta: ${r.error || "erro de rede"}.`;
@@ -197,10 +156,14 @@ export async function collectProvidersHealth(): Promise<ProvidersHealthResult> {
     };
   }
 
+  const dapiUrl = (process.env.DAPI_BASE_URL || "https://api.d-api.cloud/api/v1").replace(/\/+$/, "");
+  const dapiKey = process.env.DAPI_API_KEY || "";
+  const dapiPing = dapiUrl && dapiKey ? await ping(`${dapiUrl}/sessions`, { Authorization: dapiKey }) : null;
+
   return {
     checkedAt,
     providers: [
-      build("uazapi", "Uazapi", uazapiUrl, !!(uazapiUrl && uazapiToken), uaz, "UAZAPI_URL / UAZAPI_ADMIN_TOKEN não configurados."),
+      build("dapi", "D-API WhatsApp SaaS", dapiUrl, !!(dapiUrl && dapiKey), dapiPing, "DAPI_API_KEY não configurada."),
     ],
   };
 }

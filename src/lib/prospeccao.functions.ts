@@ -522,7 +522,7 @@ Responda SOMENTE um JSON válido:
         { role: "system", content: sistema },
         { role: "user", content: prompt },
       ],
-      "google/gemini-3.8-flash",
+      { provider: "gemini", model: "google/gemini-2.5-flash" },
     );
     const json = JSON.parse(resp.replace(/```json|```/g, "").match(/\{[\s\S]*\}/)?.[0] ?? "{}");
     const analise = String(json.analise ?? "").slice(0, 1200);

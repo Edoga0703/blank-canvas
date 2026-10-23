@@ -350,17 +350,18 @@ export const listCompanyInstances = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("whatsapp_instances")
-      .select("id, instance_name, display_name, numero, user_id, status")
-      .eq("company_id", companyId);
+      .select("id, instance_name, display_name, numero, user_id, status, provider")
+      .eq("company_id", companyId)
+      .in("provider", ["dapi", "dapi_official"]);
     if (error) throw error;
 
-    const missing = (data ?? []).filter((i: any) => !i.numero && i.status === "connected");
+    const missing = (data ?? []).filter((i: any) => !i.numero && i.status === "connected" && i.provider === "dapi");
     if (missing.length) {
-      const { evoFetchNumberFromInstance } = await import("./evolution.server");
+      const { dapiGetStatus } = await import("./dapi.server");
       await Promise.all(missing.map(async (i: any) => {
-        const num = await evoFetchNumberFromInstance(i.instance_name);
-        if (num) {
-          const clean = String(num).replace(/@.*/, "").replace(/\D/g, "");
+        const st = await dapiGetStatus(i.instance_name).catch(() => null);
+        if (st?.numero) {
+          const clean = String(st.numero).replace(/@.*/, "").replace(/\D/g, "");
           if (clean) {
             i.numero = clean;
             await supabaseAdmin.from("whatsapp_instances")

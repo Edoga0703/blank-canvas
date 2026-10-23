@@ -145,7 +145,7 @@ export const listMasterSubscriptions = createServerFn({ method: "POST" })
           numero: i.numero,
           status: i.status,
           paused: !!i.paused,
-          provider: (i.provider ?? i.provider_type ?? "evolution") as string,
+          provider: (i.provider ?? i.provider_type ?? "dapi") as string,
           updated_at: i.updated_at,
         });
       }

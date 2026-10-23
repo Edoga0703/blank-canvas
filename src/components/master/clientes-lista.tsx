@@ -57,10 +57,12 @@ export type ClienteRow = {
 };
 
 const PROVIDER_LABEL: Record<string, string> = {
-  lovable_whatsapp: "WhatsApp oficial · Lovable",
-  evolution: "Evolution API",
-  uazapi: "Uazapi",
-  official: "WhatsApp Oficial",
+  dapi: "WhatsApp (D-API)",
+  dapi_official: "WhatsApp Oficial (D-API)",
+  official: "WhatsApp Oficial (D-API)",
+  meta_instagram: "Instagram Direct",
+  meta_messenger: "Facebook Messenger",
+  telegram: "Telegram",
 };
 
 function ConexoesCell({ row }: { row: ClienteRow }) {

@@ -29,7 +29,7 @@ function WaCallback() {
       try {
         const res = await listWhatsappInstances();
         const oficial = (res.instances as any[]).find(
-          (i) => i.provider === "wablast" || i.provider_type === "wablast",
+          (i) => i.provider === "dapi_official" || i.provider_type === "dapi_official" || i.provider === "dapi",
         );
         if (oficial && oficial.status === "connected") {
           setNome(oficial.display_name || oficial.numero || "WhatsApp Oficial");

@@ -21,7 +21,7 @@ export const getWhatsappFleet = createServerFn({ method: "POST" })
     const { collectWhatsappFleet } = await import("@/lib/whatsapp-fleet.server");
     const { getProviderCapacityConfig } = await import("@/lib/provider-monitor.server");
     const cap = await getProviderCapacityConfig();
-    return collectWhatsappFleet(cap["uazapi"]);
+    return collectWhatsappFleet(cap["dapi"]);
   });
 
 export const setProviderCapacity = createServerFn({ method: "POST" })

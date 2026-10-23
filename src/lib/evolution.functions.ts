@@ -1,287 +1,117 @@
 import { normalizePhone } from "./br-phone";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { getRequest } from "@tanstack/react-start/server";
-import { canAttemptSilentRecovery, hasPermanentInstanceIssue, isPermanentDisconnectReason, normalizeEvolutionState, statusAfterRecoveryPolicy } from "./whatsapp-connection";
 import {
-  deriveInstanceName, sortInstances, getPreferredWhatsappInstance, getInstanceForContact,
-  buildWebhookUrl, extractWhatsappMessageId, onlyDigits, isSameWhatsappNumber,
-  assertNotSendingToOwnConnectedNumber, assertInstanceOpen, isPermanentMetaSendError,
+  sortInstances, getInstanceForContact,
+  buildWebhookUrl, extractWhatsappMessageId,
+  assertNotSendingToOwnConnectedNumber, isPermanentMetaSendError,
   resolveCompanyId,
 } from "./evolution-helpers";
 
 export { resolveCompanyId };
 
+const LEGACY_WA_PROVIDERS = new Set(["evolution", "uazapi", "wablast", "lovable_whatsapp"]);
+const ALLOWED_INSTANCE_PROVIDERS = new Set([
+  "dapi",
+  "dapi_official",
+  "meta_instagram",
+  "meta_messenger",
+  "telegram",
+]);
+
 export const connectWhatsapp = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d?: { instanceName?: string | null; createNew?: boolean; displayName?: string | null; provider?: "dapi" | "dapi_official" | "evolution" | "uazapi" | null; phone?: string | null }) => {
-    let phone = normalizePhone(d?.phone || "");
+  .inputValidator((d?: { instanceName?: string | null; createNew?: boolean; displayName?: string | null; provider?: string | null; phone?: string | null }) => {
+    const phone = normalizePhone(d?.phone || "");
     return {
       instanceName: d?.instanceName?.trim() || null,
       createNew: !!d?.createNew,
       displayName: (d?.displayName || "").toString().trim().slice(0, 60) || null,
-      providerOverride: d?.provider || null,
       phone: phone.length >= 9 ? phone : null,
     };
   })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
-    const {
-      evoCreateInstance,
-      evoGetQr,
-      evoSetWebhook,
-      evoState,
-      extractQrFromPayload,
-    } = await import("./evolution.server");
-
-    // Provedor: override explícito (por conexão) tem prioridade; senão usa o default da empresa.
-    const { data: companyRow } = await (supabase as any)
-      .from("company")
-      .select("wa_provider")
-      .eq("id", companyId)
-      .maybeSingle();
-    // Uazapi é o único provedor de QR oferecido hoje. Só usamos Evolution quando
-    // explicitamente pedido OU quando a empresa realmente já tem uma conexão legada
-    // Evolution — nunca por causa de um wa_provider desatualizado no cadastro.
-    const chosen = (data.providerOverride || (companyRow as any)?.wa_provider || "dapi").toLowerCase();
-    const isLegacy = chosen === "evolution" || chosen === "uazapi";
-    const provider: string = isLegacy ? chosen : "dapi";
-
-    // FLUXO PRINCIPAL SAAS: D-API (WhatsApp QR Code / Pairing Code)
-    if (provider === "dapi" || provider === "dapi_official") {
-      const { supabaseAdmin: sbAdminTok } = await import("@/integrations/supabase/client.server");
-      const { dapiCreateSession, dapiGetQr, dapiGetPairingCode, dapiGetStatus, dapiSetWebhookConfig } = await import("./dapi.server");
-
-      const existingQuery = (sbAdminTok as any)
-        .from("whatsapp_instances")
-        .select("id, instance_name, status, numero, webhook_token")
-        .eq("company_id", companyId)
-        .in("provider", ["dapi", "dapi_official"]);
-
-      const { data: dRows } = await (data.instanceName
-        ? existingQuery.eq("instance_name", data.instanceName).limit(1)
-        : existingQuery.order("updated_at", { ascending: false }));
-
-      const existing = data.createNew ? null : (dRows?.[0] ?? null);
-      const instanceName = existing?.instance_name || `dapi_${companyId.replace(/-/g, "").slice(0, 8)}_${crypto.randomUUID().slice(0, 4)}`;
-      const webhookToken = existing?.webhook_token || crypto.randomUUID();
-      const publicUrl = process.env.PUBLIC_APP_URL || process.env.PUBLIC_BASE_URL || "https://project-blank-github.lovable.app";
-      const webhookUrl = `${publicUrl.replace(/\/+$/, "")}/api/public/dapi-webhook?t=${webhookToken}`;
-
-      let qrBase64: string | null = null;
-      let pairingCode: string | null = null;
-
-      // Cria ou reconecta sessão em D-API
-      try {
-        if (existing && !data.createNew) {
-          dapiSetWebhookConfig(instanceName, webhookUrl).catch(() => null);
-        }
-
-        if (!existing || data.createNew) {
-          const createRes = await dapiCreateSession({
-            sessionId: instanceName,
-            type: "unofficial",
-            connectionMode: data.phone ? "pair" : "qr",
-            webhookUrl,
-            phoneNumber: data.phone || undefined,
-            pairPhone: data.phone || undefined,
-          });
-          qrBase64 = createRes.qrcode || null;
-        }
-
-        if (data.phone) {
-          const pairRes = await dapiGetPairingCode(instanceName, data.phone);
-          pairingCode = pairRes.code || null;
-        } else if (!qrBase64) {
-          const qrRes = await dapiGetQr(instanceName);
-          qrBase64 = qrRes.qrcode || null;
-        }
-      } catch (dErr: any) {
-        console.warn("[dapi.connectWhatsapp] Erro na sessão D-API:", dErr?.message);
-      }
-
-      await (sbAdminTok as any).from("whatsapp_instances").upsert(
-        {
-          company_id: companyId,
-          user_id: userId,
-          instance_name: instanceName,
-          display_name: data.displayName || "WhatsApp D-API",
-          status: "connecting",
-          webhook_token: webhookToken,
-          provider: "dapi",
-          provider_type: "dapi",
-          last_state_at: new Date().toISOString(),
-        },
-        { onConflict: "instance_name" },
-      );
-
-      return {
-        instanceName,
-        qrBase64,
-        code: null,
-        pairingCode,
-        state: "connecting",
-        webhookUrl,
-      };
-    }
-
 
     if (data.createNew) {
-      const { assertWithinLimit, getCompanyPlan } = await import("./plan-limits.server");
+      const { assertWithinLimit } = await import("./plan-limits.server");
       await assertWithinLimit(companyId, "instancias");
-
-      // Exclusividade Evolution ↔ Uazapi apenas quando o plano permite 1 conexão.
-      const planoAtual = await getCompanyPlan(companyId);
-      if ((planoAtual?.limites?.instancias ?? 1) <= 1) {
-        const { data: waRows } = await (supabase as any)
-          .from("whatsapp_instances")
-          .select("provider")
-          .eq("company_id", companyId)
-          .in("provider", ["evolution", "uazapi"]);
-        const outro = (waRows ?? []).find((r: any) => (r.provider ?? "evolution") !== provider);
-        if (outro) {
-          throw new Error(
-            `Você já possui uma conexão ${outro.provider === "uazapi" ? "WhatsApp Premium (Uazapi)" : "WhatsApp Web (Evolution)"}. Exclua-a ou faça upgrade para usar as duas APIs.`,
-          );
-        }
-      }
     }
 
     const { supabaseAdmin: sbAdminTok } = await import("@/integrations/supabase/client.server");
+    const { dapiCreateSession, dapiGetQr, dapiGetPairingCode, dapiSetWebhookConfig } = await import("./dapi.server");
+
     const existingQuery = (sbAdminTok as any)
       .from("whatsapp_instances")
-      .select("instance_name,status,numero,webhook_token,updated_at,provider")
-      .eq("company_id", companyId);
-    const { data: rows } = await (data.instanceName
+      .select("id, instance_name, status, numero, webhook_token, provider")
+      .eq("company_id", companyId)
+      .eq("provider", "dapi");
+
+    const { data: dRows } = await (data.instanceName
       ? existingQuery.eq("instance_name", data.instanceName).limit(1)
       : existingQuery.order("updated_at", { ascending: false }));
-    // AUDITORIA DE PROVEDOR: nunca reaproveitar uma instância de outro provedor
-    // (cliente escolhia Uazapi e caía numa conexão Evolution existente).
-    const rowsMesmoProvider = (rows ?? []).filter(
-      (r: any) => ((r.provider ?? provider) as string) === provider,
-    );
-    const existing = data.createNew ? null : sortInstances(rowsMesmoProvider)[0] ?? null;
-    const instanceName = existing?.instance_name || deriveInstanceName(companyId, data.createNew ? crypto.randomUUID().replace(/-/g, "").slice(0, 8) : undefined);
+
+    const existing = data.createNew ? null : (dRows?.[0] ?? null);
+    const instanceName = existing?.instance_name || `dapi_${companyId.replace(/-/g, "").slice(0, 8)}_${crypto.randomUUID().slice(0, 4)}`;
     const webhookToken = existing?.webhook_token || crypto.randomUUID();
-    const webhookUrl = buildWebhookUrl(webhookToken, provider);
-    if (existing?.instance_name) {
-      try {
-        const s = await evoState(existing.instance_name);
-        const existingState = s?.instance?.state || (s as any)?.state;
-        const instanceDetails = existingState === "open" ? await (await import("./evolution.server")).evoFetchInstance(existing.instance_name).catch(() => null) : null;
-        if (existingState === "open" && !hasPermanentInstanceIssue(instanceDetails)) {
-          if (webhookUrl) {
-            // fire-and-forget: não bloqueia o retorno
-            evoSetWebhook(existing.instance_name, webhookUrl).catch((e) => console.warn("[evolution.setWebhook]", e));
-          }
-          if (existing.status !== "connected") {
-            await supabase
-              .from("whatsapp_instances")
-              .update({ status: "connected", webhook_token: webhookToken, webhook_configured_at: new Date().toISOString(), last_state_at: new Date().toISOString() } as any)
-              .eq("instance_name", existing.instance_name);
-          }
-          return { instanceName: existing.instance_name, qrBase64: null, code: null, state: "open", webhookUrl };
-        }
-      } catch {}
-    }
-
-    // whatsapp_instances não permite escrita direta pelo cliente porque contém
-    // credenciais sensíveis. O usuário e a empresa já foram validados acima;
-    // persista a conexão somente pelo cliente privilegiado do servidor.
-    const { error: saveInstanceError } = await (sbAdminTok as any)
-      .from("whatsapp_instances")
-      .upsert(
-        { company_id: companyId, user_id: userId, instance_name: instanceName, display_name: data.displayName, status: "connecting", webhook_token: webhookToken, provider, provider_type: provider, last_state_at: new Date().toISOString() } as any,
-        { onConflict: "instance_name" },
-      );
-    if (saveInstanceError) throw new Error(`Falha ao salvar o provedor da conexão: ${saveInstanceError.message}`);
-
-    // Garantia extra: a linha precisa ficar com o provedor escolhido, mesmo que já existisse.
-    await (sbAdminTok as any)
-      .from("whatsapp_instances")
-      .update({ provider, provider_type: provider } as any)
-      .eq("instance_name", instanceName);
+    const webhookUrl = buildWebhookUrl(webhookToken, "dapi");
 
     let qrBase64: string | null = null;
-    let code: string | null = null;
     let pairingCode: string | null = null;
-    let lastQrError: unknown = null;
-    let alreadyExisted = false;
 
     try {
-      // Evolution v2 já devolve o QR na resposta do /instance/create quando qrcode:true.
-      // Uazapi devolve o QR embutido também. O 3º arg fixa o provedor da criação.
-      const createResp: any = await evoCreateInstance(instanceName, webhookUrl, provider);
-      const fromCreate = await extractQrFromPayload(createResp?.qrcode ?? createResp);
-      qrBase64 = fromCreate.qrBase64;
-      code = fromCreate.code;
-    } catch (e: any) {
-      const msg = String(e?.message || "");
-      const statusCode = Number(e?.status || 0);
-      const detailsMsg = JSON.stringify(e?.details ?? "");
-      alreadyExisted = /exists|already|in use|já existe/i.test(msg) || /already|in use|exists/i.test(detailsMsg);
-      if (!alreadyExisted) console.warn("[evolution.create]", msg, detailsMsg);
-      if (!alreadyExisted && (statusCode === 401 || statusCode === 403)) {
-        await (sbAdminTok as any)
-          .from("whatsapp_instances")
-          .update({ status: "disconnected" } as any)
-          .eq("instance_name", instanceName);
-        return {
-          instanceName,
-          qrBase64: null,
-          code: null,
-          state: "error",
+      if (existing && !data.createNew) {
+        dapiSetWebhookConfig(instanceName, webhookUrl).catch(() => null);
+      }
+
+      if (!existing || data.createNew) {
+        const createRes = await dapiCreateSession({
+          sessionId: instanceName,
+          type: "unofficial",
+          connectionMode: data.phone ? "pair" : "qr",
           webhookUrl,
-          error: msg || "Credenciais da Evolution API inválidas ou sem permissão.",
-        };
+          phoneNumber: data.phone || undefined,
+          pairPhone: data.phone || undefined,
+        });
+        qrBase64 = createRes.qrcode || null;
       }
-      if (!alreadyExisted) throw e;
-    }
 
-    // Se a instância já existia, não precisamos criar de novo — só reconfigurar webhook
-    // e buscar o QR via /connect.
-    if (alreadyExisted && webhookUrl) {
-      evoSetWebhook(instanceName, webhookUrl).catch((e) => console.warn("[evolution.setWebhook]", e));
-    }
-
-    // Fallback: se create não trouxe QR, tentamos /connect com backoff curto.
-    // Com telefone informado, /connect devolve o código de pareamento.
-    if (data.phone ? !pairingCode : !qrBase64 && !code) {
-      for (let i = 0; i < 6; i++) {
-        try {
-          const qr: any = await evoGetQr(instanceName, data.phone);
-          qrBase64 = qr.qrBase64 ?? qr.base64 ?? null;
-          code = qr.code ?? null;
-          pairingCode = qr.pairingCode ?? null;
-          // Com telefone informado só interessa o código de pareamento.
-          if (data.phone ? pairingCode : qrBase64 || code) break;
-        } catch (e) { lastQrError = e; console.warn("[evolution.connect]", e); }
-        await new Promise((r) => setTimeout(r, 600 + i * 300));
+      if (data.phone) {
+        const pairRes = await dapiGetPairingCode(instanceName, data.phone);
+        pairingCode = pairRes.code || null;
+      } else if (!qrBase64) {
+        const qrRes = await dapiGetQr(instanceName);
+        qrBase64 = qrRes.qrcode || null;
       }
+    } catch (dErr: any) {
+      console.warn("[dapi.connectWhatsapp] Erro na sessão D-API:", dErr?.message);
     }
 
-    // Se o servidor Evolution está instável (ex.: 500 no /connect logo após create),
-    // não estoure a UI — devolva estado "aguardando" para o cliente re-tentar.
-    if (data.phone ? !pairingCode : !qrBase64 && !code) {
-      const errMsg = lastQrError instanceof Error ? lastQrError.message : null;
-      return {
-        instanceName,
-        qrBase64: null,
-        code: null,
-        pairingCode: null,
-        state: "connecting",
-        webhookUrl,
-        error: data.phone
-          ? errMsg || "Código de pareamento ainda não disponível. Tente novamente em alguns segundos."
-          : errMsg || "QR ainda não disponível. Clique em Conectar WhatsApp novamente em alguns segundos.",
-      };
-    }
+    await (sbAdminTok as any).from("whatsapp_instances").upsert(
+      {
+        company_id: companyId,
+        user_id: userId,
+        instance_name: instanceName,
+        display_name: data.displayName || "WhatsApp D-API",
+        status: "connecting",
+        webhook_token: webhookToken,
+        provider: "dapi",
+        provider_type: "dapi",
+        last_state_at: new Date().toISOString(),
+      },
+      { onConflict: "instance_name" },
+    );
 
-    return { instanceName, qrBase64, code, pairingCode, state: undefined, webhookUrl };
+    return {
+      instanceName,
+      qrBase64,
+      code: null,
+      pairingCode,
+      state: "connecting",
+      webhookUrl,
+    };
   });
-
-
 
 export const checkWhatsappStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -291,128 +121,46 @@ export const checkWhatsappStatus = createServerFn({ method: "POST" })
     let companyId: string;
     try {
       companyId = await resolveCompanyId(supabase, userId);
-    } catch (e) {
-      console.warn("[checkWhatsappStatus] Sem empresa resolvida:", e);
+    } catch {
       return { status: "disconnected", state: null, numero: null, qrBase64: null, code: null };
     }
-    const { evoState, evoFetchInstance, evoFetchNumberFromInstance, evoSetWebhook } = await import("./evolution.server");
 
     const { supabaseAdmin: sbAdminTok } = await import("@/integrations/supabase/client.server");
     const query = (sbAdminTok as any)
       .from("whatsapp_instances")
       .select("instance_name,status,numero,webhook_token,webhook_configured_at,last_state_at,provider")
       .eq("company_id", companyId)
-      .not("provider", "like", "meta%")
-      .neq("provider", "telegram");
+      .in("provider", ["dapi", "dapi_official"]);
     const { data: rows } = await (data.instanceName
       ? query.eq("instance_name", data.instanceName).limit(1)
       : query.order("updated_at", { ascending: false }));
     const row = sortInstances(rows ?? [])[0] ?? null;
     if (!row) return { status: "disconnected", state: null, numero: null, qrBase64: null, code: null };
 
-    // Verificação de status via D-API
-    if (row.provider === "dapi" || row.provider === "dapi_official" || String(row.instance_name || "").startsWith("dapi_")) {
-      const { dapiGetStatus, dapiGetQr } = await import("./dapi.server");
-      const dStatus = await dapiGetStatus(row.instance_name);
-      let currentQr = dStatus.qrcode || null;
-      if (dStatus.status === "connecting" && !currentQr) {
-        const qrRes = await dapiGetQr(row.instance_name);
-        currentQr = qrRes.qrcode || null;
-      }
-      if (dStatus.status === "connected" && row.status !== "connected") {
-        await (sbAdminTok as any)
-          .from("whatsapp_instances")
-          .update({
-            status: "connected",
-            numero: dStatus.numero || row.numero,
-            last_state_at: new Date().toISOString(),
-          })
-          .eq("instance_name", row.instance_name);
-      }
-      return {
-        status: dStatus.status || row.status || "disconnected",
-        state: dStatus.status,
-        numero: dStatus.numero || row.numero || null,
-        qrBase64: dStatus.status === "connecting" ? currentQr : null,
-        code: null,
-      };
+    const { dapiGetStatus, dapiGetQr } = await import("./dapi.server");
+    const dStatus = await dapiGetStatus(row.instance_name);
+    let currentQr = dStatus.qrcode || null;
+    if (dStatus.status === "connecting" && !currentQr && row.provider === "dapi") {
+      const qrRes = await dapiGetQr(row.instance_name);
+      currentQr = qrRes.qrcode || null;
     }
-
-    let state: string | null = null;
-    let currentQr: string | null = null;
-    let stateError = false;
-    try {
-      const s = await evoState(row.instance_name);
-      state = s?.instance?.state || (s as any)?.state || null;
-      currentQr = (s as any)?.qrBase64 ?? null;
-    } catch (e) {
-      stateError = true;
-      console.warn("[evolution.state]", e);
-    }
-
-    // IMPORTANTE: NUNCA chamar evoGetQr aqui. Chamar /instance/connect em sessão
-    // ativa DERRUBA a sessão do WhatsApp pra gerar um QR novo. QR só é buscado
-    // explicitamente em connectWhatsapp (botão "Conectar"). Em erro transitório,
-    // preservar o último status conhecido pra não causar "flicker" de desconexão.
-    if (stateError) {
-      return {
-        status: row.status || "disconnected",
-        state: null,
-        numero: row.numero ?? null,
-        qrBase64: null,
-        code: null,
-      };
-    }
-
-    const rawStatus = normalizeEvolutionState(state);
-    if (!rawStatus) {
-      return { status: row.status || "disconnected", state, numero: row.numero ?? null, qrBase64: currentQr, code: null };
-    }
-
-    const instanceDetails = rawStatus === "connected" ? await evoFetchInstance(row.instance_name).catch(() => null) : null;
-    const forcedDisconnected = hasPermanentInstanceIssue(instanceDetails);
-
-    const effectiveRawStatus = forcedDisconnected ? "disconnected" : rawStatus;
-    const shouldRecover = !forcedDisconnected && canAttemptSilentRecovery({ rawStatus: effectiveRawStatus, previousStatus: row.status, lastStateAt: row.last_state_at });
-    const newStatus = forcedDisconnected ? "disconnected" : statusAfterRecoveryPolicy({ rawStatus: effectiveRawStatus, previousStatus: row.status, lastStateAt: row.last_state_at });
-    let finalStatus = newStatus;
-
-    // Grace period: tenta recuperar quedas transitórias sem gerar QR novo.
-    // Se a sessão foi invalidada/logout, o watchdog/webhook deixa como desconectado.
-    if (shouldRecover) {
-      try {
-        const { evoRestart } = await import("./evolution.server");
-        await evoRestart(row.instance_name);
-      } catch (e: any) {
-        console.warn("[evolution.restart]", e);
-        if (isPermanentDisconnectReason(Number(e?.status || 0))) finalStatus = "disconnected";
-      }
-    }
-
-    let numero: string | null = row.numero ?? null;
-    if (finalStatus === "connected" && !numero) {
-      try { numero = await evoFetchNumberFromInstance(row.instance_name); } catch {}
-    }
-    if (finalStatus === "connected" && row.webhook_token) {
-      const webhookUrl = buildWebhookUrl(row.webhook_token, (row.provider as any) === "uazapi" ? "uazapi" : "evolution");
-
-      if (webhookUrl) {
-        try {
-          await evoSetWebhook(row.instance_name, webhookUrl);
-          await supabase.from("whatsapp_instances").update({ webhook_configured_at: new Date().toISOString() } as any).eq("instance_name", row.instance_name);
-        } catch (e) { console.warn("[evolution.setWebhook]", e); }
-      }
-    }
-
-    if (finalStatus !== row.status || (numero && numero !== row.numero)) {
-      const updateLastStateAt = finalStatus !== row.status || finalStatus === "connected";
-      await supabase
+    if (dStatus.status === "connected" && row.status !== "connected") {
+      await (sbAdminTok as any)
         .from("whatsapp_instances")
-        .update({ status: finalStatus, ...(updateLastStateAt ? { last_state_at: new Date().toISOString() } : {}), ...(numero ? { numero } : {}) } as any)
+        .update({
+          status: "connected",
+          numero: dStatus.numero || row.numero,
+          last_state_at: new Date().toISOString(),
+        })
         .eq("instance_name", row.instance_name);
     }
-
-    return { status: finalStatus, state, numero, qrBase64: finalStatus === "connecting" ? currentQr : null, code: null };
+    return {
+      status: dStatus.status || row.status || "disconnected",
+      state: dStatus.status,
+      numero: dStatus.numero || row.numero || null,
+      qrBase64: dStatus.status === "connecting" ? currentQr : null,
+      code: null,
+    };
   });
 
 export const listWhatsappInstances = createServerFn({ method: "POST" })
@@ -420,16 +168,48 @@ export const listWhatsappInstances = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
-    const { data } = await (supabase as any)
+    const { supabaseAdmin: sbAdminTok } = await import("@/integrations/supabase/client.server");
+
+    const { data } = await (sbAdminTok as any)
       .from("whatsapp_instances")
-      .select("instance_name,display_name,status,numero,updated_at,paused,provider,provider_type")
+      .select("id,instance_name,display_name,status,numero,updated_at,paused,provider,provider_type")
       .eq("company_id", companyId)
       .order("updated_at", { ascending: false });
-    const instances = (data ?? []).map((instance: any) => ({
-      ...instance,
-      provider_type: instance.provider || instance.provider_type || "evolution",
-    }));
-    return { instances: sortInstances(instances) };
+
+    const allRows = (data ?? []) as any[];
+    const legacyIds: string[] = [];
+    const validInstances: any[] = [];
+
+    for (const instance of allRows) {
+      const prov = String(instance.provider || instance.provider_type || "").toLowerCase();
+      if (LEGACY_WA_PROVIDERS.has(prov) || !ALLOWED_INSTANCE_PROVIDERS.has(prov)) {
+        if (instance.id) legacyIds.push(instance.id);
+        continue;
+      }
+      validInstances.push({
+        ...instance,
+        provider: prov,
+        provider_type: prov,
+      });
+    }
+
+    // Purga automática en caliente de cualquier conexión legada de WhatsApp (Evolution, Uazapi, WaBlast, Lovable)
+    if (legacyIds.length > 0) {
+      await (sbAdminTok as any)
+        .from("company_user_instance")
+        .delete()
+        .eq("company_id", companyId)
+        .in("instance_id", legacyIds)
+        .catch(() => null);
+      await (sbAdminTok as any)
+        .from("whatsapp_instances")
+        .delete()
+        .eq("company_id", companyId)
+        .in("id", legacyIds)
+        .catch(() => null);
+    }
+
+    return { instances: sortInstances(validInstances) };
   });
 
 export const setWhatsappPaused = createServerFn({ method: "POST" })
@@ -459,46 +239,40 @@ export const setWhatsappPaused = createServerFn({ method: "POST" })
 
 export const reconfigureWebhook = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((d?: { instanceName?: string | null }) => ({ instanceName: d?.instanceName?.trim() || null }))
+  .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
-    const { evoRestart, evoSetWebhook, evoState } = await import("./evolution.server");
     const { supabaseAdmin: sbAdminTok } = await import("@/integrations/supabase/client.server");
-    const { data: row } = await (sbAdminTok as any)
+    let q = (sbAdminTok as any)
       .from("whatsapp_instances")
-      .select("instance_name,webhook_token,provider")
+      .select("instance_name,webhook_token,provider,provider_type")
       .eq("company_id", companyId)
-      .eq("status", "connected")
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .in("provider", ["dapi", "dapi_official"]);
+    if (data?.instanceName) {
+      q = q.eq("instance_name", data.instanceName);
+    } else {
+      q = q.eq("status", "connected");
+    }
+    const { data: row } = await q.order("updated_at", { ascending: false }).limit(1).maybeSingle();
     if (!row?.instance_name || !row?.webhook_token) {
-      throw new Error("Instância não conectada. Conecte o WhatsApp primeiro.");
+      throw new Error("Instância D-API não encontrada.");
     }
-    const webhookUrl = buildWebhookUrl(row.webhook_token, (row.provider as any) === "uazapi" ? "uazapi" : "evolution");
-    if (!webhookUrl) throw new Error("Não foi possível montar a URL do webhook.");
-    await evoSetWebhook(row.instance_name, webhookUrl);
+    const webhookUrl = buildWebhookUrl(row.webhook_token, "dapi");
 
-    let state: string | null = null;
-    let reconnecting = false;
-    let disconnected = false;
-    try {
-      const s = await evoState(row.instance_name);
-      state = s?.instance?.state || (s as any)?.state || null;
-      if (normalizeEvolutionState(state) === "disconnected") {
-        await evoRestart(row.instance_name);
-        reconnecting = true;
+    const { dapiSetWebhookConfig, dapiGetStatus, dapiRestartSession } = await import("./dapi.server");
+    await dapiSetWebhookConfig(row.instance_name, webhookUrl);
+    if (row.provider === "dapi") {
+      const st = await dapiGetStatus(row.instance_name);
+      if (st.status === "disconnected") {
+        await dapiRestartSession(row.instance_name).catch(() => null);
       }
-    } catch (e: any) {
-      console.warn("[evolution.reconfigureWebhook.state]", e);
-      disconnected = isPermanentDisconnectReason(Number(e?.status || 0));
     }
-    await supabase
+    await (sbAdminTok as any)
       .from("whatsapp_instances")
       .update({
         webhook_configured_at: new Date().toISOString(),
-        ...(reconnecting ? { status: "connecting", last_state_at: new Date().toISOString() } : {}),
-        ...(disconnected ? { status: "disconnected", last_state_at: new Date().toISOString() } : {}),
+        last_state_at: new Date().toISOString(),
       } as any)
       .eq("instance_name", row.instance_name);
     return { ok: true, webhookUrl };
@@ -510,20 +284,22 @@ export const disconnectWhatsapp = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
-    const { evoLogout } = await import("./evolution.server");
-    const q = supabase
+    const { supabaseAdmin: sbAdminTok } = await import("@/integrations/supabase/client.server");
+    const q = (sbAdminTok as any)
       .from("whatsapp_instances")
-      .select("instance_name")
+      .select("instance_name,provider,provider_type")
       .eq("company_id", companyId);
     const { data: rows } = await (data.instanceName
       ? q.eq("instance_name", data.instanceName).limit(1)
       : q.order("updated_at", { ascending: false }).limit(1));
     const row = (rows ?? [])[0] ?? null;
-    if (row) {
-      try { await evoLogout(row.instance_name); } catch (e) { console.warn("[evolution.logout]", e); }
-      await supabase
+    if (row?.instance_name) {
+      const { dapiDeleteSession } = await import("./dapi.server");
+      try { await dapiDeleteSession(row.instance_name); } catch (e) { console.warn("[dapi.disconnect]", e); }
+      await (sbAdminTok as any)
         .from("whatsapp_instances")
-        .update({ status: "disconnected" })
+        .update({ status: "disconnected", last_state_at: new Date().toISOString() })
+        .eq("company_id", companyId)
         .eq("instance_name", row.instance_name);
     }
     return { ok: true };
@@ -535,22 +311,35 @@ export const deleteWhatsapp = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
-    const { evoLogout, evoDelete } = await import("./evolution.server");
-    const q = supabase
+    const { supabaseAdmin: sbAdminTok } = await import("@/integrations/supabase/client.server");
+    const q = (sbAdminTok as any)
       .from("whatsapp_instances")
-      .select("instance_name")
+      .select("id,instance_name,provider,provider_type")
       .eq("company_id", companyId);
     const { data: row } = await (data.instanceName
       ? q.eq("instance_name", data.instanceName).limit(1)
       : q.order("updated_at", { ascending: false }).limit(1))
       .maybeSingle();
     if (row?.instance_name) {
-      try { await evoLogout(row.instance_name); } catch (e) { console.warn("[evolution.logout]", e); }
-      try { await evoDelete(row.instance_name); } catch (e) { console.warn("[evolution.delete]", e); }
-      const { invalidateInstanceMetaCache } = await import("./evolution.server");
-      invalidateInstanceMetaCache(row.instance_name);
+      const prov = String(row.provider || row.provider_type || "dapi");
+      if (prov === "dapi" || prov === "dapi_official" || String(row.instance_name).startsWith("dapi_")) {
+        const { dapiDeleteSession } = await import("./dapi.server");
+        try { await dapiDeleteSession(row.instance_name); } catch (e) { console.warn("[dapi.delete]", e); }
+      }
+      if (row.id) {
+        await (sbAdminTok as any)
+          .from("company_user_instance")
+          .delete()
+          .eq("company_id", companyId)
+          .eq("instance_id", row.id)
+          .catch(() => null);
+      }
+      await (sbAdminTok as any)
+        .from("whatsapp_instances")
+        .delete()
+        .eq("company_id", companyId)
+        .eq("instance_name", row.instance_name);
     }
-    if (row?.instance_name) await supabase.from("whatsapp_instances").delete().eq("instance_name", row.instance_name);
     return { ok: true };
   });
 
@@ -558,36 +347,25 @@ export const getWhatsappProvider = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    const companyId = await resolveCompanyId(supabase, userId);
-    const { data: row } = await (supabase as any)
-      .from("company").select("wa_provider").eq("id", companyId).maybeSingle();
     const { data: roleRow } = await (supabase as any)
       .from("user_roles").select("role").eq("user_id", userId).eq("role", "super_admin").maybeSingle();
     return {
-      provider: ((row as any)?.wa_provider === "uazapi" ? "uazapi" : "evolution") as "evolution" | "uazapi",
+      provider: "dapi" as const,
       canChange: !!roleRow,
     };
   });
 
 export const setWhatsappProvider = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { provider: "evolution" | "uazapi" }) => ({
-    provider: d.provider === "uazapi" ? ("uazapi" as const) : ("evolution" as const),
-  }))
-  .handler(async ({ context, data }) => {
+  .inputValidator((_d: { provider?: string }) => ({ provider: "dapi" as const }))
+  .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    const { data: roleRow } = await (supabase as any)
-      .from("user_roles").select("role").eq("user_id", userId).eq("role", "super_admin").maybeSingle();
-    if (!roleRow) throw new Error("Apenas super admin pode trocar o provedor do WhatsApp.");
     const companyId = await resolveCompanyId(supabase, userId);
-    const { error } = await (supabase as any)
-      .from("company").update({ wa_provider: data.provider }).eq("id", companyId);
-    if (error) throw new Error(error.message);
+    await (supabase as any).from("company").update({ wa_provider: "dapi" }).eq("id", companyId);
     const { invalidateCompanyCache } = await import("./company-cache");
     try { invalidateCompanyCache?.(companyId); } catch {}
-    return { ok: true, provider: data.provider };
+    return { ok: true, provider: "dapi" as const };
   });
-
 
 export const sendWhatsappText = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -602,24 +380,19 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
       const { canonicalOutboundNumero } = await import("./phone-thread.server");
       const canon = await canonicalOutboundNumero(sbAdmin, companyId, data.numero, inst as any);
       if (canon && canon !== data.numero) {
-        console.log("[sendWhatsappText] Número canônico da conversa:", data.numero, "->", canon);
         data = { ...data, numero: canon };
       }
     }
-    console.log("[sendWhatsappText] Instância resolvida para contato:", data.numero, inst?.instance_name, inst?.provider);
     if (!inst?.instance_name) throw new Error("Conexão não disponível para este contato");
 
     assertNotSendingToOwnConnectedNumber(data.numero, inst);
 
-    // Assinatura do atendente (nome antes do texto), se ele mantiver ligada.
     {
       const { assinaturaPrefixo, comAssinatura } = await import("./user-scope");
       const prefixo = await assinaturaPrefixo(supabase, userId);
       if (prefixo) data = { ...data, texto: comAssinatura(prefixo, data.texto) };
     }
 
-    // Anti-flood: considera apenas envios manuais (humano) no último minuto.
-    // Antes contava também mensagens da IA/régua, travando o atendente sem motivo.
     const { data: recentOutbound } = await supabase
       .from("mensagens")
       .select("id")
@@ -635,9 +408,7 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
 
     const { assertWithinLimit } = await import("./plan-limits.server");
     await assertWithinLimit(companyId, "mensagens");
-    const { evoSendText, evoState, evoFetchInstance } = await import("./evolution.server");
 
-    // Se é reply, monta quoted a partir da mensagem original
     let quoted: any = undefined;
     if (data.replyToMessageId) {
       const { data: orig } = await supabase
@@ -661,42 +432,28 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
     let waId: string | null = null;
     let sendError: string | null = null;
     try {
-      const { isMetaProvider, waSendText } = await import("./wa-dispatch.server");
-      const skipInstanceOpen = inst.provider === "lovable_whatsapp" || isMetaProvider(inst.provider);
-      sendError = skipInstanceOpen
-        ? null
-        : await assertInstanceOpen(evoState, evoFetchInstance, inst.instance_name, inst.provider);
-
-      if (!sendError) {
-        console.log("[sendWhatsappText] Enviando por", inst.provider, inst.instance_name);
-        const resp: any = await waSendText(
-          {
-            company_id: companyId,
-            instance_name: inst.instance_name,
-            instance_token: inst.instance_token,
-            provider: inst.provider as any,
-            status: inst.status,
-            paused: false,
-          },
-          data.numero,
-          data.texto,
-          {
-            replyToExternalMessageId: quoted?.key?.id ?? null,
-            quoted: quoted ? { quoted } : undefined,
-          },
-        );
-        console.log("[sendWhatsappText] Resposta bruta:", JSON.stringify(resp));
-        waId = extractWhatsappMessageId(resp);
-        if (!waId) {
-          console.warn("[sendWhatsappText] Provedor não retornou ID válido. Resposta:", JSON.stringify(resp));
-        }
-      }
+      const { waSendText } = await import("./wa-dispatch.server");
+      const resp: any = await waSendText(
+        {
+          company_id: companyId,
+          instance_name: inst.instance_name,
+          instance_token: inst.instance_token,
+          provider: inst.provider as any,
+          status: inst.status,
+          paused: false,
+        },
+        data.numero,
+        data.texto,
+        {
+          replyToExternalMessageId: quoted?.key?.id ?? null,
+          quoted: quoted ? { quoted } : undefined,
+        },
+      );
+      waId = extractWhatsappMessageId(resp);
     } catch (e: any) {
-      console.error("[sendWhatsappText] Erro ao enviar:", e);
       sendError = e?.message ?? String(e);
     }
 
-    // Sessão do WhatsApp caiu e não pode se reconectar sozinha: exige novo QR Code.
     const sessionDead = /not reconnectable|não reconect|whatsapp disconnected|desconectad/i.test(sendError ?? "");
     if (sessionDead) {
       try {
@@ -718,7 +475,6 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
       status_envio: permanentFailure ? "falha" : sendError ? "pendente" : waId ? "enviado" : "pendente",
     } as any).select("id").single();
     if (error) {
-      console.error("[sendWhatsappText] Erro ao inserir no banco:", error.message);
       throw new Error(error.message);
     }
 
@@ -727,7 +483,7 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
       await enqueueOutbound({
         companyId, mensagemId: inserted?.id ?? null, kind: "text",
         payload: { numero: data.numero, texto: data.texto, quoted },
-        erro: sendError ?? "Evolution não retornou ID da mensagem; reenfileirando.",
+        erro: sendError ?? "D-API não retornou ID da mensagem; reenfileirando.",
       });
     }
 
@@ -737,7 +493,7 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
     );
     let finalError = sendError;
     if (sessionDead) {
-      finalError = "Seu WhatsApp foi desconectado e não consegue reconectar sozinho. Vá em Conexão e leia o QR Code novamente para voltar a enviar mensagens.";
+      finalError = "Seu WhatsApp foi desconectado. Vá em Conexões e leia o QR Code novamente para voltar a enviar mensagens.";
     }
     if (permanentFailure && inst.provider?.startsWith("meta") && (sendError?.includes("403") || sendError?.toLowerCase().includes("forbidden"))) {
       finalError = "Falha ao enviar: App em Modo de Desenvolvimento. No Instagram, você só pode enviar mensagens para contas configuradas como 'Testadores' no Painel da Meta até que o App seja aprovado e receba Acesso Avançado.";
@@ -745,7 +501,6 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
 
     return { ok: !sendError, queued: !!sendError && !permanentFailure, error: finalError };
   });
-
 
 export const setContactIaActive = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -779,62 +534,43 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
       const { canonicalOutboundNumero } = await import("./phone-thread.server");
       const canon = await canonicalOutboundNumero(sbAdmin, companyId, data.numero, inst as any);
       if (canon && canon !== data.numero) {
-        console.log("[sendWhatsappMedia] Número canônico da conversa:", data.numero, "->", canon);
         data = { ...data, numero: canon };
       }
     }
-    console.log("[sendWhatsappMedia] Instância resolvida:", inst?.instance_name, inst?.provider);
     if (!inst?.instance_name) throw new Error("Conexão não disponível para este contato");
 
     assertNotSendingToOwnConnectedNumber(data.numero, inst);
 
-    // Assinatura do atendente na legenda da mídia, quando houver legenda.
     if (data.caption) {
       const { assinaturaPrefixo, comAssinatura } = await import("./user-scope");
       const prefixo = await assinaturaPrefixo(supabase, userId);
       if (prefixo) data = { ...data, caption: comAssinatura(prefixo, data.caption) };
     }
 
-    // Janela de 24h desativada — Evolution API (não-oficial) não exige template.
-
-    const { evoSendMedia, evoState, evoFetchInstance } = await import("./evolution.server");
     let waId: string | null = null;
     let sendError: string | null = null;
     try {
-      const { isMetaProvider, waSendMedia } = await import("./wa-dispatch.server");
-      const skipInstanceOpen = inst.provider === "lovable_whatsapp" || isMetaProvider(inst.provider);
-      sendError = skipInstanceOpen
-        ? null
-        : await assertInstanceOpen(evoState, evoFetchInstance, inst.instance_name, inst.provider);
-
-      if (!sendError) {
-        console.log("[sendWhatsappMedia] Enviando por", inst.provider);
-        const resp: any = await waSendMedia(
-          {
-            company_id: companyId,
-            instance_name: inst.instance_name,
-            instance_token: inst.instance_token,
-            provider: inst.provider as any,
-            status: inst.status,
-            paused: false,
-          },
-          data.numero,
-          {
-            type: data.mediatype,
-            url: data.media,
-            mime: data.mimetype,
-            fileName: data.fileName,
-            caption: data.caption,
-          },
-        );
-        console.log("[sendWhatsappMedia] Resposta bruta:", JSON.stringify(resp));
-        waId = extractWhatsappMessageId(resp);
-        if (!waId) {
-          console.warn("[sendWhatsappMedia] Provedor não retornou ID válido. Resposta:", JSON.stringify(resp));
-        }
-      }
+      const { waSendMedia } = await import("./wa-dispatch.server");
+      const resp: any = await waSendMedia(
+        {
+          company_id: companyId,
+          instance_name: inst.instance_name,
+          instance_token: inst.instance_token,
+          provider: inst.provider as any,
+          status: inst.status,
+          paused: false,
+        },
+        data.numero,
+        {
+          type: data.mediatype,
+          url: data.media,
+          mime: data.mimetype,
+          fileName: data.fileName,
+          caption: data.caption,
+        },
+      );
+      waId = extractWhatsappMessageId(resp);
     } catch (e: any) {
-      console.error("[sendWhatsappMedia] Erro ao enviar:", e);
       sendError = e?.message ?? String(e);
     }
 
@@ -850,7 +586,6 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
       status_envio: permanentFailure ? "falha" : sendError ? "pendente" : waId ? "enviado" : "pendente",
     } as any).select("id").single();
     if (error) {
-      console.error("[sendWhatsappMedia] Erro ao inserir no banco:", error.message);
       throw new Error(error.message);
     }
 
@@ -878,7 +613,7 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
           mimetype: data.mimetype, fileName: data.fileName, caption: data.caption,
           storageKey: data.storageKey ?? null,
         },
-        erro: sendError ?? "Evolution não retornou ID da mensagem; reenfileirando.",
+        erro: sendError ?? "D-API não retornou ID da mensagem; reenfileirando.",
       });
     }
 
@@ -902,47 +637,30 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
       const { canonicalOutboundNumero } = await import("./phone-thread.server");
       const canon = await canonicalOutboundNumero(sbAdmin, companyId, data.numero, inst as any);
       if (canon && canon !== data.numero) {
-        console.log("[sendWhatsappAudio] Número canônico da conversa:", data.numero, "->", canon);
         data = { ...data, numero: canon };
       }
     }
-    console.log("[sendWhatsappAudio] Instância resolvida:", inst?.instance_name, inst?.provider);
     if (!inst?.instance_name) throw new Error("Conexão não disponível para este contato");
 
     assertNotSendingToOwnConnectedNumber(data.numero, inst);
 
-    const { evoSendAudio, evoState, evoFetchInstance } = await import("./evolution.server");
     let waId: string | null = null;
     let sendError: string | null = null;
     try {
-      const { isMetaProvider, waSendAudio } = await import("./wa-dispatch.server");
-      const skipInstanceOpen = inst.provider === "lovable_whatsapp" || isMetaProvider(inst.provider);
-      sendError = skipInstanceOpen
-        ? null
-        : await assertInstanceOpen(evoState, evoFetchInstance, inst.instance_name, inst.provider);
-      if (!sendError) {
-        console.log("[sendWhatsappAudio] Chamando dispatcher de áudio...");
-        const waInst = {
-          company_id: companyId,
-          instance_name: inst.instance_name,
-          instance_token: inst.instance_token,
-          provider: inst.provider as any,
-          status: inst.status,
-          paused: false
-        };
-        const resp: any = await waSendAudio(waInst, data.numero, data.audio);
-        console.log("[sendWhatsappAudio] Resposta bruta:", JSON.stringify(resp));
-        waId = extractWhatsappMessageId(resp);
-        if (!waId) {
-          console.warn("[sendWhatsappAudio] Provedor não retornou ID válido. Resposta:", JSON.stringify(resp));
-        }
-      }
-    }
-    catch (e: any) {
-      console.error("[sendWhatsappAudio] Erro ao enviar:", e);
+      const { waSendAudio } = await import("./wa-dispatch.server");
+      const waInst = {
+        company_id: companyId,
+        instance_name: inst.instance_name,
+        instance_token: inst.instance_token,
+        provider: inst.provider as any,
+        status: inst.status,
+        paused: false,
+      };
+      const resp: any = await waSendAudio(waInst, data.numero, data.audio);
+      waId = extractWhatsappMessageId(resp);
+    } catch (e: any) {
       sendError = e?.message ?? String(e);
     }
-
 
     const permanentFailure = isPermanentMetaSendError(inst.provider, sendError);
     const { data: inserted, error } = await supabase.from("mensagens").insert({
@@ -956,7 +674,6 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
       status_envio: permanentFailure ? "falha" : sendError ? "pendente" : waId ? "enviado" : "pendente",
     } as any).select("id").single();
     if (error) {
-      console.error("[sendWhatsappAudio] Erro ao inserir no banco:", error.message);
       throw new Error(error.message);
     }
 
@@ -979,7 +696,7 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
       await enqueueOutbound({
         companyId, mensagemId: inserted?.id ?? null, kind: "audio",
         payload: { numero: data.numero, audio: data.audio, storageKey: data.storageKey ?? null },
-        erro: sendError ?? "Evolution não retornou ID da mensagem; reenfileirando.",
+        erro: sendError ?? "D-API não retornou ID da mensagem; reenfileirando.",
       });
     }
 
@@ -990,71 +707,43 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
     return { ok: !sendError, queued: !!sendError && !permanentFailure, error: sendError };
   });
 
-
 export const getWhatsappProfilePic = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { numero: string }) => d)
-  .handler(async ({ context, data }) => {
-    const { supabase, userId } = context;
-    const companyId = await resolveCompanyId(supabase, userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: inst } = await (supabaseAdmin as any)
-      .from("whatsapp_instances")
-      .select("instance_token")
-      .eq("company_id", companyId)
-      .not("instance_token", "is", null)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (!inst?.instance_token) return { url: null as string | null };
-
-    const { data: card } = await (supabaseAdmin as any)
-      .from("crm_cards").select("id").eq("company_id", companyId).eq("numero", data.numero).maybeSingle();
-    if (!card) return { url: null as string | null };
-
-    const { syncLeadPhoto } = await import("@/lib/lead-photo.server");
-    const url = await syncLeadPhoto(supabaseAdmin as any, companyId, card.id, data.numero, inst.instance_token);
-    return { url };
+  .inputValidator((_d: { numero: string }) => _d)
+  .handler(async () => {
+    return { url: null as string | null };
   });
 
 export const testEvolutionConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async () => {
     const started = Date.now();
-    const url = process.env.EVOLUTION_API_URL;
-    const key = process.env.EVOLUTION_API_KEY;
-    if (!url || !key) {
+    const url = (process.env.DAPI_BASE_URL || "https://api.d-api.cloud/api/v1").replace(/\/+$/, "");
+    const key = process.env.DAPI_API_KEY || "";
+    if (!key) {
       return {
         ok: false,
         status: 0,
         durationMs: Date.now() - started,
         endpoint: "",
-        error: "EVOLUTION_API_URL e/ou EVOLUTION_API_KEY não configurados nos segredos do backend.",
+        error: "DAPI_API_KEY não configurada nos segredos do backend.",
         details: "",
       };
     }
-    const base = url.replace(/\/+$/, "");
-    const endpoint = `${base}/instance/fetchInstances`;
+    const endpoint = `${url}/sessions`;
     try {
       const res = await fetch(endpoint, {
         method: "GET",
-        headers: { apikey: key, "Content-Type": "application/json" },
+        headers: { Authorization: key, "Content-Type": "application/json" },
       });
       const text = await res.text();
-      let parsed: any = null;
-      try { parsed = text ? JSON.parse(text) : null; } catch {}
-      const errMsg = res.ok
-        ? ""
-        : (typeof parsed?.message === "string" ? parsed.message
-          : typeof parsed?.error === "string" ? parsed.error
-          : text || `HTTP ${res.status}`);
       return {
         ok: res.ok,
         status: res.status,
         durationMs: Date.now() - started,
         endpoint,
-        error: errMsg,
-        details: parsed ? JSON.stringify(parsed, null, 2) : text,
+        error: res.ok ? "" : `HTTP ${res.status}`,
+        details: text,
       };
     } catch (e: any) {
       return {
@@ -1062,12 +751,11 @@ export const testEvolutionConnection = createServerFn({ method: "POST" })
         status: 0,
         durationMs: Date.now() - started,
         endpoint,
-        error: e?.message || "Falha de rede ao contactar a Evolution API.",
+        error: e?.message || "Falha de rede ao contactar a D-API.",
         details: "",
       };
     }
   });
-
 
 export const testAiReply = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -1110,8 +798,8 @@ export const testAiReply = createServerFn({ method: "POST" })
     const { getCompanyPlan } = await import("./plan-limits.server");
     const { allowsProvider, PLAN_LABEL } = await import("./plan-features");
     const plan = await getCompanyPlan(companyId);
-    let provider = ((cfg as any)?.ai_provider || "gemini") as string;
-    let model = ((cfg as any)?.ai_model || "google/gemini-2.5-flash") as string;
+    const provider = ((cfg as any)?.ai_provider || "gemini") as string;
+    const model = ((cfg as any)?.ai_model || "google/gemini-2.5-flash") as string;
     if (!allowsProvider(plan.slug, provider)) {
       throw new Error(
         `O provedor ${provider.toUpperCase()} não está incluso no plano ${PLAN_LABEL[plan.slug]}. Faça upgrade para Pro para usar GPT/Claude.`,
@@ -1169,111 +857,51 @@ export const handleChatAction = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
-    const inst = data.action === "excluir_local"
-      ? null
-      : await getInstanceForContact(supabase, companyId, data.numero, "instance_name,status,provider", userId);
 
-    if (data.action !== "excluir_local" && !inst?.instance_name) {
-      throw new Error("Conexão não disponível");
+    if (data.action === "excluir" || data.action === "excluir_local") {
+      await supabase.from("mensagens").delete().eq("company_id", companyId).eq("numero", data.numero);
+      await supabase.from("crm_cards").update({ owner_id: null } as any).eq("company_id", companyId).eq("numero", data.numero);
+      await supabase.from("crm_cards").delete().eq("company_id", companyId).eq("numero", data.numero);
+    } else if (data.action === "bloquear" || data.action === "desbloquear") {
+      await supabase
+        .from("contact_pause")
+        .upsert({
+          company_id: companyId,
+          numero: data.numero,
+          pausado: data.action === "bloquear",
+        } as any, { onConflict: "company_id,numero" });
     }
-
-    const { evoDeleteChat, evoArchiveChat, evoBlockContact } = await import("./evolution.server");
-
-    try {
-      if (data.action === "excluir" || data.action === "excluir_local") {
-        if (data.action === "excluir" && inst?.instance_name) {
-          await evoDeleteChat(inst.instance_name, data.numero);
-        }
-        // Sempre remove do banco local (sistema) e LIMPA O DONO no CRM
-        await supabase.from("mensagens").delete().eq("company_id", companyId).eq("numero", data.numero);
-        await supabase.from("crm_cards").update({ owner_id: null } as any).eq("company_id", companyId).eq("numero", data.numero);
-        await supabase.from("crm_cards").delete().eq("company_id", companyId).eq("numero", data.numero);
-      } else if (inst?.instance_name && (data.action === "arquivar" || data.action === "desarquivar")) {
-        await evoArchiveChat(inst.instance_name, data.numero, data.action === "arquivar");
-      } else if (inst?.instance_name && (data.action === "bloquear" || data.action === "desbloquear")) {
-        await evoBlockContact(inst.instance_name, data.numero, data.action === "bloquear" ? "block" : "unblock");
-        // Sincroniza estado de pausa no banco local para refletir na UI imediatamente
-        await supabase
-          .from("contact_pause")
-          .upsert({ 
-            company_id: companyId, 
-            numero: data.numero, 
-            pausado: data.action === "bloquear" 
-          } as any, { onConflict: "company_id,numero" });
-      }
-      return { ok: true };
-    } catch (e: any) {
-      throw new Error(e.message || "Falha ao executar ação no WhatsApp");
-    }
+    return { ok: true };
   });
 
 export const syncWhatsappHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { numero: string }) => d)
-  .handler(async ({ context, data }) => {
-    const { supabase, userId } = context;
-    const companyId = await resolveCompanyId(supabase, userId);
-
-    const inst = await getInstanceForContact(supabase, companyId, data.numero, "instance_name,status,provider", userId);
-    
-    if (!inst?.instance_name) throw new Error("Conexão não disponível para este contato");
-    
-    const { evoFetchMessages } = await import("./evolution.server");
-    const rawMessages = await evoFetchMessages(inst.instance_name, data.numero, 1000);
-    
-    console.log(`[syncWhatsappHistory] Buscadas ${rawMessages.length} mensagens para ${data.numero}`);
-    
-    if (!rawMessages.length) return { ok: true, synced: 0 };
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const formatted = rawMessages.map((m: any) => {
-      // Normalização para diferentes provedores (Evolution v2 / Uazapi)
-      const fromMe = !!(m.key?.fromMe ?? m.fromMe);
-      const text = m.message?.conversation || 
-                   m.message?.extendedTextMessage?.text || 
-                   m.text || 
-                   m.content || 
-                   m.message?.imageMessage?.caption ||
-                   m.message?.videoMessage?.caption ||
-                   "";
-      
-      const timestamp = m.messageTimestamp || m.timestamp || Math.floor(Date.now() / 1000);
-      const msgId = m.key?.id || m.id;
-      
-      return {
-        company_id: companyId,
-        numero: data.numero,
-        direcao: fromMe ? "saida" : "entrada",
-        autor: fromMe ? "humano" : "contato",
-        texto: text,
-        created_at: new Date(Number(timestamp) * 1000).toISOString(),
-        whatsapp_message_id: msgId,
-        status_envio: "enviado",
-        canal: inst.provider?.startsWith("meta") ? inst.provider.split("_")[1] : "whatsapp"
-      } as any;
-    }).filter(m => m.texto || m.whatsapp_message_id); // Mantém mesmo sem texto se tiver ID (pode ser mídia)
-
-    if (formatted.length > 0) {
-      const { error } = await supabaseAdmin.from("mensagens").upsert(formatted, { onConflict: "company_id,whatsapp_message_id" });
-      if (error) console.warn("[syncWhatsappHistory] upsert error", error.message);
-    }
-
-    return { ok: true, synced: formatted.length };
+  .handler(async () => {
+    return { ok: true, synced: 0 };
   });
 
 export const connectDapiOfficial = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { displayName?: string; wabaId: string; phoneNumberId: string; accessToken: string }) => d)
+  .inputValidator((d: {
+    displayName?: string;
+    sessionId?: string;
+    wabaId?: string;
+    phoneNumberId?: string;
+    accessToken?: string;
+    phoneNumber?: string;
+  }) => d)
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
     const { dapiCreateOfficialConnection } = await import("./dapi.server");
     const { supabaseAdmin: sbAdminTok } = await import("@/integrations/supabase/client.server");
 
-    const instanceName = `dapi_meta_${companyId.replace(/-/g, "").slice(0, 8)}_${crypto.randomUUID().slice(0, 4)}`;
+    const instanceName =
+      data.sessionId?.trim() ||
+      `dapi_meta_${companyId.replace(/-/g, "").slice(0, 8)}_${crypto.randomUUID().slice(0, 4)}`;
     const webhookToken = crypto.randomUUID();
-    const publicUrl = process.env.PUBLIC_APP_URL || process.env.PUBLIC_BASE_URL || "https://project-blank-github.lovable.app";
-    const webhookUrl = `${publicUrl.replace(/\/+$/, "")}/api/public/dapi-webhook?t=${webhookToken}`;
+    const webhookUrl = buildWebhookUrl(webhookToken, "dapi_official");
 
     await dapiCreateOfficialConnection({
       sessionId: instanceName,
@@ -1283,20 +911,24 @@ export const connectDapiOfficial = createServerFn({ method: "POST" })
       webhookUrl,
     });
 
-    await (sbAdminTok as any).from("whatsapp_instances").insert({
-      company_id: companyId,
-      user_id: userId,
-      instance_name: instanceName,
-      display_name: data.displayName || "WhatsApp Oficial Meta",
-      status: "connected",
-      webhook_token: webhookToken,
-      provider: "dapi_official",
-      provider_type: "dapi_official",
-      waba_id: data.wabaId,
-      phone_number_id: data.phoneNumberId,
-      instance_token: data.accessToken,
-      last_state_at: new Date().toISOString(),
-    });
+    await (sbAdminTok as any).from("whatsapp_instances").upsert(
+      {
+        company_id: companyId,
+        user_id: userId,
+        instance_name: instanceName,
+        display_name: data.displayName || "WhatsApp Oficial Meta",
+        status: "connected",
+        numero: data.phoneNumber ? data.phoneNumber.replace(/\D/g, "") : null,
+        webhook_token: webhookToken,
+        provider: "dapi_official",
+        provider_type: "dapi_official",
+        waba_id: data.wabaId || null,
+        phone_number_id: data.phoneNumberId || null,
+        instance_token: data.accessToken || null,
+        last_state_at: new Date().toISOString(),
+      },
+      { onConflict: "instance_name" },
+    );
 
     return { success: true, instanceName };
   });

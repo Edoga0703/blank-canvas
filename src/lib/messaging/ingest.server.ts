@@ -47,13 +47,14 @@ async function resolveConnection(
   externalConnectionId?: string | null,
 ) {
   let data: any = null;
+  const providerList = provider === "dapi" ? ["dapi", "dapi_official"] : [provider];
 
   if (externalConnectionId) {
     // 1. Busca por external_connection_id parametrizado
     const { data: byExtId, error: err1 } = await (supabaseAdmin as any)
       .from("whatsapp_instances")
-      .select("id,company_id,user_id,instance_name,external_connection_id")
-      .eq("provider", provider)
+      .select("id,company_id,user_id,instance_name,external_connection_id,provider")
+      .in("provider", providerList)
       .eq("external_connection_id", externalConnectionId)
       .order("updated_at", { ascending: false })
       .limit(1)
@@ -66,8 +67,8 @@ async function resolveConnection(
     if (!data) {
       const { data: byName, error: err2 } = await (supabaseAdmin as any)
         .from("whatsapp_instances")
-        .select("id,company_id,user_id,instance_name,external_connection_id")
-        .eq("provider", provider)
+        .select("id,company_id,user_id,instance_name,external_connection_id,provider")
+        .in("provider", providerList)
         .eq("instance_name", externalConnectionId)
         .order("updated_at", { ascending: false })
         .limit(1)
@@ -82,7 +83,7 @@ async function resolveConnection(
   if (!data && provider === "lovable_whatsapp") {
     const fallback = await (supabaseAdmin as any)
       .from("whatsapp_instances")
-      .select("id,company_id,user_id,instance_name,external_connection_id")
+      .select("id,company_id,user_id,instance_name,external_connection_id,provider")
       .eq("provider", provider)
       .order("updated_at", { ascending: false })
       .limit(2);
@@ -103,6 +104,7 @@ async function resolveConnection(
     user_id: string | null;
     instance_name: string;
     external_connection_id: string | null;
+    provider?: string | null;
   };
 }
 
@@ -129,7 +131,7 @@ async function persistMessage(
                 ? "automacao"
                 : "humano",
         texto: event.text,
-        provider: event.provider,
+        provider: connection.provider || event.provider,
         whatsapp_message_id: event.externalMessageId,
         provider_timestamp: event.occurredAt,
         midia_url: event.attachments[0]?.storageKey
@@ -163,7 +165,7 @@ async function persistMessage(
         attachment_key: attachmentKey,
         provider_attachment_id: attachment.externalId ?? null,
         kind: attachment.kind,
-        provider_url: attachment.providerUrl ?? null,
+        provider_url: attachment.storageKey ? null : (attachment.providerUrl ?? null),
         storage_key: attachment.storageKey ?? null,
         storage_url: attachment.storageUrl ?? null,
         mime_type: attachment.mimeType ?? null,
@@ -258,6 +260,7 @@ async function persistMessage(
         }
       }
 
+      const isUntranscribedAudio = isAudio && (!event.text || !event.text.trim() || summaryText === "[ÁUDIO]");
       const { processInboundAutomation } = await import("@/lib/inbound-automation.server");
       await processInboundAutomation(supabaseAdmin, {
         companyId: connection.company_id,
@@ -265,7 +268,8 @@ async function persistMessage(
         texto: summaryText,
         inboundMessageId: message.id,
         stageId: currentCard?.stage_id,
-        isAudioMessage: isAudio,
+        responderEmAudio: isAudio,
+        isAudioMessage: isUntranscribedAudio,
       });
     } catch (automationError) {
       console.error("[ingest.automation] Error al ejecutar automatización de CRM/IA:", automationError);
@@ -281,8 +285,9 @@ async function persistStatus(
     .from("mensagens")
     .select("id, status_envio")
     .eq("company_id", connection.company_id)
-    .eq("provider", event.provider)
     .eq("whatsapp_message_id", event.externalMessageId)
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   const { error: statusEventError } = await (supabaseAdmin as any).from("message_status_events").upsert(
@@ -327,7 +332,7 @@ async function persistNormalized(
 }
 
 /**
- * Entrada única para el receptor que Lovable generará.
+ * Entrada única para el receptor de eventos de mensajería.
  * F1: Manejo robusto de reintentos. Si el evento falló anteriormente, se reprocesa
  * en lugar de devolver duplicate silenciosamente.
  */
@@ -405,6 +410,68 @@ export async function ingestMessagingEvent(request: IngestRequest) {
                     fileName: item.fileName,
                   }),
               });
+            }),
+          );
+          return { ...event, attachments };
+        }),
+      );
+    } else if (request.provider === "dapi") {
+      const [{ archiveProviderAttachment }, { dapiDownloadMedia }] = await Promise.all([
+        import("@/lib/messaging/media-archive.server"),
+        import("@/lib/dapi.server"),
+      ]);
+      normalized = await Promise.all(
+        normalized.map(async (event) => {
+          if (event.type !== "message" || !event.attachments.length) return event;
+          const attachments = await Promise.all(
+            event.attachments.map(async (attachment) => {
+              if (attachment.storageKey) return attachment;
+              try {
+                return await archiveProviderAttachment({
+                  companyId: connection.company_id,
+                  occurredAt: event.occurredAt,
+                  attachment,
+                  download: async (item) => {
+                    const url = item.providerUrl || "";
+                    if (url.startsWith("data:")) {
+                      const commaIdx = url.indexOf(",");
+                      const meta = commaIdx !== -1 ? url.slice(0, commaIdx) : "";
+                      const b64 = commaIdx !== -1 ? url.slice(commaIdx + 1) : "";
+                      const mimeMatch = meta.match(/^data:([^;,]+)/i);
+                      return {
+                        bytes: new Uint8Array(Buffer.from(b64, "base64")),
+                        mimeType: mimeMatch?.[1] || item.mimeType,
+                        fileName: item.fileName,
+                      };
+                    }
+                    if (url.startsWith("http")) {
+                      const res = await fetch(url);
+                      if (res.ok) {
+                        return {
+                          bytes: new Uint8Array(await res.arrayBuffer()),
+                          mimeType: res.headers.get("content-type") || item.mimeType,
+                          fileName: item.fileName,
+                        };
+                      }
+                    }
+                    if (item.externalId) {
+                      const dl = await dapiDownloadMedia(connection.instance_name, item.externalId);
+                      if (dl?.base64) {
+                        const rawB64 = dl.base64.includes(",") ? dl.base64.split(",")[1] : dl.base64;
+                        return {
+                          bytes: new Uint8Array(Buffer.from(rawB64, "base64")),
+                          mimeType: dl.mimetype || item.mimeType,
+                          fileName: item.fileName,
+                        };
+                      }
+                    }
+                    throw new Error("No se pudo descargar el adjunto desde D-API");
+                  },
+                });
+              } catch (archErr: any) {
+                console.warn("[ingest.dapi] No se pudo archivar adjunto en R2, conservando providerUrl:", archErr?.message);
+                return attachment;
+              }
             }),
           );
           return { ...event, attachments };

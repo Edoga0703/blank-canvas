@@ -142,23 +142,35 @@ export function TemplateFormDialog({
               <p className="text-[11px] text-muted-foreground mt-1">Nenhum botão adicionado. Botões aparecem abaixo da mensagem.</p>
             )}
             {botoes.map((b, i) => (
-              <div key={i} className="grid grid-cols-[110px_1fr_auto] gap-2 mt-2 items-center">
-                <Select value={b.type} onValueChange={(v: any) => {
-                  const copy = [...botoes]; copy[i] = { ...copy[i], type: v }; setBotoes(copy);
-                }}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="QUICK_REPLY">Resposta</SelectItem>
-                    <SelectItem value="URL">Link</SelectItem>
-                    <SelectItem value="PHONE">Telefone</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input value={b.texto} onChange={(e) => {
-                  const copy = [...botoes]; copy[i] = { ...copy[i], texto: e.target.value }; setBotoes(copy);
-                }} placeholder="Texto do botão" maxLength={25} />
-                <Button type="button" size="icon" variant="ghost" onClick={() => setBotoes(botoes.filter((_, j) => j !== i))}>
-                  <Trash2 className="size-4 text-red-500" />
-                </Button>
+              <div key={i} className="space-y-1.5 mt-2">
+                <div className="grid grid-cols-[110px_1fr_auto] gap-2 items-center">
+                  <Select value={b.type} onValueChange={(v: any) => {
+                    const copy = [...botoes]; copy[i] = { ...copy[i], type: v }; setBotoes(copy);
+                  }}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="QUICK_REPLY">Resposta</SelectItem>
+                      <SelectItem value="URL">Link</SelectItem>
+                      <SelectItem value="PHONE">Telefone</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input value={b.texto} onChange={(e) => {
+                    const copy = [...botoes]; copy[i] = { ...copy[i], texto: e.target.value }; setBotoes(copy);
+                  }} placeholder="Texto do botão" maxLength={25} />
+                  <Button type="button" size="icon" variant="ghost" onClick={() => setBotoes(botoes.filter((_, j) => j !== i))}>
+                    <Trash2 className="size-4 text-red-500" />
+                  </Button>
+                </div>
+                {(b.type === "URL" || b.type === "PHONE") && (
+                  <Input
+                    value={b.valor ?? ""}
+                    onChange={(e) => {
+                      const copy = [...botoes]; copy[i] = { ...copy[i], valor: e.target.value }; setBotoes(copy);
+                    }}
+                    placeholder={b.type === "URL" ? "https://seusite.com/oferta" : "+5511999999999"}
+                    className="h-8 text-xs"
+                  />
+                )}
               </div>
             ))}
           </div>

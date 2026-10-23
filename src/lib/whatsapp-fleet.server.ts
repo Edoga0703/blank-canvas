@@ -44,7 +44,8 @@ export async function collectWhatsappFleet(capacity?: number): Promise<WhatsappF
   const [instRes, compRes, msgs24Res, msgs7dRes] = await Promise.all([
     (supabaseAdmin as any)
       .from("whatsapp_instances")
-      .select("id, instance_name, display_name, numero, status, paused, company_id, last_state_at"),
+      .select("id, instance_name, display_name, numero, status, paused, company_id, last_state_at")
+      .in("provider", ["dapi", "dapi_official"]),
     (supabaseAdmin as any).from("company").select("id, nome"),
     (supabaseAdmin as any)
       .from("mensagens")

@@ -107,8 +107,9 @@ export const listCampaignConnections = createServerFn({ method: "GET" })
     const companyId = await resolveCompanyId(supabase, userId);
     const { data } = await supabase
       .from("whatsapp_instances")
-      .select("id,instance_name,display_name,numero,provider_type,status,paused")
+      .select("id,instance_name,display_name,numero,provider,provider_type,status,paused")
       .eq("company_id", companyId)
+      .in("provider", ["dapi", "dapi_official"])
       .order("updated_at", { ascending: false });
     return data ?? [];
   });

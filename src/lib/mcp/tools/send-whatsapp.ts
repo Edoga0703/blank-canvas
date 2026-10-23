@@ -12,9 +12,9 @@ function sb(ctx: ToolContext) {
 export default defineTool({
   name: "send_whatsapp_message",
   title: "Enviar mensaje por WhatsApp",
-  description: "Envía texto con la conexión oficial de WhatsApp vinculada al proyecto.",
+  description: "Envía texto con la conexión activa de WhatsApp (D-API o Lovable) vinculada al proyecto.",
   inputSchema: {
-    numero: z.string().min(8).describe("Número con código de país, por ejemplo 584121234567."),
+    numero: z.string().min(8).describe("Número con código de país, por ejemplo 5511999999999 o 584121234567."),
     texto: z.string().min(1).max(4000).describe("Texto del mensaje."),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
@@ -26,8 +26,9 @@ export default defineTool({
 
     const { data: connection, error } = await sb(ctx)
       .from("whatsapp_instances")
-      .select("external_connection_id, instance_name, status")
-      .eq("provider", "lovable_whatsapp")
+      .select("external_connection_id, instance_name, status, provider")
+      .in("provider", ["dapi", "dapi_official"])
+      .in("status", ["connected", "open"])
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -35,14 +36,15 @@ export default defineTool({
     if (error) return { content: [{ type: "text" as const, text: error.message }], isError: true };
     if (!connection) {
       return {
-        content: [{ type: "text" as const, text: "No existe una conexión oficial de WhatsApp." }],
+        content: [{ type: "text" as const, text: "No existe una conexión activa de WhatsApp (D-API / Oficial)." }],
         isError: true,
       };
     }
 
     try {
       const { getMessagingProvider } = await import("@/lib/messaging/provider-registry.server");
-      const result = await getMessagingProvider("lovable_whatsapp").sendText({
+      const provId = "dapi" as const;
+      const result = await getMessagingProvider(provId).sendText({
         connectionExternalId: connection.external_connection_id || connection.instance_name,
         to: numero.replace(/\D/g, ""),
         text: texto,

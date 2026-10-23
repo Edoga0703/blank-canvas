@@ -18,12 +18,12 @@ type Props = {
 
 type Mode = "qr" | "phone";
 
-function formatPhoneBR(digits: string) {
-  const d = digits.replace(/\D/g, "").replace(/^55/, "").slice(0, 11);
-  if (d.length <= 2) return d;
-  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
-  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
-  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+function formatPhoneInternational(raw: string) {
+  const trimmed = raw.trim();
+  const hasPlus = trimmed.startsWith("+");
+  const d = trimmed.replace(/\D/g, "").slice(0, 15);
+  if (!d) return hasPlus ? "+" : "";
+  return hasPlus ? `+${d}` : d;
 }
 
 export function QrCodeDialog({ open, instanceName, initialQr, onOpenChange, onConnected }: Props) {
@@ -203,13 +203,13 @@ export function QrCodeDialog({ open, instanceName, initialQr, onOpenChange, onCo
         ) : (
           <div className="flex flex-col gap-4 py-2">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Número do WhatsApp (com DDD)</label>
+              <label className="text-xs font-medium text-muted-foreground">Número do WhatsApp (com DDI/DDD, ex: +55 11 99999-0000)</label>
               <Input
-                value={formatPhoneBR(phone)}
+                value={formatPhoneInternational(phone)}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="(85) 99999-0000"
+                placeholder="+55 11 99999-0000"
                 inputMode="tel"
-                maxLength={16}
+                maxLength={18}
                 disabled={!!pairCode}
               />
             </div>

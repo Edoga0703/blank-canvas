@@ -6,7 +6,7 @@ export const sendTestMessageToClient = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { evoSendText } = await import("./evolution.server");
+    const { dapiSendText } = await import("./dapi.server");
 
     // 1. Pegar a empresa do usuário logado (usando admin para garantir acesso em ambientes de teste)
     const { data: userCompData } = await (supabaseAdmin as any)
@@ -50,6 +50,7 @@ export const sendTestMessageToClient = createServerFn({ method: "POST" })
       .from("whatsapp_instances")
       .select("instance_name")
       .eq("company_id", targetCompanyId)
+      .in("provider", ["dapi", "dapi_official"])
       .eq("status", "connected")
       .limit(1)
       .maybeSingle();
@@ -61,7 +62,7 @@ export const sendTestMessageToClient = createServerFn({ method: "POST" })
     const testMessage = `🚀 Teste de Disparo Metrix CRM para ${client.nome}\n\nEste é um teste técnico para confirmar que o sistema está enviando e recebendo mensagens corretamente.`;
 
     try {
-      await evoSendText(instance.instance_name, client.numero, testMessage);
+      await dapiSendText(instance.instance_name, client.numero, testMessage);
       
       // Registrar mensagem de saída no banco
       await (supabaseAdmin as any).from("mensagens").insert({
