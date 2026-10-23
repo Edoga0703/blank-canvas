@@ -24,7 +24,7 @@ export function ChatMedia({ messageId, tipo, url, nome, outbound, onOpen }: Prop
   const resolveFn = useServerFn(resolveChatMediaUrl);
   const [src, setSrc] = useState<string | null>(url);
   const [resolvedTipo, setResolvedTipo] = useState(tipo);
-  const [state, setState] = useState<"ok" | "loading" | "failed">(url ? "ok" : "failed");
+  const [state, setState] = useState<"ok" | "loading" | "failed">(url ? "ok" : "loading");
   // Limite de tentativas automáticas: evita laço infinito quando a mídia
   // reassinada continua sem renderizar (objeto ausente/criptografado).
   const attempts = useRef(0);
@@ -42,7 +42,7 @@ export function ChatMedia({ messageId, tipo, url, nome, outbound, onOpen }: Prop
     try {
       const res: any = await resolveFn({ data: { messageId } });
       if (res?.url) {
-        setSrc(`${res.url}${res.url.includes("?") ? "&" : "?"}r=${Date.now()}`);
+        setSrc(res.url);
         if (res.tipo) setResolvedTipo(res.tipo);
         setState("ok");
         return;

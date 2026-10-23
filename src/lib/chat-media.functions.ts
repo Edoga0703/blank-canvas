@@ -27,7 +27,9 @@ export const resolveChatMediaUrl = createServerFn({ method: "POST" })
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.messageId ?? "");
     if (!isUuid) return { url: null as string | null, tipo: null as string | null };
 
-    const { data: msg } = await supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: msg } = await supabaseAdmin
       .from("mensagens")
       .select("id,numero,provider,midia_url,midia_tipo,midia_mime,midia_nome,whatsapp_message_id")
       .eq("id", data.messageId)
@@ -35,8 +37,6 @@ export const resolveChatMediaUrl = createServerFn({ method: "POST" })
       .maybeSingle();
     // Mensagem temporária, removida ou de outra empresa: sem mídia, sem derrubar a tela
     if (!msg) return { url: null as string | null, tipo: null as string | null };
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // 1) Capiversa v1.1: los adjuntos privados viven en R2. La URL firmada se
     // genera al abrir el archivo y nunca se persiste porque caduca.
