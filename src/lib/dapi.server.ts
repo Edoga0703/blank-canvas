@@ -11,7 +11,7 @@ function getBaseUrl(): string {
 }
 
 function getApiKey(): string {
-  const key = process.env.DAPI_API_KEY || "";
+  const key = process.env.DAPI_API_KEY || "098aeda184429bc8201ba60d88116821906397caa5fd5b935b615318a245da03";
   if (!key) {
     console.warn("[dapi.server] DAPI_API_KEY no configurada en las variables de entorno.");
   }
@@ -23,7 +23,7 @@ function getHeaders(): Record<string, string> {
   return {
     "Authorization": key,
     "Content-Type": "application/json",
-    "User-Agent": "Capiconversa-CRM/1.1.13",
+    "User-Agent": "Capiconversa-CRM/1.1.14",
   };
 }
 
@@ -287,19 +287,22 @@ export async function dapiCreateOfficialConnection(params: {
  */
 export async function dapiGetStatus(sessionId: string): Promise<DapiSessionStatus> {
   try {
-    const res = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/status`).catch(() => {
-      return dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}`);
+    const res = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}`).catch(() => {
+      return dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/status`);
     });
+    const sessionObj = res?.session || res?.data?.session || null;
     const payload = res?.data || res;
-    let qrcode = payload?.qrcode || payload?.qrCodeImage || res?.qrcode || res?.qrCodeImage || null;
+    let qrcode = payload?.qrcode || payload?.qrCodeImage || sessionObj?.qrCode || res?.qrcode || res?.qrCodeImage || null;
     if (qrcode && !qrcode.startsWith("data:") && !qrcode.startsWith("http")) {
       qrcode = `data:image/png;base64,${qrcode}`;
     }
+    const rawStatus = sessionObj?.status || payload?.status || res?.status || (sessionObj?.connected || payload?.connected || res?.connected ? "connected" : "disconnected");
+    const numero = sessionObj?.phone || sessionObj?.number || sessionObj?.phoneNumber || res?.profile?.phone || payload?.numero || payload?.phoneNumber || payload?.phone || res?.numero || null;
     return {
       success: true,
-      status: payload?.status || res?.status || (payload?.connected || res?.connected ? "connected" : "disconnected"),
+      status: rawStatus,
       qrcode,
-      numero: payload?.numero || payload?.phoneNumber || payload?.phone || res?.numero || res?.phoneNumber || null,
+      numero: numero ? String(numero).replace(/\D/g, "") : null,
       raw: res,
     };
   } catch (err: any) {
