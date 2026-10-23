@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-23T22:27:26.802435+00:00",
+  "generated_at": "2026-10-23T22:49:39.228018+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -87,7 +87,7 @@
     },
     {
       "path": "src/routeTree.gen.ts",
-      "bytes": 98067
+      "bytes": 98975
     },
     {
       "path": "src/styles.css",
@@ -1263,7 +1263,7 @@
     },
     {
       "path": "src/lib/chat-media.functions.ts",
-      "bytes": 6891
+      "bytes": 8863
     },
     {
       "path": "src/lib/session-persistence.ts",
@@ -1843,11 +1843,11 @@
     },
     {
       "path": "src/components/chat/media-lightbox.tsx",
-      "bytes": 5671
+      "bytes": 5700
     },
     {
       "path": "src/components/chat/chat-media.tsx",
-      "bytes": 6497
+      "bytes": 7283
     },
     {
       "path": "src/components/chat/quick-replies-dialog.tsx",
@@ -2367,7 +2367,7 @@
     },
     {
       "path": "src/lib/messaging/ingest.server.ts",
-      "bytes": 19172
+      "bytes": 19153
     },
     {
       "path": "src/lib/messaging/media-archive.server.ts",
@@ -2383,7 +2383,7 @@
     },
     {
       "path": "src/lib/messaging/contracts.ts",
-      "bytes": 2606
+      "bytes": 2636
     },
     {
       "path": "src/lib/storage/r2.server.ts",
@@ -2463,7 +2463,7 @@
     },
     {
       "path": "src/lib/messaging/providers/dapi.server.ts",
-      "bytes": 7757
+      "bytes": 7980
     },
     {
       "path": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
@@ -2507,7 +2507,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 190261
+      "bytes": 190777
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -2746,6 +2746,10 @@
       "bytes": 878
     },
     {
+      "path": "src/routes/api/public/chat-media.ts",
+      "bytes": 5851
+    },
+    {
       "path": "src/routes/api/public/google-marketing-callback.ts",
       "bytes": 1911
     },
@@ -2755,7 +2759,7 @@
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
-      "bytes": 18389
+      "bytes": 19250
     },
     {
       "path": "src/routes/api/public/wablast-webhook.ts",
@@ -3230,6 +3234,10 @@
     {
       "source": "src/routeTree.gen.ts",
       "target": "./routes/api/public/ai-health"
+    },
+    {
+      "source": "src/routeTree.gen.ts",
+      "target": "./routes/api/public/chat-media"
     },
     {
       "source": "src/routeTree.gen.ts",
@@ -6985,7 +6993,15 @@
     },
     {
       "source": "src/lib/chat-media.functions.ts",
+      "target": "@/lib/storage/r2.server"
+    },
+    {
+      "source": "src/lib/chat-media.functions.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/chat-media.functions.ts",
+      "target": "@/lib/storage/r2.server"
     },
     {
       "source": "src/lib/session-persistence.ts",
@@ -15922,6 +15938,26 @@
     {
       "source": "src/routes/api/public/meta-callback.ts",
       "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/api/public/chat-media.ts",
+      "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/api/public/chat-media.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/routes/api/public/chat-media.ts",
+      "target": "@/lib/storage/r2.server"
+    },
+    {
+      "source": "src/routes/api/public/chat-media.ts",
+      "target": "@/lib/dapi.server"
+    },
+    {
+      "source": "src/routes/api/public/chat-media.ts",
+      "target": "@/lib/storage/r2.server"
     },
     {
       "source": "src/routes/api/public/google-marketing-callback.ts",
