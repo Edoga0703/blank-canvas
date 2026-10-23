@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-23T09:47:59.160474+00:00",
+  "generated_at": "2026-10-23T10:38:41.608286+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -87,7 +87,7 @@
     },
     {
       "path": "src/routeTree.gen.ts",
-      "bytes": 97111
+      "bytes": 98067
     },
     {
       "path": "src/styles.css",
@@ -172,6 +172,10 @@
     {
       "path": "supabase/migrations/20261009060000_full_modules.sql",
       "bytes": 23602
+    },
+    {
+      "path": "supabase/migrations/20261023100000_dapi_whatsapp_integration.sql",
+      "bytes": 649
     },
     {
       "path": "supabase/migrations/20261022190000_storage_buckets_and_cron_parity.sql",
@@ -654,8 +658,12 @@
       "bytes": 52255
     },
     {
+      "path": "src/lib/dapi.server.ts",
+      "bytes": 11320
+    },
+    {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 42729
+      "bytes": 42896
     },
     {
       "path": "src/lib/tracking.functions.ts",
@@ -1091,7 +1099,7 @@
     },
     {
       "path": "src/lib/wa-dispatch.server.ts",
-      "bytes": 15961
+      "bytes": 17079
     },
     {
       "path": "src/lib/test-disparo.functions.ts",
@@ -1159,7 +1167,7 @@
     },
     {
       "path": "src/lib/evolution.functions.ts",
-      "bytes": 54395
+      "bytes": 59897
     },
     {
       "path": "src/lib/integrations.functions.ts",
@@ -1507,7 +1515,7 @@
     },
     {
       "path": "src/config/beta.ts",
-      "bytes": 792
+      "bytes": 704
     },
     {
       "path": "src/routes/sitemap[.]xml.ts",
@@ -1643,7 +1651,7 @@
     },
     {
       "path": "src/integrations/supabase/types.ts",
-      "bytes": 209320
+      "bytes": 209404
     },
     {
       "path": "src/integrations/supabase/client.ts",
@@ -2311,7 +2319,7 @@
     },
     {
       "path": "src/components/conexao/nova-conexao-dialog.tsx",
-      "bytes": 14146
+      "bytes": 14172
     },
     {
       "path": "src/components/conexao/qr-code-dialog.tsx",
@@ -2355,7 +2363,7 @@
     },
     {
       "path": "src/lib/messaging/provider-registry.server.ts",
-      "bytes": 654
+      "bytes": 759
     },
     {
       "path": "src/lib/messaging/ingest.server.ts",
@@ -2375,7 +2383,7 @@
     },
     {
       "path": "src/lib/messaging/contracts.ts",
-      "bytes": 2639
+      "bytes": 2649
     },
     {
       "path": "src/lib/storage/r2.server.ts",
@@ -2452,6 +2460,10 @@
     {
       "path": "src/lib/mcp/tools/list-leads.ts",
       "bytes": 1591
+    },
+    {
+      "path": "src/lib/messaging/providers/dapi.server.ts",
+      "bytes": 4256
     },
     {
       "path": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
@@ -2551,7 +2563,7 @@
     },
     {
       "path": "src/routes/app/conexao.tsx",
-      "bytes": 26213
+      "bytes": 26332
     },
     {
       "path": "src/routes/app/relatorios.tsx",
@@ -2740,6 +2752,10 @@
     {
       "path": "src/routes/api/public/lovable-whatsapp.ts",
       "bytes": 2691
+    },
+    {
+      "path": "src/routes/api/public/dapi-webhook.ts",
+      "bytes": 11569
     },
     {
       "path": "src/routes/api/public/wablast-webhook.ts",
@@ -3214,6 +3230,10 @@
     {
       "source": "src/routeTree.gen.ts",
       "target": "./routes/api/public/ai-health"
+    },
+    {
+      "source": "src/routeTree.gen.ts",
+      "target": "./routes/api/public/dapi-webhook"
     },
     {
       "source": "src/routeTree.gen.ts",
@@ -6245,6 +6265,22 @@
     },
     {
       "source": "src/lib/wa-dispatch.server.ts",
+      "target": "./dapi.server"
+    },
+    {
+      "source": "src/lib/wa-dispatch.server.ts",
+      "target": "./dapi.server"
+    },
+    {
+      "source": "src/lib/wa-dispatch.server.ts",
+      "target": "./dapi.server"
+    },
+    {
+      "source": "src/lib/wa-dispatch.server.ts",
+      "target": "./dapi.server"
+    },
+    {
+      "source": "src/lib/wa-dispatch.server.ts",
       "target": "./telegram.server"
     },
     {
@@ -6481,6 +6517,14 @@
     },
     {
       "source": "src/lib/evolution.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/evolution.functions.ts",
+      "target": "./dapi.server"
+    },
+    {
+      "source": "src/lib/evolution.functions.ts",
       "target": "./plan-limits.server"
     },
     {
@@ -6498,6 +6542,10 @@
     {
       "source": "src/lib/evolution.functions.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/evolution.functions.ts",
+      "target": "./dapi.server"
     },
     {
       "source": "src/lib/evolution.functions.ts",
@@ -6650,6 +6698,14 @@
     {
       "source": "src/lib/evolution.functions.ts",
       "target": "./evolution.server"
+    },
+    {
+      "source": "src/lib/evolution.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/evolution.functions.ts",
+      "target": "./dapi.server"
     },
     {
       "source": "src/lib/evolution.functions.ts",
@@ -12789,6 +12845,10 @@
     },
     {
       "source": "src/lib/messaging/provider-registry.server.ts",
+      "target": "@/lib/messaging/providers/dapi.server"
+    },
+    {
+      "source": "src/lib/messaging/provider-registry.server.ts",
       "target": "@/lib/messaging/contracts"
     },
     {
@@ -12998,6 +13058,14 @@
     {
       "source": "src/lib/mcp/tools/list-leads.ts",
       "target": "zod"
+    },
+    {
+      "source": "src/lib/messaging/providers/dapi.server.ts",
+      "target": "@/lib/messaging/contracts"
+    },
+    {
+      "source": "src/lib/messaging/providers/dapi.server.ts",
+      "target": "@/lib/dapi.server"
     },
     {
       "source": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
@@ -15994,6 +16062,30 @@
     {
       "source": "src/routes/api/public/lovable-whatsapp.ts",
       "target": "@/lib/messaging/ingest.server"
+    },
+    {
+      "source": "src/routes/api/public/dapi-webhook.ts",
+      "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/api/public/dapi-webhook.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/routes/api/public/dapi-webhook.ts",
+      "target": "@/lib/messaging/ingest.server"
+    },
+    {
+      "source": "src/routes/api/public/dapi-webhook.ts",
+      "target": "@/lib/messaging/contracts"
+    },
+    {
+      "source": "src/routes/api/public/dapi-webhook.ts",
+      "target": "@/lib/dapi.server"
+    },
+    {
+      "source": "src/routes/api/public/dapi-webhook.ts",
+      "target": "@/lib/media-understanding.server"
     },
     {
       "source": "src/routes/api/public/wablast-webhook.ts",
