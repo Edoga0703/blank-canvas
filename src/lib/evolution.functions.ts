@@ -51,7 +51,7 @@ export const connectWhatsapp = createServerFn({ method: "POST" })
     // FLUXO PRINCIPAL SAAS: D-API (WhatsApp QR Code / Pairing Code)
     if (provider === "dapi" || provider === "dapi_official") {
       const { supabaseAdmin: sbAdminTok } = await import("@/integrations/supabase/client.server");
-      const { dapiCreateSession, dapiGetQr, dapiGetPairingCode, dapiGetStatus } = await import("./dapi.server");
+      const { dapiCreateSession, dapiGetQr, dapiGetPairingCode, dapiGetStatus, dapiSetWebhookConfig } = await import("./dapi.server");
 
       const existingQuery = (sbAdminTok as any)
         .from("whatsapp_instances")
@@ -74,13 +74,18 @@ export const connectWhatsapp = createServerFn({ method: "POST" })
 
       // Cria ou reconecta sessão em D-API
       try {
+        if (existing && !data.createNew) {
+          dapiSetWebhookConfig(instanceName, webhookUrl).catch(() => null);
+        }
+
         if (!existing || data.createNew) {
           const createRes = await dapiCreateSession({
             sessionId: instanceName,
             type: "unofficial",
-            connectionMode: data.phone ? "pairing" : "qr",
+            connectionMode: data.phone ? "pair" : "qr",
             webhookUrl,
             phoneNumber: data.phone || undefined,
+            pairPhone: data.phone || undefined,
           });
           qrBase64 = createRes.qrcode || null;
         }

@@ -22,6 +22,23 @@ function sent(messageId: string, raw?: unknown): SendResult {
   };
 }
 
+function parseParticipant(participant: any): { jid: string; phone: string; name: string | null } {
+  if (!participant) return { jid: "", phone: "", name: null };
+  if (typeof participant === "string") {
+    const jid = participant.trim();
+    const phone = jid.split("@")[0].replace(/\D/g, "");
+    return { jid, phone, name: null };
+  }
+  if (typeof participant === "object") {
+    const jid = String(participant.jid || participant.id || participant.phone || participant.number || "").trim();
+    const rawName = participant.name || participant.pushName || participant.notify || null;
+    const name = rawName ? String(rawName).trim() : null;
+    const phone = (participant.phone || participant.number || jid.split("@")[0] || "").replace(/\D/g, "");
+    return { jid, phone, name };
+  }
+  return { jid: "", phone: "", name: null };
+}
+
 export const dapiProvider: MessagingProvider = {
   id: "dapi",
 
@@ -61,21 +78,41 @@ export const dapiProvider: MessagingProvider = {
     if (!body || !body.event) return [];
 
     const eventName = String(body.event);
-    const sessionId = String(body.sessionId || "");
+    const sessionId = String(body.sessionId || body.session || "");
     const data = body.data || {};
     const externalMessageId = String(data.id || data.message_id || body.traceId || "");
 
     // Eventos de estado de entrega / lectura
-    if (eventName === "message.delivered" || eventName === "message.read") {
+    if (
+      eventName === "message.delivered" ||
+      eventName === "message.read" ||
+      eventName === "message.status" ||
+      eventName === "messages.status"
+    ) {
+      let status: "sent" | "delivered" | "read" | "failed" = "delivered";
+      if (eventName === "message.read") {
+        status = "read";
+      } else if (eventName === "message.delivered") {
+        status = "delivered";
+      } else {
+        const rawStatus = String(data.status || "").toLowerCase();
+        if (rawStatus === "read" || rawStatus === "played") status = "read";
+        else if (rawStatus === "delivered" || rawStatus === "received") status = "delivered";
+        else if (rawStatus === "sent") status = "sent";
+        else if (rawStatus === "failed" || rawStatus === "error") status = "failed";
+      }
+
+      const target = parseParticipant(data.to || data.from || data.recipient);
+
       return [
         {
           type: "status",
           provider: "dapi",
           connectionExternalId: sessionId,
           externalMessageId: String(data.message_id || data.id || externalMessageId),
-          status: eventName === "message.read" ? "read" : "delivered",
+          status,
           occurredAt: body.timestamp || new Date().toISOString(),
-          phone: String(data.to || data.from || "").replace(/\D/g, ""),
+          phone: target.phone,
           raw: body,
         },
       ];
@@ -84,9 +121,30 @@ export const dapiProvider: MessagingProvider = {
     // Eventos de mensajes entrantes y salientes
     if (eventName === "messages.received" || eventName === "messages.sent") {
       const fromMe = Boolean(data.fromMe);
-      const phone = String(data.from || data.to || "").replace(/\D/g, "");
-      const isGroup = Boolean(data.isGroup || String(data.from || "").endsWith("@g.us"));
+      const senderPart = parseParticipant(data.from || data.sender);
+      const recipientPart = parseParticipant(data.to || data.recipient_id || data.recipient);
+
+      const isGroup = Boolean(
+        data.is_group ||
+        data.isGroup ||
+        (senderPart.jid && senderPart.jid.endsWith("@g.us")) ||
+        (recipientPart.jid && recipientPart.jid.endsWith("@g.us")) ||
+        (typeof data.from === "string" && data.from.endsWith("@g.us")) ||
+        (data.chat_id && String(data.chat_id).endsWith("@g.us"))
+      );
       if (isGroup) return [];
+
+      const activePart = fromMe ? recipientPart : senderPart;
+      const phone = activePart.phone;
+      if (!phone) return [];
+
+      const contactName = String(
+        data.from_name ||
+        data.pushName ||
+        senderPart.name ||
+        recipientPart.name ||
+        ""
+      ).trim() || null;
 
       let kind: any = "text";
       const attachments: any[] = [];
@@ -106,6 +164,7 @@ export const dapiProvider: MessagingProvider = {
       const text = String(
         data.message ||
         data.text ||
+        data.body ||
         data.media_data?.caption ||
         data.caption ||
         (dataType === "list_response" ? data.data?.selected_row_id || "" : "") ||
@@ -119,13 +178,13 @@ export const dapiProvider: MessagingProvider = {
           connectionExternalId: sessionId,
           externalMessageId,
           phone,
-          contactName: data.from_name || null,
+          contactName,
           direction: fromMe ? "outgoing" : "incoming",
           author: fromMe ? "human" : "contact",
           kind,
           text,
           occurredAt: body.timestamp || new Date().toISOString(),
-          replyToExternalMessageId: data.quotedMessageId || null,
+          replyToExternalMessageId: data.quotedMessageId || data.quoted_message_id || null,
           attachments,
           raw: body,
         },

@@ -5,6 +5,27 @@ import type { IncomingMessageEvent, MessageStatusEvent, MessageKind } from "@/li
 import { dapiDownloadMedia } from "@/lib/dapi.server";
 import { transcribeIncomingAudio, describeIncomingFile } from "@/lib/media-understanding.server";
 
+/**
+ * Helper forense para extraer JID, número telefónico y nombre desde cualquier formato
+ * de participante en D-API (objeto { jid, name } o string "5511...@s.whatsapp.net").
+ */
+function parseDapiParticipant(participant: any): { jid: string; phone: string; name: string | null } {
+  if (!participant) return { jid: "", phone: "", name: null };
+  if (typeof participant === "string") {
+    const jid = participant.trim();
+    const phone = jid.split("@")[0].replace(/\D/g, "");
+    return { jid, phone, name: null };
+  }
+  if (typeof participant === "object") {
+    const jid = String(participant.jid || participant.id || participant.phone || participant.number || "").trim();
+    const rawName = participant.name || participant.pushName || participant.notify || null;
+    const name = rawName ? String(rawName).trim() : null;
+    const phone = (participant.phone || participant.number || jid.split("@")[0] || "").replace(/\D/g, "");
+    return { jid, phone, name };
+  }
+  return { jid: "", phone: "", name: null };
+}
+
 export const Route = createFileRoute("/api/public/dapi-webhook")({
   server: {
     handlers: {
@@ -49,15 +70,20 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
           if (eventName === "connection.status") {
             const rawStatus = String(data.status || data.state || "").toLowerCase();
             let newStatus = "connecting";
-            if (rawStatus === "connected" || rawStatus === "open") newStatus = "connected";
-            else if (rawStatus === "disconnected" || rawStatus === "logged_out" || rawStatus === "close") newStatus = "disconnected";
+            if (rawStatus === "connected" || rawStatus === "open") {
+              newStatus = "connected";
+            } else if (rawStatus === "disconnected" || rawStatus === "logged_out" || rawStatus === "close") {
+              newStatus = "disconnected";
+            }
 
             const updates: Record<string, any> = {
               status: newStatus,
               updated_at: new Date().toISOString(),
+              last_state_at: new Date().toISOString(),
             };
-            if (data.phoneNumber || data.phone || data.numero) {
-              updates.numero = String(data.phoneNumber || data.phone || data.numero).replace(/\D/g, "");
+            const phoneStr = String(data.phoneNumber || data.phone || data.numero || "").replace(/\D/g, "");
+            if (phoneStr) {
+              updates.numero = phoneStr;
             }
 
             await supabaseAdmin
@@ -78,24 +104,43 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
             });
           }
 
-          // 2. Manejo de estados de entrega y lectura (message.delivered, message.read)
-          if (eventName === "message.delivered" || eventName === "message.read") {
+          // 2. Manejo de estados de entrega y lectura (message.delivered, message.read, message.status, messages.status)
+          if (
+            eventName === "message.delivered" ||
+            eventName === "message.read" ||
+            eventName === "message.status" ||
+            eventName === "messages.status"
+          ) {
+            let status: "sent" | "delivered" | "read" | "failed" = "delivered";
+            if (eventName === "message.read") {
+              status = "read";
+            } else if (eventName === "message.delivered") {
+              status = "delivered";
+            } else {
+              const rawStatus = String(data.status || "").toLowerCase();
+              if (rawStatus === "read" || rawStatus === "played") status = "read";
+              else if (rawStatus === "delivered" || rawStatus === "received") status = "delivered";
+              else if (rawStatus === "sent") status = "sent";
+              else if (rawStatus === "failed" || rawStatus === "error") status = "failed";
+            }
+
             const externalMessageId = String(data.message_id || data.id || body.traceId || "");
             if (externalMessageId) {
+              const target = parseDapiParticipant(data.to || data.from || data.recipient);
               const statusEvent: MessageStatusEvent = {
                 type: "status",
                 provider: "dapi",
                 connectionExternalId: sessionId,
                 externalMessageId,
-                status: eventName === "message.read" ? "read" : "delivered",
+                status,
                 occurredAt: body.timestamp || new Date().toISOString(),
-                phone: String(data.to || data.from || "").replace(/\D/g, ""),
+                phone: target.phone,
                 raw: body,
               };
               await ingestMessagingEvent({
                 companyId: inst.company_id,
                 event: statusEvent,
-                externalEventId: `dapi_status_${eventName}_${externalMessageId}`,
+                externalEventId: `dapi_status_${eventName}_${externalMessageId}_${status}`,
               });
             }
             return new Response(JSON.stringify({ ok: true }), {
@@ -106,7 +151,18 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
 
           // 3. Manejo de mensajes (messages.received, messages.sent)
           if (eventName === "messages.received" || eventName === "messages.sent") {
-            const isGroup = Boolean(data.isGroup || String(data.from || "").endsWith("@g.us"));
+            const fromMe = Boolean(data.fromMe);
+            const senderPart = parseDapiParticipant(data.from || data.sender);
+            const recipientPart = parseDapiParticipant(data.to || data.recipient_id || data.recipient);
+
+            const isGroup = Boolean(
+              data.is_group ||
+              data.isGroup ||
+              (senderPart.jid && senderPart.jid.endsWith("@g.us")) ||
+              (recipientPart.jid && recipientPart.jid.endsWith("@g.us")) ||
+              (typeof data.from === "string" && data.from.endsWith("@g.us")) ||
+              (data.chat_id && String(data.chat_id).endsWith("@g.us"))
+            );
             if (isGroup) {
               return new Response(JSON.stringify({ ok: true, ignored: true, reason: "group" }), {
                 status: 200,
@@ -115,9 +171,8 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
             }
 
             const messageId = String(data.id || data.message_id || body.traceId || `dapi_${Date.now()}`);
-            const fromMe = Boolean(data.fromMe);
-            const rawPhone = String(fromMe ? (data.to || "") : (data.from || ""));
-            const phone = rawPhone.split("@")[0].replace(/\D/g, "");
+            const activeParticipant = fromMe ? recipientPart : senderPart;
+            const phone = activeParticipant.phone;
 
             if (!phone) {
               return new Response(JSON.stringify({ ok: true, ignored: true, reason: "no_phone" }), {
@@ -126,7 +181,15 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
               });
             }
 
-            // Manejo de eco (fromMe === true): escrito desde celular físico o API
+            const contactName = String(
+              data.from_name ||
+              data.pushName ||
+              senderPart.name ||
+              recipientPart.name ||
+              ""
+            ).trim() || null;
+
+            // Manejo de eco (fromMe === true): escrito desde celular físico o API externa
             if (fromMe) {
               // Verifica si el mensaje fue enviado previamente por el sistema / IA
               const { data: existing } = await supabaseAdmin
@@ -137,14 +200,14 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
                 .maybeSingle();
 
               if (!existing) {
-                // Mensaje enviado manualmente desde el teléfono físico: registrar y pausar la IA para no competir
-                const text = String(data.message || data.text || data.caption || "").trim();
+                // Mensaje enviado manualmente desde el teléfono físico: registrar y pausar la IA
+                const text = String(data.message || data.text || data.body || data.caption || "").trim();
                 const nowIso = new Date().toISOString();
 
                 await supabaseAdmin.from("mensagens").insert({
                   company_id: inst.company_id,
                   contato_numero: phone,
-                  contato_nome: data.from_name || null,
+                  contato_nome: contactName,
                   texto: text,
                   direcao: "saida",
                   autor: "humano",
@@ -183,6 +246,7 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
             let text = String(
               data.message ||
               data.text ||
+              data.body ||
               data.media_data?.caption ||
               data.caption ||
               (dataType === "list_response" ? data.data?.selected_row_id || "" : "") ||
@@ -223,13 +287,13 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
               connectionExternalId: sessionId,
               externalMessageId: messageId,
               phone,
-              contactName: data.from_name || null,
+              contactName,
               direction: "incoming",
               author: "contact",
               kind,
               text,
               occurredAt: body.timestamp || new Date().toISOString(),
-              replyToExternalMessageId: data.quotedMessageId || null,
+              replyToExternalMessageId: data.quotedMessageId || data.quoted_message_id || null,
               attachments: mediaUrl
                 ? [
                     {

@@ -212,18 +212,6 @@ export async function waSendText(
     const { dapiSendText } = await import("./dapi.server");
     return dapiSendText(inst.instance_name, numero, texto, options?.replyToExternalMessageId);
   }
-  if (inst.provider === "dapi" || inst.provider === "dapi_official") {
-    const { dapiSendMedia } = await import("./dapi.server");
-    return dapiSendMedia(inst.instance_name, numero, media);
-  }
-  if (inst.provider === "dapi" || inst.provider === "dapi_official") {
-    const { dapiSendAudio } = await import("./dapi.server");
-    return dapiSendAudio(inst.instance_name, numero, audioBase64OrUrl);
-  }
-  if (inst.provider === "dapi" || inst.provider === "dapi_official") {
-    const { dapiSendTemplate } = await import("./dapi.server");
-    return dapiSendTemplate(inst.instance_name, numero, template);
-  }
   if (inst.provider === "lovable_whatsapp") {
     const result = await getMessagingProvider("lovable_whatsapp").sendText({
       connectionExternalId: inst.instance_name,
@@ -253,6 +241,10 @@ export async function waSendMedia(
   media: { url: string; type: "image" | "video" | "document" | "audio"; caption?: string; fileName?: string; mime?: string },
 ) {
   numero = assertSendableNumber(numero, inst.provider);
+  if (inst.provider === "dapi" || inst.provider === "dapi_official") {
+    const { dapiSendMedia } = await import("./dapi.server");
+    return dapiSendMedia(inst.instance_name, numero, media);
+  }
   if (isMetaProvider(inst.provider)) {
     if (!inst.instance_token) throw new Error(`Token da Meta ausente para conexão ${inst.instance_name}`);
     await assertMetaWindowForInstance(inst, numero);
@@ -299,6 +291,10 @@ export async function waSendMedia(
 
 export async function waSendAudio(inst: WaInstance, numero: string, audioBase64OrUrl: string) {
   numero = assertSendableNumber(numero, inst.provider);
+  if (inst.provider === "dapi" || inst.provider === "dapi_official") {
+    const { dapiSendAudio } = await import("./dapi.server");
+    return dapiSendAudio(inst.instance_name, numero, audioBase64OrUrl);
+  }
   if (isMetaProvider(inst.provider)) {
     if (!inst.instance_token) throw new Error(`Token da Meta ausente para conexão ${inst.instance_name}`);
     await assertMetaWindowForInstance(inst, numero);
@@ -340,6 +336,10 @@ export async function waSendTemplate(
   template: { name: string; language: string; components?: any[] },
 ) {
   numero = assertSendableNumber(numero, inst.provider);
+  if (inst.provider === "dapi" || inst.provider === "dapi_official") {
+    const { dapiSendTemplate } = await import("./dapi.server");
+    return dapiSendTemplate(inst.instance_name, numero, template);
+  }
   if (inst.provider === "lovable_whatsapp") {
     const result = await getMessagingProvider("lovable_whatsapp").sendTemplate({
       connectionExternalId: inst.instance_name,

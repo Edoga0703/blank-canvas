@@ -23,7 +23,7 @@ function getHeaders(): Record<string, string> {
   return {
     "Authorization": key,
     "Content-Type": "application/json",
-    "User-Agent": "Capiconversa-CRM/1.1.9",
+    "User-Agent": "Capiconversa-CRM/1.1.10",
   };
 }
 
@@ -69,9 +69,10 @@ async function dapiFetch<T = any>(
 export interface DapiCreateSessionParams {
   sessionId: string;
   type?: "unofficial" | "cloud_api";
-  connectionMode?: "qr" | "pairing";
+  connectionMode?: "qr" | "pair" | "pairing";
   webhookUrl?: string;
   phoneNumber?: string;
+  pairPhone?: string;
 }
 
 export interface DapiSessionStatus {
@@ -84,6 +85,7 @@ export interface DapiSessionStatus {
 
 /**
  * Crea una nueva sesión en D-API para un tenant/instancia.
+ * Soporta connectionMode "qr" o "pair" (con pairPhone).
  */
 export async function dapiCreateSession(params: DapiCreateSessionParams): Promise<{
   success: boolean;
@@ -91,16 +93,20 @@ export async function dapiCreateSession(params: DapiCreateSessionParams): Promis
   qrcode?: string | null;
   status?: string;
 }> {
+  const mode = params.connectionMode === "pairing" ? "pair" : (params.connectionMode || "qr");
+  const cleanPhone = (params.pairPhone || params.phoneNumber || "").replace(/\D/g, "");
+
   const body: Record<string, any> = {
     sessionId: params.sessionId,
     type: params.type || "unofficial",
-    connectionMode: params.connectionMode || "qr",
+    connectionMode: mode,
   };
   if (params.webhookUrl) {
     body.webhookUrl = params.webhookUrl;
   }
-  if (params.phoneNumber) {
-    body.phoneNumber = params.phoneNumber.replace(/\D/g, "");
+  if (cleanPhone) {
+    body.phoneNumber = cleanPhone;
+    body.pairPhone = cleanPhone;
   }
 
   const res = await dapiFetch<any>("/sessions", {
@@ -152,23 +158,63 @@ export async function dapiGetQr(sessionId: string): Promise<{
 }
 
 /**
- * Genera el código de emparejamiento de 8 dígitos para WhatsApp.
+ * Genera u obtiene el código de emparejamiento de 8 dígitos para WhatsApp.
+ * Soporta consulta directa GET /sessions/{sessionId}/pair-code y POST /sessions/{sessionId}/pairing-code.
  */
 export async function dapiGetPairingCode(
   sessionId: string,
-  phoneNumber: string,
+  phoneNumber?: string,
 ): Promise<{ success: boolean; code: string }> {
-  const cleanPhone = phoneNumber.replace(/\D/g, "");
-  const res = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/pairing-code`, {
-    method: "POST",
-    body: JSON.stringify({ phoneNumber: cleanPhone }),
-  });
+  const cleanPhone = (phoneNumber || "").replace(/\D/g, "");
 
-  const code = res?.code || res?.pairingCode || res?.data?.code || "";
-  return {
-    success: !!code,
-    code,
-  };
+  // 1. Intento GET /sessions/{sessionId}/pair-code (sesión creada en modo pair)
+  try {
+    const getRes = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/pair-code`);
+    const code = getRes?.code || getRes?.pairCode || getRes?.pairingCode || getRes?.data?.code || "";
+    if (code) {
+      return { success: true, code };
+    }
+  } catch {
+    // Continuar a fallback
+  }
+
+  // 2. Fallback POST /sessions/{sessionId}/pairing-code
+  try {
+    const res = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/pairing-code`, {
+      method: "POST",
+      body: JSON.stringify({ phoneNumber: cleanPhone, pairPhone: cleanPhone }),
+    });
+
+    const code = res?.code || res?.pairingCode || res?.pairCode || res?.data?.code || "";
+    return {
+      success: !!code,
+      code,
+    };
+  } catch {
+    return {
+      success: false,
+      code: "",
+    };
+  }
+}
+
+/**
+ * Configura o actualiza la URL del webhook de una sesión en D-API sin reiniciar el contenedor.
+ */
+export async function dapiSetWebhookConfig(
+  sessionId: string,
+  webhookUrl: string,
+): Promise<{ success: boolean; raw?: any }> {
+  try {
+    const res = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/webhook-config`, {
+      method: "POST",
+      body: JSON.stringify({ webhookUrl }),
+    });
+    return { success: res?.success ?? true, raw: res };
+  } catch (err: any) {
+    console.warn(`[dapi.server] Advertencia al configurar webhook para sesión ${sessionId}:`, err?.message);
+    return { success: false, raw: err?.message };
+  }
 }
 
 /**
