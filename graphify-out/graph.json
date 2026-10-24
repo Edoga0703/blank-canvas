@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T03:26:54.755739+00:00",
+  "generated_at": "2026-10-24T04:19:19.126530+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -127,7 +127,7 @@
     },
     {
       "path": "docs/contexto-arquitectura-crm-para-agente.md",
-      "bytes": 29338
+      "bytes": 34448
     },
     {
       "path": "docs/PROVIDERS_LEGACY.md",
@@ -150,10 +150,6 @@
       "bytes": 2532
     },
     {
-      "path": "supabase/migrations/20261009040000_meta_channels_core.sql",
-      "bytes": 1302
-    },
-    {
       "path": "supabase/migrations/20261009030000_capiversa_v1_1_core.sql",
       "bytes": 19763
     },
@@ -164,6 +160,10 @@
     {
       "path": "supabase/migrations/20261009050000_rpc_and_auxiliary.sql",
       "bytes": 7438
+    },
+    {
+      "path": "supabase/migrations/20261009043000_meta_channels_core.sql",
+      "bytes": 1302
     },
     {
       "path": "supabase/migrations/20261011040000_meta_phase1_assets_content_history.sql",
@@ -603,7 +603,7 @@
     },
     {
       "path": "src/lib/transcribe.functions.ts",
-      "bytes": 6664
+      "bytes": 6768
     },
     {
       "path": "src/lib/crm-engine.server.ts",
@@ -619,7 +619,7 @@
     },
     {
       "path": "src/lib/contact-card.functions.ts",
-      "bytes": 4707
+      "bytes": 4717
     },
     {
       "path": "src/lib/invoices.functions.ts",
@@ -663,11 +663,11 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 25667
+      "bytes": 25823
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 44795
+      "bytes": 45106
     },
     {
       "path": "src/lib/tracking.functions.ts",
@@ -711,7 +711,7 @@
     },
     {
       "path": "src/lib/message-actions.functions.ts",
-      "bytes": 5982
+      "bytes": 5991
     },
     {
       "path": "src/lib/telegram.functions.ts",
@@ -1031,7 +1031,7 @@
     },
     {
       "path": "src/lib/ai-prompt.ts",
-      "bytes": 30770
+      "bytes": 30796
     },
     {
       "path": "src/lib/plan.functions.ts",
@@ -1171,7 +1171,7 @@
     },
     {
       "path": "src/lib/evolution.functions.ts",
-      "bytes": 40775
+      "bytes": 40837
     },
     {
       "path": "src/lib/integrations.functions.ts",
@@ -1655,7 +1655,7 @@
     },
     {
       "path": "src/integrations/supabase/types.ts",
-      "bytes": 209404
+      "bytes": 212649
     },
     {
       "path": "src/integrations/supabase/client.ts",
@@ -2739,7 +2739,7 @@
     },
     {
       "path": "src/routes/api/public/meta-leads-webhook.ts",
-      "bytes": 7957
+      "bytes": 8599
     },
     {
       "path": "src/routes/api/public/google-callback.ts",
@@ -2763,7 +2763,7 @@
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
-      "bytes": 25750
+      "bytes": 25820
     },
     {
       "path": "src/routes/api/public/wablast-webhook.ts",
