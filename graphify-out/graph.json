@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T14:21:04.650188+00:00",
+  "generated_at": "2026-10-24T14:31:18.500785+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -791,7 +791,7 @@
     },
     {
       "path": "src/lib/meta-response-window.server.ts",
-      "bytes": 2523
+      "bytes": 2989
     },
     {
       "path": "src/lib/meta-publish.functions.ts",
