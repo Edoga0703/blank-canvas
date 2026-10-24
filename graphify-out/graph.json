@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-23T23:17:55.920456+00:00",
+  "generated_at": "2026-10-24T01:33:53.251469+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -47,7 +47,7 @@
     },
     {
       "path": "vite.config.ts",
-      "bytes": 3081
+      "bytes": 3851
     },
     {
       "path": "vite-serverfn-warmup.ts",
@@ -599,7 +599,7 @@
     },
     {
       "path": "src/lib/transcribe.functions.ts",
-      "bytes": 5042
+      "bytes": 6654
     },
     {
       "path": "src/lib/crm-engine.server.ts",
@@ -615,7 +615,7 @@
     },
     {
       "path": "src/lib/contact-card.functions.ts",
-      "bytes": 4082
+      "bytes": 4707
     },
     {
       "path": "src/lib/invoices.functions.ts",
@@ -659,11 +659,11 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 20075
+      "bytes": 25062
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 42896
+      "bytes": 44784
     },
     {
       "path": "src/lib/tracking.functions.ts",
@@ -707,7 +707,7 @@
     },
     {
       "path": "src/lib/message-actions.functions.ts",
-      "bytes": 3630
+      "bytes": 5653
     },
     {
       "path": "src/lib/telegram.functions.ts",
@@ -787,7 +787,7 @@
     },
     {
       "path": "src/lib/meta-response-window.server.ts",
-      "bytes": 2359
+      "bytes": 2523
     },
     {
       "path": "src/lib/meta-publish.functions.ts",
@@ -811,7 +811,7 @@
     },
     {
       "path": "src/lib/evolution-helpers.ts",
-      "bytes": 9160
+      "bytes": 9228
     },
     {
       "path": "src/lib/sector-assignment.server.ts",
@@ -1099,7 +1099,7 @@
     },
     {
       "path": "src/lib/wa-dispatch.server.ts",
-      "bytes": 11042
+      "bytes": 11559
     },
     {
       "path": "src/lib/test-disparo.functions.ts",
@@ -1243,7 +1243,7 @@
     },
     {
       "path": "src/lib/department-menu.server.ts",
-      "bytes": 4625
+      "bytes": 5892
     },
     {
       "path": "src/lib/meta-sync.server.ts",
@@ -1263,7 +1263,7 @@
     },
     {
       "path": "src/lib/chat-media.functions.ts",
-      "bytes": 8863
+      "bytes": 9059
     },
     {
       "path": "src/lib/session-persistence.ts",
@@ -1847,7 +1847,7 @@
     },
     {
       "path": "src/components/chat/chat-media.tsx",
-      "bytes": 7283
+      "bytes": 6992
     },
     {
       "path": "src/components/chat/quick-replies-dialog.tsx",
@@ -2363,11 +2363,11 @@
     },
     {
       "path": "src/lib/messaging/provider-registry.server.ts",
-      "bytes": 759
+      "bytes": 822
     },
     {
       "path": "src/lib/messaging/ingest.server.ts",
-      "bytes": 19153
+      "bytes": 20189
     },
     {
       "path": "src/lib/messaging/media-archive.server.ts",
@@ -2387,7 +2387,7 @@
     },
     {
       "path": "src/lib/storage/r2.server.ts",
-      "bytes": 10095
+      "bytes": 9680
     },
     {
       "path": "src/lib/storage/r2.functions.ts",
@@ -2463,7 +2463,7 @@
     },
     {
       "path": "src/lib/messaging/providers/dapi.server.ts",
-      "bytes": 7980
+      "bytes": 8225
     },
     {
       "path": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
@@ -2507,7 +2507,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 190777
+      "bytes": 190839
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -2747,7 +2747,7 @@
     },
     {
       "path": "src/routes/api/public/chat-media.ts",
-      "bytes": 5851
+      "bytes": 8083
     },
     {
       "path": "src/routes/api/public/google-marketing-callback.ts",
@@ -2759,7 +2759,7 @@
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
-      "bytes": 19250
+      "bytes": 25728
     },
     {
       "path": "src/routes/api/public/wablast-webhook.ts",
@@ -3805,6 +3805,10 @@
     },
     {
       "source": "src/lib/transcribe.functions.ts",
+      "target": "@/lib/storage/r2.server"
+    },
+    {
+      "source": "src/lib/transcribe.functions.ts",
       "target": "./chat-media.functions"
     },
     {
@@ -3902,6 +3906,10 @@
     {
       "source": "src/lib/contact-card.functions.ts",
       "target": "./wa-dispatch.server"
+    },
+    {
+      "source": "src/lib/contact-card.functions.ts",
+      "target": "./dapi.server"
     },
     {
       "source": "src/lib/invoices.functions.ts",
@@ -4189,6 +4197,10 @@
     },
     {
       "source": "src/lib/ai-engine.server.ts",
+      "target": "@/lib/storage/r2.server"
+    },
+    {
+      "source": "src/lib/ai-engine.server.ts",
       "target": "@/lib/wa-dispatch.server"
     },
     {
@@ -4342,6 +4354,30 @@
     {
       "source": "src/lib/message-actions.functions.ts",
       "target": "./company-cache"
+    },
+    {
+      "source": "src/lib/message-actions.functions.ts",
+      "target": "@/lib/wa-dispatch.server"
+    },
+    {
+      "source": "src/lib/message-actions.functions.ts",
+      "target": "@/lib/dapi.server"
+    },
+    {
+      "source": "src/lib/message-actions.functions.ts",
+      "target": "@/lib/wa-dispatch.server"
+    },
+    {
+      "source": "src/lib/message-actions.functions.ts",
+      "target": "@/lib/dapi.server"
+    },
+    {
+      "source": "src/lib/message-actions.functions.ts",
+      "target": "@/lib/wa-dispatch.server"
+    },
+    {
+      "source": "src/lib/message-actions.functions.ts",
+      "target": "@/lib/dapi.server"
     },
     {
       "source": "src/lib/telegram.functions.ts",
@@ -6222,6 +6258,10 @@
     {
       "source": "src/lib/wa-dispatch.server.ts",
       "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/wa-dispatch.server.ts",
+      "target": "./dapi.server"
     },
     {
       "source": "src/lib/wa-dispatch.server.ts",
@@ -15945,6 +15985,18 @@
     },
     {
       "source": "src/routes/api/public/chat-media.ts",
+      "target": "node:crypto"
+    },
+    {
+      "source": "src/routes/api/public/chat-media.ts",
+      "target": "@supabase/supabase-js"
+    },
+    {
+      "source": "src/routes/api/public/chat-media.ts",
+      "target": "@/lib/company-cache"
+    },
+    {
+      "source": "src/routes/api/public/chat-media.ts",
       "target": "@/integrations/supabase/client.server"
     },
     {
@@ -15994,6 +16046,10 @@
     {
       "source": "src/routes/api/public/dapi-webhook.ts",
       "target": "@/lib/media-understanding.server"
+    },
+    {
+      "source": "src/routes/api/public/dapi-webhook.ts",
+      "target": "@/lib/dapi.server"
     },
     {
       "source": "src/routes/api/public/wablast-webhook.ts",
