@@ -91,6 +91,16 @@ export async function processInboundAutomation(
     }
   }
 
+  // Dispara el Bot Analista de Leads CRM en segundo plano (regla estricta de 30 minutos de cooldown)
+  void (async () => {
+    try {
+      const { checkAndAnalyzeLeadCooldown } = await import("@/lib/crm-lead-analyzer.server");
+      await checkAndAnalyzeLeadCooldown(companyId, numero);
+    } catch (e: any) {
+      console.warn("[inbound-automation] checkAndAnalyzeLeadCooldown background error:", e?.message);
+    }
+  })();
+
   if (mode === "manual") {
     return { engine: "none", reason: "manual" };
   }

@@ -24,6 +24,7 @@ import { CANAL_LABEL, CANAL_COLOR, type CanalEntrada } from "@/lib/tracking-util
 import { ConversationMediaTab } from "@/components/chat/conversation-media-panel";
 import { OlistPedidosTab } from "@/components/crm/olist-pedidos-tab";
 import { useCapacidadeAtiva } from "@/hooks/use-capacidades";
+import { LeadAiAnalyzerDialog } from "@/components/crm/lead-ai-analyzer-dialog";
 
 
 export interface LeadCard {
@@ -119,6 +120,7 @@ export function LeadDetailsPanel({
   const [tab, setTab] = useState("dados");
   const [editValor, setEditValor] = useState(false);
   const [funilOpen, setFunilOpen] = useState(false);
+  const [aiAnalyzerOpen, setAiAnalyzerOpen] = useState(false);
   const [pipelines, setPipelines] = useState<{ id: string; nome: string; tipo: string | null }[]>([]);
   const [allStages, setAllStages] = useState<{ id: string; nome: string; cor: string; pipeline_id: string | null; ordem: number | null }[]>([]);
   const [itens, setItens] = useState<{ id: string; nome: string; tipo: string | null }[]>([]);
@@ -359,6 +361,30 @@ export function LeadDetailsPanel({
           </PopoverContent>
         </Popover>
       </div>
+
+      {/* Botón Auditor / Analista de Negociación con IA */}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setAiAnalyzerOpen(true)}
+        className="w-full h-9 rounded-lg border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary font-medium gap-2 shadow-sm transition"
+      >
+        <Sparkles className="size-4 shrink-0" />
+        <span>Auditar Lead con IA (Diagnóstico & Etapa)</span>
+      </Button>
+
+      <LeadAiAnalyzerDialog
+        cardId={local.id}
+        leadName={local.nome || local.numero}
+        currentStageName={currentStage?.nome || "Etapa actual"}
+        open={aiAnalyzerOpen}
+        onOpenChange={setAiAnalyzerOpen}
+        onStageChanged={(newStageId) => {
+          setLocal((prev: any) => ({ ...prev, stage_id: newStageId }));
+          onChanged();
+        }}
+      />
 
       <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
         <TabsList className={`grid ${cols} w-full shrink-0`}>

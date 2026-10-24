@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { toast } from "sonner";
 import {
-  Plus, MoreHorizontal, Sparkles, Pencil, Trash2, Palette, Zap, Clock, ChevronDown,
+  Plus, MoreHorizontal, Sparkles, Pencil, Trash2, Palette, Zap, Clock, ChevronDown, Lock,
   Users, Loader2, Wand2, Search, SlidersHorizontal, RefreshCw, User as UserIcon,
   TrendingUp, MessageSquare, ArrowRightLeft, Columns3, Calendar, Bot, Star, Coins, CalendarPlus, UserPlus, Eye, EyeOff, Forward,
   Upload, X, FileText, Image as ImageIcon, Video, Mic
@@ -38,6 +38,7 @@ import { CANAL_LABEL, CANAL_COLOR, CANAIS_MANUAIS, type CanalEntrada } from "@/l
 import { QuickScheduleDialog } from "@/components/agenda/quick-schedule-dialog";
 import { EncaminharDialog } from "@/components/chat/encaminhar-dialog";
 import { useFeatureEnabled } from "@/hooks/use-feature-flags";
+import { parseStageAiMeta, formatStageAiMeta } from "@/lib/crm-lead-analyzer.server";
 
 
 export const Route = createFileRoute("/app/crm")({
@@ -583,10 +584,10 @@ function KanbanPage() {
 
 
 
-  async function createPipeline(nome: string, queueId?: string | null) {
+  async function createPipeline(nome: string, queueId?: string | null, agentId?: string | null) {
     const ordem = pipelines.length;
     const { data, error } = await supabase.from("crm_pipeline")
-      .insert({ company_id: companyId, nome, tipo: "custom", ordem, sistema: false, distribution_queue_id: queueId || null })
+      .insert({ company_id: companyId, nome, tipo: "custom", ordem, sistema: false, distribution_queue_id: queueId || null, agent_id: agentId || null })
       .select("id").maybeSingle();
     if (error || !data) return toast.error(error?.message ?? "Falha ao criar funil");
     // Cria etapas iniciais
@@ -601,8 +602,8 @@ function KanbanPage() {
     await loadAll(companyId);
   }
 
-  async function renamePipeline(id: string, nome: string, queueId?: string | null) {
-    const { error } = await supabase.from("crm_pipeline").update({ nome, distribution_queue_id: queueId || null }).eq("id", id);
+  async function renamePipeline(id: string, nome: string, queueId?: string | null, agentId?: string | null) {
+    const { error } = await supabase.from("crm_pipeline").update({ nome, distribution_queue_id: queueId || null, agent_id: agentId || null }).eq("id", id);
     if (error) return toast.error(error.message);
 
     toast.success("Funil renomeado");
@@ -1081,9 +1082,10 @@ function KanbanPage() {
       <PipelineDialog
         state={pipelineDialog}
         queues={queues}
+        agents={agents}
         onClose={() => setPipelineDialog(null)}
-        onCreate={(nome, qId) => { void createPipeline(nome, qId); setPipelineDialog(null); }}
-        onRename={(id, nome, qId) => { void renamePipeline(id, nome, qId).then(() => loadAll(companyId)); setPipelineDialog(null); }}
+        onCreate={(nome, qId, aId) => { void createPipeline(nome, qId, aId); setPipelineDialog(null); }}
+        onRename={(id, nome, qId, aId) => { void renamePipeline(id, nome, qId, aId).then(() => loadAll(companyId)); setPipelineDialog(null); }}
       />
 
 
@@ -1502,6 +1504,7 @@ function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete
   const tipo = (stage as any).tipo ?? "normal";
   const entradaForm = !!(stage as any).entrada_formulario;
   const mostrarValor = (stage as any).mostrar_valor !== false;
+  const isAiLocked = parseStageAiMeta(stage.mensagem_prompt).bloqueada_para_ia;
 
   return (
     <div ref={setColRef} id={`kcol-${stage.id}`}
@@ -1518,6 +1521,7 @@ function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete
         {tipo === "ganho" && <span className="text-[9px] font-bold uppercase tracking-wide text-[#22B85F] bg-[#22B85F]/12 px-1.5 py-0.5 rounded">Ganho</span>}
         {tipo === "perda" && <span className="text-[9px] font-bold uppercase tracking-wide text-[#FF5A5A] bg-[#FF5A5A]/12 px-1.5 py-0.5 rounded">Perda</span>}
         {entradaForm && <span className="text-[9px] font-bold uppercase tracking-wide text-[var(--brand)] bg-[var(--brand)]/12 px-1.5 py-0.5 rounded">Formulário</span>}
+        {isAiLocked && <span className="text-[9px] font-bold uppercase tracking-wide text-amber-700 bg-amber-500/10 border border-amber-200/60 px-1.5 py-0.5 rounded flex items-center gap-0.5" title="Bloqueada para IA"><Lock className="size-2.5" />Bloqueada</span>}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="text-muted-foreground hover:text-foreground p-1 rounded-md" onPointerDown={(e) => e.stopPropagation()}>
@@ -2034,6 +2038,7 @@ function AutomacaoDialog({ companyId, stage, stages, allStages, pipelines, agent
   pipelines: Pipeline[];
   agents: AgentOpt[];
   queues: DistQueue[];
+
   members: { user_id: string; email?: string | null; nome?: string | null }[];
 
   onClose: () => void;
@@ -2051,8 +2056,11 @@ function AutomacaoDialog({ companyId, stage, stages, allStages, pipelines, agent
   useEffect(() => {
     if (!stage) { setForm(null); return; }
     const s = stage as any;
+    const aiMeta = parseStageAiMeta(s.mensagem_prompt);
     setForm({
       modo_atendimento: s.modo_atendimento ?? "auto",
+      criterio_ia: aiMeta.criterio_ia ?? "",
+      bloqueada_para_ia: !!aiMeta.bloqueada_para_ia,
       agent_id: s.agent_id ?? "",
       ia_handoff_stage_id: s.ia_handoff_stage_id ?? "",
       distribution_queue_id: s.distribution_queue_id ?? "",
@@ -2209,7 +2217,11 @@ function AutomacaoDialog({ companyId, stage, stages, allStages, pipelines, agent
       hora_do_dia: form.hora_do_dia || null,
       mensagem_tipo: form.mensagem_tipo,
       mensagem_texto: form.mensagem_texto || null,
-      mensagem_prompt: form.mensagem_prompt || null,
+      mensagem_prompt: formatStageAiMeta({
+        mensagem_prompt: form.mensagem_prompt || "",
+        criterio_ia: form.criterio_ia || "",
+        bloqueada_para_ia: !!form.bloqueada_para_ia,
+      }),
       mensagem_midia_url: form.mensagem_tipo === "template" ? (form.mensagem_midia_url || null) : null,
       mensagem_midia_tipo: form.mensagem_tipo === "template" ? (form.mensagem_midia_tipo || null) : null,
       mensagem_midia_mime: form.mensagem_tipo === "template" ? (form.mensagem_midia_mime || null) : null,
@@ -2337,6 +2349,41 @@ function AutomacaoDialog({ companyId, stage, stages, allStages, pipelines, agent
                   <p className="text-[11px] text-muted-foreground mt-1">
                     Escolha como o lead será atribuído ao entrar nesta etapa: via fila, para um atendente específico ou manter o atual.
                   </p>
+                </div>
+
+                <div className="pt-3 border-t border-[var(--border)] mt-2 space-y-3">
+                  <div>
+                    <Label className="text-xs font-semibold flex items-center gap-1.5">
+                      <Sparkles className="size-3.5 text-primary" />
+                      Criterio de Clasificación para la IA (Analista de CRM)
+                    </Label>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 mb-1.5">
+                      Explícale al Bot Analista cuándo debe mover un lead a esta etapa (ej.: "Mover aquí cuando el cliente pregunte precios, pida cotización formal o solicite métodos de pago").
+                    </p>
+                    <Textarea
+                      rows={3}
+                      value={form.criterio_ia || ""}
+                      onChange={(e) => setForm({ ...form, criterio_ia: e.target.value })}
+                      placeholder="Describe aquí las condiciones que deben cumplirse para que un lead pertenezca a esta etapa..."
+                      className="text-xs"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-[var(--border)] bg-[var(--panel-2)]">
+                    <div className="space-y-0.5 pr-4">
+                      <Label className="text-xs font-semibold flex items-center gap-1.5">
+                        <Lock className="size-3.5 text-amber-600" />
+                        Bloquear para la IA (Transición Exclusiva para Humanos)
+                      </Label>
+                      <p className="text-[11px] text-muted-foreground">
+                        Si se activa, la IA nunca moverá automáticamente a esta etapa (ideal para Ganado, Perdido o Facturación). Solo sugerirá la acción para que un asesor la confirme.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={!!form.bloqueada_para_ia}
+                      onCheckedChange={(v) => setForm({ ...form, bloqueada_para_ia: v })}
+                    />
+                  </div>
                 </div>
 
             {form.modo_atendimento === "manual" && (
@@ -2661,18 +2708,22 @@ function AutomacaoDialog({ companyId, stage, stages, allStages, pipelines, agent
   );
 }
 
-function PipelineDialog({ state, queues, onClose, onCreate, onRename }: {
+function PipelineDialog({ state, queues, agents, onClose, onCreate, onRename }: {
   state: { mode: "new" } | { mode: "edit"; pipeline: Pipeline } | null;
   queues: DistQueue[];
+
   onClose: () => void;
-  onCreate: (nome: string, queueId?: string | null) => void;
-  onRename: (id: string, nome: string, queueId?: string | null) => void;
+  agents?: AgentOpt[];
+  onCreate: (nome: string, queueId?: string | null, agentId?: string | null) => void;
+  onRename: (id: string, nome: string, queueId?: string | null, agentId?: string | null) => void;
 }) {
   const [nome, setNome] = useState("");
   const [queueId, setQueueId] = useState<string>("");
+  const [agentId, setAgentId] = useState<string>("");
   useEffect(() => { 
     setNome(state?.mode === "edit" ? state.pipeline.nome : ""); 
     setQueueId(state?.mode === "edit" ? (state.pipeline as any).distribution_queue_id ?? "" : "");
+    setAgentId(state?.mode === "edit" ? (state.pipeline as any).agent_id ?? "" : "");
   }, [state]);
 
   if (!state) return null;
@@ -2708,14 +2759,36 @@ function PipelineDialog({ state, queues, onClose, onCreate, onRename }: {
               Leads que entrarem neste funil (via API/Meta) sem uma etapa específica definida cairão na primeira etapa e serão distribuídos por esta fila.
             </p>
           </div>
+
+          {agents && agents.length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-[var(--border)]">
+              <Label className="flex items-center gap-1.5 text-xs font-semibold">
+                <Sparkles className="size-3.5 text-primary" />
+                Agente de IA do Funil
+              </Label>
+              <select className="w-full mt-1 rounded-md border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm"
+                value={agentId}
+                onChange={(e) => setAgentId(e.target.value)}>
+                <option value="">— usar agente padrão da empresa —</option>
+                {agents.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.nome_agente ? `${a.nome_agente} — ${a.nome}` : a.nome}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-muted-foreground">
+                Define el bot de IA especializado que atenderá y auditará este embudo.
+              </p>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
           <Button
             disabled={!nome.trim()}
             onClick={() => {
-              if (isEdit) onRename(state.pipeline.id, nome.trim(), queueId || null);
-              else onCreate(nome.trim(), queueId || null);
+              if (isEdit) onRename(state.pipeline.id, nome.trim(), queueId || null, agentId || null);
+              else onCreate(nome.trim(), queueId || null, agentId || null);
             }}
           >{isEdit ? "Salvar" : "Criar funil"}</Button>
         </DialogFooter>

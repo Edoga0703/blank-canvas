@@ -1008,11 +1008,16 @@ export async function processAiResponse(
         
         const { data: targetStageCfg } = await supabaseAdmin
           .from("crm_stage")
-          .select("modo_atendimento")
+          .select("modo_atendimento, mensagem_prompt")
           .eq("id", foundStage.id)
           .maybeSingle();
 
-        console.log(`[ai-engine] Target stage mode: ${targetStageCfg?.modo_atendimento}`);
+        const { parseStageAiMeta } = await import("./crm-lead-analyzer.server");
+        const stageMeta = parseStageAiMeta(targetStageCfg?.mensagem_prompt);
+        if (stageMeta.bloqueada_para_ia) {
+          console.log(`[ai-engine] Stage '${foundStage.nome}' (${foundStage.id}) is locked against auto AI transitions (bloqueada_para_ia=true). Skipping automatic move.`);
+        } else {
+          console.log(`[ai-engine] Target stage mode: ${targetStageCfg?.modo_atendimento}`);
 
         let newOwnerId = card.owner_id;
         if (targetStageCfg?.modo_atendimento === 'manual') {
@@ -1038,6 +1043,7 @@ export async function processAiResponse(
         } else {
           resolvedHandoffUserId = newOwnerId || resolvedHandoffUserId;
           console.log(`[ai-engine] Card ${card.id} successfully moved to ${foundStage.nome}`);
+        }
         }
       }
     }
