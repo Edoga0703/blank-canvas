@@ -65,8 +65,18 @@ export async function assertMetaResponseWindow(admin: any, input: {
   const last = result.lastInboundAt
     ? new Date(result.lastInboundAt).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })
     : "não localizada";
+
+  let advice = "";
+  if (input.provider === "meta_instagram") {
+    advice = "No Instagram, a política oficial da Meta não permite o envio de mensagens fora da janela de 24 horas até que o contato envie uma nova mensagem.";
+  } else if (input.provider === "meta_messenger") {
+    advice = "No Messenger, a política oficial da Meta exige que o contato envie uma nova mensagem ou que seja utilizada uma tag autorizada.";
+  } else {
+    advice = "Envie um Modelo de Mensagem (HSM/Template) aprovado pela Meta ou aguarde uma nova mensagem do contato.";
+  }
+
   throw new Error(
     `Fora da janela de resposta de 24 horas do ${channel}. ` +
-    `Última mensagem recebida: ${last}. Envie um Modelo de Mensagem (HSM/Template) aprovado pela Meta ou aguarde uma nova mensagem do contato.`,
+    `Última mensagem recebida: ${last}. ${advice}`,
   );
 }
