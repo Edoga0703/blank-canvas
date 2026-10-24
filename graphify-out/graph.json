@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T21:18:24.923103+00:00",
+  "generated_at": "2026-10-24T22:15:39.571370+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -587,7 +587,7 @@
     },
     {
       "path": "src/components/app-shell.tsx",
-      "bytes": 35615
+      "bytes": 34770
     },
     {
       "path": "src/components/mobile-app-banner.tsx",
@@ -2607,7 +2607,7 @@
     },
     {
       "path": "src/routes/app/configuracoes.tsx",
-      "bytes": 73235
+      "bytes": 70898
     },
     {
       "path": "src/routes/app/campanhas.tsx",
@@ -2639,7 +2639,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 143915
+      "bytes": 142834
     },
     {
       "path": "src/routes/app/treinamentos.$courseId.tsx",
@@ -3726,10 +3726,6 @@
     {
       "source": "src/components/app-shell.tsx",
       "target": "@/hooks/use-capacidades"
-    },
-    {
-      "source": "src/components/app-shell.tsx",
-      "target": "@/components/language-switcher"
     },
     {
       "source": "src/components/app-shell.tsx",
@@ -15086,10 +15082,6 @@
     {
       "source": "src/routes/app/crm.tsx",
       "target": "@/lib/i18n/context"
-    },
-    {
-      "source": "src/routes/app/crm.tsx",
-      "target": "@/components/language-switcher"
     },
     {
       "source": "src/routes/app/crm.tsx",
