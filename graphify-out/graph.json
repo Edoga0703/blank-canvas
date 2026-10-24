@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T02:41:16.935027+00:00",
+  "generated_at": "2026-10-24T03:08:10.824285+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -1167,7 +1167,7 @@
     },
     {
       "path": "src/lib/evolution.functions.ts",
-      "bytes": 40781
+      "bytes": 40775
     },
     {
       "path": "src/lib/integrations.functions.ts",
@@ -1263,7 +1263,7 @@
     },
     {
       "path": "src/lib/chat-media.functions.ts",
-      "bytes": 9059
+      "bytes": 8466
     },
     {
       "path": "src/lib/session-persistence.ts",
@@ -1835,7 +1835,7 @@
     },
     {
       "path": "src/components/chat/whatsapp-audio.tsx",
-      "bytes": 4564
+      "bytes": 5126
     },
     {
       "path": "src/components/chat/drive-panel.tsx",
@@ -1847,7 +1847,7 @@
     },
     {
       "path": "src/components/chat/chat-media.tsx",
-      "bytes": 6992
+      "bytes": 8616
     },
     {
       "path": "src/components/chat/quick-replies-dialog.tsx",
@@ -2507,7 +2507,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 191400
+      "bytes": 193281
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -2747,7 +2747,7 @@
     },
     {
       "path": "src/routes/api/public/chat-media.ts",
-      "bytes": 8083
+      "bytes": 12576
     },
     {
       "path": "src/routes/api/public/google-marketing-callback.ts",
@@ -7029,7 +7029,7 @@
     },
     {
       "source": "src/lib/chat-media.functions.ts",
-      "target": "@/lib/storage/r2.server"
+      "target": "@/routes/api/public/chat-media"
     },
     {
       "source": "src/lib/chat-media.functions.ts",
@@ -7045,7 +7045,7 @@
     },
     {
       "source": "src/lib/chat-media.functions.ts",
-      "target": "@/lib/storage/r2.server"
+      "target": "@/routes/api/public/chat-media"
     },
     {
       "source": "src/lib/session-persistence.ts",
