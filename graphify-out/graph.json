@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T14:10:40.330335+00:00",
+  "generated_at": "2026-10-24T14:21:04.650188+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -663,7 +663,7 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 26049
+      "bytes": 26064
     },
     {
       "path": "src/lib/ai-engine.server.ts",
@@ -1103,7 +1103,7 @@
     },
     {
       "path": "src/lib/wa-dispatch.server.ts",
-      "bytes": 11914
+      "bytes": 11983
     },
     {
       "path": "src/lib/test-disparo.functions.ts",
