@@ -10,20 +10,22 @@ function getBaseUrl(): string {
   return url.replace(/\/+$/, "");
 }
 
-function getApiKey(): string {
-  const key = (process.env.DAPI_API_KEY || "").trim();
+const DEFAULT_DAPI_API_KEY = "098aeda184429bc8201ba60d88116821906397caa5fd5b935b615318a245da03";
+
+function getApiKey(customKey?: string | null): string {
+  const key = (customKey || process.env.DAPI_API_KEY || DEFAULT_DAPI_API_KEY).trim();
   if (!key) {
     throw new Error("[dapi.server] Variable de entorno DAPI_API_KEY no configurada.");
   }
   return key;
 }
 
-function getHeaders(): Record<string, string> {
-  const key = getApiKey();
+function getHeaders(customKey?: string | null): Record<string, string> {
+  const key = getApiKey(customKey);
   return {
     "Authorization": key,
     "Content-Type": "application/json",
-    "User-Agent": "Capiconversa-CRM/1.1.14",
+    "User-Agent": "Capiconversa-CRM/1.2.06",
   };
 }
 
@@ -31,6 +33,7 @@ async function dapiFetch<T = any>(
   endpoint: string,
   options: RequestInit = {},
   timeoutMs = 15_000,
+  customKey?: string | null,
 ): Promise<T> {
   const baseUrl = getBaseUrl();
   const url = `${baseUrl}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
@@ -41,7 +44,7 @@ async function dapiFetch<T = any>(
     const res = await fetch(url, {
       ...options,
       headers: {
-        ...getHeaders(),
+        ...getHeaders(customKey),
         ...(options.headers || {}),
       },
       signal: controller.signal,

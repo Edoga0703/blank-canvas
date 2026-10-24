@@ -31,7 +31,7 @@ export const testUazapiConnection = createServerFn({ method: "POST" })
     if (!isSuper) throw new Error("Acesso restrito ao super admin");
 
     const rawUrl = process.env.DAPI_BASE_URL || "https://api.d-api.cloud/api/v1";
-    const apiKey = process.env.DAPI_API_KEY || "";
+    const apiKey = (process.env.DAPI_API_KEY || "098aeda184429bc8201ba60d88116821906397caa5fd5b935b615318a245da03").trim();
 
     if (!apiKey) {
       return {

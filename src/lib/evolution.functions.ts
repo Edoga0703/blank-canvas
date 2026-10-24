@@ -758,7 +758,7 @@ export const testEvolutionConnection = createServerFn({ method: "POST" })
   .handler(async () => {
     const started = Date.now();
     const url = (process.env.DAPI_BASE_URL || "https://api.d-api.cloud/api/v1").replace(/\/+$/, "");
-    const key = process.env.DAPI_API_KEY || "";
+    const key = (process.env.DAPI_API_KEY || "098aeda184429bc8201ba60d88116821906397caa5fd5b935b615318a245da03").trim();
     if (!key) {
       return {
         ok: false,
