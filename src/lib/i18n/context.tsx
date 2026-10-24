@@ -13,20 +13,16 @@ const STORAGE_KEY = "capiversa_locale";
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 function detectInitialLanguage(): SupportedLanguage {
-  if (typeof window === "undefined") return "es"; // Default to Spanish as requested by user
+  if (typeof window === "undefined") return "es";
   try {
     const saved = localStorage.getItem(STORAGE_KEY) as SupportedLanguage | null;
     if (saved && (saved === "es" || saved === "en" || saved === "pt")) {
       return saved;
     }
-    const navLang = navigator.language?.toLowerCase() || "";
-    if (navLang.startsWith("es")) return "es";
-    if (navLang.startsWith("en")) return "en";
-    if (navLang.startsWith("pt")) return "pt";
   } catch (e) {
     // ignore
   }
-  return "es";
+  return "es"; // Default to Spanish
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {

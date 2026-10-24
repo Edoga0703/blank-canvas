@@ -64,7 +64,7 @@ let crmCache: {
 } | null = null;
 
 function KanbanPage() {
-
+  const { t } = useLanguage();
   const ctx = Route.useRouteContext();
   const companyId = ctx.company?.id ?? "";
   const userId = ctx.user.id;
@@ -698,11 +698,11 @@ function KanbanPage() {
       {/* Título mínimo (padrão do sistema) */}
       <div className="shrink-0">
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-          CRM Kanban
-          <HelpTip text="Funil visual de vendas. Arraste cards entre etapas para acompanhar cada contato." />
+          {t("crm.title", undefined, "CRM Kanban")}
+          <HelpTip text={t("crm.pipeline_tip", undefined, "Funil visual de vendas. Arraste cards entre etapas para acompanhar cada contato.")} />
         </h1>
         <p className="text-xs sm:text-sm text-muted-foreground">
-          {activePipeline?.tipo === "pos_venda" ? "Funil de pós-venda" : "Gerencie oportunidades por etapa"}
+          {activePipeline?.tipo === "pos_venda" ? t("crm.after_sales_funnel", undefined, "Funil de pós-venda") : t("crm.manage_opportunities", undefined, "Gerencie oportunidades por etapa")}
         </p>
       </div>
 
@@ -745,22 +745,22 @@ function KanbanPage() {
               ))}
               {canGerenciarEtapas && (
                 <DropdownMenuItem onClick={() => setPipelineDialog({ mode: "new" })} className="gap-2 border-t border-[var(--border)] mt-1 pt-2 text-[var(--brand-text)] font-semibold">
-                  <Plus className="size-3.5" /> Novo funil
+                  <Plus className="size-3.5" /> {t("crm.new_pipeline", undefined, "Novo funil")}
                 </DropdownMenuItem>
               )}
               {canGerenciarEtapas && activePipeline && (
                 <DropdownMenuItem onClick={() => setPipelineDialog({ mode: "edit", pipeline: activePipeline })} className="gap-2">
-                  <Pencil className="size-3.5" /> Renomear funil atual
+                  <Pencil className="size-3.5" /> {t("crm.rename_pipeline", undefined, "Renomear funil atual")}
                 </DropdownMenuItem>
               )}
               {activePipeline && (
                 <DropdownMenuItem onClick={() => togglePipelineHidden(activePipeline.id, true)} className="gap-2">
-                  <EyeOff className="size-3.5" /> Ocultar funil atual
+                  <EyeOff className="size-3.5" /> {t("crm.hide_pipeline", undefined, "Ocultar funil atual")}
                 </DropdownMenuItem>
               )}
               {canGerenciarEtapas && activePipeline && !activePipeline.sistema && (
                 <DropdownMenuItem onClick={() => deletePipeline(activePipeline.id)} className="gap-2 text-destructive">
-                  <Trash2 className="size-3.5" /> Excluir funil atual
+                  <Trash2 className="size-3.5" /> {t("crm.delete_pipeline", undefined, "Excluir funil atual")}
                 </DropdownMenuItem>
               )}
               {hiddenPipelines.length > 0 && (
@@ -789,7 +789,7 @@ function KanbanPage() {
           disabled={!activePipelineId || stages.length === 0}
           onClick={() => setAdding(true)}
         >
-          <Plus className="size-4 sm:mr-1" /> <span className="hidden sm:inline">Do WhatsApp</span>
+          <Plus className="size-4 sm:mr-1" /> <span className="hidden sm:inline">{t("crm.from_whatsapp", undefined, "Do WhatsApp")}</span>
         </Button>
 
         {/* Novo lead manual */}
@@ -801,7 +801,7 @@ function KanbanPage() {
           disabled={!activePipelineId || stages.length === 0}
           onClick={() => setManualOpen(true)}
         >
-          <UserPlus className="size-4 sm:mr-1" /> <span className="hidden sm:inline">Novo lead</span>
+          <UserPlus className="size-4 sm:mr-1" /> <span className="hidden sm:inline">{t("crm.new_lead", undefined, "Novo lead")}</span>
         </Button>
 
         <span className="text-[12px] text-muted-foreground font-medium hidden md:inline">
@@ -816,7 +816,7 @@ function KanbanPage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar..."
+            placeholder={t("common.search", undefined, "Buscar...")}
             className="h-8 sm:h-9 w-full sm:w-[200px] pl-9 rounded-full bg-[color:var(--panel-2)] border-[color:var(--hairline)] text-[13px]"
           />
         </div>
@@ -830,7 +830,7 @@ function KanbanPage() {
               size="sm"
               className={`h-8 w-8 sm:h-9 sm:w-auto p-0 sm:px-3 rounded-full text-[13px] gap-1.5 ${hasActiveFilters ? "border-[var(--brand)] text-[var(--brand-text)]" : ""}`}
             >
-              <SlidersHorizontal className="size-4" /> <span className="hidden sm:inline">Filtros</span>
+              <SlidersHorizontal className="size-4" /> <span className="hidden sm:inline">{t("common.filter", undefined, "Filtros")}</span>
               {hasActiveFilters && <span className="ml-1 size-1.5 rounded-full bg-[var(--brand)]" />}
             </Button>
 
@@ -838,12 +838,12 @@ function KanbanPage() {
           <PopoverContent align="end" className="w-72 p-3 space-y-3">
             {canFilterByOwner && (
               <div className="space-y-1.5">
-                <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Responsável</Label>
+                <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">{t("crm.responsible", undefined, "Responsável")}</Label>
                 <Select value={ownerFilter} onValueChange={setOwnerFilter}>
                   <SelectTrigger className="h-9 rounded-lg text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos atendentes</SelectItem>
-                    <SelectItem value="_none">Sem responsável</SelectItem>
+                    <SelectItem value="all">{t("crm.all_attendants", undefined, "Todos atendentes")}</SelectItem>
+                    <SelectItem value="_none">{t("crm.unassigned", undefined, "Sem responsável")}</SelectItem>
                     {members.map((m) => (
                       <SelectItem key={m.user_id} value={m.user_id}>
                         {m.nome || m.email || m.user_id.slice(0, 8)}
@@ -854,11 +854,11 @@ function KanbanPage() {
               </div>
             )}
             <div className="space-y-1.5">
-              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Canal de entrada</Label>
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">{t("crm.entry_channel", undefined, "Canal de entrada")}</Label>
               <Select value={canalFilter} onValueChange={setCanalFilter}>
                 <SelectTrigger className="h-9 rounded-lg text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos os canais</SelectItem>
+                  <SelectItem value="all">{t("crm.all_channels", undefined, "Todos os canais")}</SelectItem>
                   <SelectItem value="_none">Sem origem</SelectItem>
                   <SelectItem value="whatsapp_direto">WhatsApp direto</SelectItem>
                   <SelectItem value="wa_link_utm">Link com UTM</SelectItem>
@@ -871,7 +871,7 @@ function KanbanPage() {
             </div>
             <div className="flex items-center justify-between gap-2 rounded-lg border border-[var(--border)] px-2.5 py-2">
               <div className="space-y-0.5">
-                <Label className="text-[12px] font-semibold">Mostrar arquivados</Label>
+                <Label className="text-[12px] font-semibold">{t("crm.show_archived", undefined, "Mostrar arquivados")}</Label>
                 <p className="text-[10px] leading-tight text-muted-foreground">Exibe os leads perdidos que já passaram do prazo.</p>
               </div>
               <Switch checked={showArchived} onCheckedChange={setShowArchived} />
@@ -882,7 +882,7 @@ function KanbanPage() {
                 onClick={() => { setOwnerFilter("all"); setCanalFilter("all"); }}
                 className="text-[12px] font-semibold text-[var(--brand-text)] hover:underline"
               >
-                Limpar filtros
+                {t("crm.clear_filters", undefined, "Limpar filtros")}
               </button>
             )}
           </PopoverContent>
@@ -911,7 +911,7 @@ function KanbanPage() {
           disabled={!activePipelineId}
           onClick={() => setNewStageOpen(true)}
         >
-          <Plus className="size-3.5 mr-1" /> <span>Nova Coluna</span>
+          <Plus className="size-3.5 mr-1" /> <span>{t("crm.new_stage", undefined, "Nova Coluna")}</span>
         </Button>
 
         </div>

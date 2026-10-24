@@ -225,6 +225,9 @@ function ConfigPage() {
 
       window.dispatchEvent(new CustomEvent("profile:updated", { detail: { nome: perfil.nome || "", avatar_url: perfil.avatar_url || "" } }));
       toast.success(selectedIdioma === "es" ? "Perfil e idioma guardados correctamente" : selectedIdioma === "en" ? "Profile and language saved successfully" : "Perfil e idioma atualizados com sucesso");
+      setTimeout(() => {
+        if (typeof window !== "undefined") window.location.reload();
+      }, 600);
     } catch (err: any) {
       toast.error(err.message || "Erro ao salvar perfil");
     } finally {
@@ -396,7 +399,7 @@ function ConfigPage() {
                       <button
                         key={item.code}
                         type="button"
-                        onClick={() => setSelectedIdioma(item.code)}
+                        onClick={() => { setSelectedIdioma(item.code); void setLanguage(item.code as any); }}
                         className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-medium transition-all ${
                           selectedIdioma === item.code
                             ? "border-primary bg-primary/10 text-primary font-bold shadow-xs ring-1 ring-primary/20"
@@ -444,7 +447,7 @@ function ConfigPage() {
                 )}
                 <div className="flex justify-stretch sm:justify-end">
                   <Button className="w-full sm:w-auto" onClick={savePerfil} disabled={savingP}>
-                    {savingP ? <Loader2 className="size-4 mr-1.5 animate-spin" /> : <Save className="size-4 mr-1.5" />} Salvar Perfil
+                    {savingP ? <Loader2 className="size-4 mr-1.5 animate-spin" /> : <Save className="size-4 mr-1.5" />} {selectedIdioma === "es" ? "Guardar Perfil" : selectedIdioma === "en" ? "Save Profile" : "Salvar Perfil"}
                   </Button>
                 </div>
               </Card>

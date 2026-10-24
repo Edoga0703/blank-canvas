@@ -25,6 +25,7 @@ import {
   Upload, MessageSquare, CheckCircle2, BookOpen, AlertTriangle, RefreshCw, Search, Pencil,
 } from "lucide-react";
 import { brand } from "@/config/brand";
+import { useLanguage } from "@/lib/i18n/context";
 import * as XLSX from "xlsx";
 
 export const Route = createFileRoute("/app/campanhas")({
@@ -90,6 +91,8 @@ function relativeTime(iso?: string | null) {
 }
 
 function CampanhasPage() {
+  const { t } = useLanguage();
+  const getStatusLabel = (s: string) => t(`campaigns.status_${s}`, undefined, STATUS_LABEL[s] || s);
   const list = useServerFn(listCampaigns);
   const save = useServerFn(saveCampaign);
   const remove = useServerFn(deleteCampaign);
@@ -328,44 +331,44 @@ function CampanhasPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Campanhas</h1>
-          <p className="text-sm text-muted-foreground">Gerencie campanhas e templates de mensagens</p>
+          <h1 className="text-2xl font-semibold">{t("campaigns.title", undefined, "Campanhas")}</h1>
+          <p className="text-sm text-muted-foreground">{t("campaigns.subtitle", undefined, "Gerencie campanhas e templates de mensagens")}</p>
         </div>
-        <Button onClick={openNew} className="shrink-0"><Plus className="size-4 mr-1" /> Nova Campanha</Button>
+        <Button onClick={openNew} className="shrink-0"><Plus className="size-4 mr-1" /> {t("campaigns.new_campaign", undefined, "Nova Campanha")}</Button>
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-        <Kpi icon={<Send className="size-4" />} value={kpis.total} label="Campanhas" tint="violet" />
-        <Kpi icon={<Play className="size-4" />} value={kpis.executando} label="Executando" tint="emerald" />
-        <Kpi icon={<MessageSquare className="size-4" />} value={kpis.enviadas} label="Enviadas" tint="blue" />
-        <Kpi icon={<CheckCircle2 className="size-4" />} value={kpis.entregues} label="Entregues" tint="teal" />
-        <Kpi icon={<BookOpen className="size-4" />} value={kpis.lidas} label="Lidas" tint="cyan" />
-        <Kpi icon={<AlertTriangle className="size-4" />} value={kpis.falhas} label="Falhas" tint="red" />
+        <Kpi icon={<Send className="size-4" />} value={kpis.total} label={t("campaigns.total", undefined, "Campanhas")} tint="violet" />
+        <Kpi icon={<Play className="size-4" />} value={kpis.executando} label={t("campaigns.running", undefined, "Executando")} tint="emerald" />
+        <Kpi icon={<MessageSquare className="size-4" />} value={kpis.enviadas} label={t("campaigns.sent", undefined, "Enviadas")} tint="blue" />
+        <Kpi icon={<CheckCircle2 className="size-4" />} value={kpis.entregues} label={t("campaigns.delivered", undefined, "Entregues")} tint="teal" />
+        <Kpi icon={<BookOpen className="size-4" />} value={kpis.lidas} label={t("campaigns.read", undefined, "Lidas")} tint="cyan" />
+        <Kpi icon={<AlertTriangle className="size-4" />} value={kpis.falhas} label={t("campaigns.failed", undefined, "Falhas")} tint="red" />
       </div>
 
       {/* Filters */}
       <Card className="p-3 flex flex-col md:flex-row gap-2 md:items-center">
         <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar campanhas..." className="pl-9 border-0 bg-transparent focus-visible:ring-0" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("campaigns.search_placeholder", undefined, "Buscar campanhas...")} className="pl-9 border-0 bg-transparent focus-visible:ring-0" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full md:w-44"><SelectValue placeholder="Todos os status" /></SelectTrigger>
+          <SelectTrigger className="w-full md:w-44"><SelectValue placeholder={t("campaigns.all_statuses", undefined, "Todos os status")} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos os status</SelectItem>
+            <SelectItem value="all">{t("campaigns.all_statuses", undefined, "Todos os status")}</SelectItem>
             {Object.entries(STATUS_LABEL).map(([k, v]) => (
-              <SelectItem key={k} value={k}>{v}</SelectItem>
+              <SelectItem key={k} value={k}>{getStatusLabel(k)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
         <Select value={String(perPage)} onValueChange={(v) => setPerPage(Number(v))}>
           <SelectTrigger className="w-full md:w-36"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="10">10 por página</SelectItem>
-            <SelectItem value="25">25 por página</SelectItem>
-            <SelectItem value="50">50 por página</SelectItem>
-            <SelectItem value="100">100 por página</SelectItem>
+            <SelectItem value="10">{t("campaigns.per_page", { count: 10 }, "10 por página")}</SelectItem>
+            <SelectItem value="25">{t("campaigns.per_page", { count: 25 }, "25 por página")}</SelectItem>
+            <SelectItem value="50">{t("campaigns.per_page", { count: 50 }, "50 por página")}</SelectItem>
+            <SelectItem value="100">{t("campaigns.per_page", { count: 100 }, "100 por página")}</SelectItem>
           </SelectContent>
         </Select>
         <Button variant="outline" size="icon" onClick={() => void refresh()}><RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} /></Button>
@@ -377,9 +380,9 @@ function CampanhasPage() {
       ) : filtered.length === 0 ? (
         <Card className="p-10 text-center">
           <Send className="size-10 mx-auto mb-3 text-muted-foreground" />
-          <p className="font-medium">Nenhuma campanha encontrada</p>
-          <p className="text-sm text-muted-foreground mb-4">Crie sua primeira campanha para começar.</p>
-          <Button onClick={openNew}><Plus className="size-4 mr-1" /> Nova Campanha</Button>
+          <p className="font-medium">{t("campaigns.no_campaigns", undefined, "Nenhuma campanha encontrada")}</p>
+          <p className="text-sm text-muted-foreground mb-4">{t("campaigns.create_first", undefined, "Crie sua primeira campanha para começar.")}</p>
+          <Button onClick={openNew}><Plus className="size-4 mr-1" /> {t("campaigns.new_campaign", undefined, "Nova Campanha")}</Button>
         </Card>
       ) : (
         <div className="space-y-3">
@@ -397,7 +400,7 @@ function CampanhasPage() {
                       <h3 className="font-semibold truncate">{c.nome}</h3>
                       <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium ${STATUS_BG[c.status]}`}>
                         <span className={`size-1.5 rounded-full ${STATUS_DOT[c.status]}`} />
-                        {STATUS_LABEL[c.status]}
+                        {getStatusLabel(c.status)}
                       </span>
                       {(c.filtro_tags ?? []).slice(0, 3).map((t: string) => (
                         <Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>
@@ -418,7 +421,7 @@ function CampanhasPage() {
                       )}
                     </div>
                     <div className="mt-2 text-[11px] text-muted-foreground flex items-center gap-3 flex-wrap">
-                      <span>👥 {total || (c.custom_targets?.length ?? 0)} contatos</span>
+                      <span>👥 {total || (c.custom_targets?.length ?? 0)} {t("campaigns.contacts", undefined, "contatos")}</span>
                       {conn && <span>📡 {conn.display_name || conn.instance_name}</span>}
                       {tpl && <span>📄 {tpl.atalho}</span>}
                       <span>{relativeTime(c.created_at)}</span>
@@ -427,7 +430,7 @@ function CampanhasPage() {
                   <div className="flex items-center gap-1 shrink-0">
                     {c.status === "rascunho" && (
                       <Button size="sm" onClick={() => setConfirmStart(c.id)}>
-                        <Play className="size-4 mr-1" /> Iniciar
+                        <Play className="size-4 mr-1" /> {t("campaigns.start", undefined, "Iniciar")}
                       </Button>
                     )}
                     {c.status === "enviando" && (
@@ -441,16 +444,16 @@ function CampanhasPage() {
                       </Button>
                     )}
                     {(c.status === "rascunho" || c.status === "agendada" || c.status === "pausada") && (
-                      <Button size="icon" variant="ghost" title="Editar campanha" onClick={() => openEdit(c)}>
+                      <Button size="icon" variant="ghost" title={t("campaigns.edit", undefined, "Editar")} onClick={() => openEdit(c)}>
                         <Pencil className="size-4" />
                       </Button>
                     )}
                     {(c.status === "agendada" || c.status === "enviando" || c.status === "pausada") && (
-                      <Button size="icon" variant="ghost" title="Cancelar campanha" onClick={async () => { if (confirm("Cancelar campanha?")) { await cancel({ data: { id: c.id } }); await refresh(); } }}>
+                      <Button size="icon" variant="ghost" title={t("campaigns.cancel", undefined, "Cancelar")} onClick={async () => { if (confirm("Cancelar campanha?")) { await cancel({ data: { id: c.id } }); await refresh(); } }}>
                         <X className="size-4" />
                       </Button>
                     )}
-                    <Button size="icon" variant="ghost" className="text-red-600" title="Excluir campanha" onClick={async () => { if (confirm("Excluir campanha?")) { await remove({ data: { id: c.id } }); await refresh(); } }}>
+                    <Button size="icon" variant="ghost" className="text-red-600" title={t("campaigns.delete", undefined, "Excluir")} onClick={async () => { if (confirm("Excluir campanha?")) { await remove({ data: { id: c.id } }); await refresh(); } }}>
                       <Trash2 className="size-4" />
                     </Button>
                     <Button size="icon" variant="ghost" onClick={() => exportCampaignCsv(c.id)}>
@@ -473,51 +476,51 @@ function CampanhasPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <span className="grid place-items-center size-8 rounded-full bg-violet-100 text-violet-600"><Send className="size-4" /></span>
-              {editing?.id ? "Editar Campanha" : "Nova Campanha"}
+              {editing?.id ? t("campaigns.edit_campaign", undefined, "Editar Campanha") : t("campaigns.new_campaign", undefined, "Nova Campanha")}
             </DialogTitle>
           </DialogHeader>
           {editing && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <Label>Nome da Campanha *</Label>
+                  <Label>{t("campaigns.campaign_name", undefined, "Nome da Campanha")} *</Label>
                   <Input value={editing.nome} onChange={(e) => setEditing({ ...editing, nome: e.target.value })} placeholder="Ex.: Promoção Black Friday" />
                 </div>
                 <div>
-                  <Label>Descrição</Label>
+                  <Label>{t("campaigns.description", undefined, "Descrição")}</Label>
                   <Input value={editing.descricao ?? ""} onChange={(e) => setEditing({ ...editing, descricao: e.target.value })} placeholder="Opcional..." />
                 </div>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <Label>Lista de Contatos <span className="text-muted-foreground font-normal">(opcional — pode importar depois)</span></Label>
+                  <Label>{t("campaigns.contacts_list", undefined, "Lista de Contatos")} <span className="text-muted-foreground font-normal">(opcional)</span></Label>
                 </div>
                 <label className="border-2 border-dashed rounded-md p-6 text-center cursor-pointer hover:bg-muted/40 block">
                   <Upload className="size-5 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm">Clique para selecionar arquivo</p>
-                  <p className="text-xs text-muted-foreground">CSV, TXT, XLSX ou XLS</p>
+                  <p className="text-sm">{t("campaigns.click_to_upload", undefined, "Clique para selecionar arquivo")}</p>
+                  <p className="text-xs text-muted-foreground">{t("campaigns.file_formats", undefined, "CSV, TXT, XLSX ou XLS")}</p>
                   <input type="file" className="hidden" accept=".csv,.txt,.xlsx,.xls"
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFileUpload(f); e.target.value = ""; }} />
                 </label>
                 <div className="flex items-center justify-between mt-1 text-xs">
-                  <span className="text-muted-foreground">Não sabe o formato?</span>
+                  <span className="text-muted-foreground">{t("campaigns.format_help", undefined, "Não sabe o formato?")}</span>
                   <button type="button" onClick={downloadTemplateCsv} className="text-primary hover:underline flex items-center gap-1">
-                    <Download className="size-3" /> Baixar modelo .csv
+                    <Download className="size-3" /> {t("campaigns.download_template", undefined, "Baixar modelo .csv")}
                   </button>
                 </div>
                 {(editing.custom_targets ?? []).length > 0 && (
-                  <p className="mt-1 text-xs text-emerald-600">✓ {editing.custom_targets.length} contatos carregados</p>
+                  <p className="mt-1 text-xs text-emerald-600">✓ {editing.custom_targets.length} {t("campaigns.contacts_loaded", undefined, "contatos carregados")}</p>
                 )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <Label>Conexão WhatsApp *</Label>
+                  <Label>{t("campaigns.whatsapp_connection", undefined, "Conexão WhatsApp")} *</Label>
                   <Select value={editing.whatsapp_instance_id ?? ""} onValueChange={(v) => setEditing({ ...editing, whatsapp_instance_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="Selecionar conexão" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={t("campaigns.select_connection", undefined, "Selecionar conexão")} /></SelectTrigger>
                     <SelectContent>
-                      {conns.length === 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma conexão ativa</div>}
+                      {conns.length === 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground">{t("campaigns.no_active_connection", undefined, "Nenhuma conexão ativa")}</div>}
                       {conns.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {(c.display_name || c.instance_name)} — {providerLabel(c.provider_type)}{c.numero ? ` · ${c.numero}` : ""}
@@ -527,16 +530,16 @@ function CampanhasPage() {
                   </Select>
                 </div>
                 <div>
-                  <Label>{isOfficial ? "Template HSM (aprovado pela Meta)" : "Template"}</Label>
+                  <Label>{isOfficial ? t("campaigns.template_hsm", undefined, "Template HSM (aprovado pela Meta)") : t("campaigns.template", undefined, "Template")}</Label>
                   <Select value={editing.template_id ?? ""} onValueChange={(v) => {
                     const t = (isOfficial ? hsmTpls : tpls).find((x) => x.id === v);
                     setEditing({ ...editing, template_id: v, mensagem: t?.texto ?? editing.mensagem });
                   }}>
-                    <SelectTrigger><SelectValue placeholder={isOfficial ? "Selecione um template aprovado" : "Nenhum (usar mensagem)"} /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={isOfficial ? t("campaigns.select_template", undefined, "Selecione um template aprovado") : t("campaigns.none_use_message", undefined, "Nenhum (usar mensagem)")} /></SelectTrigger>
                     <SelectContent>
-                      {!isOfficial && <SelectItem value="none">Nenhum (usar mensagem)</SelectItem>}
+                      {!isOfficial && <SelectItem value="none">{t("campaigns.none_use_message", undefined, "Nenhum (usar mensagem)")}</SelectItem>}
                       {isOfficial && activeTpls.length === 0 && (
-                        <div className="px-2 py-1.5 text-xs text-muted-foreground">Nenhum template aprovado — crie em Templates</div>
+                        <div className="px-2 py-1.5 text-xs text-muted-foreground">{t("campaigns.no_approved_templates", undefined, "Nenhum template aprovado — crie em Templates")}</div>
                       )}
                       {activeTpls.map((t) => (
                         <SelectItem key={t.id} value={t.id}>{t.atalho}</SelectItem>
@@ -548,17 +551,17 @@ function CampanhasPage() {
               </div>
 
               <div>
-                <Label>Mensagem *</Label>
-                <Textarea rows={4} value={editing.mensagem} onChange={(e) => setEditing({ ...editing, mensagem: e.target.value })} placeholder="Digite a mensagem..." />
+                <Label>{t("campaigns.message", undefined, "Mensagem")} *</Label>
+                <Textarea rows={4} value={editing.mensagem} onChange={(e) => setEditing({ ...editing, mensagem: e.target.value })} placeholder={t("campaigns.type_message", undefined, "Digite a mensagem...")} />
                 {!isOfficial && (
                   <p className="mt-1 text-[11px] text-amber-600 flex items-center gap-1">
-                    <AlertTriangle className="size-3" /> Sem template, só funciona para contatos ativos nas últimas 24h
+                    <AlertTriangle className="size-3" /> {t("campaigns.no_template_warning", undefined, "Sem template, só funciona para contatos ativos nas últimas 24h")}
                   </p>
                 )}
               </div>
 
               <div>
-                <Label>Segmentar por Tags <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                <Label>{t("campaigns.filter_by_tags", undefined, "Segmentar por Tags")} <span className="text-muted-foreground font-normal">(opcional)</span></Label>
                 <Select
                   value=""
                   onValueChange={(v) => {
@@ -570,10 +573,10 @@ function CampanhasPage() {
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={tags.length === 0 ? "Nenhuma tag disponível — crie em CRM › Tags" : "Selecionar tag..."} />
+                    <SelectValue placeholder={tags.length === 0 ? t("campaigns.no_tags", undefined, "Nenhuma tag cadastrada") : t("campaigns.select_tag", undefined, "Selecionar tag...")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {tags.length === 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma tag cadastrada</div>}
+                    {tags.length === 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground">{t("campaigns.no_tags", undefined, "Nenhuma tag cadastrada")}</div>}
                     {tags
                       .filter((t) => !(editing.filtro_tags ?? []).includes(t))
                       .map((t) => (
@@ -605,23 +608,23 @@ function CampanhasPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <Label>Agendar para</Label>
+                  <Label>{t("campaigns.schedule_for", undefined, "Agendar para")}</Label>
                   <Input type="datetime-local" value={editing.agendado_para ? String(editing.agendado_para).slice(0, 16) : ""}
                     onChange={(e) => setEditing({ ...editing, agendado_para: e.target.value ? new Date(e.target.value).toISOString() : "" })} />
-                  <p className="text-[11px] text-muted-foreground mt-1">Deixe vazio para iniciar manualmente</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">{t("campaigns.schedule_tip", undefined, "Deixe vazio para iniciar manualmente")}</p>
                 </div>
                 <div>
-                  <Label>Velocidade (msg/seg)</Label>
+                  <Label>{t("campaigns.speed", undefined, "Velocidade (msg/seg)")}</Label>
                   <Input type="number" min={1} max={60} value={editing.velocidade_msg_seg}
                     onChange={(e) => setEditing({ ...editing, velocidade_msg_seg: e.target.value })} />
-                  <p className="text-[11px] text-muted-foreground mt-1">Máximo recomendado: 20–30</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">{t("campaigns.speed_tip", undefined, "Máximo recomendado: 20–30")}</p>
                 </div>
               </div>
             </div>
           )}
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave}><Send className="size-4 mr-1" /> {editing?.id ? "Salvar" : "Criar Campanha"}</Button>
+            <Button variant="outline" onClick={() => setOpen(false)}>{t("common.cancel", undefined, "Cancelar")}</Button>
+            <Button onClick={handleSave}><Send className="size-4 mr-1" /> {editing?.id ? t("common.save", undefined, "Salvar") : t("campaigns.new_campaign", undefined, "Criar Campanha")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -643,18 +646,18 @@ function CampanhasPage() {
             return (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <StatCard value={total} label="Total" tint="slate" />
-                  <StatCard value={enviados} label="Enviadas" tint="emerald" />
-                  <StatCard value={entregues} label="Entregues" tint="blue" />
-                  <StatCard value={lidas} label="Lidas" tint="violet" />
+                  <StatCard value={total} label={t("common.total", undefined, "Total")} tint="slate" />
+                  <StatCard value={enviados} label={t("campaigns.sent", undefined, "Enviadas")} tint="emerald" />
+                  <StatCard value={entregues} label={t("campaigns.delivered", undefined, "Entregues")} tint="blue" />
+                  <StatCard value={lidas} label={t("campaigns.read", undefined, "Lidas")} tint="violet" />
                 </div>
                 <div className="space-y-2">
-                  <ProgressLine label="Taxa de Entrega" pct={pctEntrega} color="bg-emerald-500" />
-                  <ProgressLine label="Taxa de Leitura" pct={pctLeitura} color="bg-blue-500" />
+                  <ProgressLine label={t("campaigns.delivery_rate", undefined, "Taxa de Entrega")} pct={pctEntrega} color="bg-emerald-500" />
+                  <ProgressLine label={t("campaigns.read_rate", undefined, "Taxa de Leitura")} pct={pctLeitura} color="bg-blue-500" />
                 </div>
                 {falhas > 0 && (
                   <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 flex items-center gap-2">
-                    <AlertTriangle className="size-4" /> {falhas} falhas
+                    <AlertTriangle className="size-4" /> {falhas} {t("campaigns.failed", undefined, "falhas")}
                   </div>
                 )}
               </div>
@@ -669,15 +672,15 @@ function CampanhasPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <span className="grid place-items-center size-8 rounded-full bg-emerald-100 text-emerald-600"><Play className="size-4" /></span>
-              Iniciar Campanha
+              {t("campaigns.confirm_start_title", undefined, "Iniciar Campanha")}
             </DialogTitle>
             <DialogDescription>
-              Deseja iniciar o disparo desta campanha? As mensagens começarão a ser enviadas imediatamente.
+              {t("campaigns.confirm_start_desc", undefined, "Deseja iniciar o disparo desta campanha? As mensagens começarão a ser enviadas imediatamente.")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmStart(null)}>Cancelar</Button>
-            <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => confirmStart && handleStart(confirmStart)}>Confirmar</Button>
+            <Button variant="outline" onClick={() => setConfirmStart(null)}>{t("common.cancel", undefined, "Cancelar")}</Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => confirmStart && handleStart(confirmStart)}>{t("common.confirm", undefined, "Confirmar")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

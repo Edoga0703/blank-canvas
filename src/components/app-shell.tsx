@@ -171,6 +171,7 @@ export function AppShell({
 }) {
   const loc = useLocation();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   
   const routerBusy = useRouterState({ select: (s) => s.status === 'pending' || s.isLoading });
   const [optimisticPath, setOptimisticPath] = useState<string | null>(null);
@@ -340,7 +341,7 @@ export function AppShell({
           <NotificationsBell companyId={company?.id} />
           <button
             onClick={toggleSounds}
-            title={soundsMuted ? "Ativar sons" : "Silenciar sons"}
+            title={soundsMuted ? t("common.unmute_sounds", undefined, "Ativar sons") : t("common.mute_sounds", undefined, "Silenciar sons")}
             className="size-9 grid place-items-center rounded-lg text-muted-foreground hover:text-foreground"
           >
             {soundsMuted ? <VolumeX className="size-[18px]" /> : <Volume2 className="size-[18px]" />}
@@ -467,6 +468,7 @@ export function AppShell({
 function Sidebar({
   activePath, company, isSuperAdmin, isAdmin, isPartner, primary, companyName, companyLogo, signOut, collapsed, onToggleCollapsed, unreadConversations, onNavigateStart, userName, userEmail, userAvatar, userId,
 }: any) {
+  const { t } = useLanguage();
   const flags = useFeatureFlags();
   const { muted: soundsMuted, toggle: toggleSounds } = useSoundsMuted();
   const [activeAgent, setActiveAgent] = useState<any>(null);
@@ -523,7 +525,7 @@ function Sidebar({
         {sections.map((sec, i) => (
           <div key={sec.label}>
             {i > 0 && <div className="h-px bg-border mx-2 mb-3" />}
-             {!collapsed && <div className="px-3 pb-2 text-[10px] font-bold uppercase text-muted-foreground">{sec.label === "Atendimento" ? "Atención / Atendimento" : sec.label === "Gestão" ? "Gestión / Gestão" : sec.label}</div>}
+             {!collapsed && <div className="px-3 pb-2 text-[10px] font-bold uppercase text-muted-foreground">{sec.label === "Atendimento" ? t("nav.attendance", undefined, "Atendimento") : sec.label === "Gestão" ? t("nav.management", undefined, "Gestão") : sec.label}</div>}
             <div className="flex flex-col gap-[3px]">
               {sec.items.filter((i: any) => (!i.adminOnly || isAdmin) && (!i.superOnly || isSuperAdmin) && isFeatureVisible(i.flag) && isCapacidadeVisible(i.capacidade)).map((item: any) => (
                 item.children
@@ -602,17 +604,17 @@ function Sidebar({
 
 
             <DropdownMenuItem asChild>
-              <Link to="/app/configuracoes"><UserIcon className="size-4 mr-2" />Meu perfil</Link>
+              <Link to="/app/configuracoes"><UserIcon className="size-4 mr-2" />{t("nav.my_profile", undefined, "Meu perfil")}</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to="/app/configuracoes"><Settings className="size-4 mr-2" />Configurações</Link>
+              <Link to="/app/configuracoes"><Settings className="size-4 mr-2" />{t("nav.settings", undefined, "Configurações")}</Link>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => window.dispatchEvent(new Event("tour:start"))}>
               <Zap className="size-4 mr-2" />Fazer tour novamente
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
-              <LogOut className="size-4 mr-2" />Sair
+              <LogOut className="size-4 mr-2" />{t("nav.logout", undefined, "Sair")}
             </DropdownMenuItem>
 
           </DropdownMenuContent>
@@ -681,6 +683,9 @@ function NavLink({ item, active, primary, collapsed, badgeCount, onNavigateStart
 
 
 function NavGroup({ item, activePath, primary, collapsed, isAdmin, onNavigateStart }: { item: NavItem; activePath: string; primary: string; collapsed?: boolean; isAdmin?: boolean; onNavigateStart?: (to?: string) => void }) {
+  const { t } = useLanguage();
+  const navKey = item.to ? PATH_TO_NAV_KEY[item.to] : undefined;
+  const displayLabel = navKey ? t(navKey, undefined, item.label) : item.label;
   const children = (item.children || []).filter((c) => !c.adminOnly || isAdmin);
   const anyActive = useMemo(() => children.some((c) => c.to && activePath.startsWith(c.to)), [children, activePath]);
   const [open, setOpen] = useState<boolean>(() => {
@@ -714,7 +719,7 @@ function NavGroup({ item, activePath, primary, collapsed, isAdmin, onNavigateSta
         }`}
       >
         <Icon className="size-[17px] shrink-0" strokeWidth={anyActive ? 2.2 : 1.9} />
-        <span className="flex-1 text-left truncate">{item.label}</span>
+        <span className="flex-1 text-left truncate">{displayLabel}</span>
         <ChevronDown className={`size-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
