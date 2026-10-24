@@ -105,7 +105,7 @@ export const deleteMessage = createServerFn({ method: "POST" })
 
     const { data: cur } = await supabase
       .from("mensagens")
-      .select("id,numero,direcao,whatsapp_message_id,midia_url")
+      .select("id,numero,direcao,whatsapp_message_id,midia_url,provider")
       .eq("id", data.messageId)
       .eq("company_id", cid)
       .maybeSingle();

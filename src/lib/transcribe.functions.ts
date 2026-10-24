@@ -88,11 +88,14 @@ export const transcribeChatAudio = createServerFn({ method: "POST" })
 
     if (att?.storage_key) {
       try {
-        const { getMediaObject } = await import("@/lib/storage/r2.server");
-        const r2Obj = await getMediaObject(att.storage_key);
-        if (r2Obj?.body) {
-          buf = await r2Obj.body.transformToByteArray();
-          if (r2Obj.contentType) mime = r2Obj.contentType.split(";")[0];
+        const { createR2DownloadUrl } = await import("@/lib/storage/r2.server");
+        const dlUrl = await createR2DownloadUrl(att.storage_key, 3600);
+        const resp = await fetch(dlUrl);
+        if (resp.ok) {
+          const ab = await resp.arrayBuffer();
+          buf = new Uint8Array(ab);
+          const ct = resp.headers.get("content-type");
+          if (ct) mime = ct.split(";")[0];
         }
       } catch (e) {
         console.warn("[transcribe] Erro ao obter áudio do R2:", e);

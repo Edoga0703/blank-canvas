@@ -506,17 +506,19 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
 
               // Pausar IA para este contacto (Helpdesk handoff)
               const nowIso = new Date().toISOString();
-              await supabaseAdmin.from("contact_pause").upsert(
-                {
-                  company_id: inst.company_id,
-                  user_id: (inst as any).user_id ?? null,
-                  numero: phone,
-                  pausado: true,
-                  pausado_por: "humano",
-                  pausado_em: nowIso,
-                } as any,
-                { onConflict: "company_id,numero" },
-              ).catch(() => null);
+              try {
+                await (supabaseAdmin as any).from("contact_pause").upsert(
+                  {
+                    company_id: inst.company_id,
+                    user_id: (inst as any).user_id ?? null,
+                    numero: phone,
+                    pausado: true,
+                    pausado_por: "humano",
+                    pausado_em: nowIso,
+                  } as any,
+                  { onConflict: "company_id,numero" },
+                );
+              } catch { /* noop */ }
 
               return new Response(JSON.stringify({ ok: true, processedOutgoing: true }), {
                 status: 200,

@@ -1,4 +1,4 @@
-# 📋 Dossier Técnico y Arquitectura Integral de Capiconversa CRM (v1.2.05)
+# 📋 Dossier Técnico y Arquitectura Integral de Capiconversa CRM (v1.2.06)
 
 > **Nota para el Agente Analizador / Desarrollador:**
 > Este documento ha sido diseñado como la **fuente única de verdad (Single Source of Truth)** de **Capiconversa CRM**. Describe la arquitectura técnica completa, flujos omnicanales, contratos de bases de datos en PostgreSQL, funciones de servidor, variables de entorno, APIs de terceros (D-API WhatsApp Oficial/No Oficial, Meta Graph API v25.0, Instagram Direct, Messenger, Lead Ads, Cloudflare R2, Backblaze B2) y la lógica en tiempo real. 
@@ -10,7 +10,7 @@
 ## 1. Ficha Técnica del Proyecto y Estado Actual
 
 - **Nombre del Producto:** Capiconversa CRM (Capiversa SaaS)
-- **Versión Activa:** `v1.2.05`
+- **Versión Activa:** `v1.2.06`
 - **Repositorio Git:** `https://github.com/Edoga0703/blank-canvas.git` (Rama principal: `main`)
 - **Hosting de Producción Lovable:** `https://capiconversa.lovable.app` (ID de Proyecto: `6482688e-8e4c-4f18-a0eb-1577103f5563`)
 - **Backend As A Service:** Supabase PostgreSQL 15 con Row Level Security (RLS) y Realtime WebSockets
@@ -409,8 +409,34 @@ CRON_SECRET="super_cron_secret_capiconversa_2026" # Token para disparar tareas a
 - **v1.2.02:** Corrección de credenciales maestras hardcodeadas (E-01) y blindaje multi-tenant en endpoints multimedia (E-02).
 - **v1.2.03:** Conmutación de webhook D-API a `type: "single"` (E-03) activando la recepción de eventos `message.edited`, `message.deleted`, `message.reaction` y estados de conexión.
 - **v1.2.04:** Verificación y pruebas automáticas en vivo en WhatsApp de edición, eliminación para todos, respuestas con cita, notas de voz PTT Ogg Opus, PDFs y tarjetas de contacto vCard.
-- **v1.2.05 (Versión Actual):**
+- **v1.2.05:**
   - **Streaming Proxy Multimedia:** Implementación de streaming con soporte de peticiones parciales (`206 Partial Content`) y cabecera `Accept-Ranges: bytes` en [chat-media.ts](file:///C:/Users/User/.gemini/antigravity/scratch/blank-canvas/src/routes/api/public/chat-media.ts), solventando el bloqueo de CORS de Backblaze B2 para reproducción fluida de audios en navegadores.
   - **Descargas de Archivos:** Creación de descargador vía `Blob` en [chat-media.tsx](file:///C:/Users/User/.gemini/antigravity/scratch/blank-canvas/src/components/chat/chat-media.tsx) y parámetro `download=1` con `Content-Disposition`, eliminando *"Mídia indisponível"* en PDFs y adjuntos.
   - **Previsualización de Citas:** Búsqueda combinada por UUID y `whatsapp_message_id` en [conversas.tsx](file:///C:/Users/User/.gemini/antigravity/scratch/blank-canvas/src/routes/app/conversas.tsx) con fallback a `raw_payload.contextInfo` y scroll suave al mensaje citado.
   - **Estado de Mensajes:** Adición de la columna `deletado_em` a `MSG_COLS` y estilización nativa para mensajes revocados (*"🚫 Esta mensagem foi apagada"* junto al indicador `· apagada`) y editados (`· editada`).
+- **v1.2.06 (Versión Actual):**
+  - **Corrección de ReferenceError en Despacho:** Solución a `orig is not defined` en [evolution.functions.ts](file:///C:/Users/User/.gemini/antigravity/scratch/blank-canvas/src/lib/evolution.functions.ts#L420-L490) que provocaba que los envíos directos cayeran en error y dependieran de la cola de reintentos.
+  - **Persistencia R2 de Audios TTS:** Corrección de la llamada a `storeMediaObject` con objeto de configuración, cambio de `getSignedMediaUrl` a `createR2DownloadUrl(storedKey, 86400)` e inserción obligatoria de `attachment_key` y `kind: 'audio'` en `message_attachments` en [ai-engine.server.ts](file:///C:/Users/User/.gemini/antigravity/scratch/blank-canvas/src/lib/ai-engine.server.ts#L730-L775).
+  - **Descarga para Transcripción en R2:** Sustitución de `getMediaObject` inexistente por descarga mediante `createR2DownloadUrl` + `fetch` en [transcribe.functions.ts](file:///C:/Users/User/.gemini/antigravity/scratch/blank-canvas/src/lib/transcribe.functions.ts#L88-L105).
+  - **Resolución de Page ID en Meta Leads:** Búsqueda combinada en `whatsapp_instances` por `phone_number_id` o `instance_name`, con fallback directo a `meta_social_accounts.page_id` en [meta-leads-webhook.ts](file:///C:/Users/User/.gemini/antigravity/scratch/blank-canvas/src/routes/api/public/meta-leads-webhook.ts#L86-L115).
+  - **Filtro de Proveedor en Edición/Borrado:** Inclusión de la columna `provider` en los selects de [message-actions.functions.ts](file:///C:/Users/User/.gemini/antigravity/scratch/blank-canvas/src/lib/message-actions.functions.ts#L60-L115) para aplicar correctamente los bloqueos en WhatsApp Oficial.
+  - **Parámetros de Contacto vCard:** Alineación a `{ fullName, phoneNumber }` en [contact-card.functions.ts](file:///C:/Users/User/.gemini/antigravity/scratch/blank-canvas/src/lib/contact-card.functions.ts#L97) y tolerancia a `{ name, phone }` en [dapi.server.ts](file:///C:/Users/User/.gemini/antigravity/scratch/blank-canvas/src/lib/dapi.server.ts#L130-L160).
+  - **Desambiguación de Migración:** Renombrado de timestamp duplicado `20261009040000_meta_channels_core.sql` a [20261009043000_meta_channels_core.sql](file:///C:/Users/User/.gemini/antigravity/scratch/blank-canvas/supabase/migrations/20261009043000_meta_channels_core.sql).
+  - **Paridad de Esquema en Supabase Types:** Definición tipada de `message_attachments`, `message_status_events`, `provider`, `raw_payload`, `instance_id` y `provider_timestamp` en [types.ts](file:///C:/Users/User/.gemini/antigravity/scratch/blank-canvas/src/integrations/supabase/types.ts).
+
+---
+
+## 11. Auditoría de Revisión Estática Externa y Validación de Fallos
+
+Se realizó un cotejo minucioso del reporte estático recibido frente a la base de código real de Capiconversa CRM:
+
+| Ítem | Severidad Reportada | Diagnóstico Real | Impacto Funcional Confirmado | Estado en v1.2.06 |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. ReferenceError `orig`** | 🔴 Crítico | `orig` estaba en el scope local de `if (data.replyToMessageId)`. | Toda llamada a `sendWhatsappText` sin cita arrojaba `ReferenceError` capturado en `catch`, marcando error de envío y enviando el mensaje a reintentos. | ✅ Corregido con `quotedText` en outer scope. |
+| **2. Persistencia R2 TTS** | 🔴 Crítico | `storeMediaObject` recibía 3 argumentos en vez de objeto; `getSignedMediaUrl` no existía; `message_attachments` faltaba `attachment_key` y `kind`. | Los audios generados por IA no se persistían en R2 y fallaba el registro de auditoría. | ✅ Corregido con `createR2DownloadUrl` y esquema completo de anexo. |
+| **3. Transcripción R2** | 🟠 Alto | `transcribe.functions.ts` importaba `getMediaObject` inexistente de `r2.server.ts`. | La transcripción de audios almacenados en R2 arrojaba fallo de importación y caía a fallbacks. | ✅ Corregido con `createR2DownloadUrl` + `fetch`. |
+| **4. Meta Leads Webhook** | 🟠 Alto | Buscaba `page_id` únicamente en `whatsapp_instances.phone_number_id`. | Los leads generados desde Facebook Pages no encontraban la instancia ni el token. | ✅ Corregido con búsqueda OR en `whatsapp_instances` y fallback en `meta_social_accounts`. |
+| **5. Bloqueos Oficiales** | 🟡 Medio | Queries de edición y borrado omitían `provider`. | `cur.provider === 'dapi_official'` evaluaba falso, saltándose la validación previa. | ✅ Corregido agregando `provider` al `.select()`. |
+| **6. Tarjeta vCard** | 🟡 Medio | Parámetros `{ name, phone }` vs `{ fullName, phoneNumber }`. | Incompatibilidad de nombres arrojaba error al ejecutar `.replace()` en número de teléfono. | ✅ Corregido en cliente y servidor con tolerancia dual. |
+| **7. Migración Duplicada** | 🟡 Medio | `20261009040000` duplicado en dos archivos. | Riesgo de orden no determinista en migraciones Supabase CLI. | ✅ Renombrado a `20261009043000_meta_channels_core.sql`. |
+| **8. Tipos Supabase** | 🟢 Menor | `message_attachments` no estaba tipada y `canais_ativos` aparecía repetido. | Errores de TypeScript estático en consultas tipadas de Supabase. | ✅ Paridad total agregada en `types.ts`. |

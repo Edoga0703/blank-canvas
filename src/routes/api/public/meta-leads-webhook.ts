@@ -86,12 +86,30 @@ async function processLead(leadId: string, pageId: string, formId?: string) {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // 1. Encontrar a instância Meta correspondente para obter o access token
-    const { data: inst } = await (supabaseAdmin as any)
+    // 1. Buscar a instância com o token da página (or phone_number_id / instance_name)
+    let inst = await (supabaseAdmin as any)
       .from("whatsapp_instances")
       .select("instance_token, company_id")
-      .eq("phone_number_id", pageId)
+      .or(`phone_number_id.eq.${pageId},instance_name.eq.${pageId}`)
       .like("provider", "meta%")
-      .maybeSingle();
+      .maybeSingle()
+      .then((r: any) => r.data);
+
+    // Fallback: buscar na tabela meta_social_accounts onde page_id é a chave de FB
+    if (!inst?.instance_token) {
+      const { data: socialAcc } = await (supabaseAdmin as any)
+        .from("meta_social_accounts")
+        .select("access_token, company_id")
+        .eq("page_id", pageId)
+        .maybeSingle();
+
+      if (socialAcc?.access_token) {
+        inst = {
+          instance_token: socialAcc.access_token,
+          company_id: socialAcc.company_id,
+        } as any;
+      }
+    }
 
     if (!inst?.instance_token) {
       console.error(`[meta-leads-webhook] Token não encontrado para a página ${pageId}`);

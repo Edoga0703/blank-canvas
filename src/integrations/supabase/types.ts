@@ -14,6 +14,116 @@ export type Database = {
   }
   public: {
     Tables: {
+      message_attachments: {
+        Row: {
+          attachment_key: string
+          company_id: string
+          created_at: string
+          file_name: string | null
+          id: string
+          kind: string
+          mensagem_id: string
+          mime_type: string | null
+          provider_attachment_id: string | null
+          provider_url: string | null
+          sha256: string | null
+          size_bytes: number | null
+          storage_key: string | null
+          storage_url: string | null
+        }
+        Insert: {
+          attachment_key: string
+          company_id: string
+          created_at?: string
+          file_name?: string | null
+          id?: string
+          kind: string
+          mensagem_id: string
+          mime_type?: string | null
+          provider_attachment_id?: string | null
+          provider_url?: string | null
+          sha256?: string | null
+          size_bytes?: number | null
+          storage_key?: string | null
+          storage_url?: string | null
+        }
+        Update: {
+          attachment_key?: string
+          company_id?: string
+          created_at?: string
+          file_name?: string | null
+          id?: string
+          kind?: string
+          mensagem_id?: string
+          mime_type?: string | null
+          provider_attachment_id?: string | null
+          provider_url?: string | null
+          sha256?: string | null
+          size_bytes?: number | null
+          storage_key?: string | null
+          storage_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_attachments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_attachments_mensagem_id_fkey"
+            columns: ["mensagem_id"]
+            isOneToOne: false
+            referencedRelation: "mensagens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_status_events: {
+        Row: {
+          company_id: string
+          created_at: string
+          event_type: string
+          id: string
+          mensagem_id: string | null
+          provider: string
+          raw_payload: Json | null
+          status: string
+          whatsapp_message_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          mensagem_id?: string | null
+          provider: string
+          raw_payload?: Json | null
+          status: string
+          whatsapp_message_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          mensagem_id?: string | null
+          provider?: string
+          raw_payload?: Json | null
+          status?: string
+          whatsapp_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_status_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       addon_product: {
         Row: {
           ativo: boolean
@@ -681,7 +791,6 @@ export type Database = {
           avatar_prompt?: string | null
           avatar_traits?: Json | null
           avatar_url?: string | null
-          canais_ativos?: Json | null
           canais_ativos?: Json | null
           chamar_por_nome?: boolean | null
           como_vender?: string

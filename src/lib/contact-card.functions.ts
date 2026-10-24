@@ -94,7 +94,7 @@ export const enviarCartaoContato = createServerFn({ method: "POST" })
     if (provider === "dapi" || provider === "dapi_official") {
       try {
         const { dapiSendContact } = await import("./dapi.server");
-        const resp = await dapiSendContact(inst.instance_name, destino, { name: nome, phone: digitos });
+        const resp = await dapiSendContact(inst.instance_name, destino, { fullName: nome, phoneNumber: digitos });
         waId = extractWhatsappMessageId(resp) || resp?.id || null;
         sentNative = true;
       } catch (nativeErr) {

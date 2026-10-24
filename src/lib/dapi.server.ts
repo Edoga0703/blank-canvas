@@ -764,15 +764,17 @@ export async function dapiDeleteMessage(
 export async function dapiSendContact(
   sessionId: string,
   to: string,
-  contact: { fullName: string; phoneNumber: string; organization?: string },
+  contact: { fullName?: string; phoneNumber?: string; name?: string; phone?: string; organization?: string },
 ): Promise<{ id: string; provider: string; raw: any }> {
   const cleanTo = to.replace(/\D/g, "");
-  const cleanContactPhone = contact.phoneNumber.replace(/\D/g, "");
+  const contactFullName = contact.fullName || contact.name || "Contato";
+  const rawPhone = contact.phoneNumber || contact.phone || "";
+  const cleanContactPhone = rawPhone.replace(/\D/g, "");
   const payload = {
     sessionId,
     to: cleanTo,
-    contactName: contact.fullName,
-    fullName: contact.fullName,
+    contactName: contactFullName,
+    fullName: contactFullName,
     phoneNumber: cleanContactPhone,
     phone: `+${cleanContactPhone}`,
     organization: contact.organization || "",

@@ -420,6 +420,7 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
     await assertWithinLimit(companyId, "mensagens");
 
     let quoted: any = undefined;
+    let quotedText: string | null = null;
     if (data.replyToMessageId) {
       const { data: orig } = await supabase
         .from("mensagens")
@@ -428,6 +429,7 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
         .eq("company_id", companyId)
         .maybeSingle();
       if (orig?.whatsapp_message_id) {
+        quotedText = orig.texto ?? null;
         quoted = {
           key: {
             id: orig.whatsapp_message_id,
@@ -483,7 +485,7 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
         {
           replyToExternalMessageId: quoted?.key?.id ?? null,
           quoted: quoted ? { quoted } : undefined,
-          quotedText: orig?.texto ?? null,
+          quotedText,
         },
       );
       waId = extractWhatsappMessageId(resp);

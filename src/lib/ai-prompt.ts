@@ -240,6 +240,7 @@ export function buildSystemPrompt(
     feedback?: FeedbackHint[];
     feedbackHints?: FeedbackHint[];
     canal?: string;
+    companyName?: string;
     handoffTargetNome?: string | null;
     /** Bloco de catálogo/estoque vindo do ERP Olist (já formatado). */
     olistCatalogo?: string;

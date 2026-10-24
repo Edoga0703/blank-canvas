@@ -732,9 +732,16 @@ export async function processAiResponse(
               let storedKey = storageKey;
 
               try {
-                const { storeMediaObject, getSignedMediaUrl } = await import("@/lib/storage/r2.server");
-                await storeMediaObject(storageKey, audioBuffer, "audio/mpeg");
-                const signedUrl = await getSignedMediaUrl(storageKey, 86400);
+                const { storeMediaObject, createR2DownloadUrl } = await import("@/lib/storage/r2.server");
+                const storedObj = await storeMediaObject({
+                  companyId,
+                  bytes: audioBuffer,
+                  fileName,
+                  mimeType: "audio/mpeg",
+                  storageKey,
+                });
+                storedKey = storedObj.storageKey;
+                const signedUrl = await createR2DownloadUrl(storedKey, 86400);
                 if (signedUrl) {
                   audioUrlToSend = signedUrl;
                 }
@@ -764,9 +771,11 @@ export async function processAiResponse(
 
               if (insertedMsg?.id) {
                 try {
-                  await supabaseAdmin.from("message_attachments").insert({
+                  await (supabaseAdmin as any).from("message_attachments").insert({
                     company_id: companyId,
                     mensagem_id: insertedMsg.id,
+                    attachment_key: storedKey,
+                    kind: "audio",
                     storage_key: storedKey,
                     mime_type: "audio/mpeg",
                     file_name: fileName,
