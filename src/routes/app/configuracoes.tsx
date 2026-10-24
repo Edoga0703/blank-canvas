@@ -75,7 +75,9 @@ function formatCpfCnpj(value: string): string {
 
 function ConfigPage() {
   const ctx = Route.useRouteContext();
-  const { t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
+  const [selectedIdioma, setSelectedIdioma] = useState<string>(language);
+  useEffect(() => { setSelectedIdioma(language); }, [language]);
   const companyId = ctx.company?.id;
   const userId = ctx.user.id;
   const company = ctx.company;
@@ -203,18 +205,31 @@ function ConfigPage() {
 
   async function savePerfil() {
     setSavingP(true);
-    const { error } = await supabase.from("profiles").upsert({
-      user_id: userId,
-      email: ctx.user.email ?? null,
-      nome: perfil.nome || null,
-      avatar_url: perfil.avatar_url || null,
-      assinatura_ativa: perfil.assinatura_ativa,
-      csat_auto_finalizar: perfil.csat_auto_finalizar,
-    } as any, { onConflict: "user_id" });
-    setSavingP(false);
-    if (error) return toast.error(error.message);
-    window.dispatchEvent(new CustomEvent("profile:updated", { detail: { nome: perfil.nome || "", avatar_url: perfil.avatar_url || "" } }));
-    toast.success("Perfil atualizado");
+    try {
+      const { error } = await supabase.from("profiles").upsert({
+        user_id: userId,
+        email: ctx.user.email ?? null,
+        nome: perfil.nome || null,
+        avatar_url: perfil.avatar_url || null,
+        assinatura_ativa: perfil.assinatura_ativa,
+        csat_auto_finalizar: perfil.csat_auto_finalizar,
+      } as any, { onConflict: "user_id" });
+      if (error) throw error;
+
+      if (selectedIdioma) {
+        await setLanguage(selectedIdioma as any);
+        if (companyId) {
+          await supabase.from("agent_config").update({ idioma: selectedIdioma } as any).eq("company_id", companyId);
+        }
+      }
+
+      window.dispatchEvent(new CustomEvent("profile:updated", { detail: { nome: perfil.nome || "", avatar_url: perfil.avatar_url || "" } }));
+      toast.success(selectedIdioma === "es" ? "Perfil e idioma guardados correctamente" : selectedIdioma === "en" ? "Profile and language saved successfully" : "Perfil e idioma atualizados com sucesso");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao salvar perfil");
+    } finally {
+      setSavingP(false);
+    }
   }
 
   async function saveSenha() {
@@ -304,25 +319,13 @@ function ConfigPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            {t("config.title", undefined, "Configurações")} <HelpTip text="Perfil, empresa, identidade, templates, horários, satisfação, segurança, integrações e plano." />
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            {t("config.subtitle", undefined, "Gerencie sua conta, sua empresa e o funcionamento do sistema.")}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto bg-card border border-border p-1.5 rounded-2xl shadow-2xs">
-          <Globe className="size-4 text-primary ml-1.5" />
-          <span className="text-xs font-semibold text-muted-foreground mr-1 hidden sm:inline">{t("config.language_tab", undefined, "Idioma")}:</span>
-          <LanguageSwitcher variant="segmented" />
-        </div>
+      <div>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">Configurações <HelpTip text="Perfil, empresa, identidade, templates, horários, satisfação, segurança, integrações e plano." /></h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">Gerencie sua conta, sua empresa e o funcionamento do sistema.</p>
       </div>
       <Tabs defaultValue="perfil">
         <TabsList className="flex h-auto gap-1 bg-transparent p-0 border-b border-border rounded-none w-full justify-start overflow-x-auto no-scrollbar flex-nowrap md:flex-wrap">
           <StyledTab value="perfil" icon={<User className="size-4" />}>Perfil</StyledTab>
-          <StyledTab value="idioma" icon={<Globe className="size-4" />}>{t("config.language_tab", undefined, "Idioma / Language")}</StyledTab>
           
           {!isAtendente && <StyledTab value="tags" icon={<Tag className="size-4" />}>Tags</StyledTab>}
            
@@ -345,17 +348,6 @@ function ConfigPage() {
               <Card className="p-4 sm:p-5 space-y-4">
 
                 <h3 className="font-semibold">Meu Perfil</h3>
-                {/* Selector rápido de idioma do perfil */}
-                <div className="p-3 rounded-xl border border-border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                  <div className="flex items-center gap-2">
-                    <Globe className="size-4 text-primary shrink-0" />
-                    <div>
-                      <div className="text-xs font-semibold">{t("config.language_section_title", undefined, "Idioma do Sistema")}</div>
-                      <div className="text-[11px] text-muted-foreground">{t("config.language_section_desc", undefined, "Altera o idioma da sua sessão e CRM")}</div>
-                    </div>
-                  </div>
-                  <LanguageSwitcher variant="segmented" />
-                </div>
                 <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                   <div className="size-14 sm:size-16 rounded-full bg-muted grid place-items-center text-muted-foreground overflow-hidden">
                     {perfil.avatar_url ? (
@@ -387,6 +379,38 @@ function ConfigPage() {
                     <Label>E-mail</Label>
                     <Input value={perfil.email} disabled />
                   </div>
+                </div>
+
+                {/* Idioma do Painel / Sistema configurável no Meu Perfil */}
+                <div className="space-y-1.5 pt-1">
+                  <Label className="flex items-center gap-1.5 text-xs font-semibold">
+                    <Globe className="size-3.5 text-primary" />
+                    Idioma do Painel / Sistema
+                  </Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { code: "es", label: "Español", flag: "🇪🇸" },
+                      { code: "pt", label: "Português", flag: "🇧🇷" },
+                      { code: "en", label: "English", flag: "🇺🇸" },
+                    ].map((item) => (
+                      <button
+                        key={item.code}
+                        type="button"
+                        onClick={() => setSelectedIdioma(item.code)}
+                        className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-medium transition-all ${
+                          selectedIdioma === item.code
+                            ? "border-primary bg-primary/10 text-primary font-bold shadow-xs ring-1 ring-primary/20"
+                            : "border-border bg-card hover:bg-muted/50 text-foreground"
+                        }`}
+                      >
+                        <span className="text-base leading-none">{item.flag}</span>
+                        <span>{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Define o idioma do CRM e do assistente IA. Clique em "Salvar Perfil" para aplicar.
+                  </p>
                 </div>
                 {ctx.company?.atendimento_operacional === true && (
                   <label className="flex items-start gap-3 rounded-xl border border-[color:var(--hairline)] p-3 cursor-pointer">
@@ -571,24 +595,6 @@ function ConfigPage() {
                 </div>
               </Card>
 
-              {/* Idioma do Sistema e Inteligência Artificial */}
-              <Card className="p-4 sm:p-5 space-y-4">
-                <div className="flex items-center gap-2.5">
-                  <span className="p-2 rounded-lg bg-primary/10 text-primary">
-                    <Globe className="size-4" />
-                  </span>
-                  <div>
-                    <h3 className="font-semibold text-sm">{t("config.language_section_title")}</h3>
-                    <p className="text-xs text-muted-foreground">{t("config.language_section_desc")}</p>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs">{t("config.select_language_prompt")}</Label>
-                  <div className="mt-2 max-w-xs">
-                    <LanguageSwitcher variant="select" />
-                  </div>
-                </div>
-              </Card>
 
               {/* Zona de Perigo - Resetar Dados */}
               <Card className="p-4 sm:p-5 border-destructive/20 bg-destructive/5 space-y-4">
@@ -643,45 +649,6 @@ function ConfigPage() {
 
         </TabsContent>
 
-        {/* Tab dedicada de Idioma */}
-        <TabsContent value="idioma" className="mt-4 sm:mt-5 space-y-4 max-w-4xl">
-          <Card className="p-5 sm:p-6 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
-              <div className="flex items-center gap-3">
-                <span className="p-2.5 rounded-xl bg-primary/10 text-primary">
-                  <Globe className="size-6" />
-                </span>
-                <div>
-                  <h3 className="font-bold text-base sm:text-lg">{t("config.language_section_title", undefined, "Idioma do Sistema e Inteligência Artificial")}</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground">{t("config.language_section_desc", undefined, "Elige el idioma en el que se mostrará el CRM y en el que el Asistente de IA responderá a tus clientes.")}</p>
-                </div>
-              </div>
-              <div className="shrink-0">
-                <LanguageSwitcher variant="segmented" />
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {t("config.select_language_prompt", undefined, "Selecciona el idioma principal de tu empresa:")}
-              </Label>
-              <LanguageSwitcher variant="cards" />
-            </div>
-
-            <div className="p-4 rounded-xl bg-muted/40 border border-border space-y-2 text-xs text-muted-foreground">
-              <div className="font-semibold text-foreground flex items-center gap-2">
-                <Sparkles className="size-3.5 text-primary" />
-                Sincronización Total con el CRM y la Inteligencia Artificial
-              </div>
-              <p>
-                Al seleccionar tu idioma, se adaptan automáticamente todos los menús, el tablero CRM Kanban, las tarjetas de leads y los diagnósticos.
-              </p>
-              <p>
-                Además, el bot de IA del CRM y de conversaciones aplicará una regla estricta de idioma para nunca mezclar idiomas ni responder en portugués cuando se configure en español.
-              </p>
-            </div>
-          </Card>
-        </TabsContent>
 
         
         <TabsContent value="tags"><TagsTab /></TabsContent>

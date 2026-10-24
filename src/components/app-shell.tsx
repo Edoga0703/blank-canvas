@@ -8,7 +8,7 @@ import {
   Inbox, Users, BarChart3, Settings, Contact, Megaphone, Webhook, Wallet,
   ChevronsLeft, ChevronsRight, Zap, ChevronDown, CalendarClock, Zap as Bolt, Bell, Volume2, VolumeX,
   PanelLeft, User as UserIcon, Package, Puzzle, MoreHorizontal, Workflow, TrendingUp, FileText,
-  GraduationCap, CreditCard, Radar, Share2, Images, Globe
+  GraduationCap, CreditCard, Radar, Share2, Images
 } from "lucide-react";
 import { AgentAvatar } from "@/components/agente/agent-avatar";
 
@@ -38,7 +38,6 @@ import { TrialBanner } from "@/components/trial-banner";
 import { OnboardingTour } from "@/components/onboarding-tour";
 import { useFeatureFlags, type FlagEntry } from "@/hooks/use-feature-flags";
 import { useCapacidades } from "@/hooks/use-capacidades";
-import { LanguageSwitcher } from "@/components/language-switcher";
 import { useLanguage } from "@/lib/i18n/context";
 
 const PATH_TO_NAV_KEY: Record<string, string> = {
@@ -338,7 +337,6 @@ export function AppShell({
           <img src={logoFull.url} alt={brand.name} className="h-10 w-auto object-contain" loading="eager" decoding="async" />
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <LanguageSwitcher variant="compact" />
           <NotificationsBell companyId={company?.id} />
           <button
             onClick={toggleSounds}
@@ -538,15 +536,6 @@ function Sidebar({
       </nav>
 
        <div className={`shrink-0 border-t border-border ${collapsed ? "p-3" : "p-3"}`}>
-         <div className={`mb-2.5 flex items-center ${collapsed ? "justify-center" : "justify-between px-0.5"}`}>
-          {!collapsed && (
-            <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
-              <Globe className="size-3.5 text-primary" />
-              Idioma
-            </span>
-          )}
-          <LanguageSwitcher variant={collapsed ? "compact" : "segmented"} />
-        </div>
         {collapsed && <button type="button" onClick={onToggleCollapsed} title="Expandir menu" aria-label="Expandir menu" className="mb-3 grid size-10 place-items-center rounded-full bg-muted text-foreground hover:bg-accent"><ChevronsRight className="size-5" /></button>}
         <DropdownMenu>
 
@@ -609,10 +598,6 @@ function Sidebar({
               {soundsMuted ? <VolumeX className="size-4 mr-2" /> : <Volume2 className="size-4 mr-2" />}
               {soundsMuted ? "Ativar sons" : "Silenciar sons"}
             </DropdownMenuItem>
-            <div className="px-2 py-1.5 flex items-center justify-between text-xs text-muted-foreground border-t border-b border-border my-1">
-              <span className="font-medium">Idioma</span>
-              <LanguageSwitcher variant="compact" />
-            </div>
 
 
 
