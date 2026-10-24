@@ -546,11 +546,16 @@ export async function dapiSendAudio(
   sessionId: string,
   to: string,
   audioBase64OrUrl: string,
+  ptt?: boolean,
 ): Promise<{ id: string; provider: string; raw: any }> {
+  // WhatsApp mobile exige OGG Opus para nota de voz nativa (PTT).
+  // Se for MP3, ptt=false permite que o reprodutor nativo do celular o abra perfeitamente.
+  const isOgg = audioBase64OrUrl.includes("audio/ogg") || audioBase64OrUrl.includes("codecs=opus") || audioBase64OrUrl.endsWith(".ogg");
+  const usePtt = ptt !== undefined ? ptt : isOgg;
   return dapiSendMedia(sessionId, to, {
     url: audioBase64OrUrl,
     type: "audio",
-    ptt: true,
+    ptt: usePtt,
   });
 }
 

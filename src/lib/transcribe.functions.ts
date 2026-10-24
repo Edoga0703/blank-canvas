@@ -82,8 +82,8 @@ export const transcribeChatAudio = createServerFn({ method: "POST" })
     // 1. Tentar carregar de message_attachments (Cloudflare R2)
     const { data: att } = await supabase
       .from("message_attachments")
-      .select("storage_key, url, mime_type")
-      .eq("message_id", data.messageId)
+      .select("storage_key, provider_url, mime_type")
+      .eq("mensagem_id", data.messageId)
       .maybeSingle();
 
     if (att?.storage_key) {

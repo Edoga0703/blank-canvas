@@ -766,12 +766,12 @@ export async function processAiResponse(
                 try {
                   await supabaseAdmin.from("message_attachments").insert({
                     company_id: companyId,
-                    message_id: insertedMsg.id,
+                    mensagem_id: insertedMsg.id,
                     storage_key: storedKey,
                     mime_type: "audio/mpeg",
                     file_name: fileName,
-                    file_size: audioBuffer.length,
-                    url: audioUrlToSend.startsWith("http") ? audioUrlToSend : null,
+                    size_bytes: audioBuffer.length,
+                    provider_url: audioUrlToSend.startsWith("http") ? audioUrlToSend : null,
                   });
                 } catch (attErr) {
                   console.warn("[ai-engine] Falha ao registrar anexo de áudio TTS:", attErr);
