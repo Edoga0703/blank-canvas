@@ -64,6 +64,9 @@ export const editMessage = createServerFn({ method: "POST" })
     if (!cur) throw new Error("Mensagem não encontrada.");
     if (cur.direcao !== "saida") throw new Error("Só é possível editar mensagens enviadas.");
     if (cur.midia_tipo) throw new Error("Não é permitido editar mensagens com mídia.");
+    if (cur.provider === "dapi_official") {
+      throw new Error("A API Oficial do WhatsApp (Meta) não suporta edição de mensagens.");
+    }
     const age = Date.now() - Date.parse(cur.created_at);
     if (age > EDIT_WINDOW_MS) throw new Error("Janela de 15 min para edição expirou.");
 
@@ -107,6 +110,9 @@ export const deleteMessage = createServerFn({ method: "POST" })
       .eq("company_id", cid)
       .maybeSingle();
     if (!cur) throw new Error("Mensagem não encontrada.");
+    if (cur.direcao === "saida" && cur.provider === "dapi_official") {
+      throw new Error("A API Oficial do WhatsApp (Meta) não suporta exclusão de mensagens para todos.");
+    }
 
     const { error } = await supabase
       .from("mensagens")

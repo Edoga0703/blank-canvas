@@ -439,6 +439,32 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
       }
     }
 
+    // Fallback inteligente: se a preferencial dapi_official estiver fora da janela 24h, mas houver dapi não-oficial conectada
+    if (inst.provider === "dapi_official") {
+      try {
+        const { getMetaResponseWindow } = await import("./meta-response-window.server");
+        const win = await getMetaResponseWindow(sbAdmin, {
+          companyId,
+          provider: "dapi_official",
+          contactId: data.numero,
+        });
+        if (!win.open) {
+          const { data: fallbackRows } = await sbAdmin
+            .from("whatsapp_instances")
+            .select("id,instance_name,status,numero,provider,instance_token")
+            .eq("company_id", companyId)
+            .eq("provider", "dapi")
+            .eq("status", "connected")
+            .limit(1);
+          if (fallbackRows && fallbackRows.length > 0) {
+            inst = fallbackRows[0];
+          }
+        }
+      } catch (winErr) {
+        console.warn("[sendWhatsappText] Verificação de janela Meta:", winErr);
+      }
+    }
+
     let waId: string | null = null;
     let sendError: string | null = null;
     try {
@@ -457,6 +483,7 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
         {
           replyToExternalMessageId: quoted?.key?.id ?? null,
           quoted: quoted ? { quoted } : undefined,
+          quotedText: orig?.texto ?? null,
         },
       );
       waId = extractWhatsappMessageId(resp);

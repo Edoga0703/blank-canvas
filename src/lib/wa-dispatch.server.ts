@@ -158,7 +158,11 @@ export async function waSendText(
   inst: WaInstance,
   numero: string,
   texto: string,
-  options?: { replyToExternalMessageId?: string | null; quoted?: any },
+  options?: {
+    replyToExternalMessageId?: string | null;
+    quoted?: any;
+    quotedText?: string | null;
+  },
 ) {
   numero = assertSendableNumber(numero, inst.provider);
   if (isMetaProvider(inst.provider)) {
@@ -175,7 +179,15 @@ export async function waSendText(
     await assertMetaWindowForInstance(inst, numero);
   }
   const { dapiSendText } = await import("./dapi.server");
-  return dapiSendText(inst.instance_name, numero, texto, options?.replyToExternalMessageId);
+  let contextInfo: any = undefined;
+  if (options?.replyToExternalMessageId) {
+    contextInfo = {
+      stanzaId: options.replyToExternalMessageId,
+      participant: `${numero}@s.whatsapp.net`,
+      quotedMessage: options.quotedText ? { conversation: options.quotedText } : undefined,
+    };
+  }
+  return dapiSendText(inst.instance_name, numero, texto, options?.replyToExternalMessageId, contextInfo);
 }
 
 export async function waSendMedia(

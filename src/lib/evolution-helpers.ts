@@ -7,9 +7,15 @@ export function deriveInstanceName(companyId: string, suffix?: string) {
 
 export function sortInstances(rows: any[] = []) {
   return [...rows].sort((a, b) => {
-    const rank = (s: string) => s === "connected" ? 0 : s === "connecting" ? 1 : 2;
-    const diff = rank(a.status) - rank(b.status);
-    if (diff) return diff;
+    const rankStatus = (s: string) => s === "connected" ? 0 : s === "connecting" ? 1 : 2;
+    const diffStatus = rankStatus(a.status) - rankStatus(b.status);
+    if (diffStatus) return diffStatus;
+
+    // Prioridade oficial: D-API Oficial tem prioridade sobre D-API Não Oficial quando ambas conectadas
+    const rankProvider = (p: string) => p === "dapi_official" ? 0 : p === "dapi" ? 1 : 2;
+    const diffProvider = rankProvider(a.provider) - rankProvider(b.provider);
+    if (diffProvider) return diffProvider;
+
     return String(b.updated_at || "").localeCompare(String(a.updated_at || ""));
   });
 }

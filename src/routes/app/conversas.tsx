@@ -2156,6 +2156,7 @@ function ConversasPage() {
                         quoted={quoted}
                         companyId={companyId ?? ""}
                         onReply={(msg) => setReplyTo(msg)}
+                        hasUnofficialInstance={instances.some(i => (i.provider === "dapi" || (i as any).provider_type === "dapi") && (i.status === "connected" || i.status === "open"))}
                         agentTraits={agentConfig?.avatar_traits}
                         agentAvatarUrl={agentConfig?.avatar_url}
 
@@ -2486,7 +2487,7 @@ function StageChip({ nome, cor }: { nome: string; cor: string | null }) {
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 const MORE_REACTIONS = ["👏", "🎉", "🔥", "✅", "🤔", "😍", "😡", "💯", "🙌", "🤝", "✨", "😅"];
 
-function Bubble({ m, quoted, companyId, onReply, agentTraits, agentAvatarUrl }: { m: Msg; quoted?: Msg | null; companyId: string; onReply?: (m: Msg) => void; agentTraits?: any; agentAvatarUrl?: string }) {
+function Bubble({ m, quoted, companyId, onReply, agentTraits, agentAvatarUrl, hasUnofficialInstance }: { m: Msg; quoted?: Msg | null; companyId: string; onReply?: (m: Msg) => void; agentTraits?: any; agentAvatarUrl?: string; hasUnofficialInstance?: boolean }) {
   const isOut = m.direcao === "saida";
   const ia = m.autor === "ia";
   const automacao = m.autor === "automacao";
@@ -2561,8 +2562,10 @@ function Bubble({ m, quoted, companyId, onReply, agentTraits, agentAvatarUrl }: 
   }
 
   const ageMs = Date.now() - new Date(m.created_at).getTime();
-  // whatsapp_message_id pode chegar depois (realtime); o servidor revalida na edição.
-  const canEdit = isOut && m.autor !== "ia" && m.autor !== "automacao" && !!m.texto && !media && ageMs < 15 * 60 * 1000 && (m as any).status_envio !== "erro" && (m as any).status_envio !== "falha";
+  const isOfficialMessage = m.provider === "dapi_official";
+  // Borrar y editar solo están disponibles si se tiene conectada la API No Oficial (Meta Oficial no lo soporta)
+  const canEdit = isOut && !isOfficialMessage && !!hasUnofficialInstance && m.autor !== "ia" && m.autor !== "automacao" && !!m.texto && !media && ageMs < 15 * 60 * 1000 && (m as any).status_envio !== "erro" && (m as any).status_envio !== "falha";
+  const canDelete = isOut ? (!isOfficialMessage && !!hasUnofficialInstance) : true;
 
   return (
     <div
@@ -2599,8 +2602,12 @@ function Bubble({ m, quoted, companyId, onReply, agentTraits, agentAvatarUrl }: 
                 <DropdownMenuItem onClick={() => setShowReactions(true)}><Smile className="mr-2 size-4" />Reagir</DropdownMenuItem>
                 {media?.url && <DropdownMenuItem onClick={() => { const a = document.createElement("a"); a.href = media.url; a.download = media.nome || "arquivo"; a.target = "_blank"; a.click(); }}><Download className="mr-2 size-4" />Baixar</DropdownMenuItem>}
                 {canEdit && <DropdownMenuItem onClick={() => { setEditText(m.texto); setEditing(true); }}><Pencil className="mr-2 size-4" />Editar</DropdownMenuItem>}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive" onClick={() => void removeMessage()}><Trash2 className="mr-2 size-4" />Apagar</DropdownMenuItem>
+                {canDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-destructive" onClick={() => void removeMessage()}><Trash2 className="mr-2 size-4" />Apagar</DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}

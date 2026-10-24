@@ -424,6 +424,7 @@ export async function dapiSendText(
   to: string,
   text: string,
   quotedMessageId?: string | null,
+  contextInfo?: any,
 ): Promise<{ id: string; provider: string; raw: any }> {
   const cleanTo = to.replace(/\D/g, "");
   const payload: Record<string, any> = {
@@ -434,6 +435,15 @@ export async function dapiSendText(
   };
   if (quotedMessageId) {
     payload.quotedMessageId = quotedMessageId;
+    payload.context = { message_id: quotedMessageId }; // Suporte oficial Meta Cloud API
+    if (contextInfo) {
+      payload.contextInfo = contextInfo;
+    } else {
+      payload.contextInfo = {
+        stanzaId: quotedMessageId,
+        participant: `${cleanTo}@s.whatsapp.net`,
+      };
+    }
   }
 
   const res = await dapiFetch<any>("/messages/send/text", {
@@ -717,21 +727,13 @@ export async function dapiEditMessage(
   const payload = {
     sessionId,
     to: cleanTo,
-    messageId,
-    id: messageId,
     text: newText,
-    message: newText,
   };
-  const res = await dapiFetch<any>("/messages/edit", {
-    method: "POST",
+  const res = await dapiFetch<any>(`/messages/${encodeURIComponent(messageId)}`, {
+    method: "PUT",
     body: JSON.stringify(payload),
-  }).catch(() =>
-    dapiFetch<any>("/messages/send/edit", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  );
-  return { success: true, raw: res };
+  });
+  return { success: res?.success ?? true, raw: res };
 }
 
 /** [Solo API No Oficial - dapi] Elimina un mensaje para todos en WhatsApp */
@@ -744,19 +746,13 @@ export async function dapiDeleteMessage(
   const payload = {
     sessionId,
     to: cleanTo,
-    messageId,
-    id: messageId,
+    forEveryone: true,
   };
-  const res = await dapiFetch<any>("/messages/delete", {
-    method: "POST",
+  const res = await dapiFetch<any>(`/chats/messages/${encodeURIComponent(messageId)}`, {
+    method: "DELETE",
     body: JSON.stringify(payload),
-  }).catch(() =>
-    dapiFetch<any>("/messages", {
-      method: "DELETE",
-      body: JSON.stringify(payload),
-    }),
-  );
-  return { success: true, raw: res };
+  });
+  return { success: res?.success ?? true, raw: res };
 }
 
 /** [Ambas] Envía una tarjeta de contacto vCard nativa */
