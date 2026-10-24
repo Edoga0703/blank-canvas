@@ -23,6 +23,7 @@ import { analyzeLeadConversation } from "@/lib/lead-coach.functions";
 import { CANAL_LABEL, CANAL_COLOR, type CanalEntrada } from "@/lib/tracking-utils";
 import { ConversationMediaTab } from "@/components/chat/conversation-media-panel";
 import { OlistPedidosTab } from "@/components/crm/olist-pedidos-tab";
+import { useLanguage } from "@/lib/i18n/context";
 import { useCapacidadeAtiva } from "@/hooks/use-capacidades";
 import { LeadAiAnalyzerDialog } from "@/components/crm/lead-ai-analyzer-dialog";
 
@@ -114,6 +115,7 @@ export function LeadDetailsPanel({
   companyId: string; onChanged: () => void; hideConversation?: boolean;
   onDeleted?: () => void; operationalMode?: boolean;
 }) {
+  const { t } = useLanguage();
   const [local, setLocal] = useState<LeadCard & { pipeline_id?: string | null }>(card as any);
   const [encaminharOpen, setEncaminharOpen] = useState(false);
   const chatActionFn = useServerFn(handleChatAction);
@@ -371,7 +373,7 @@ export function LeadDetailsPanel({
         className="w-full h-9 rounded-lg border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary font-medium gap-2 shadow-sm transition"
       >
         <Sparkles className="size-4 shrink-0" />
-        <span>Auditar Lead con IA (Diagnóstico & Etapa)</span>
+        <span>{t("crm.audit_lead", undefined, "Auditar Lead con IA (Diagnóstico & Etapa)")}</span>
       </Button>
 
       <LeadAiAnalyzerDialog
@@ -388,13 +390,13 @@ export function LeadDetailsPanel({
 
       <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
         <TabsList className={`grid ${cols} w-full shrink-0`}>
-          <TabsTrigger value="dados">Dados</TabsTrigger>
-          <TabsTrigger value="midia">Mídia</TabsTrigger>
-          {!hideConversation && <TabsTrigger value="conversa">Conversa</TabsTrigger>}
-          <TabsTrigger value="jornada">Jornada</TabsTrigger>
-          <TabsTrigger value="notas">Notas</TabsTrigger>
-          <TabsTrigger value="hist">Histórico</TabsTrigger>
-          {olistOn && <TabsTrigger value="pedidos">Pedidos</TabsTrigger>}
+          <TabsTrigger value="dados">{t("crm.tabs.data", undefined, "Dados")}</TabsTrigger>
+          <TabsTrigger value="midia">{t("crm.tabs.media", undefined, "Mídia")}</TabsTrigger>
+          {!hideConversation && <TabsTrigger value="conversa">{t("crm.tabs.conversation", undefined, "Conversa")}</TabsTrigger>}
+          <TabsTrigger value="jornada">{t("crm.tabs.journey", undefined, "Jornada")}</TabsTrigger>
+          <TabsTrigger value="notas">{t("crm.tabs.notes", undefined, "Notas")}</TabsTrigger>
+          <TabsTrigger value="hist">{t("crm.tabs.history", undefined, "Histórico")}</TabsTrigger>
+          {olistOn && <TabsTrigger value="pedidos">{t("crm.tabs.orders", undefined, "Pedidos")}</TabsTrigger>}
         </TabsList>
 
         {olistOn && (

@@ -29,6 +29,9 @@ import { CompanyLogoDialog } from "@/components/config/company-logo-dialog";
 import { IntegracoesTab } from "@/components/config/integracoes-tab";
 import { FormulariosTab } from "@/components/config/formularios-tab";
 import { useFeatureEnabled } from "@/hooks/use-feature-flags";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { useLanguage } from "@/lib/i18n/context";
+import { Globe } from "lucide-react";
 import { MeuPlanoPanel } from "@/components/billing/meu-plano-panel";
 import { cancelMySubscription, reactivateMySubscription } from "@/lib/subscription.functions";
 import { listMyInvoices, getReceiptData, type InvoiceRow } from "@/lib/invoices.functions";
@@ -72,6 +75,7 @@ function formatCpfCnpj(value: string): string {
 
 function ConfigPage() {
   const ctx = Route.useRouteContext();
+  const { t } = useLanguage();
   const companyId = ctx.company?.id;
   const userId = ctx.user.id;
   const company = ctx.company;
@@ -541,6 +545,25 @@ function ConfigPage() {
                   <Button className="w-full sm:w-auto" onClick={saveEmpresa} disabled={savingE}>
                     {savingE ? <Loader2 className="size-4 mr-1.5 animate-spin" /> : <Save className="size-4 mr-1.5" />} Salvar Empresa
                   </Button>
+                </div>
+              </Card>
+
+              {/* Idioma do Sistema e Inteligência Artificial */}
+              <Card className="p-4 sm:p-5 space-y-4">
+                <div className="flex items-center gap-2.5">
+                  <span className="p-2 rounded-lg bg-primary/10 text-primary">
+                    <Globe className="size-4" />
+                  </span>
+                  <div>
+                    <h3 className="font-semibold text-sm">{t("config.language_section_title")}</h3>
+                    <p className="text-xs text-muted-foreground">{t("config.language_section_desc")}</p>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">{t("config.select_language_prompt")}</Label>
+                  <div className="mt-2 max-w-xs">
+                    <LanguageSwitcher variant="select" />
+                  </div>
                 </div>
               </Card>
 

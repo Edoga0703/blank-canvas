@@ -39,6 +39,7 @@ import { QuickScheduleDialog } from "@/components/agenda/quick-schedule-dialog";
 import { EncaminharDialog } from "@/components/chat/encaminhar-dialog";
 import { useFeatureEnabled } from "@/hooks/use-feature-flags";
 import { parseStageAiMeta, formatStageAiMeta } from "@/lib/crm-lead-analyzer.server";
+import { useLanguage } from "@/lib/i18n/context";
 
 
 export const Route = createFileRoute("/app/crm")({
@@ -1501,6 +1502,7 @@ function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete
   { stage: KanbanStage; count: number; total?: number; onToggleValor?: (v: boolean) => void; children: React.ReactNode; onEdit: () => void; onDelete: () => void; onAutomacao: () => void; onSetTipo: (t: "normal" | "ganho" | "perda" | "formulario" | "sem-formulario") => void; onLimpar?: () => void; onRetorno?: () => void; allowAutomacao: boolean; onAdd: () => void; isDefault?: boolean; isEmpty: boolean }) {
   const { setNodeRef: setColRef, isOver } = useDroppable({ id: `col:${stage.id}` });
   const { attributes, listeners, setNodeRef: setHandleRef } = useDraggable({ id: `stage:${stage.id}` });
+  const { t } = useLanguage();
   const tipo = (stage as any).tipo ?? "normal";
   const entradaForm = !!(stage as any).entrada_formulario;
   const mostrarValor = (stage as any).mostrar_valor !== false;
@@ -1518,10 +1520,10 @@ function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete
         <b className="font-display text-[13.5px] truncate flex-1">{stage.nome}</b>
         <span className="text-[11px] font-semibold text-muted-foreground bg-[color:var(--panel-2)] px-2 py-0.5 rounded-md min-w-[22px] text-center leading-5">{count}</span>
         {isDefault && <span className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground bg-[color:var(--panel-2)] px-1.5 py-0.5 rounded">Padrão</span>}
-        {tipo === "ganho" && <span className="text-[9px] font-bold uppercase tracking-wide text-[#22B85F] bg-[#22B85F]/12 px-1.5 py-0.5 rounded">Ganho</span>}
-        {tipo === "perda" && <span className="text-[9px] font-bold uppercase tracking-wide text-[#FF5A5A] bg-[#FF5A5A]/12 px-1.5 py-0.5 rounded">Perda</span>}
+        {tipo === "ganho" && <span className="text-[9px] font-bold uppercase tracking-wide text-[#22B85F] bg-[#22B85F]/12 px-1.5 py-0.5 rounded">{t("crm.stage_won", undefined, "Ganho")}</span>}
+        {tipo === "perda" && <span className="text-[9px] font-bold uppercase tracking-wide text-[#FF5A5A] bg-[#FF5A5A]/12 px-1.5 py-0.5 rounded">{t("crm.stage_lost", undefined, "Perda")}</span>}
         {entradaForm && <span className="text-[9px] font-bold uppercase tracking-wide text-[var(--brand)] bg-[var(--brand)]/12 px-1.5 py-0.5 rounded">Formulário</span>}
-        {isAiLocked && <span className="text-[9px] font-bold uppercase tracking-wide text-amber-700 bg-amber-500/10 border border-amber-200/60 px-1.5 py-0.5 rounded flex items-center gap-0.5" title="Bloqueada para IA"><Lock className="size-2.5" />Bloqueada</span>}
+        {isAiLocked && <span className="text-[9px] font-bold uppercase tracking-wide text-amber-700 bg-amber-500/10 border border-amber-200/60 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={t("crm.stage_locked_alert")}><Lock className="size-2.5" />{t("crm.stage_locked_badge", undefined, "Bloqueada")}</span>}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="text-muted-foreground hover:text-foreground p-1 rounded-md" onPointerDown={(e) => e.stopPropagation()}>
@@ -2044,6 +2046,7 @@ function AutomacaoDialog({ companyId, stage, stages, allStages, pipelines, agent
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useLanguage();
   const generateAi = useServerFn(generateAutomacaoMessage);
   // Rota de retorno agora é padrão em etapas de Perda.
   const [form, setForm] = useState<any>(null);
@@ -2717,6 +2720,7 @@ function PipelineDialog({ state, queues, agents, onClose, onCreate, onRename }: 
   onCreate: (nome: string, queueId?: string | null, agentId?: string | null) => void;
   onRename: (id: string, nome: string, queueId?: string | null, agentId?: string | null) => void;
 }) {
+  const { t } = useLanguage();
   const [nome, setNome] = useState("");
   const [queueId, setQueueId] = useState<string>("");
   const [agentId, setAgentId] = useState<string>("");

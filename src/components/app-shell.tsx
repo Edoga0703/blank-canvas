@@ -38,6 +38,32 @@ import { TrialBanner } from "@/components/trial-banner";
 import { OnboardingTour } from "@/components/onboarding-tour";
 import { useFeatureFlags, type FlagEntry } from "@/hooks/use-feature-flags";
 import { useCapacidades } from "@/hooks/use-capacidades";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { useLanguage } from "@/lib/i18n/context";
+
+const PATH_TO_NAV_KEY: Record<string, string> = {
+  "/app/dashboard": "nav.dashboard",
+  "/app/conversas": "nav.conversations",
+  "/app/crm": "nav.crm",
+  "/app/comercial": "nav.sales",
+  "/app/contatos": "nav.contacts",
+  "/app/prospeccao": "nav.prospecting",
+  "/app/agente": "nav.ai_agent",
+  "/app/respostas-rapidas": "nav.quick_replies",
+  "/app/agendamentos": "nav.schedules",
+  "/app/campanhas": "nav.campaigns",
+  "/app/templates": "nav.templates",
+  "/app/catalogo": "nav.catalog",
+  "/app/publicacoes": "nav.publications",
+  "/app/conteudo": "nav.content",
+  "/app/treinamentos": "nav.academy",
+  "/app/usuarios": "nav.users",
+  "/app/conexao": "nav.connection",
+  "/app/plugins": "nav.plugins",
+  "/app/configuracoes": "nav.settings",
+  "/app/relatorios": "nav.reports",
+  "/app/parceiro": "nav.partner_portal",
+};
 
 
 
@@ -312,6 +338,7 @@ export function AppShell({
           <img src={logoFull.url} alt={brand.name} className="h-10 w-auto object-contain" loading="eager" decoding="async" />
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          <LanguageSwitcher variant="compact" />
           <NotificationsBell companyId={company?.id} />
           <button
             onClick={toggleSounds}
@@ -498,7 +525,7 @@ function Sidebar({
         {sections.map((sec, i) => (
           <div key={sec.label}>
             {i > 0 && <div className="h-px bg-border mx-2 mb-3" />}
-             {!collapsed && <div className="px-3 pb-2 text-[10px] font-bold uppercase text-muted-foreground">{sec.label}</div>}
+             {!collapsed && <div className="px-3 pb-2 text-[10px] font-bold uppercase text-muted-foreground">{sec.label === "Atendimento" ? "Atención / Atendimento" : sec.label === "Gestão" ? "Gestión / Gestão" : sec.label}</div>}
             <div className="flex flex-col gap-[3px]">
               {sec.items.filter((i: any) => (!i.adminOnly || isAdmin) && (!i.superOnly || isSuperAdmin) && isFeatureVisible(i.flag) && isCapacidadeVisible(i.capacidade)).map((item: any) => (
                 item.children
@@ -573,6 +600,10 @@ function Sidebar({
               {soundsMuted ? <VolumeX className="size-4 mr-2" /> : <Volume2 className="size-4 mr-2" />}
               {soundsMuted ? "Ativar sons" : "Silenciar sons"}
             </DropdownMenuItem>
+            <div className="px-2 py-1.5 flex items-center justify-between text-xs text-muted-foreground border-t border-b border-border my-1">
+              <span className="font-medium">Idioma</span>
+              <LanguageSwitcher variant="compact" />
+            </div>
 
 
 
@@ -601,6 +632,9 @@ function Sidebar({
 
 function NavLink({ item, active, primary, collapsed, badgeCount, onNavigateStart }: { item: NavItem; active: boolean; primary: string; collapsed?: boolean; badgeCount?: number; onNavigateStart?: (to?: string) => void }) {
   const Icon = item.icon;
+  const { t } = useLanguage();
+  const navKey = item.to ? PATH_TO_NAV_KEY[item.to] : undefined;
+  const displayLabel = navKey ? t(navKey, undefined, item.label) : item.label;
   return (
     <Link
       to={item.to}
@@ -630,7 +664,7 @@ function NavLink({ item, active, primary, collapsed, badgeCount, onNavigateStart
       </div>
       {!collapsed && (
         <>
-          <span className="flex-1 truncate">{item.label}</span>
+          <span className="flex-1 truncate">{displayLabel}</span>
           {!!badgeCount && badgeCount > 0 && (
           <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold grid place-items-center">
               {badgeCount > 99 ? "99+" : badgeCount}

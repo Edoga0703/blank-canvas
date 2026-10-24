@@ -170,12 +170,24 @@ export async function analyzeLeadInternal(
     .join("\n\n");
 
   // 6. Preparar el Master Prompt analítico
+  const { data: defaultAgent } = await supabaseAdmin
+    .from("agent_config")
+    .select("idioma")
+    .eq("company_id", companyId)
+    .eq("is_default", true)
+    .maybeSingle();
+
+  const langCode = (defaultAgent?.idioma || "es").toLowerCase();
+  const langLabel = langCode.startsWith("pt") ? "Português" : langCode.startsWith("en") ? "English" : "Español";
   const systemPrompt = `
 ${DEFAULT_CRM_MASTER_PROMPT}
 
 EMBUDO DE VENTAS ACTIVO: "${pipeline?.nome || 'Comercial'}"
 ETAPAS CONFIGURADAS Y SUS CRITERIOS:
 ${stagesPromptBlock}
+
+IDIOMA DE RESPUESTA OBLIGATORIO:
+Emite los campos de texto ("resumo", "justificativa", "sugestao_treinamento") estrictamente en \${langLabel}.
 
 INSTRUCCIONES DE SALIDA:
 Analiza la conversación que se adjunta y responde OBLIGATORIAMENTE con un único bloque JSON válido con el siguiente formato:

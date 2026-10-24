@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sparkles, Loader2, CheckCircle2, AlertTriangle, ArrowRight, Lightbulb, Lock, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import { analyzeLeadNow, applyStageMovement, type LeadAnalysisResult } from "@/lib/crm-lead-analyzer.server";
+import { useLanguage } from "@/lib/i18n/context";
 
 export function LeadAiAnalyzerDialog({
   cardId,
@@ -22,6 +23,7 @@ export function LeadAiAnalyzerDialog({
   onOpenChange: (o: boolean) => void;
   onStageChanged?: (newStageId: string) => void;
 }) {
+  const { t } = useLanguage();
   const analyzeFn = useServerFn(analyzeLeadNow);
   const moveFn = useServerFn(applyStageMovement);
 
@@ -86,7 +88,7 @@ export function LeadAiAnalyzerDialog({
               <Sparkles className="size-5" />
             </span>
             <div>
-              <DialogTitle className="text-base font-semibold">Auditoría y Diagnóstico de Lead</DialogTitle>
+              <DialogTitle className="text-base font-semibold">{t("crm.audit_dialog_title", undefined, "Auditoría y Diagnóstico de Lead")}</DialogTitle>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Lead: <span className="font-medium text-foreground">{leadName || "Sin nombre"}</span> • Etapa actual:{" "}
                 <span className="font-medium text-foreground">{currentStageName}</span>
@@ -126,7 +128,7 @@ export function LeadAiAnalyzerDialog({
               {/* Badge de Intención y Calificación */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium text-muted-foreground">Intención del cliente:</span>
+                  <span className="text-xs font-medium text-muted-foreground">{t("crm.customer_intent", undefined, "Intención del cliente:")}</span>
                   <Badge variant="outline" className={`font-semibold text-xs px-2.5 py-0.5 ${intencionColor}`}>
                     {result.intencao}
                   </Badge>
@@ -141,7 +143,7 @@ export function LeadAiAnalyzerDialog({
               {/* Resumen de la Negociación */}
               <div className="p-3.5 rounded-xl border border-border bg-background space-y-1.5 shadow-sm">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Resumen Ejecutivo
+                  {t("crm.executive_summary", undefined, "Resumen Ejecutivo")}
                 </span>
                 <p className="text-[13.5px] leading-relaxed text-foreground">{result.resumo}</p>
               </div>
@@ -196,7 +198,7 @@ export function LeadAiAnalyzerDialog({
 
         <DialogFooter className="p-4 border-t border-border bg-muted/20 flex flex-row items-center justify-between sm:justify-between">
           <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-            Cerrar
+            {t("common.close", undefined, "Cerrar")}
           </Button>
 
           {result && (

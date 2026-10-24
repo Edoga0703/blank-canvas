@@ -29,6 +29,8 @@ import { getRememberChoice, setRememberChoice } from "@/lib/session-persistence"
 import { maskPhone } from "@/lib/masks";
 import { parseBrPhone } from "@/lib/br-phone";
 import { sendSignupWelcome } from "@/lib/signup-welcome.functions";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { useLanguage } from "@/lib/i18n/context";
 
 
 type Search = { modo?: "login" | "signup"; plano?: string; next?: string; ref?: string };
@@ -360,7 +362,9 @@ function EntrarPage() {
           </div>
 
           <div className="w-full max-w-md">
-
+            <div className="flex justify-end mb-3">
+              <LanguageSwitcher variant="pill" />
+            </div>
 
             <div className="relative rounded-2xl bg-white border border-[#334155]/10 shadow-xl shadow-[#334155]/10 p-5 sm:p-7 overflow-hidden">
               <div
