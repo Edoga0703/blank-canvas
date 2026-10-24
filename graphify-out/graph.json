@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T20:08:32.754654+00:00",
+  "generated_at": "2026-10-24T21:01:40.498667+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -566,6 +566,10 @@
       "bytes": 9943
     },
     {
+      "path": "src/components/language-switcher.tsx",
+      "bytes": 4957
+    },
+    {
       "path": "src/components/plan-usage-badge.tsx",
       "bytes": 1264
     },
@@ -583,7 +587,7 @@
     },
     {
       "path": "src/components/app-shell.tsx",
-      "bytes": 33610
+      "bytes": 35160
     },
     {
       "path": "src/components/mobile-app-banner.tsx",
@@ -975,7 +979,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.server.ts",
-      "bytes": 13689
+      "bytes": 14196
     },
     {
       "path": "src/lib/wablast.server.ts",
@@ -1039,7 +1043,7 @@
     },
     {
       "path": "src/lib/ai-prompt.ts",
-      "bytes": 30796
+      "bytes": 43212
     },
     {
       "path": "src/lib/plan.functions.ts",
@@ -1575,7 +1579,7 @@
     },
     {
       "path": "src/routes/__root.tsx",
-      "bytes": 9399
+      "bytes": 9507
     },
     {
       "path": "src/routes/master.tsx",
@@ -1611,7 +1615,7 @@
     },
     {
       "path": "src/routes/entrar.tsx",
-      "bytes": 32331
+      "bytes": 32568
     },
     {
       "path": "src/hooks/use-standalone.tsx",
@@ -1719,11 +1723,11 @@
     },
     {
       "path": "src/components/crm/lead-ai-analyzer-dialog.tsx",
-      "bytes": 9882
+      "bytes": 10125
     },
     {
       "path": "src/components/crm/lead-drawer.tsx",
-      "bytes": 73638
+      "bytes": 74018
     },
     {
       "path": "src/components/crm/olist-pedidos-tab.tsx",
@@ -2378,6 +2382,14 @@
       "bytes": 756
     },
     {
+      "path": "src/lib/i18n/context.tsx",
+      "bytes": 4892
+    },
+    {
+      "path": "src/lib/i18n/translations.ts",
+      "bytes": 22647
+    },
+    {
       "path": "src/lib/messaging/provider-registry.server.ts",
       "bytes": 822
     },
@@ -2595,7 +2607,7 @@
     },
     {
       "path": "src/routes/app/configuracoes.tsx",
-      "bytes": 68263
+      "bytes": 69352
     },
     {
       "path": "src/routes/app/campanhas.tsx",
@@ -2627,7 +2639,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 142566
+      "bytes": 142834
     },
     {
       "path": "src/routes/app/treinamentos.$courseId.tsx",
@@ -3532,6 +3544,30 @@
       "target": "@/assets/capi-conversa-logo-horizontal-black.png.asset.json"
     },
     {
+      "source": "src/components/language-switcher.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
+      "source": "src/components/language-switcher.tsx",
+      "target": "@/lib/i18n/translations"
+    },
+    {
+      "source": "src/components/language-switcher.tsx",
+      "target": "@/components/ui/dropdown-menu"
+    },
+    {
+      "source": "src/components/language-switcher.tsx",
+      "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/components/language-switcher.tsx",
+      "target": "lucide-react"
+    },
+    {
+      "source": "src/components/language-switcher.tsx",
+      "target": "@/lib/utils"
+    },
+    {
       "source": "src/components/plan-usage-badge.tsx",
       "target": "@tanstack/react-router"
     },
@@ -3690,6 +3726,14 @@
     {
       "source": "src/components/app-shell.tsx",
       "target": "@/hooks/use-capacidades"
+    },
+    {
+      "source": "src/components/app-shell.tsx",
+      "target": "@/components/language-switcher"
+    },
+    {
+      "source": "src/components/app-shell.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/components/mobile-app-banner.tsx",
@@ -7717,6 +7761,10 @@
     },
     {
       "source": "src/routes/__root.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
+      "source": "src/routes/__root.tsx",
       "target": "@/assets/capi-conversa-logo-horizontal-black.png.asset.json"
     },
     {
@@ -8026,6 +8074,14 @@
     {
       "source": "src/routes/entrar.tsx",
       "target": "@/lib/signup-welcome.functions"
+    },
+    {
+      "source": "src/routes/entrar.tsx",
+      "target": "@/components/language-switcher"
+    },
+    {
+      "source": "src/routes/entrar.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/routes/entrar.tsx",
@@ -8424,6 +8480,10 @@
       "target": "@/lib/crm-lead-analyzer.server"
     },
     {
+      "source": "src/components/crm/lead-ai-analyzer-dialog.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
       "source": "src/components/crm/lead-drawer.tsx",
       "target": "react"
     },
@@ -8518,6 +8578,10 @@
     {
       "source": "src/components/crm/lead-drawer.tsx",
       "target": "@/components/crm/olist-pedidos-tab"
+    },
+    {
+      "source": "src/components/crm/lead-drawer.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/components/crm/lead-drawer.tsx",
@@ -12868,6 +12932,18 @@
       "target": "./tools/send-whatsapp"
     },
     {
+      "source": "src/lib/i18n/context.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/lib/i18n/context.tsx",
+      "target": "./translations"
+    },
+    {
+      "source": "src/lib/i18n/context.tsx",
+      "target": "@/integrations/supabase/client"
+    },
+    {
       "source": "src/lib/messaging/provider-registry.server.ts",
       "target": "@/lib/messaging/providers/dapi.server"
     },
@@ -14333,6 +14409,18 @@
     },
     {
       "source": "src/routes/app/configuracoes.tsx",
+      "target": "@/components/language-switcher"
+    },
+    {
+      "source": "src/routes/app/configuracoes.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
+      "source": "src/routes/app/configuracoes.tsx",
+      "target": "lucide-react"
+    },
+    {
+      "source": "src/routes/app/configuracoes.tsx",
       "target": "@/components/billing/meu-plano-panel"
     },
     {
@@ -14994,6 +15082,10 @@
     {
       "source": "src/routes/app/crm.tsx",
       "target": "@/lib/crm-lead-analyzer.server"
+    },
+    {
+      "source": "src/routes/app/crm.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/routes/app/crm.tsx",
