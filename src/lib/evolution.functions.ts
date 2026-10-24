@@ -385,7 +385,7 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
     const companyId = await resolveCompanyId(supabase, userId);
     await (await import("./billing/access.server")).assertCompanyCanWrite(companyId);
     const { supabaseAdmin: sbAdmin } = await import("@/integrations/supabase/client.server");
-    const inst = await getInstanceForContact(sbAdmin, companyId, data.numero, "id,instance_name,status,numero,provider,instance_token", userId);
+    let inst = await getInstanceForContact(sbAdmin, companyId, data.numero, "id,instance_name,status,numero,provider,instance_token", userId);
     {
       const { canonicalOutboundNumero } = await import("./phone-thread.server");
       const canon = await canonicalOutboundNumero(sbAdmin, companyId, data.numero, inst as any);
@@ -566,7 +566,7 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
     const companyId = await resolveCompanyId(supabase, userId);
     await (await import("./billing/access.server")).assertCompanyCanWrite(companyId);
     const { supabaseAdmin: sbAdmin } = await import("@/integrations/supabase/client.server");
-    const inst = await getInstanceForContact(sbAdmin, companyId, data.numero, "id,instance_name,status,numero,provider,instance_token", userId);
+    let inst = await getInstanceForContact(sbAdmin, companyId, data.numero, "id,instance_name,status,numero,provider,instance_token", userId);
     {
       const { canonicalOutboundNumero } = await import("./phone-thread.server");
       const canon = await canonicalOutboundNumero(sbAdmin, companyId, data.numero, inst as any);
@@ -669,7 +669,7 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
     const companyId = await resolveCompanyId(supabase, userId);
     await (await import("./billing/access.server")).assertCompanyCanWrite(companyId);
     const { supabaseAdmin: sbAdmin } = await import("@/integrations/supabase/client.server");
-    const inst = await getInstanceForContact(sbAdmin, companyId, data.numero, "id,instance_name,status,numero,provider,instance_token", userId);
+    let inst = await getInstanceForContact(sbAdmin, companyId, data.numero, "id,instance_name,status,numero,provider,instance_token", userId);
     {
       const { canonicalOutboundNumero } = await import("./phone-thread.server");
       const canon = await canonicalOutboundNumero(sbAdmin, companyId, data.numero, inst as any);

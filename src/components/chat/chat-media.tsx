@@ -58,7 +58,8 @@ export function ChatMedia({ messageId, tipo, url, nome, outbound, onOpen }: Prop
 
   useEffect(() => {
     attempts.current = 0;
-    if (url) {
+    // Se a URL direta for do Backblaze B2 ou D-API sem CORS, recupera a rota proxied com suporte a Range
+    if (url && !url.includes("backblazeb2.com") && !url.includes("d-api-media")) {
       setSrc(url);
       setLoading(false);
       setFailed(false);
@@ -153,20 +154,59 @@ export function ChatMedia({ messageId, tipo, url, nome, outbound, onOpen }: Prop
     );
   }
 
-  // Força download (arquivos como .pfx não abrem no navegador).
+  // Documentos (PDF, DOCX, etc.): Força download sem bloqueios de navegação ou CORS
   const fileName = nome || "arquivo";
-  const downloadHref = src.includes("/storage/v1/object/sign/")
+
+  function handleDocumentClick(e: React.MouseEvent) {
+    if (src && src.startsWith("data:")) {
+      e.preventDefault();
+      try {
+        const parts = src.split(",");
+        const rawBase64 = parts[1] || "";
+        const byteString = atob(rawBase64);
+        const mimeMatch = parts[0].match(/:(.*?);/);
+        const mime = mimeMatch ? mimeMatch[1] : "application/octet-stream";
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+          ia[i] = byteString.charCodeAt(i);
+        }
+        const blob = new Blob([ab], { type: mime });
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      } catch (err) {
+        console.warn("[ChatMedia] Blob download error, falling back:", err);
+      }
+    }
+  }
+
+  const downloadHref = src.startsWith("data:")
+    ? "#"
+    : src.includes("/api/public/chat-media")
+    ? `${src}&download=1&filename=${encodeURIComponent(fileName)}`
+    : src.includes("/storage/v1/object/sign/")
     ? `${src}${src.includes("?") ? "&" : "?"}download=${encodeURIComponent(fileName)}`
     : src;
+
   return (
     <a
       href={downloadHref}
       download={fileName}
+      onClick={handleDocumentClick}
+      target={src.startsWith("http") ? "_blank" : undefined}
       rel="noreferrer"
-      className="flex items-center gap-2 mb-1.5 px-2 py-1.5 rounded-md bg-black/10 hover:bg-black/20"
+      className="flex items-center gap-2 mb-1.5 px-2.5 py-2 rounded-md bg-black/10 hover:bg-black/20 cursor-pointer transition-colors"
+      title={`Baixar ${fileName}`}
     >
-      <FileText className="size-4" /> <span className="truncate text-[12px]">{nome ?? "Documento"}</span>
-      <Download className="size-3.5 shrink-0 opacity-70" />
+      <FileText className="size-4 shrink-0 text-red-500" />
+      <span className="truncate text-[12px] font-medium">{fileName}</span>
+      <Download className="size-3.5 shrink-0 opacity-70 ml-auto" />
     </a>
   );
 }

@@ -28,6 +28,10 @@ export const resolveChatMediaUrl = createServerFn({ method: "POST" })
     const companyId = await resolveCompanyIdCached(supabase, userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    const { generateMediaToken } = await import("@/routes/api/public/chat-media");
+    const { sig, exp } = generateMediaToken(data.messageId);
+    const proxiedUrl = `/api/public/chat-media?id=${data.messageId}&sig=${sig}&exp=${exp}`;
+
     // 1) Anexo em Cloudflare R2 validando company_id
     const { data: attachment } = await (supabaseAdmin as any)
       .from("message_attachments")
@@ -39,14 +43,16 @@ export const resolveChatMediaUrl = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (attachment?.storage_key) {
-      const { createR2DownloadUrl } = await import("@/lib/storage/r2.server");
-      return { url: createR2DownloadUrl(attachment.storage_key, 3600), tipo: attachment.kind };
+      return { url: proxiedUrl, tipo: attachment.kind };
     }
     if (attachment?.storage_url && attachment.storage_url.startsWith("http")) {
-      return { url: attachment.storage_url, tipo: attachment.kind };
+      return { url: proxiedUrl, tipo: attachment.kind };
     }
-    if (attachment?.provider_url && (attachment.provider_url.startsWith("http") || attachment.provider_url.startsWith("data:"))) {
-      return { url: attachment.provider_url, tipo: attachment.kind };
+    if (attachment?.provider_url) {
+      if (attachment.provider_url.startsWith("data:")) {
+        return { url: attachment.provider_url, tipo: attachment.kind };
+      }
+      return { url: proxiedUrl, tipo: attachment.kind };
     }
 
     // 2) Mensagem na tabela mensagens validando company_id
@@ -62,7 +68,7 @@ export const resolveChatMediaUrl = createServerFn({ method: "POST" })
     // Figurinhas / stickers salvos pelo D-API que tenham URL em raw_payload
     const rawUrl = (msg.raw_payload as any)?.data?.media_url || (msg.raw_payload as any)?.data?.media_data?.early_media_url;
     if (rawUrl && typeof rawUrl === "string" && rawUrl.startsWith("http")) {
-      return { url: rawUrl, tipo: msg.midia_tipo || (msg.raw_payload as any)?.data?.type || "sticker" };
+      return { url: proxiedUrl, tipo: msg.midia_tipo || (msg.raw_payload as any)?.data?.type || "sticker" };
     }
 
     // Mídia legada no Supabase Storage: basta reassinar
@@ -75,8 +81,11 @@ export const resolveChatMediaUrl = createServerFn({ method: "POST" })
       }
     }
 
-    if (msg.midia_url && (msg.midia_url.startsWith("http") || msg.midia_url.startsWith("data:"))) {
-      return { url: msg.midia_url, tipo: msg.midia_tipo };
+    if (msg.midia_url) {
+      if (msg.midia_url.startsWith("data:")) {
+        return { url: msg.midia_url, tipo: msg.midia_tipo };
+      }
+      return { url: proxiedUrl, tipo: msg.midia_tipo };
     }
 
     // 3) Sem mídia salva: tenta baixar via D-API
@@ -129,7 +138,7 @@ export const resolveChatMediaUrl = createServerFn({ method: "POST" })
             console.warn("[resolveChatMediaUrl] background R2 archive error:", e);
           }
 
-          return { url: dataUrl, tipo: inferredType };
+          return { url: proxiedUrl, tipo: inferredType };
         }
       }
     }
@@ -182,35 +191,13 @@ export const getConversationMedia = createServerFn({ method: "POST" })
       attachmentByMsgId.set(a.mensagem_id, a);
     }
 
-    const { createR2DownloadUrl } = await import("@/lib/storage/r2.server");
-
-    const withPath = (msgs ?? []).filter((m) => !!storagePathFromUrl(m.midia_url));
-    const paths = withPath.map((m) => storagePathFromUrl(m.midia_url)!);
-
-    const signedByUrl = new Map<string, string>();
-    if (paths.length) {
-      const { data: signedList } = await supabaseAdmin.storage.from(BUCKET).createSignedUrls(paths, SIGN_TTL);
-      for (const s of signedList ?? []) {
-        if (s?.signedUrl && s.path) signedByUrl.set(s.path, s.signedUrl);
-      }
-    }
+    const { generateMediaToken } = await import("@/routes/api/public/chat-media");
 
     const out: ConversationMediaItem[] = [];
     for (const m of msgs ?? []) {
       const att = attachmentByMsgId.get(m.id);
-      let url: string | null = null;
-      if (att?.storage_key) {
-        url = createR2DownloadUrl(att.storage_key, 3600);
-      } else if (att?.storage_url) {
-        url = att.storage_url;
-      } else if (att?.provider_url) {
-        url = att.provider_url;
-      } else {
-        const path = storagePathFromUrl(m.midia_url);
-        url = path ? (signedByUrl.get(path) ?? null) : m.midia_url;
-      }
-
-      if (!url) continue;
+      const { sig, exp } = generateMediaToken(m.id);
+      const url = `/api/public/chat-media?id=${m.id}&sig=${sig}&exp=${exp}`;
 
       out.push({
         id: m.id,

@@ -154,7 +154,7 @@ interface Msg {
   direcao: "entrada" | "saida"; autor: "ia" | "humano" | "contato" | "automacao";
   texto: string; created_at: string; user_id: string | null;
   midia_url?: string | null; midia_tipo?: string | null; midia_mime?: string | null; midia_nome?: string | null;
-  reacao?: string | null; editado_em?: string | null;
+  reacao?: string | null; editado_em?: string | null; deletado_em?: string | null;
   whatsapp_message_id?: string | null; reply_to_id?: string | null;
   status_envio?: string | null;
   provider?: string | null;
@@ -688,7 +688,7 @@ function ConversasPage() {
   // PostgREST limita 1000 linhas por request. Buscamos em páginas para manter
   // TODO o histórico da conta disponível (sem cortar conversas antigas).
   const MSG_COLS =
-    "id,numero,contato_nome,direcao,autor,texto,created_at,user_id,midia_url,midia_tipo,midia_mime,midia_nome,reacao,editado_em,whatsapp_message_id,reply_to_id,status_envio,provider,raw_payload";
+    "id,numero,contato_nome,direcao,autor,texto,created_at,user_id,midia_url,midia_tipo,midia_mime,midia_nome,reacao,editado_em,deletado_em,whatsapp_message_id,reply_to_id,status_envio,provider,raw_payload";
 
   // Paginação por cursor (keyset): OFFSET profundo fazia o banco reler tudo a
   // cada página e era a principal causa da lentidão ao abrir Conversas.
@@ -792,7 +792,7 @@ function ConversasPage() {
   async function refreshRecent(cid: string) {
     const [{ data }, { data: cds }] = await Promise.all([
       supabase
-        .from("mensagens").select("id,numero,contato_nome,direcao,autor,texto,created_at,user_id,midia_url,midia_tipo,midia_mime,midia_nome,reacao,editado_em,whatsapp_message_id,reply_to_id,status_envio,provider").eq("company_id", cid)
+        .from("mensagens").select("id,numero,contato_nome,direcao,autor,texto,created_at,user_id,midia_url,midia_tipo,midia_mime,midia_nome,reacao,editado_em,deletado_em,whatsapp_message_id,reply_to_id,status_envio,provider").eq("company_id", cid)
         .order("created_at", { ascending: false })
         .limit(100),
       supabase.from("crm_cards").select("id,numero,nome,foto_url,owner_id,stage_id,canal_chat,department_id,transfer_para_user_id,transfer_de_user_id,transfer_status").eq("company_id", cid).order("ultima_em", { ascending: false, nullsFirst: false }).limit(400),
@@ -2138,11 +2138,37 @@ function ConversasPage() {
                  className="flex-1 overflow-auto p-3 sm:p-6 flex flex-col gap-3 bg-muted"
               >
                 {thread.map((m, i) => {
-                  const quoted = m.reply_to_id ? msgs.find((x) => x.id === m.reply_to_id) ?? null : null;
+                  const quotedMsg = m.reply_to_id
+                    ? msgs.find((x) => x.id === m.reply_to_id || (x.whatsapp_message_id && x.whatsapp_message_id === m.reply_to_id)) ?? null
+                    : null;
+                  const quotedSnippet = quotedMsg
+                    ? {
+                        sender: quotedMsg.direcao === "saida" ? "Você" : (quotedMsg.contato_nome ?? "Contato"),
+                        text: quotedMsg.texto || (quotedMsg.midia_tipo ? `[${quotedMsg.midia_tipo}]` : ""),
+                        id: quotedMsg.id,
+                      }
+                    : (() => {
+                        const rp = (m as any).raw_payload?.data;
+                        const ctx = rp?.context || rp?.message?.extendedTextMessage?.contextInfo || rp?.message?.contextInfo;
+                        const quotedTxt =
+                          ctx?.quotedMessage?.conversation ||
+                          ctx?.quotedMessage?.extendedTextMessage?.text ||
+                          ctx?.quoted_content ||
+                          ctx?.body ||
+                          null;
+                        if (quotedTxt) {
+                          return {
+                            sender: "Mensagem citada",
+                            text: quotedTxt,
+                            id: null,
+                          };
+                        }
+                        return null;
+                      })();
                   const prev = thread[i - 1];
                   const showSep = !prev || !isSameDay(prev.created_at, m.created_at);
                   return (
-                    <>
+                    <div key={m.id} id={`msg-${m.id}`} className="contents">
                       {showSep && (
                         <div key={`sep-${m.id}`} className="flex items-center justify-center my-2">
                           <span className="text-[10.5px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full bg-[color:var(--panel)] border border-[color:var(--hairline)] text-muted-foreground">
@@ -2151,17 +2177,15 @@ function ConversasPage() {
                         </div>
                       )}
                       <Bubble
-                        key={m.id}
                         m={m}
-                        quoted={quoted}
+                        quotedSnippet={quotedSnippet}
                         companyId={companyId ?? ""}
                         onReply={(msg) => setReplyTo(msg)}
                         hasUnofficialInstance={instances.some(i => (i.provider === "dapi" || (i as any).provider_type === "dapi") && (i.status === "connected" || i.status === "open"))}
                         agentTraits={agentConfig?.avatar_traits}
                         agentAvatarUrl={agentConfig?.avatar_url}
-
                       />
-                    </>
+                    </div>
                   );
                 })}
               </div>
@@ -2487,7 +2511,7 @@ function StageChip({ nome, cor }: { nome: string; cor: string | null }) {
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 const MORE_REACTIONS = ["👏", "🎉", "🔥", "✅", "🤔", "😍", "😡", "💯", "🙌", "🤝", "✨", "😅"];
 
-function Bubble({ m, quoted, companyId, onReply, agentTraits, agentAvatarUrl, hasUnofficialInstance }: { m: Msg; quoted?: Msg | null; companyId: string; onReply?: (m: Msg) => void; agentTraits?: any; agentAvatarUrl?: string; hasUnofficialInstance?: boolean }) {
+function Bubble({ m, quotedSnippet, companyId, onReply, agentTraits, agentAvatarUrl, hasUnofficialInstance }: { m: Msg; quotedSnippet?: { sender: string; text: string; id?: string | null } | null; companyId: string; onReply?: (m: Msg) => void; agentTraits?: any; agentAvatarUrl?: string; hasUnofficialInstance?: boolean }) {
   const isOut = m.direcao === "saida";
   const ia = m.autor === "ia";
   const automacao = m.autor === "automacao";
@@ -2563,9 +2587,10 @@ function Bubble({ m, quoted, companyId, onReply, agentTraits, agentAvatarUrl, ha
 
   const ageMs = Date.now() - new Date(m.created_at).getTime();
   const isOfficialMessage = m.provider === "dapi_official";
+  const isDeleted = Boolean(m.deletado_em || m.texto === "🚫 Mensagem apagada");
   // Borrar y editar solo están disponibles si se tiene conectada la API No Oficial (Meta Oficial no lo soporta)
-  const canEdit = isOut && !isOfficialMessage && !!hasUnofficialInstance && m.autor !== "ia" && m.autor !== "automacao" && !!m.texto && !media && ageMs < 15 * 60 * 1000 && (m as any).status_envio !== "erro" && (m as any).status_envio !== "falha";
-  const canDelete = isOut ? (!isOfficialMessage && !!hasUnofficialInstance) : true;
+  const canEdit = !isDeleted && isOut && !isOfficialMessage && !!hasUnofficialInstance && m.autor !== "ia" && m.autor !== "automacao" && !!m.texto && !media && ageMs < 15 * 60 * 1000 && (m as any).status_envio !== "erro" && (m as any).status_envio !== "falha";
+  const canDelete = !isDeleted && (isOut ? (!isOfficialMessage && !!hasUnofficialInstance) : true);
 
   return (
     <div
@@ -2612,10 +2637,19 @@ function Bubble({ m, quoted, companyId, onReply, agentTraits, agentAvatarUrl, ha
             </DropdownMenu>
           )}
 
-          {quoted && (
-            <div className={`mb-1.5 px-2 py-1 rounded border-l-2 text-[11.5px] ${isOut ? "bg-white/10 border-white/60" : "bg-black/5 border-[color:var(--brand)]"} truncate`}>
-              <div className="opacity-70 text-[10px] font-semibold">{quoted.direcao === "saida" ? "Você" : (quoted.contato_nome ?? "Contato")}</div>
-              <div className="truncate opacity-90">{quoted.texto || (quoted.midia_tipo ? `[${quoted.midia_tipo}]` : "")}</div>
+          {quotedSnippet && (
+            <div
+              onClick={() => {
+                if (quotedSnippet.id) {
+                  const el = document.getElementById(`msg-${quotedSnippet.id}`);
+                  el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+              }}
+              className={`mb-1.5 px-2.5 py-1.5 rounded border-l-4 text-[11.5px] cursor-pointer transition-opacity hover:opacity-90 ${isOut ? "bg-white/15 border-white/80 text-white" : "bg-black/5 border-[color:var(--brand)] text-foreground"} truncate`}
+              title="Ir para a mensagem citada"
+            >
+              <div className="opacity-75 text-[10px] font-bold tracking-tight">{quotedSnippet.sender}</div>
+              <div className="truncate opacity-95 text-[11.5px] font-normal">{quotedSnippet.text}</div>
             </div>
           )}
           {isOut && (
@@ -2631,16 +2665,8 @@ function Bubble({ m, quoted, companyId, onReply, agentTraits, agentAvatarUrl, ha
               </span>
             </div>
           )}
-          {media && media.tipo !== "audio" && (
+          {media && (
             <ChatMedia messageId={m.id} tipo={media.tipo} url={media.url} nome={media.nome} outbound={isOut} onOpen={openMediaLightbox} />
-          )}
-          {media?.tipo === "audio" && (
-            <div className="mb-1.5 -mx-1">
-              <WhatsappAudio 
-                src={media.url.startsWith("http") || media.url.startsWith("data:") || media.url.startsWith("/") ? media.url : `data:${media.mime || "audio/ogg"};base64,${media.url}`} 
-                outbound={isOut} 
-              />
-            </div>
           )}
           {!media && m.midia_tipo && (
             <ChatMedia messageId={m.id} tipo={m.midia_tipo} url={m.midia_url || null} nome={m.midia_nome} outbound={isOut} onOpen={openMediaLightbox} />
@@ -2651,7 +2677,12 @@ function Bubble({ m, quoted, companyId, onReply, agentTraits, agentAvatarUrl, ha
           {!media && !m.midia_tipo && !m.texto && m.whatsapp_message_id && (
             <ChatMedia messageId={m.id} tipo="unknown" url={null} nome={null} outbound={isOut} onOpen={openMediaLightbox} />
           )}
-          {editing ? (
+          {isDeleted ? (
+            <div className="italic opacity-60 flex items-center gap-1.5 text-[12.5px] py-0.5">
+              <span className="text-[12px] opacity-70">🚫</span>
+              <span>Esta mensagem foi apagada</span>
+            </div>
+          ) : editing ? (
             <div className="flex flex-col gap-2 min-w-[240px]">
               <textarea
                 value={editText}
@@ -2689,7 +2720,7 @@ function Bubble({ m, quoted, companyId, onReply, agentTraits, agentAvatarUrl, ha
               )}
               <span className="flex items-center gap-1">
                 {new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                {m.editado_em && <span className="italic">· editada</span>}
+                {m.deletado_em ? <span className="italic">· apagada</span> : m.editado_em ? <span className="italic">· editada</span> : null}
                 {isOut && m.status_envio === "pendente" && <span className="italic">· enviando</span>}
                 {isOut && m.status_envio === "falha" && <span className="font-semibold">· falhou</span>}
                 {isOut && m.status_envio === "enviado" && <Check className="size-3 text-white/60" />}

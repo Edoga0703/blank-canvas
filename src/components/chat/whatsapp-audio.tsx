@@ -42,30 +42,51 @@ export function WhatsappAudio({ src, outbound }: { src: string; outbound: boolea
     setSpeed(SPEEDS[(i + 1) % SPEEDS.length]!);
   }
 
-
   useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
+    setPlaying(false);
+    setCur(0);
     const onTime = () => setCur(a.currentTime);
     const onLoaded = () => setDur(a.duration || 0);
     const onEnd = () => { setPlaying(false); setCur(0); };
+    const onError = () => {
+      console.warn("[WhatsappAudio] Error event on audio src:", src);
+      setPlaying(false);
+    };
     a.addEventListener("timeupdate", onTime);
     a.addEventListener("loadedmetadata", onLoaded);
     a.addEventListener("durationchange", onLoaded);
     a.addEventListener("ended", onEnd);
+    a.addEventListener("error", onError);
     return () => {
       a.removeEventListener("timeupdate", onTime);
       a.removeEventListener("loadedmetadata", onLoaded);
       a.removeEventListener("durationchange", onLoaded);
       a.removeEventListener("ended", onEnd);
+      a.removeEventListener("error", onError);
     };
-  }, []);
+  }, [src]);
 
   function toggle() {
     const a = audioRef.current;
     if (!a) return;
-    if (playing) { a.pause(); setPlaying(false); }
-    else { void a.play(); setPlaying(true); }
+    if (playing) {
+      a.pause();
+      setPlaying(false);
+    } else {
+      const playPromise = a.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setPlaying(true);
+          })
+          .catch((err) => {
+            console.warn("[WhatsappAudio] Play rejected:", err);
+            setPlaying(false);
+          });
+      }
+    }
   }
 
   function seekAt(e: React.MouseEvent<HTMLDivElement>) {
@@ -122,7 +143,7 @@ export function WhatsappAudio({ src, outbound }: { src: string; outbound: boolea
       >
         {speed.toString().replace(".", ",")}x
       </button>
-      <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
+      <audio ref={audioRef} src={src} preload="metadata" playsInline className="hidden" />
     </div>
   );
 }
