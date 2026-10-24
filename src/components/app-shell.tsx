@@ -8,7 +8,7 @@ import {
   Inbox, Users, BarChart3, Settings, Contact, Megaphone, Webhook, Wallet,
   ChevronsLeft, ChevronsRight, Zap, ChevronDown, CalendarClock, Zap as Bolt, Bell, Volume2, VolumeX,
   PanelLeft, User as UserIcon, Package, Puzzle, MoreHorizontal, Workflow, TrendingUp, FileText,
-  GraduationCap, CreditCard, Radar, Share2, Images
+  GraduationCap, CreditCard, Radar, Share2, Images, Globe
 } from "lucide-react";
 import { AgentAvatar } from "@/components/agente/agent-avatar";
 
@@ -538,7 +538,16 @@ function Sidebar({
       </nav>
 
        <div className={`shrink-0 border-t border-border ${collapsed ? "p-3" : "p-3"}`}>
-         {collapsed && <button type="button" onClick={onToggleCollapsed} title="Expandir menu" aria-label="Expandir menu" className="mb-3 grid size-10 place-items-center rounded-full bg-muted text-foreground hover:bg-accent"><ChevronsRight className="size-5" /></button>}
+         <div className={`mb-2.5 flex items-center ${collapsed ? "justify-center" : "justify-between px-0.5"}`}>
+          {!collapsed && (
+            <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+              <Globe className="size-3.5 text-primary" />
+              Idioma
+            </span>
+          )}
+          <LanguageSwitcher variant={collapsed ? "compact" : "segmented"} />
+        </div>
+        {collapsed && <button type="button" onClick={onToggleCollapsed} title="Expandir menu" aria-label="Expandir menu" className="mb-3 grid size-10 place-items-center rounded-full bg-muted text-foreground hover:bg-accent"><ChevronsRight className="size-5" /></button>}
         <DropdownMenu>
 
 

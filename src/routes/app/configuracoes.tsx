@@ -304,13 +304,25 @@ function ConfigPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">Configurações <HelpTip text="Perfil, empresa, identidade, templates, horários, satisfação, segurança, integrações e plano." /></h1>
-        <p className="text-xs sm:text-sm text-muted-foreground">Gerencie sua conta, sua empresa e o funcionamento do sistema.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+            {t("config.title", undefined, "Configurações")} <HelpTip text="Perfil, empresa, identidade, templates, horários, satisfação, segurança, integrações e plano." />
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            {t("config.subtitle", undefined, "Gerencie sua conta, sua empresa e o funcionamento do sistema.")}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 self-start sm:self-auto bg-card border border-border p-1.5 rounded-2xl shadow-2xs">
+          <Globe className="size-4 text-primary ml-1.5" />
+          <span className="text-xs font-semibold text-muted-foreground mr-1 hidden sm:inline">{t("config.language_tab", undefined, "Idioma")}:</span>
+          <LanguageSwitcher variant="segmented" />
+        </div>
       </div>
       <Tabs defaultValue="perfil">
         <TabsList className="flex h-auto gap-1 bg-transparent p-0 border-b border-border rounded-none w-full justify-start overflow-x-auto no-scrollbar flex-nowrap md:flex-wrap">
           <StyledTab value="perfil" icon={<User className="size-4" />}>Perfil</StyledTab>
+          <StyledTab value="idioma" icon={<Globe className="size-4" />}>{t("config.language_tab", undefined, "Idioma / Language")}</StyledTab>
           
           {!isAtendente && <StyledTab value="tags" icon={<Tag className="size-4" />}>Tags</StyledTab>}
            
@@ -333,6 +345,17 @@ function ConfigPage() {
               <Card className="p-4 sm:p-5 space-y-4">
 
                 <h3 className="font-semibold">Meu Perfil</h3>
+                {/* Selector rápido de idioma do perfil */}
+                <div className="p-3 rounded-xl border border-border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2">
+                    <Globe className="size-4 text-primary shrink-0" />
+                    <div>
+                      <div className="text-xs font-semibold">{t("config.language_section_title", undefined, "Idioma do Sistema")}</div>
+                      <div className="text-[11px] text-muted-foreground">{t("config.language_section_desc", undefined, "Altera o idioma da sua sessão e CRM")}</div>
+                    </div>
+                  </div>
+                  <LanguageSwitcher variant="segmented" />
+                </div>
                 <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                   <div className="size-14 sm:size-16 rounded-full bg-muted grid place-items-center text-muted-foreground overflow-hidden">
                     {perfil.avatar_url ? (
@@ -618,6 +641,46 @@ function ConfigPage() {
             )}
           </div>
 
+        </TabsContent>
+
+        {/* Tab dedicada de Idioma */}
+        <TabsContent value="idioma" className="mt-4 sm:mt-5 space-y-4 max-w-4xl">
+          <Card className="p-5 sm:p-6 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
+              <div className="flex items-center gap-3">
+                <span className="p-2.5 rounded-xl bg-primary/10 text-primary">
+                  <Globe className="size-6" />
+                </span>
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg">{t("config.language_section_title", undefined, "Idioma do Sistema e Inteligência Artificial")}</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground">{t("config.language_section_desc", undefined, "Elige el idioma en el que se mostrará el CRM y en el que el Asistente de IA responderá a tus clientes.")}</p>
+                </div>
+              </div>
+              <div className="shrink-0">
+                <LanguageSwitcher variant="segmented" />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("config.select_language_prompt", undefined, "Selecciona el idioma principal de tu empresa:")}
+              </Label>
+              <LanguageSwitcher variant="cards" />
+            </div>
+
+            <div className="p-4 rounded-xl bg-muted/40 border border-border space-y-2 text-xs text-muted-foreground">
+              <div className="font-semibold text-foreground flex items-center gap-2">
+                <Sparkles className="size-3.5 text-primary" />
+                Sincronización Total con el CRM y la Inteligencia Artificial
+              </div>
+              <p>
+                Al seleccionar tu idioma, se adaptan automáticamente todos los menús, el tablero CRM Kanban, las tarjetas de leads y los diagnósticos.
+              </p>
+              <p>
+                Además, el bot de IA del CRM y de conversaciones aplicará una regla estricta de idioma para nunca mezclar idiomas ni responder en portugués cuando se configure en español.
+              </p>
+            </div>
+          </Card>
         </TabsContent>
 
         

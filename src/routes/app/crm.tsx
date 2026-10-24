@@ -22,7 +22,7 @@ import {
   Plus, MoreHorizontal, Sparkles, Pencil, Trash2, Palette, Zap, Clock, ChevronDown, Lock,
   Users, Loader2, Wand2, Search, SlidersHorizontal, RefreshCw, User as UserIcon,
   TrendingUp, MessageSquare, ArrowRightLeft, Columns3, Calendar, Bot, Star, Coins, CalendarPlus, UserPlus, Eye, EyeOff, Forward,
-  Upload, X, FileText, Image as ImageIcon, Video, Mic
+  Upload, X, FileText, Globe, Image as ImageIcon, Video, Mic
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { generateAutomacaoMessage } from "@/lib/automacao-ai.functions";
@@ -40,6 +40,7 @@ import { EncaminharDialog } from "@/components/chat/encaminhar-dialog";
 import { useFeatureEnabled } from "@/hooks/use-feature-flags";
 import { parseStageAiMeta, formatStageAiMeta } from "@/lib/crm-lead-analyzer.server";
 import { useLanguage } from "@/lib/i18n/context";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 
 export const Route = createFileRoute("/app/crm")({
@@ -64,6 +65,7 @@ let crmCache: {
 } | null = null;
 
 function KanbanPage() {
+  const { t } = useLanguage();
 
   const ctx = Route.useRouteContext();
   const companyId = ctx.company?.id ?? "";
@@ -695,15 +697,27 @@ function KanbanPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
-      {/* Título mínimo (padrão do sistema) */}
-      <div className="shrink-0">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-          CRM Kanban
-          <HelpTip text="Funil visual de vendas. Arraste cards entre etapas para acompanhar cada contato." />
-        </h1>
-        <p className="text-xs sm:text-sm text-muted-foreground">
-          {activePipeline?.tipo === "pos_venda" ? "Funil de pós-venda" : "Gerencie oportunidades por etapa"}
-        </p>
+      {/* Título com seletor de idioma proeminente */}
+      <div className="shrink-0 flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+            CRM Kanban
+            <HelpTip text={t("crm.helptip", undefined, "Funil visual de vendas. Arraste cards entre etapas para acompanhar cada contato.")} />
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            {activePipeline?.tipo === "pos_venda" ? t("crm.pos_venda_pipeline", undefined, "Funil de pós-venda") : t("crm.opportunities_by_stage", undefined, "Gerencie oportunidades por etapa")}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground font-semibold bg-background border border-border px-3 py-1.5 rounded-xl shadow-2xs">
+            <Globe className="size-3.5 text-primary" />
+            <span>{t("config.language_tab", undefined, "Idioma")}:</span>
+            <LanguageSwitcher variant="segmented" />
+          </div>
+          <div className="sm:hidden">
+            <LanguageSwitcher variant="segmented" />
+          </div>
+        </div>
       </div>
 
       {/* Toolbar */}
@@ -887,6 +901,8 @@ function KanbanPage() {
             )}
           </PopoverContent>
         </Popover>
+        {/* Selector de idioma rápido no toolbar do CRM */}
+        <LanguageSwitcher variant="compact" className="border border-[color:var(--hairline)] bg-[color:var(--panel-2)] h-8 sm:h-9 px-2.5 rounded-full" />
 
 
 
