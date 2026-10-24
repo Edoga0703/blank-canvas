@@ -76,21 +76,70 @@ export const transcribeChatAudio = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!msg || msg.midia_tipo !== "audio") throw new Error("Mensagem de áudio não encontrada.");
 
-    const { storagePathFromUrl } = await import("./chat-media.functions");
-    const path = storagePathFromUrl(msg.midia_url);
-    if (!path) throw new Error("Áudio indisponível para transcrição.");
+    let buf: Uint8Array | null = null;
+    let mime = (msg.midia_mime || "audio/ogg").split(";")[0];
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: file, error } = await supabaseAdmin.storage.from("chat-media").download(path);
-    if (error || !file) throw new Error("Não consegui baixar o áudio.");
-    const buf = new Uint8Array(await file.arrayBuffer());
+    // 1. Tentar carregar de message_attachments (Cloudflare R2)
+    const { data: att } = await supabase
+      .from("message_attachments")
+      .select("storage_key, url, mime_type")
+      .eq("message_id", data.messageId)
+      .maybeSingle();
+
+    if (att?.storage_key) {
+      try {
+        const { getMediaObject } = await import("@/lib/storage/r2.server");
+        const r2Obj = await getMediaObject(att.storage_key);
+        if (r2Obj?.body) {
+          buf = await r2Obj.body.transformToByteArray();
+          if (r2Obj.contentType) mime = r2Obj.contentType.split(";")[0];
+        }
+      } catch (e) {
+        console.warn("[transcribe] Erro ao obter áudio do R2:", e);
+      }
+    }
+
+    // 2. Tentar decodificar data URI ou baixar de URL direta
+    if (!buf && msg.midia_url) {
+      if (msg.midia_url.startsWith("data:")) {
+        const commaIdx = msg.midia_url.indexOf(",");
+        if (commaIdx !== -1) {
+          const b64 = msg.midia_url.slice(commaIdx + 1);
+          buf = Uint8Array.from(Buffer.from(b64, "base64"));
+        }
+      } else if (msg.midia_url.startsWith("http://") || msg.midia_url.startsWith("https://")) {
+        try {
+          const fRes = await fetch(msg.midia_url);
+          if (fRes.ok) {
+            buf = new Uint8Array(await fRes.arrayBuffer());
+          }
+        } catch (e) {
+          console.warn("[transcribe] Erro ao baixar URL de mídia:", e);
+        }
+      }
+    }
+
+    // 3. Fallback para bucket legado Supabase Storage
+    if (!buf && msg.midia_url) {
+      const { storagePathFromUrl } = await import("./chat-media.functions");
+      const path = storagePathFromUrl(msg.midia_url);
+      if (path) {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data: file } = await supabaseAdmin.storage.from("chat-media").download(path);
+        if (file) {
+          buf = new Uint8Array(await file.arrayBuffer());
+        }
+      }
+    }
+
+    if (!buf) throw new Error("Áudio indisponível para transcrição.");
     if (buf.byteLength < 512) throw new Error("Áudio muito curto.");
     if (buf.byteLength > 24 * 1024 * 1024) throw new Error("Áudio muito grande para transcrever.");
 
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("LOVABLE_API_KEY ausente.");
 
-    const mime = (msg.midia_mime || "audio/ogg").split(";")[0];
+    mime = mime || (msg.midia_mime || "audio/ogg").split(";")[0];
     const extMap: Record<string, string> = {
       "audio/webm": "webm",
       "audio/mp4": "mp4",

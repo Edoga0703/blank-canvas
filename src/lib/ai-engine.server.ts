@@ -724,10 +724,29 @@ export async function processAiResponse(
             const { textToSpeechBase64 } = await import("@/lib/media-understanding.server");
             const audioB64 = await textToSpeechBase64(replyText);
             if (audioB64) {
+              const cleanB64 = audioB64.includes(",") ? audioB64.split(",")[1] : audioB64;
+              const audioBuffer = Buffer.from(cleanB64, "base64");
+              const fileName = `tts_${Date.now()}.mp3`;
+              const storageKey = `companies/${companyId}/audio/${fileName}`;
+              let audioUrlToSend = `data:audio/mp3;base64,${cleanB64}`;
+              let storedKey = storageKey;
+
+              try {
+                const { storeMediaObject, getSignedMediaUrl } = await import("@/lib/storage/r2.server");
+                await storeMediaObject(storageKey, audioBuffer, "audio/mpeg");
+                const signedUrl = await getSignedMediaUrl(storageKey, 86400);
+                if (signedUrl) {
+                  audioUrlToSend = signedUrl;
+                }
+              } catch (r2Err) {
+                console.warn("[ai-engine] Falha ao persistir áudio TTS no R2, enviando data URI:", r2Err);
+              }
+
               const { waSendAudio } = await import("@/lib/wa-dispatch.server");
-              const audioRes = await waSendAudio(inst, number, audioB64);
+              const audioRes = await waSendAudio(inst, number, audioUrlToSend);
               const audioMsgId = extractWhatsappMessageId(audioRes) || null;
-              await supabaseAdmin.from("mensagens").insert({
+
+              const { data: insertedMsg } = await supabaseAdmin.from("mensagens").insert({
                 company_id: companyId,
                 user_id: targetUserId,
                 numero: number,
@@ -736,8 +755,29 @@ export async function processAiResponse(
                 autor: "ia",
                 provider: inst.provider,
                 whatsapp_message_id: audioMsgId,
-                created_at: new Date().toISOString()
-              } as any);
+                midia_tipo: "audio",
+                midia_url: audioUrlToSend.startsWith("http") ? audioUrlToSend : null,
+                midia_mime: "audio/mpeg",
+                midia_nome: fileName,
+                created_at: new Date().toISOString(),
+              } as any).select("id").maybeSingle();
+
+              if (insertedMsg?.id) {
+                try {
+                  await supabaseAdmin.from("message_attachments").insert({
+                    company_id: companyId,
+                    message_id: insertedMsg.id,
+                    storage_key: storedKey,
+                    mime_type: "audio/mpeg",
+                    file_name: fileName,
+                    file_size: audioBuffer.length,
+                    url: audioUrlToSend.startsWith("http") ? audioUrlToSend : null,
+                  });
+                } catch (attErr) {
+                  console.warn("[ai-engine] Falha ao registrar anexo de áudio TTS:", attErr);
+                }
+              }
+
               enviouAudio = true;
               console.log(`[ai-engine] Resposta enviada em áudio para ${number}`);
             }

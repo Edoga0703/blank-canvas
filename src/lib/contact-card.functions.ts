@@ -88,19 +88,35 @@ export const enviarCartaoContato = createServerFn({ method: "POST" })
     );
     if (!inst?.instance_name) throw new Error("Conexão não disponível para este contato.");
 
-    const resp: any = await waSendText(
-      {
-        company_id: companyId,
-        instance_name: inst.instance_name,
-        instance_token: inst.instance_token ?? null,
-        provider: (inst.provider || "dapi") as any,
-        status: inst.status ?? "connected",
-        paused: false,
-      },
-      destino,
-      `👤 *${nome}*\n📞 ${telefone}`,
-    );
-    waId = extractWhatsappMessageId(resp) || resp?.id || null;
+    const provider = inst.provider || "dapi";
+    let sentNative = false;
+
+    if (provider === "dapi" || provider === "dapi_official") {
+      try {
+        const { dapiSendContact } = await import("./dapi.server");
+        const resp = await dapiSendContact(inst.instance_name, destino, { name: nome, phone: digitos });
+        waId = extractWhatsappMessageId(resp) || resp?.id || null;
+        sentNative = true;
+      } catch (nativeErr) {
+        console.warn("[enviarCartaoContato] Falha no envio nativo de contato via D-API, usando fallback de texto:", nativeErr);
+      }
+    }
+
+    if (!sentNative) {
+      const resp: any = await waSendText(
+        {
+          company_id: companyId,
+          instance_name: inst.instance_name,
+          instance_token: inst.instance_token ?? null,
+          provider: provider as any,
+          status: inst.status ?? "connected",
+          paused: false,
+        },
+        destino,
+        `👤 *${nome}*\n📞 ${telefone}`,
+      );
+      waId = extractWhatsappMessageId(resp) || resp?.id || null;
+    }
 
     await supabase.from("mensagens").insert({
       company_id: companyId,

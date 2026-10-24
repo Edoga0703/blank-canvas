@@ -17,17 +17,14 @@ type Props = {
 
 /**
  * Renderiza imagem/vídeo/áudio/sticker/documento do chat.
- * Tenta carregar pelo endpoint de mídia direto ou pela URL fornecida.
- * Se falhar, consulta o servidor para renovar o acesso ou baixar do provedor.
+ * Se a URL direta não for informada ou expirar, recupera de forma segura
+ * via server function autenticada (resolveChatMediaUrl).
  */
 export function ChatMedia({ messageId, tipo, url, nome, outbound, onOpen }: Props) {
   const resolveFn = useServerFn(resolveChatMediaUrl);
-  const directEndpoint = messageId ? `/api/public/chat-media?id=${messageId}` : null;
-  const initialUrl = url || directEndpoint;
-
-  const [src, setSrc] = useState<string | null>(initialUrl);
+  const [src, setSrc] = useState<string | null>(url);
   const [resolvedTipo, setResolvedTipo] = useState(tipo);
-  const [loading, setLoading] = useState(!initialUrl);
+  const [loading, setLoading] = useState(!url);
   const [failed, setFailed] = useState(false);
 
   const attempts = useRef(0);
@@ -65,14 +62,10 @@ export function ChatMedia({ messageId, tipo, url, nome, outbound, onOpen }: Prop
       setSrc(url);
       setLoading(false);
       setFailed(false);
-    } else if (directEndpoint) {
-      setSrc(directEndpoint);
-      setLoading(false);
-      setFailed(false);
     } else {
       void recover(true);
     }
-  }, [url, messageId, directEndpoint]);
+  }, [url, messageId]);
 
   if (loading) {
     return (

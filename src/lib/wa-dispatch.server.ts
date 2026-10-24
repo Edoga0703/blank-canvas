@@ -100,7 +100,7 @@ export async function getActiveInstanceForContact(
 }
 
 async function assertMetaWindowForInstance(inst: WaInstance, numero: string) {
-  if (!isMetaProvider(inst.provider)) return;
+  if (!isMetaProvider(inst.provider) && inst.provider !== "dapi_official") return;
   let companyId = inst.company_id ?? null;
   if (!companyId) {
     const { data, error } = await (supabaseAdmin as any).from("whatsapp_instances")
@@ -126,6 +126,9 @@ export async function waPresenceTyping(inst: WaInstance, numero: string, _ms: nu
     if (isMetaProvider(inst.provider) && inst.instance_token) {
       const { metaSendPresence } = await import("./meta.server");
       await metaSendPresence(inst.instance_token, numero, "composing");
+    } else if (inst.provider === "dapi") {
+      const { dapiSendPresence } = await import("./dapi.server");
+      await dapiSendPresence(inst.instance_name, numero, "composing");
     }
   } catch { /* presence best-effort */ }
 }
@@ -168,6 +171,9 @@ export async function waSendText(
     const { tgSendMessage } = await import("./telegram.server");
     return tgSendMessage(inst.instance_token || "", numero, texto);
   }
+  if (inst.provider === "dapi_official") {
+    await assertMetaWindowForInstance(inst, numero);
+  }
   const { dapiSendText } = await import("./dapi.server");
   return dapiSendText(inst.instance_name, numero, texto, options?.replyToExternalMessageId);
 }
@@ -188,6 +194,9 @@ export async function waSendMedia(
       caption: media.caption,
     });
   }
+  if (inst.provider === "dapi_official") {
+    await assertMetaWindowForInstance(inst, numero);
+  }
   const { dapiSendMedia } = await import("./dapi.server");
   return dapiSendMedia(inst.instance_name, numero, media);
 }
@@ -202,6 +211,9 @@ export async function waSendAudio(inst: WaInstance, numero: string, audioBase64O
       mediatype: "audio",
       media: audioBase64OrUrl,
     });
+  }
+  if (inst.provider === "dapi_official") {
+    await assertMetaWindowForInstance(inst, numero);
   }
   const { dapiSendAudio } = await import("./dapi.server");
   return dapiSendAudio(inst.instance_name, numero, audioBase64OrUrl);

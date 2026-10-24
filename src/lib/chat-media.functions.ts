@@ -14,22 +14,26 @@ export function storagePathFromUrl(url: string | null | undefined): string | nul
 
 /**
  * Devolve uma URL válida para a mídia de uma mensagem.
- * Funciona sem bloquear em tokens para garantir que as mídias sempre abram
- * no painel de conversas mesmo durante trocas de sessão.
+ * Validado com requireSupabaseAuth e filtrado rigorosamente por company_id
+ * para evitar qualquer fuga multi-tenant (IDOR).
  */
 export const resolveChatMediaUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: { messageId: string }) => d)
-  .handler(async ({ data }) => {
+  .handler(async ({ context, data }) => {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.messageId ?? "");
     if (!isUuid) return { url: null as string | null, tipo: null as string | null };
 
+    const { supabase, userId } = context;
+    const companyId = await resolveCompanyIdCached(supabase, userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // 1) Capiversa v1.1: os anexos em Cloudflare R2
+    // 1) Anexo em Cloudflare R2 validando company_id
     const { data: attachment } = await (supabaseAdmin as any)
       .from("message_attachments")
       .select("kind,storage_key,storage_url,provider_url")
       .eq("mensagem_id", data.messageId)
+      .eq("company_id", companyId)
       .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle();
@@ -45,11 +49,12 @@ export const resolveChatMediaUrl = createServerFn({ method: "POST" })
       return { url: attachment.provider_url, tipo: attachment.kind };
     }
 
-    // 2) Checa na mensagem
+    // 2) Mensagem na tabela mensagens validando company_id
     const { data: msg } = await supabaseAdmin
       .from("mensagens")
       .select("id,company_id,numero,provider,midia_url,midia_tipo,midia_mime,midia_nome,whatsapp_message_id,raw_payload")
       .eq("id", data.messageId)
+      .eq("company_id", companyId)
       .maybeSingle();
 
     if (!msg) return { url: null as string | null, tipo: null as string | null };
@@ -99,7 +104,6 @@ export const resolveChatMediaUrl = createServerFn({ method: "POST" })
             ? String(dl.base64)
             : `data:${mime};base64,${dl.base64}`;
 
-          // Archiving in R2 in background
           try {
             const rawB64 = dl.base64.includes(",") ? dl.base64.split(",")[1] : dl.base64;
             const bytes = Buffer.from(rawB64, "base64");
@@ -169,6 +173,7 @@ export const getConversationMedia = createServerFn({ method: "POST" })
       ? await (supabaseAdmin as any)
           .from("message_attachments")
           .select("mensagem_id,kind,storage_key,storage_url,provider_url,mime_type,file_name")
+          .eq("company_id", companyId)
           .in("mensagem_id", ids)
       : { data: [] };
 
@@ -205,9 +210,7 @@ export const getConversationMedia = createServerFn({ method: "POST" })
         url = path ? (signedByUrl.get(path) ?? null) : m.midia_url;
       }
 
-      if (!url) {
-        url = `/api/public/chat-media?id=${m.id}`;
-      }
+      if (!url) continue;
 
       out.push({
         id: m.id,

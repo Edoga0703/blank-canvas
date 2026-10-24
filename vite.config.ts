@@ -39,6 +39,14 @@ export default defineConfig({
         process.env.SUPABASE_SERVICE_ROLE_KEY ||
           "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsbmZqaHFkZWV1c2N5cXpvcWZ6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTU1ODQ2NywiZXhwIjoyMTA3MTM0NDY3fQ.ylDWCcoxzXhPoshBQGult4ZIK2C6AczihHJLz9vWJfQ"
       ),
+      "process.env.DAPI_API_KEY": JSON.stringify(process.env.DAPI_API_KEY || ""),
+      "process.env.DAPI_BASE_URL": JSON.stringify(process.env.DAPI_BASE_URL || "https://api.d-api.cloud/api/v1"),
+      "process.env.R2_ACCOUNT_ID": JSON.stringify(process.env.R2_ACCOUNT_ID || ""),
+      "process.env.R2_ACCESS_KEY_ID": JSON.stringify(process.env.R2_ACCESS_KEY_ID || ""),
+      "process.env.R2_SECRET_ACCESS_KEY": JSON.stringify(process.env.R2_SECRET_ACCESS_KEY || ""),
+      "process.env.R2_BUCKET": JSON.stringify(process.env.R2_BUCKET || "capiversa-media"),
+      "process.env.R2_MAX_FILE_BYTES": JSON.stringify(process.env.R2_MAX_FILE_BYTES || "52428800"),
+      "process.env.R2_SIGNED_URL_TTL_SECONDS": JSON.stringify(process.env.R2_SIGNED_URL_TTL_SECONDS || "900"),
     },
     // Reduce build memory usage (avoids OOM on publish)
     build: { sourcemap: false, reportCompressedSize: false },

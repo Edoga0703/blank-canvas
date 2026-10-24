@@ -1,4 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { createHmac } from "node:crypto";
+
+function verifyMediaToken(messageId: string, sig: string, expStr: string): boolean {
+  if (!messageId || !sig || !expStr) return false;
+  const exp = parseInt(expStr, 10);
+  if (isNaN(exp) || exp < Date.now()) return false;
+  const secret = process.env.CRON_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || "capiversa_media_secret";
+  const expected = createHmac("sha256", secret).update(`${messageId}:${exp}`).digest("hex");
+  return expected === sig;
+}
 
 export const Route = createFileRoute("/api/public/chat-media")({
   server: {
@@ -11,16 +21,47 @@ export const Route = createFileRoute("/api/public/chat-media")({
           return new Response("Invalid message id", { status: 400 });
         }
 
+        const sig = url.searchParams.get("sig") || "";
+        const exp = url.searchParams.get("exp") || "";
+        const authHeader = request.headers.get("authorization") || "";
+
+        // Blindaje Multi-Tenant (E-02): Requiere token HMAC con expiración corta o Bearer token
+        const isHmacValid = verifyMediaToken(messageId, sig, exp);
+        let authorizedCompanyId: string | null = null;
+
+        if (!isHmacValid) {
+          if (!authHeader.startsWith("Bearer ")) {
+            return new Response("Unauthorized", { status: 401 });
+          }
+          const jwtToken = authHeader.replace("Bearer ", "").trim();
+          const { createClient } = await import("@supabase/supabase-js");
+          const sbAuth = createClient(
+            process.env.SUPABASE_URL || "https://llnfjhqdeeuscyqzoqfz.supabase.co",
+            process.env.SUPABASE_PUBLISHABLE_KEY || "sb_publishable_AWtQzPmKl_MS9OWWmSkoZg_-vHK23d5",
+          );
+          const { data: claimsData, error: claimsErr } = await sbAuth.auth.getClaims(jwtToken);
+          const userId = claimsData?.claims?.sub;
+          if (claimsErr || !userId) {
+            return new Response("Unauthorized", { status: 401 });
+          }
+          const { resolveCompanyIdCached } = await import("@/lib/company-cache");
+          authorizedCompanyId = await resolveCompanyIdCached(sbAuth, userId).catch(() => null);
+          if (!authorizedCompanyId) {
+            return new Response("Forbidden", { status: 403 });
+          }
+        }
+
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-        // 1) Chequear message_attachments (Cloudflare R2)
-        const { data: attachment } = await (supabaseAdmin as any)
+        // 1) Chequear message_attachments (Cloudflare R2) validando compañía si aplica
+        let attQuery = (supabaseAdmin as any)
           .from("message_attachments")
-          .select("kind,storage_key,storage_url,provider_url,mime_type")
-          .eq("mensagem_id", messageId)
-          .order("created_at", { ascending: true })
-          .limit(1)
-          .maybeSingle();
+          .select("kind,storage_key,storage_url,provider_url,mime_type,company_id")
+          .eq("mensagem_id", messageId);
+        if (authorizedCompanyId) {
+          attQuery = attQuery.eq("company_id", authorizedCompanyId);
+        }
+        const { data: attachment } = await attQuery.order("created_at", { ascending: true }).limit(1).maybeSingle();
 
         if (attachment?.storage_key) {
           const { createR2DownloadUrl } = await import("@/lib/storage/r2.server");
@@ -29,7 +70,7 @@ export const Route = createFileRoute("/api/public/chat-media")({
             status: 302,
             headers: {
               Location: downloadUrl,
-              "Cache-Control": "public, max-age=1800",
+              "Cache-Control": "private, max-age=1800",
             },
           });
         }
@@ -39,7 +80,7 @@ export const Route = createFileRoute("/api/public/chat-media")({
             status: 302,
             headers: {
               Location: attachment.storage_url,
-              "Cache-Control": "public, max-age=3600",
+              "Cache-Control": "private, max-age=3600",
             },
           });
         }
@@ -49,17 +90,20 @@ export const Route = createFileRoute("/api/public/chat-media")({
             status: 302,
             headers: {
               Location: attachment.provider_url,
-              "Cache-Control": "public, max-age=3600",
+              "Cache-Control": "private, max-age=3600",
             },
           });
         }
 
         // 2) Chequear tabla mensagens
-        const { data: msg } = await supabaseAdmin
+        let msgQuery = supabaseAdmin
           .from("mensagens")
           .select("id,company_id,numero,provider,midia_url,midia_tipo,midia_mime,midia_nome,whatsapp_message_id,raw_payload")
-          .eq("id", messageId)
-          .maybeSingle();
+          .eq("id", messageId);
+        if (authorizedCompanyId) {
+          msgQuery = msgQuery.eq("company_id", authorizedCompanyId);
+        }
+        const { data: msg } = await msgQuery.maybeSingle();
 
         if (!msg) {
           return new Response("Not found", { status: 404 });
@@ -71,7 +115,7 @@ export const Route = createFileRoute("/api/public/chat-media")({
             status: 302,
             headers: {
               Location: rawUrl,
-              "Cache-Control": "public, max-age=86400",
+              "Cache-Control": "private, max-age=86400",
             },
           });
         }
@@ -81,7 +125,7 @@ export const Route = createFileRoute("/api/public/chat-media")({
             status: 302,
             headers: {
               Location: msg.midia_url,
-              "Cache-Control": "public, max-age=3600",
+              "Cache-Control": "private, max-age=3600",
             },
           });
         }
@@ -106,7 +150,6 @@ export const Route = createFileRoute("/api/public/chat-media")({
                 const buf = Buffer.from(rawB64, "base64");
                 const mime = dl.mimetype || msg.midia_mime || "application/octet-stream";
 
-                // Guardar en R2 en background para próximas lecturas
                 import("@/lib/storage/r2.server").then(async ({ storeMediaObject }) => {
                   try {
                     const stored = await storeMediaObject({
@@ -136,7 +179,7 @@ export const Route = createFileRoute("/api/public/chat-media")({
                   headers: {
                     "Content-Type": mime,
                     "Content-Length": String(buf.length),
-                    "Cache-Control": "public, max-age=86400",
+                    "Cache-Control": "private, max-age=86400",
                   },
                 });
               }

@@ -28,7 +28,22 @@ export const reactMessage = createServerFn({ method: "POST" })
       .eq("id", data.messageId)
       .eq("company_id", cid);
     if (error) throw new Error(error.message);
-    return { ok: true, syncedToWhatsapp: false };
+
+    let syncedToWhatsapp = false;
+    if (msg.whatsapp_message_id) {
+      try {
+        const { getActiveInstanceForContact } = await import("@/lib/wa-dispatch.server");
+        const inst = await getActiveInstanceForContact(cid, msg.numero, userId);
+        if (inst && (inst.provider === "dapi" || inst.provider === "dapi_official")) {
+          const { dapiSendReaction } = await import("@/lib/dapi.server");
+          await dapiSendReaction(inst.instance_name, msg.numero, msg.whatsapp_message_id, data.emoji || "");
+          syncedToWhatsapp = true;
+        }
+      } catch (syncErr) {
+        console.warn("[reactMessage] Erro ao sincronizar reação com WhatsApp:", syncErr);
+      }
+    }
+    return { ok: true, syncedToWhatsapp };
   });
 
 export const editMessage = createServerFn({ method: "POST" })
@@ -60,7 +75,22 @@ export const editMessage = createServerFn({ method: "POST" })
       .eq("id", data.messageId)
       .eq("company_id", cid);
     if (error) throw new Error(error.message);
-    return { ok: true };
+
+    let syncedToWhatsapp = false;
+    if (cur.whatsapp_message_id) {
+      try {
+        const { getActiveInstanceForContact } = await import("@/lib/wa-dispatch.server");
+        const inst = await getActiveInstanceForContact(cid, cur.numero, userId);
+        if (inst && inst.provider === "dapi") {
+          const { dapiEditMessage } = await import("@/lib/dapi.server");
+          await dapiEditMessage(inst.instance_name, cur.numero, cur.whatsapp_message_id, novo);
+          syncedToWhatsapp = true;
+        }
+      } catch (syncErr) {
+        console.warn("[editMessage] Erro ao sincronizar edição com WhatsApp:", syncErr);
+      }
+    }
+    return { ok: true, syncedToWhatsapp };
   });
 
 export const deleteMessage = createServerFn({ method: "POST" })
@@ -92,5 +122,19 @@ export const deleteMessage = createServerFn({ method: "POST" })
       .eq("company_id", cid);
     if (error) throw new Error(error.message);
 
-    return { ok: true, syncedToWhatsapp: false };
+    let syncedToWhatsapp = false;
+    if (cur.whatsapp_message_id && cur.direcao === "saida") {
+      try {
+        const { getActiveInstanceForContact } = await import("@/lib/wa-dispatch.server");
+        const inst = await getActiveInstanceForContact(cid, cur.numero, userId);
+        if (inst && inst.provider === "dapi") {
+          const { dapiDeleteMessage } = await import("@/lib/dapi.server");
+          await dapiDeleteMessage(inst.instance_name, cur.numero, cur.whatsapp_message_id);
+          syncedToWhatsapp = true;
+        }
+      } catch (syncErr) {
+        console.warn("[deleteMessage] Erro ao sincronizar exclusão com WhatsApp:", syncErr);
+      }
+    }
+    return { ok: true, syncedToWhatsapp };
   });

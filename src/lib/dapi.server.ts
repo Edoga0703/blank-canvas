@@ -11,9 +11,9 @@ function getBaseUrl(): string {
 }
 
 function getApiKey(): string {
-  const key = process.env.DAPI_API_KEY || "098aeda184429bc8201ba60d88116821906397caa5fd5b935b615318a245da03";
+  const key = (process.env.DAPI_API_KEY || "").trim();
   if (!key) {
-    console.warn("[dapi.server] DAPI_API_KEY no configurada en las variables de entorno.");
+    throw new Error("[dapi.server] Variable de entorno DAPI_API_KEY no configurada.");
   }
   return key;
 }
@@ -260,25 +260,38 @@ export async function dapiSetWebhookConfig(
   webhookUrl: string,
 ): Promise<{ success: boolean; raw?: any }> {
   try {
-    // 1. Endpoint base de webhook
     const resBase = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/webhook`, {
       method: "POST",
-      body: JSON.stringify({ webhookUrl }),
+      body: JSON.stringify({ webhookUrl, enabled: true }),
     }).catch(() => null);
 
-    // 2. Endpoint per_event verificado de D-API
+    const allEvents = [
+      "messages.received",
+      "messages.upsert",
+      "messages.sent",
+      "message.status",
+      "messages.status",
+      "message.delivered",
+      "message.read",
+      "message.deleted",
+      "message.edited",
+      "connection.status",
+      "connection.qrcode",
+      "connection.paircode",
+    ];
+
+    const eventsMap: Record<string, { enabled: boolean; webhookUrl: string }> = {};
+    for (const ev of allEvents) {
+      eventsMap[ev] = { enabled: true, webhookUrl };
+    }
+
     const resConfig = await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/webhook-config`, {
       method: "POST",
       body: JSON.stringify({
         enabled: true,
-        type: "per_event",
-        events: {
-          "messages.received": { enabled: true, webhookUrl },
-          "messages.sent": { enabled: true, webhookUrl },
-          "message.delivered": { enabled: true, webhookUrl },
-          "message.read": { enabled: true, webhookUrl },
-          "connection.status": { enabled: true, webhookUrl },
-        },
+        type: "single",
+        webhookUrl,
+        events: eventsMap,
       }),
     }).catch(() => null);
 
@@ -456,6 +469,14 @@ export async function dapiSendMedia(
 ): Promise<{ id: string; provider: string; raw: any }> {
   const cleanTo = to.replace(/\D/g, "");
 
+  let formattedUrl = media.url;
+  if (formattedUrl && !formattedUrl.startsWith("http://") && !formattedUrl.startsWith("https://") && !formattedUrl.startsWith("data:")) {
+    if (media.type === "audio") formattedUrl = `data:${media.mime || "audio/mp3"};base64,${formattedUrl}`;
+    else if (media.type === "image") formattedUrl = `data:${media.mime || "image/jpeg"};base64,${formattedUrl}`;
+    else if (media.type === "video") formattedUrl = `data:${media.mime || "video/mp4"};base64,${formattedUrl}`;
+    else formattedUrl = `data:${media.mime || "application/octet-stream"};base64,${formattedUrl}`;
+  }
+
   let primaryEndpoint = "/messages/send/image";
   let fallbackEndpoint = "/messages/image";
   const body: Record<string, any> = {
@@ -466,26 +487,26 @@ export async function dapiSendMedia(
   if (media.type === "image") {
     primaryEndpoint = "/messages/send/image";
     fallbackEndpoint = "/messages/image";
-    body.image = media.url;
-    body.imageUrl = media.url;
+    body.image = formattedUrl;
+    body.imageUrl = formattedUrl;
     if (media.caption) body.caption = media.caption;
   } else if (media.type === "audio") {
     primaryEndpoint = "/messages/send/audio";
     fallbackEndpoint = "/messages/audio";
-    body.audio = media.url;
-    body.audioUrl = media.url;
+    body.audio = formattedUrl;
+    body.audioUrl = formattedUrl;
     body.ptt = media.ptt ?? true;
   } else if (media.type === "video") {
     primaryEndpoint = "/messages/send/video";
     fallbackEndpoint = "/messages/video";
-    body.video = media.url;
-    body.videoUrl = media.url;
+    body.video = formattedUrl;
+    body.videoUrl = formattedUrl;
     if (media.caption) body.caption = media.caption;
   } else {
     primaryEndpoint = "/messages/send/document";
     fallbackEndpoint = "/messages/document";
-    body.document = media.url;
-    body.documentUrl = media.url;
+    body.document = formattedUrl;
+    body.documentUrl = formattedUrl;
     if (media.fileName) {
       body.fileName = media.fileName;
       body.filename = media.fileName;
@@ -653,5 +674,154 @@ export async function dapiDownloadMedia(
   } catch (err: any) {
     console.warn("[dapi.server] Error descargando multimedia:", err?.message);
     return null;
+  }
+}
+
+
+/** [Ambas] Envía una reacción (emoji) a un mensaje en WhatsApp */
+export async function dapiSendReaction(
+  sessionId: string,
+  to: string,
+  messageId: string,
+  emoji: string,
+): Promise<{ success: boolean; raw?: any }> {
+  const cleanTo = to.replace(/\D/g, "");
+  const payload = {
+    sessionId,
+    to: cleanTo,
+    messageId,
+    id: messageId,
+    emoji: emoji || "",
+    reaction: emoji || "",
+  };
+  const res = await dapiFetch<any>("/messages/send/reaction", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }).catch(() =>
+    dapiFetch<any>("/messages/reaction", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  );
+  return { success: true, raw: res };
+}
+
+/** [Solo API No Oficial - dapi] Edita el texto de un mensaje ya enviado */
+export async function dapiEditMessage(
+  sessionId: string,
+  to: string,
+  messageId: string,
+  newText: string,
+): Promise<{ success: boolean; raw?: any }> {
+  const cleanTo = to.replace(/\D/g, "");
+  const payload = {
+    sessionId,
+    to: cleanTo,
+    messageId,
+    id: messageId,
+    text: newText,
+    message: newText,
+  };
+  const res = await dapiFetch<any>("/messages/edit", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }).catch(() =>
+    dapiFetch<any>("/messages/send/edit", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  );
+  return { success: true, raw: res };
+}
+
+/** [Solo API No Oficial - dapi] Elimina un mensaje para todos en WhatsApp */
+export async function dapiDeleteMessage(
+  sessionId: string,
+  to: string,
+  messageId: string,
+): Promise<{ success: boolean; raw?: any }> {
+  const cleanTo = to.replace(/\D/g, "");
+  const payload = {
+    sessionId,
+    to: cleanTo,
+    messageId,
+    id: messageId,
+  };
+  const res = await dapiFetch<any>("/messages/delete", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }).catch(() =>
+    dapiFetch<any>("/messages", {
+      method: "DELETE",
+      body: JSON.stringify(payload),
+    }),
+  );
+  return { success: true, raw: res };
+}
+
+/** [Ambas] Envía una tarjeta de contacto vCard nativa */
+export async function dapiSendContact(
+  sessionId: string,
+  to: string,
+  contact: { fullName: string; phoneNumber: string; organization?: string },
+): Promise<{ id: string; provider: string; raw: any }> {
+  const cleanTo = to.replace(/\D/g, "");
+  const cleanContactPhone = contact.phoneNumber.replace(/\D/g, "");
+  const payload = {
+    sessionId,
+    to: cleanTo,
+    contactName: contact.fullName,
+    fullName: contact.fullName,
+    phoneNumber: cleanContactPhone,
+    phone: `+${cleanContactPhone}`,
+    organization: contact.organization || "",
+    contact: {
+      fullName: contact.fullName,
+      phoneNumber: `+${cleanContactPhone}`,
+      organization: contact.organization || "",
+    },
+  };
+  const res = await dapiFetch<any>("/messages/send/contact", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }).catch(() =>
+    dapiFetch<any>("/messages/contact", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  );
+  const id = res?.id || res?.messageId || res?.data?.id || `dapi_${Date.now()}`;
+  return { id, provider: "dapi", raw: res };
+}
+
+/** [Solo API No Oficial - dapi] Envía indicador "Escribiendo..." o "Grabando audio..." */
+export async function dapiSendPresence(
+  sessionId: string,
+  to: string,
+  presence: "composing" | "recording" | "paused" = "composing",
+): Promise<void> {
+  const cleanTo = to.replace(/\D/g, "");
+  await dapiFetch<any>("/messages/presence", {
+    method: "POST",
+    body: JSON.stringify({ sessionId, to: cleanTo, presence }),
+  }).catch(() => null);
+}
+
+/** [Solo API Oficial - dapi_official] Elimina una plantilla HSM en D-API / Meta */
+export async function dapiDeleteTemplate(
+  sessionId: string,
+  templateNameOrId: string,
+): Promise<{ success: boolean }> {
+  try {
+    await dapiFetch<any>(`/sessions/${encodeURIComponent(sessionId)}/templates/${encodeURIComponent(templateNameOrId)}`, {
+      method: "DELETE",
+    }).catch(() =>
+      dapiFetch<any>(`/official/templates/${encodeURIComponent(templateNameOrId)}?sessionId=${encodeURIComponent(sessionId)}`, {
+        method: "DELETE",
+      }),
+    );
+    return { success: true };
+  } catch {
+    return { success: false };
   }
 }

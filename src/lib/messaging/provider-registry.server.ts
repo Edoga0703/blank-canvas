@@ -5,6 +5,7 @@ import { lovableWhatsAppProvider } from "@/lib/messaging/providers/lovable-whats
 const providers = new Map<MessagingProviderId, MessagingProvider>([
   [lovableWhatsAppProvider.id, lovableWhatsAppProvider],
   [dapiProvider.id, dapiProvider],
+  ["dapi_official", { ...dapiProvider, id: "dapi_official" }],
 ]);
 
 export function registerMessagingProvider(provider: MessagingProvider) {

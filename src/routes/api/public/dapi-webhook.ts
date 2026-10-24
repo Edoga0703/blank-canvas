@@ -8,20 +8,40 @@ import { transcribeIncomingAudio, describeIncomingFile } from "@/lib/media-under
  * Helper forense para extraer JID, número telefónico y nombre desde cualquier formato
  * de participante en D-API (objeto { jid, name } o string "5511...@s.whatsapp.net").
  */
-function parseDapiParticipant(participant: any): { jid: string; phone: string; name: string | null } {
-  if (!participant) return { jid: "", phone: "", name: null };
+function parseDapiParticipant(
+  participant: any,
+  fallbackAlt?: any,
+): { jid: string; phone: string; name: string | null } {
+  const extractCleanPhone = (val: any): string => {
+    if (!val || typeof val !== "string") return "";
+    const trimmed = val.trim();
+    if (trimmed.endsWith("@lid") || trimmed.endsWith("@g.us")) return "";
+    return trimmed.split("@")[0].split(":")[0].replace(/\D/g, "");
+  };
+
+  if (!participant && !fallbackAlt) return { jid: "", phone: "", name: null };
+
   if (typeof participant === "string") {
     const jid = participant.trim();
-    const phone = jid.split("@")[0].replace(/\D/g, "");
+    const phone = extractCleanPhone(jid) || extractCleanPhone(fallbackAlt);
     return { jid, phone, name: null };
   }
-  if (typeof participant === "object") {
-    const jid = String(participant.jid || participant.id || participant.phone || participant.number || participant.remoteJid || "").trim();
+
+  if (typeof participant === "object" && participant !== null) {
+    const jid = String(
+      participant.jid || participant.remoteJid || participant.id || participant.phone || participant.number || "",
+    ).trim();
     const rawName = participant.name || participant.pushName || participant.notify || null;
     const name = rawName ? String(rawName).trim() : null;
-    const phone = (participant.phone || participant.number || jid.split("@")[0] || "").replace(/\D/g, "");
+    const phone =
+      extractCleanPhone(participant.phone) ||
+      extractCleanPhone(participant.number) ||
+      extractCleanPhone(participant.sender_pn) ||
+      extractCleanPhone(fallbackAlt) ||
+      extractCleanPhone(jid);
     return { jid, phone, name };
   }
+
   return { jid: "", phone: "", name: null };
 }
 
@@ -89,6 +109,52 @@ async function isAutomatedOrExistingEcho(params: {
 
 function extractDapiText(data: any): string {
   if (!data) return "";
+
+  // 1. Ubicación (Activa <ChatLocation /> en conversas.tsx)
+  const loc =
+    data.location ||
+    data.message?.locationMessage ||
+    data.message?.liveLocationMessage ||
+    (data.type === "location" ? data : null);
+  const lat = loc?.latitude ?? loc?.degreesLatitude ?? data.latitude;
+  const lng = loc?.longitude ?? loc?.degreesLongitude ?? data.longitude;
+  if (typeof lat === "number" && typeof lng === "number") {
+    const label = loc?.name || loc?.address || data.caption || "";
+    return `📍 Localização: ${lat}, ${lng}${label ? ` (${label})` : ""}`;
+  }
+
+  // 2. Tarjeta de Contacto vCard (Activa <ChatVCard /> en conversas.tsx)
+  const vcard =
+    data.vcard ||
+    data.contact?.vcard ||
+    data.contacts?.[0]?.vcard ||
+    data.message?.contactMessage?.vcard ||
+    data.message?.contactsArrayMessage?.contacts?.[0]?.vcard;
+  if (typeof vcard === "string" && vcard.includes("BEGIN:VCARD")) {
+    return vcard.trim();
+  }
+  if (data.type === "contact" || data.type === "contacts" || data.contact) {
+    const c = data.contact || data.contacts?.[0] || data;
+    const cName = c?.fullName || c?.name?.formatted_name || c?.displayName || "Contato";
+    const cPhone = c?.phoneNumber || c?.phones?.[0]?.phone || c?.wa_id || "";
+    if (cPhone) return `👤 *${cName}*\n📞 ${cPhone}`;
+  }
+
+  // 3. Respuestas a Listas y Botones Interactivos (Oficial y No Oficial)
+  if (data.type === "list_response" || data.interactive?.type === "list_reply") {
+    const reply = data.interactive?.list_reply || data.data || {};
+    return String(reply.title || reply.id || reply.selected_row_id || "").trim();
+  }
+  if (
+    data.type === "button_response" ||
+    data.type === "interactive" ||
+    data.interactive?.type === "button_reply"
+  ) {
+    const reply = data.interactive?.button_reply || data.button || data.data || {};
+    return String(reply.title || reply.text || reply.id || reply.selected_button_id || "").trim();
+  }
+
+  // 4. Texto estándar o leyenda multimedia
   if (typeof data.message === "string") return data.message.trim();
   if (typeof data.text === "string") return data.text.trim();
   if (typeof data.body === "string") return data.body.trim();
@@ -105,12 +171,6 @@ function extractDapiText(data: any): string {
     if (typeof m.documentMessage?.caption === "string") return m.documentMessage.caption.trim();
   }
 
-  if (data.type === "list_response") {
-    return String(data.data?.selected_row_id || data.data?.title || "").trim();
-  }
-  if (data.type === "button_response" || data.type === "interactive") {
-    return String(data.data?.selected_button_id || data.data?.selected_row_id || data.data?.title || "").trim();
-  }
   return "";
 }
 
@@ -186,8 +246,111 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
             });
           }
 
+          // 1b. Actualización en vivo de QR Code por Webhook [Solo API No Oficial]
           if (eventName === "connection.qrcode" || eventName === "connection.paircode") {
+            const rawQr = data.qrCodeImage || data.qrcode || data.qrCode || data.qr || null;
+            if (rawQr) {
+              const { normalizeQrToDataUrl } = await import("@/lib/dapi.server");
+              const qrDataUrl = await normalizeQrToDataUrl(rawQr);
+              if (qrDataUrl) {
+                await supabaseAdmin
+                  .from("whatsapp_instances")
+                  .update({ qr_code: qrDataUrl, updated_at: new Date().toISOString() } as any)
+                  .eq("id", inst.id);
+              }
+            }
             return new Response(JSON.stringify({ ok: true, event: eventName }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+
+          // 1c. Mensajes eliminados ("Apagar para todos") [Ambas en recepción]
+          if (
+            eventName === "message.deleted" ||
+            eventName === "messages.delete" ||
+            data.type === "revoked" ||
+            data.message?.protocolMessage?.type === 0 ||
+            data.message?.protocolMessage?.type === "REVOKE"
+          ) {
+            const revokedId = String(
+              data.target_message_id ||
+                data.deletedMessageId ||
+                data.message?.protocolMessage?.key?.id ||
+                data.id ||
+                data.message_id ||
+                "",
+            ).trim();
+            if (revokedId) {
+              await supabaseAdmin
+                .from("mensagens")
+                .update({
+                  deletado_em: new Date().toISOString(),
+                  texto: "🚫 Mensagem apagada",
+                  midia_url: null,
+                  midia_tipo: null,
+                } as any)
+                .eq("company_id", inst.company_id)
+                .eq("whatsapp_message_id", revokedId);
+            }
+            return new Response(JSON.stringify({ ok: true, event: "message.deleted" }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+
+          // 1d. Mensajes editados por el cliente o asesor [Solo API No Oficial]
+          if (eventName === "message.edited" || eventName === "messages.edited" || data.type === "edited") {
+            const editedId = String(
+              data.target_message_id ||
+                data.editedMessageId ||
+                data.message?.editedMessage?.message?.protocolMessage?.key?.id ||
+                data.id ||
+                "",
+            ).trim();
+            const newText = extractDapiText(
+              data.message?.editedMessage?.message?.protocolMessage?.editedMessage || data,
+            );
+            if (editedId && newText) {
+              await supabaseAdmin
+                .from("mensagens")
+                .update({
+                  texto: newText,
+                  editado_em: new Date().toISOString(),
+                } as any)
+                .eq("company_id", inst.company_id)
+                .eq("whatsapp_message_id", editedId);
+            }
+            return new Response(JSON.stringify({ ok: true, event: "message.edited" }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+
+          // 1e. Reacciones a mensajes (👍, ❤️, etc.) [Ambas]
+          if (
+            eventName === "message.reaction" ||
+            data.type === "reaction" ||
+            Boolean(data.reaction) ||
+            Boolean(data.message?.reactionMessage)
+          ) {
+            const reactionObj = data.reaction || data.message?.reactionMessage || data;
+            const targetMsgId = String(
+              reactionObj.message_id ||
+                reactionObj.messageId ||
+                reactionObj.key?.id ||
+                data.target_message_id ||
+                "",
+            ).trim();
+            const emoji = String(reactionObj.emoji ?? reactionObj.text ?? "").trim() || null;
+            if (targetMsgId) {
+              await supabaseAdmin
+                .from("mensagens")
+                .update({ reacao: emoji } as any)
+                .eq("company_id", inst.company_id)
+                .eq("whatsapp_message_id", targetMsgId);
+            }
+            return new Response(JSON.stringify({ ok: true, event: "message.reaction" }), {
               status: 200,
               headers: { "Content-Type": "application/json" },
             });

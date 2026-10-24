@@ -204,7 +204,14 @@ export const dapiProvider: MessagingProvider = {
           kind,
           text,
           occurredAt: body.timestamp || new Date().toISOString(),
-          replyToExternalMessageId: data.quotedMessageId || data.quoted_message_id || null,
+          replyToExternalMessageId:
+            data.quotedMessageId ||
+            data.quoted_message_id ||
+            data.context?.id ||
+            data.context?.message_id ||
+            data.message?.extendedTextMessage?.contextInfo?.stanzaId ||
+            data.message?.imageMessage?.contextInfo?.stanzaId ||
+            null,
           attachments,
           raw: body,
         },

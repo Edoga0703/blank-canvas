@@ -207,17 +207,19 @@ export function buildWebhookUrl(token?: string | null, _provider: string = "dapi
 export function extractWhatsappMessageId(resp: any): string | null {
   if (!resp || typeof resp !== "object") return null;
   const direct =
+    resp?.id ??
+    resp?.messageId ??
     resp?.key?.id ??
-    resp?.message?.key?.id ??
+    resp?.data?.id ??
+    resp?.data?.messageId ??
     resp?.data?.key?.id ??
     resp?.data?.message?.key?.id ??
+    resp?.message?.key?.id ??
+    resp?.messages?.[0]?.id ??
+    resp?.data?.messages?.[0]?.id ??
     resp?.response?.key?.id ??
     resp?.response?.message?.key?.id ??
     resp?.result?.key?.id ??
-    resp?.messageId ??
-    resp?.data?.messageId ??
-    resp?.id ??
-    resp?.data?.id ??
     null;
   if (typeof direct === "string" && direct.trim()) return direct.trim();
   const seen = new Set<any>();

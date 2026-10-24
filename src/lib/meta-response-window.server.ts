@@ -16,7 +16,7 @@ export type MetaResponseWindow = {
  */
 export async function getMetaResponseWindow(admin: any, input: {
   companyId: string;
-  provider: "meta_instagram" | "meta_messenger";
+  provider: "meta_instagram" | "meta_messenger" | "dapi_official";
   contactId: string;
   now?: Date;
 }): Promise<MetaResponseWindow> {
@@ -51,18 +51,22 @@ export async function getMetaResponseWindow(admin: any, input: {
 /** Impede RESPONSE fora da janela padrão antes de chamar a Graph API. */
 export async function assertMetaResponseWindow(admin: any, input: {
   companyId: string;
-  provider: "meta_instagram" | "meta_messenger";
+  provider: "meta_instagram" | "meta_messenger" | "dapi_official";
   contactId: string;
 }) {
   const result = await getMetaResponseWindow(admin, input);
   if (result.open) return result;
 
-  const channel = input.provider === "meta_instagram" ? "Instagram" : "Messenger";
+  const channel = input.provider === "meta_instagram"
+    ? "Instagram"
+    : input.provider === "meta_messenger"
+    ? "Messenger"
+    : "WhatsApp Oficial (Meta)";
   const last = result.lastInboundAt
     ? new Date(result.lastInboundAt).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })
     : "não localizada";
   throw new Error(
     `Fora da janela de resposta de 24 horas do ${channel}. ` +
-    `Última mensagem recebida: ${last}. Aguarde uma nova mensagem do contato antes de responder.`,
+    `Última mensagem recebida: ${last}. Envie um Modelo de Mensagem (HSM/Template) aprovado pela Meta ou aguarde uma nova mensagem do contato.`,
   );
 }

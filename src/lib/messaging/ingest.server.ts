@@ -112,6 +112,41 @@ async function persistMessage(
   event: IncomingMessageEvent,
   connection: Awaited<ReturnType<typeof resolveConnection>>,
 ) {
+  let replyToUuid: string | null = null;
+  if (event.replyToExternalMessageId) {
+    const { data: quotedRow } = await (supabaseAdmin as any)
+      .from("mensagens")
+      .select("id")
+      .eq("company_id", connection.company_id)
+      .eq("whatsapp_message_id", event.replyToExternalMessageId)
+      .limit(1)
+      .maybeSingle();
+    replyToUuid = quotedRow?.id ?? null;
+  }
+
+  const firstAtt = event.attachments[0];
+  const safeMidiaUrl =
+    firstAtt?.storageUrl ||
+    (firstAtt?.providerUrl && !firstAtt.providerUrl.startsWith("data:")
+      ? firstAtt.providerUrl
+      : null);
+
+  // Limpiar data URI gigante del raw_payload antes de guardarlo en PostgreSQL
+  const sanitizedRaw =
+    event.raw && typeof event.raw === "object"
+      ? {
+          ...(event.raw as any),
+          data: {
+            ...((event.raw as any).data || {}),
+            media_url:
+              typeof (event.raw as any).data?.media_url === "string" &&
+              (event.raw as any).data.media_url.startsWith("data:")
+                ? "[archived_to_r2]"
+                : (event.raw as any).data?.media_url,
+          },
+        }
+      : event.raw;
+
   const { data: message, error } = await (supabaseAdmin as any)
     .from("mensagens")
     .upsert(
@@ -133,15 +168,14 @@ async function persistMessage(
         texto: event.text,
         provider: connection.provider || event.provider,
         whatsapp_message_id: event.externalMessageId,
+        reply_to_id: replyToUuid,
         provider_timestamp: event.occurredAt,
-        midia_url: event.attachments[0]?.storageUrl || event.attachments[0]?.providerUrl || null, // R2 storageUrl ou URL original do provedor
-
-
-        midia_tipo: event.attachments[0]?.kind ?? null,
-        midia_mime: event.attachments[0]?.mimeType ?? null,
-        midia_nome: event.attachments[0]?.fileName ?? null,
+        midia_url: safeMidiaUrl,
+        midia_tipo: firstAtt?.kind ?? null,
+        midia_mime: firstAtt?.mimeType ?? null,
+        midia_nome: firstAtt?.fileName ?? null,
         status_envio: event.direction === "incoming" ? "recebido" : "enviado",
-        raw_payload: event.raw,
+        raw_payload: sanitizedRaw,
       },
       { onConflict: "company_id,provider,whatsapp_message_id" },
     )

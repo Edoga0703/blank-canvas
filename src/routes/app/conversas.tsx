@@ -2630,7 +2630,7 @@ function Bubble({ m, quoted, companyId, onReply, agentTraits, agentAvatarUrl }: 
           {media?.tipo === "audio" && (
             <div className="mb-1.5 -mx-1">
               <WhatsappAudio 
-                src={media.url.startsWith("http") ? media.url : `data:${media.mime || "audio/ogg"};base64,${media.url}`} 
+                src={media.url.startsWith("http") || media.url.startsWith("data:") || media.url.startsWith("/") ? media.url : `data:${media.mime || "audio/ogg"};base64,${media.url}`} 
                 outbound={isOut} 
               />
             </div>
