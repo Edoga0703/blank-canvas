@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T02:16:10.307189+00:00",
+  "generated_at": "2026-10-24T02:23:36.827498+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -599,7 +599,7 @@
     },
     {
       "path": "src/lib/transcribe.functions.ts",
-      "bytes": 6654
+      "bytes": 6664
     },
     {
       "path": "src/lib/crm-engine.server.ts",
@@ -659,11 +659,11 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 25302
+      "bytes": 25667
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 44784
+      "bytes": 44795
     },
     {
       "path": "src/lib/tracking.functions.ts",
