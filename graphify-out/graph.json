@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T22:15:39.571370+00:00",
+  "generated_at": "2026-10-24T23:25:42.247976+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -587,7 +587,7 @@
     },
     {
       "path": "src/components/app-shell.tsx",
-      "bytes": 34770
+      "bytes": 35226
     },
     {
       "path": "src/components/mobile-app-banner.tsx",
@@ -2383,11 +2383,11 @@
     },
     {
       "path": "src/lib/i18n/context.tsx",
-      "bytes": 4892
+      "bytes": 4669
     },
     {
       "path": "src/lib/i18n/translations.ts",
-      "bytes": 22647
+      "bytes": 31703
     },
     {
       "path": "src/lib/messaging/provider-registry.server.ts",
@@ -2607,11 +2607,11 @@
     },
     {
       "path": "src/routes/app/configuracoes.tsx",
-      "bytes": 70898
+      "bytes": 71140
     },
     {
       "path": "src/routes/app/campanhas.tsx",
-      "bytes": 35679
+      "bytes": 38612
     },
     {
       "path": "src/routes/app/plugins.tsx",
@@ -2639,7 +2639,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 142834
+      "bytes": 143616
     },
     {
       "path": "src/routes/app/treinamentos.$courseId.tsx",
@@ -14522,6 +14522,10 @@
     {
       "source": "src/routes/app/campanhas.tsx",
       "target": "@/config/brand"
+    },
+    {
+      "source": "src/routes/app/campanhas.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/routes/app/campanhas.tsx",
