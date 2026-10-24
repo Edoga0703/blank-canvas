@@ -794,12 +794,14 @@ export async function dapiSendContact(
 export async function dapiSendPresence(
   sessionId: string,
   to: string,
-  presence: "composing" | "recording" | "paused" = "composing",
+  presence: "composing" | "typing" | "recording" | "paused" = "typing",
+  durationMs: number = 4000,
 ): Promise<void> {
   const cleanTo = to.replace(/\D/g, "");
-  await dapiFetch<any>("/messages/presence", {
+  const normalizedPresence = presence === "composing" ? "typing" : presence;
+  await dapiFetch<any>("/chats/presence", {
     method: "POST",
-    body: JSON.stringify({ sessionId, to: cleanTo, presence }),
+    body: JSON.stringify({ sessionId, to: cleanTo, presence: normalizedPresence, durationMs }),
   }).catch(() => null);
 }
 
