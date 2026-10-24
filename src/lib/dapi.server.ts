@@ -13,11 +13,8 @@ function getBaseUrl(): string {
 const DEFAULT_DAPI_API_KEY = "098aeda184429bc8201ba60d88116821906397caa5fd5b935b615318a245da03";
 
 function getApiKey(customKey?: string | null): string {
-  const key = (customKey || process.env.DAPI_API_KEY || DEFAULT_DAPI_API_KEY).trim();
-  if (!key) {
-    throw new Error("[dapi.server] Variable de entorno DAPI_API_KEY no configurada.");
-  }
-  return key;
+  const key = (customKey || process.env.DAPI_API_KEY || DEFAULT_DAPI_API_KEY || "").trim();
+  return key || DEFAULT_DAPI_API_KEY;
 }
 
 function getHeaders(customKey?: string | null): Record<string, string> {
@@ -428,6 +425,7 @@ export async function dapiSendText(
   text: string,
   quotedMessageId?: string | null,
   contextInfo?: any,
+  apiKey?: string | null,
 ): Promise<{ id: string; provider: string; raw: any }> {
   const cleanTo = to.replace(/\D/g, "");
   const payload: Record<string, any> = {
@@ -452,11 +450,11 @@ export async function dapiSendText(
   const res = await dapiFetch<any>("/messages/send/text", {
     method: "POST",
     body: JSON.stringify(payload),
-  }).catch(() => {
+  }, 15_000, apiKey).catch(() => {
     return dapiFetch<any>("/messages/text", {
       method: "POST",
       body: JSON.stringify(payload),
-    });
+    }, 15_000, apiKey);
   });
 
   const id = res?.id || res?.messageId || res?.data?.id || `dapi_${Date.now()}`;
@@ -531,11 +529,11 @@ export async function dapiSendMedia(
   const res = await dapiFetch<any>(primaryEndpoint, {
     method: "POST",
     body: JSON.stringify(body),
-  }).catch(() => {
+  }, 30_000, apiKey).catch(() => {
     return dapiFetch<any>(fallbackEndpoint, {
       method: "POST",
       body: JSON.stringify(body),
-    });
+    }, 30_000, apiKey);
   });
 
   const id = res?.id || res?.messageId || res?.data?.id || `dapi_${Date.now()}`;

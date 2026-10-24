@@ -187,7 +187,7 @@ export async function waSendText(
       quotedMessage: options.quotedText ? { conversation: options.quotedText } : undefined,
     };
   }
-  return dapiSendText(inst.instance_name, numero, texto, options?.replyToExternalMessageId, contextInfo);
+  return dapiSendText(inst.instance_name, numero, texto, options?.replyToExternalMessageId, contextInfo, inst.instance_token);
 }
 
 export async function waSendMedia(
@@ -210,7 +210,7 @@ export async function waSendMedia(
     await assertMetaWindowForInstance(inst, numero);
   }
   const { dapiSendMedia } = await import("./dapi.server");
-  return dapiSendMedia(inst.instance_name, numero, media);
+  return dapiSendMedia(inst.instance_name, numero, media, inst.instance_token);
 }
 
 export async function waSendAudio(inst: WaInstance, numero: string, audioBase64OrUrl: string) {
@@ -228,7 +228,7 @@ export async function waSendAudio(inst: WaInstance, numero: string, audioBase64O
     await assertMetaWindowForInstance(inst, numero);
   }
   const { dapiSendAudio } = await import("./dapi.server");
-  return dapiSendAudio(inst.instance_name, numero, audioBase64OrUrl);
+  return dapiSendAudio(inst.instance_name, numero, audioBase64OrUrl, true, inst.instance_token);
 }
 
 export async function waSendTemplate(
