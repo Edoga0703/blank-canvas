@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T03:08:10.824285+00:00",
+  "generated_at": "2026-10-24T03:26:54.755739+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -124,6 +124,10 @@
     {
       "path": "docs/CAPIVERSA_V1_1.md",
       "bytes": 3216
+    },
+    {
+      "path": "docs/contexto-arquitectura-crm-para-agente.md",
+      "bytes": 29338
     },
     {
       "path": "docs/PROVIDERS_LEGACY.md",
