@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T01:33:53.251469+00:00",
+  "generated_at": "2026-10-24T02:02:21.452580+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -659,7 +659,7 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 25062
+      "bytes": 25159
     },
     {
       "path": "src/lib/ai-engine.server.ts",
@@ -707,7 +707,7 @@
     },
     {
       "path": "src/lib/message-actions.functions.ts",
-      "bytes": 5653
+      "bytes": 5982
     },
     {
       "path": "src/lib/telegram.functions.ts",
@@ -811,7 +811,7 @@
     },
     {
       "path": "src/lib/evolution-helpers.ts",
-      "bytes": 9228
+      "bytes": 9582
     },
     {
       "path": "src/lib/sector-assignment.server.ts",
@@ -1099,7 +1099,7 @@
     },
     {
       "path": "src/lib/wa-dispatch.server.ts",
-      "bytes": 11559
+      "bytes": 11914
     },
     {
       "path": "src/lib/test-disparo.functions.ts",
@@ -1167,7 +1167,7 @@
     },
     {
       "path": "src/lib/evolution.functions.ts",
-      "bytes": 39727
+      "bytes": 40781
     },
     {
       "path": "src/lib/integrations.functions.ts",
@@ -2507,7 +2507,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 190839
+      "bytes": 191400
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -6574,6 +6574,10 @@
     {
       "source": "src/lib/evolution.functions.ts",
       "target": "./plan-limits.server"
+    },
+    {
+      "source": "src/lib/evolution.functions.ts",
+      "target": "./meta-response-window.server"
     },
     {
       "source": "src/lib/evolution.functions.ts",
