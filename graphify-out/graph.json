@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T02:23:36.827498+00:00",
+  "generated_at": "2026-10-24T02:41:16.935027+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -2463,7 +2463,7 @@
     },
     {
       "path": "src/lib/messaging/providers/dapi.server.ts",
-      "bytes": 8225
+      "bytes": 8258
     },
     {
       "path": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
@@ -2759,7 +2759,7 @@
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
-      "bytes": 25728
+      "bytes": 25750
     },
     {
       "path": "src/routes/api/public/wablast-webhook.ts",
