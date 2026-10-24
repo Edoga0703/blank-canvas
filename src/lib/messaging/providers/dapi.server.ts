@@ -147,7 +147,7 @@ export const dapiProvider: MessagingProvider = {
 
     // Eventos de mensajes entrantes y salientes
     if (eventName === "messages.received" || eventName === "messages.upsert" || eventName === "messages.sent") {
-      const fromMe = Boolean(data.fromMe ?? data.key?.fromMe);
+      const fromMe = Boolean(data.fromMe ?? data.key?.fromMe) || eventName === "messages.sent";
       const senderPart = parseParticipant(data.from || data.sender || data.key?.remoteJid || data.remoteJid);
       const recipientPart = parseParticipant(data.to || data.recipient_id || data.recipient);
 

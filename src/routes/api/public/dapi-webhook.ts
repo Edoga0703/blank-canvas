@@ -431,17 +431,9 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
               ""
             ).trim() || null;
 
-            // Manejo de eco (fromMe === true): distinguir entre envíos de API/IA y escritura manual en celular físico
+            // Manejo de eco y mensajes salientes (fromMe === true / messages.sent)
             if (fromMe) {
-              // messages.sent es emitido cuando el propio backend despacha un mensaje por la API
-              if (eventName === "messages.sent") {
-                return new Response(JSON.stringify({ ok: true, echo: true, event: "messages.sent" }), {
-                  status: 200,
-                  headers: { "Content-Type": "application/json" },
-                });
-              }
-
-              const text = String(data.message || data.text || data.body || data.caption || "").trim();
+              const text = extractDapiText(data);
               const safeText = text.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 
               let knownEcho = await isAutomatedOrExistingEcho({
@@ -451,62 +443,82 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
                 safeText,
               });
 
-              // Ventana de gracia (600ms) para evitar condición de carrera cuando el webhook llega antes de que finalice el INSERT en mensagens
-              if (!knownEcho) {
-                await new Promise((r) => setTimeout(r, 600));
-                knownEcho = await isAutomatedOrExistingEcho({
-                  companyId: inst.company_id,
-                  phone,
-                  messageId,
-                  safeText,
+              if (knownEcho) {
+                // El mensaje ya fue insertado por el CRM; actualizamos su estado final
+                await supabaseAdmin
+                  .from("mensagens")
+                  .update({
+                    status_envio: "enviado",
+                    whatsapp_message_id: messageId,
+                  } as any)
+                  .eq("company_id", inst.company_id)
+                  .eq("whatsapp_message_id", messageId);
+
+                return new Response(JSON.stringify({ ok: true, echo: true }), {
+                  status: 200,
+                  headers: { "Content-Type": "application/json" },
                 });
               }
 
-              if (!knownEcho) {
-                // Mensaje enviado manualmente desde el teléfono físico: registrar y pausar la IA
-                const nowIso = new Date().toISOString();
+              // Mensaje saliente nuevo (enviado desde celular físico, API o script externo):
+              // Procesar multimedia si está presente
+              const outDataType = String(data.type || "text").toLowerCase();
+              let mediaUrl: string | null = data.media_url || data.media_data?.early_media_url || null;
+              let mimeType: string | null = data.media_data?.mimetype || data.mimetype || (outDataType === "sticker" ? "image/webp" : null);
 
-                const outDataType = String(data.type || "text").toLowerCase();
-                const isOutMedia = ["image", "audio", "video", "document", "sticker"].includes(outDataType);
-                const outMediaUrl = data.media_url || data.media_data?.early_media_url || null;
-                const outMime = data.media_data?.mimetype || data.mimetype || (outDataType === "sticker" ? "image/webp" : null);
-
-                await supabaseAdmin.from("mensagens").insert({
-                  company_id: inst.company_id,
-                  user_id: (inst as any).user_id ?? null,
-                  instance_id: inst.id,
-                  provider: (inst as any).provider || "dapi",
-                  numero: phone,
-                  contato_nome: contactName,
-                  texto: text || (outDataType === "sticker" ? "Sticker" : "📱 Mensagem enviada pelo celular"),
-                  midia_tipo: isOutMedia ? (outDataType === "sticker" ? "sticker" : outDataType) : null,
-                  midia_url: outMediaUrl,
-                  midia_mime: outMime,
-                  midia_nome: data.media_data?.filename || data.filename || (outDataType === "sticker" ? "sticker.webp" : null),
-                  raw_payload: body,
-                  direcao: "saida",
-                  autor: "humano",
-                  whatsapp_message_id: messageId,
-                  status_envio: "enviado",
-                  created_at: nowIso,
-                } as any);
-
-                // Pausar IA para este contacto (Helpdesk handoff)
-                const { error: pauseErr } = await supabaseAdmin.from("contact_pause").upsert(
-                  {
-                    company_id: inst.company_id,
-                    user_id: (inst as any).user_id ?? null,
-                    numero: phone,
-                    pausado: true,
-                    pausado_por: "humano",
-                    pausado_em: nowIso,
-                  } as any,
-                  { onConflict: "company_id,numero" },
-                );
-                if (pauseErr) console.warn("[dapi-webhook] Erro ao pausar contato por eco humano:", pauseErr.message);
+              if (["image", "audio", "video", "document", "sticker"].includes(outDataType)) {
+                if (!mediaUrl) {
+                  const downloaded = await dapiDownloadMedia(sessionId, messageId, {
+                    direct_path: data.direct_path || data.media_data?.direct_path || null,
+                    media_key: data.media_key || data.media_data?.media_key || null,
+                    mimetype: mimeType,
+                    url: data.url || data.media_data?.url || null,
+                  });
+                  if (downloaded?.base64) {
+                    const rawB64 = String(downloaded.base64);
+                    mimeType = downloaded.mimetype || mimeType || "application/octet-stream";
+                    mediaUrl = rawB64.startsWith("data:") ? rawB64 : `data:${mimeType};base64,${rawB64}`;
+                  } else if (downloaded?.media_url) {
+                    mediaUrl = downloaded.media_url;
+                  }
+                }
               }
 
-              return new Response(JSON.stringify({ ok: true, echo: true }), {
+              const enrichedBody = {
+                ...body,
+                data: {
+                  ...data,
+                  fromMe: true,
+                  id: messageId,
+                  text,
+                  message: text,
+                  media_url: mediaUrl,
+                  mimetype: mimeType,
+                },
+              };
+
+              await ingestMessagingEvent({
+                provider: "dapi",
+                externalConnectionId: sessionId,
+                externalEventId: `dapi_out_${messageId}`,
+                raw: enrichedBody,
+              });
+
+              // Pausar IA para este contacto (Helpdesk handoff)
+              const nowIso = new Date().toISOString();
+              await supabaseAdmin.from("contact_pause").upsert(
+                {
+                  company_id: inst.company_id,
+                  user_id: (inst as any).user_id ?? null,
+                  numero: phone,
+                  pausado: true,
+                  pausado_por: "humano",
+                  pausado_em: nowIso,
+                } as any,
+                { onConflict: "company_id,numero" },
+              ).catch(() => null);
+
+              return new Response(JSON.stringify({ ok: true, processedOutgoing: true }), {
                 status: 200,
                 headers: { "Content-Type": "application/json" },
               });
