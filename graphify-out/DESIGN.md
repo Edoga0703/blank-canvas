@@ -1,6 +1,6 @@
 # Design system
 
-Generated: 2026-10-24T14:31:18.500785+00:00
+Generated: 2026-10-24T20:08:32.754654+00:00
 
 ## Tokens
 - --radius-sm: calc(var(--radius) - 4px) (src/styles.css)
@@ -325,6 +325,7 @@ Generated: 2026-10-24T14:31:18.500785+00:00
 - src/components/content/meta-content-center.tsx
 - src/components/content/meta-content-history.tsx
 - src/components/content/meta-social-intelligence.tsx
+- src/components/crm/lead-ai-analyzer-dialog.tsx
 - src/components/crm/lead-drawer.tsx
 - src/components/crm/olist-pedidos-tab.tsx
 - src/components/dashboard-v2/DashboardGrid.tsx

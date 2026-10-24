@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T14:31:18.500785+00:00",
+  "generated_at": "2026-10-24T20:08:32.754654+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -188,6 +188,10 @@
     {
       "path": "supabase/migrations/20261022180000_audit_fixes_and_parity.sql",
       "bytes": 1771
+    },
+    {
+      "path": "supabase/migrations/20261024170000_crm_lead_analyzer_and_stage_criteria.sql",
+      "bytes": 1264
     },
     {
       "path": ".lovable/mcp/manifest.json",
@@ -667,7 +671,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 45106
+      "bytes": 45526
     },
     {
       "path": "src/lib/tracking.functions.ts",
@@ -827,7 +831,7 @@
     },
     {
       "path": "src/lib/inbound-automation.server.ts",
-      "bytes": 3631
+      "bytes": 4059
     },
     {
       "path": "src/lib/quick-replies.functions.ts",
@@ -968,6 +972,10 @@
     {
       "path": "src/lib/provider-monitor.server.ts",
       "bytes": 6293
+    },
+    {
+      "path": "src/lib/crm-lead-analyzer.server.ts",
+      "bytes": 13689
     },
     {
       "path": "src/lib/wablast.server.ts",
@@ -1710,8 +1718,12 @@
       "bytes": 25469
     },
     {
+      "path": "src/components/crm/lead-ai-analyzer-dialog.tsx",
+      "bytes": 9882
+    },
+    {
       "path": "src/components/crm/lead-drawer.tsx",
-      "bytes": 72627
+      "bytes": 73638
     },
     {
       "path": "src/components/crm/olist-pedidos-tab.tsx",
@@ -2615,7 +2627,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 138216
+      "bytes": 142566
     },
     {
       "path": "src/routes/app/treinamentos.$courseId.tsx",
@@ -4229,6 +4241,10 @@
     },
     {
       "source": "src/lib/ai-engine.server.ts",
+      "target": "./crm-lead-analyzer.server"
+    },
+    {
+      "source": "src/lib/ai-engine.server.ts",
       "target": "./crm-engine.server"
     },
     {
@@ -5032,6 +5048,10 @@
       "target": "@/lib/csat-chat.server"
     },
     {
+      "source": "src/lib/inbound-automation.server.ts",
+      "target": "@/lib/crm-lead-analyzer.server"
+    },
+    {
       "source": "src/lib/quick-replies.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -5750,6 +5770,30 @@
     {
       "source": "src/lib/provider-monitor.server.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.server.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.server.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.server.ts",
+      "target": "./company-cache"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.server.ts",
+      "target": "@/lib/lovable-ai.server"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.server.ts",
+      "target": "@/lib/crm-engine.server"
     },
     {
       "source": "src/lib/wablast.server.ts",
@@ -8348,6 +8392,38 @@
       "target": "@/lib/support-kb"
     },
     {
+      "source": "src/components/crm/lead-ai-analyzer-dialog.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/components/crm/lead-ai-analyzer-dialog.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/components/crm/lead-ai-analyzer-dialog.tsx",
+      "target": "@/components/ui/dialog"
+    },
+    {
+      "source": "src/components/crm/lead-ai-analyzer-dialog.tsx",
+      "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/components/crm/lead-ai-analyzer-dialog.tsx",
+      "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/components/crm/lead-ai-analyzer-dialog.tsx",
+      "target": "lucide-react"
+    },
+    {
+      "source": "src/components/crm/lead-ai-analyzer-dialog.tsx",
+      "target": "sonner"
+    },
+    {
+      "source": "src/components/crm/lead-ai-analyzer-dialog.tsx",
+      "target": "@/lib/crm-lead-analyzer.server"
+    },
+    {
       "source": "src/components/crm/lead-drawer.tsx",
       "target": "react"
     },
@@ -8446,6 +8522,10 @@
     {
       "source": "src/components/crm/lead-drawer.tsx",
       "target": "@/hooks/use-capacidades"
+    },
+    {
+      "source": "src/components/crm/lead-drawer.tsx",
+      "target": "@/components/crm/lead-ai-analyzer-dialog"
     },
     {
       "source": "src/components/crm/lead-drawer.tsx",
@@ -14910,6 +14990,10 @@
     {
       "source": "src/routes/app/crm.tsx",
       "target": "@/hooks/use-feature-flags"
+    },
+    {
+      "source": "src/routes/app/crm.tsx",
+      "target": "@/lib/crm-lead-analyzer.server"
     },
     {
       "source": "src/routes/app/crm.tsx",
