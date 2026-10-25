@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-25T03:05:51.964392+00:00",
+  "generated_at": "2026-10-25T03:14:07.923208+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -1743,7 +1743,7 @@
     },
     {
       "path": "src/components/crm/lead-drawer.tsx",
-      "bytes": 78923
+      "bytes": 79067
     },
     {
       "path": "src/components/crm/crm-copilot-sheet.tsx",
