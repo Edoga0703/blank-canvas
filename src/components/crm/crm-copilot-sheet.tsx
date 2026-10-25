@@ -296,19 +296,21 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
                           {prop.type === "create_stage" && (
                             <div className="rounded-md bg-background/80 p-2 font-mono text-[11px] border border-border/60 space-y-1">
                               <div className="flex items-center gap-2">
-                                <span className="size-2.5 rounded-full" style={{ background: prop.payload.cor || "#60A5FA" }} />
-                                <b>{prop.payload.nome}</b>
-                                <span className="text-[10px] text-muted-foreground">({prop.payload.tipo || "normal"})</span>
+                                <span className="size-2.5 rounded-full" style={{ background: prop.payload?.cor || prop.payload?.color || "#60A5FA" }} />
+                                <b>{prop.payload?.nome || prop.payload?.name || prop.payload?.stageName || prop.payload?.title || "Nueva Etapa"}</b>
+                                <span className="text-[10px] text-muted-foreground">({prop.payload?.tipo || prop.payload?.type || "normal"})</span>
                               </div>
-                              {prop.payload.criterio_ia && (
-                                <p className="text-muted-foreground text-[10.5px] pt-1">{prop.payload.criterio_ia}</p>
+                              {(prop.payload?.criterio_ia || prop.payload?.criterio || prop.payload?.criteria) && (
+                                <p className="text-muted-foreground text-[10.5px] pt-1">
+                                  {prop.payload.criterio_ia || prop.payload.criterio || prop.payload.criteria}
+                                </p>
                               )}
                             </div>
                           )}
 
-                          {prop.type === "pipeline_prompt" && prop.payload?.crm_master_prompt && (
+                          {prop.type === "pipeline_prompt" && (
                             <div className="rounded-md bg-background/80 p-2 font-mono text-[11px] border border-border/60 max-h-24 overflow-y-auto whitespace-pre-wrap">
-                              {prop.payload.crm_master_prompt}
+                              {prop.payload?.crm_master_prompt || prop.payload?.master_prompt || prop.payload?.prompt || prop.payload?.content || "(Texto del prompt)"}
                             </div>
                           )}
 

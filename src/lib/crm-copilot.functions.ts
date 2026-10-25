@@ -119,20 +119,52 @@ export const executeCrmCopilotAction = createServerFn({ method: "POST" })
 
     // 1. Modificar criterios de etapa (serializado en mensagem_prompt)
     if (action.type === "stage_criteria") {
-      const stageId = String(action.payload?.stageId || "").trim();
-      const criterioIa = String(action.payload?.criterio_ia || "").trim();
-      const bloqueadaParaIa = Boolean(action.payload?.bloqueada_para_ia);
+      const rawStageId = String(
+        action.payload?.stageId || action.payload?.stage_id || action.payload?.id || ""
+      ).trim();
+      const stageNameFallback = String(
+        action.payload?.stageName || action.payload?.stage_name || action.payload?.nome || ""
+      ).trim();
 
-      if (!stageId) throw new Error("ID de etapa no proporcionado.");
+      const criterioIa = String(
+        action.payload?.criterio_ia ??
+        action.payload?.criterio ??
+        action.payload?.criteria ??
+        action.payload?.ai_criteria ??
+        ""
+      ).trim();
 
-      const { data: stage, error: findErr } = await supabaseAdmin
-        .from("crm_stage")
-        .select("id, nome, company_id, mensagem_prompt")
-        .eq("id", stageId)
-        .eq("company_id", companyId)
-        .maybeSingle();
+      const bloqueadaParaIa = Boolean(
+        action.payload?.bloqueada_para_ia ??
+        action.payload?.bloqueadaParaIa ??
+        action.payload?.is_locked ??
+        action.payload?.locked ??
+        false
+      );
 
-      if (findErr || !stage) throw new Error("Etapa no encontrada en esta empresa.");
+      let stage: any = null;
+      if (rawStageId) {
+        const { data: stById } = await supabaseAdmin
+          .from("crm_stage")
+          .select("id, nome, company_id, mensagem_prompt")
+          .eq("id", rawStageId)
+          .eq("company_id", companyId)
+          .maybeSingle();
+        stage = stById;
+      }
+
+      if (!stage && (stageNameFallback || rawStageId)) {
+        const queryName = stageNameFallback || rawStageId;
+        const { data: stByName } = await supabaseAdmin
+          .from("crm_stage")
+          .select("id, nome, company_id, mensagem_prompt")
+          .eq("company_id", companyId)
+          .ilike("nome", queryName)
+          .maybeSingle();
+        stage = stByName;
+      }
+
+      if (!stage) throw new Error(`Etapa no encontrada en esta empresa (ID: ${rawStageId || stageNameFallback}).`);
 
       const { resolveStageAiMeta } = await import("./crm-stage-meta");
       const currentMeta = resolveStageAiMeta(stage);
@@ -173,12 +205,47 @@ export const executeCrmCopilotAction = createServerFn({ method: "POST" })
 
     // 2. Crear nueva etapa en el embudo
     if (action.type === "create_stage") {
-      const pipelineId = String(action.payload?.pipelineId || data.pipelineId || "").trim();
-      const nome = String(action.payload?.nome || "").trim();
-      const cor = String(action.payload?.cor || "#60A5FA").trim();
-      const tipo = String(action.payload?.tipo || "normal").trim();
-      const criterioIa = String(action.payload?.criterio_ia || "").trim();
-      const bloqueadaParaIa = Boolean(action.payload?.bloqueada_para_ia);
+      let pipelineId = String(
+        action.payload?.pipelineId || action.payload?.pipeline_id || data.pipelineId || ""
+      ).trim();
+
+      const nome = String(
+        action.payload?.nome ||
+        action.payload?.name ||
+        action.payload?.stageName ||
+        action.payload?.stage_name ||
+        action.payload?.nombre ||
+        action.payload?.title ||
+        ""
+      ).trim();
+
+      const cor = String(action.payload?.cor || action.payload?.color || "#60A5FA").trim();
+      const tipo = String(action.payload?.tipo || action.payload?.type || "normal").trim();
+      const criterioIa = String(
+        action.payload?.criterio_ia ??
+        action.payload?.criterio ??
+        action.payload?.criteria ??
+        action.payload?.ai_criteria ??
+        ""
+      ).trim();
+      const bloqueadaParaIa = Boolean(
+        action.payload?.bloqueada_para_ia ??
+        action.payload?.bloqueadaParaIa ??
+        action.payload?.is_locked ??
+        action.payload?.locked ??
+        false
+      );
+
+      if (!pipelineId) {
+        const { data: defaultPipe } = await supabaseAdmin
+          .from("crm_pipeline")
+          .select("id")
+          .eq("company_id", companyId)
+          .order("ordem", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (defaultPipe?.id) pipelineId = defaultPipe.id;
+      }
 
       if (!pipelineId) throw new Error("ID del embudo no proporcionado.");
       if (!nome) throw new Error("El nombre de la etapa no puede estar vacío.");
@@ -235,11 +302,33 @@ export const executeCrmCopilotAction = createServerFn({ method: "POST" })
 
     // 3. Actualizar Prompt Maestro del Embudo
     if (action.type === "pipeline_prompt") {
-      const pipelineId = String(action.payload?.pipelineId || data.pipelineId || "").trim();
-      const crmMasterPrompt = String(action.payload?.crm_master_prompt || "").trim();
+      let pipelineId = String(
+        action.payload?.pipelineId || action.payload?.pipeline_id || data.pipelineId || ""
+      ).trim();
 
-      if (!pipelineId) throw new Error("ID del embudo no proporcionado.");
+      const crmMasterPrompt = String(
+        action.payload?.crm_master_prompt ||
+        action.payload?.master_prompt ||
+        action.payload?.prompt ||
+        action.payload?.crmMasterPrompt ||
+        action.payload?.content ||
+        ""
+      ).trim();
+
       if (!crmMasterPrompt) throw new Error("El texto del prompt no puede estar vacío.");
+
+      if (!pipelineId) {
+        const { data: defaultPipe } = await supabaseAdmin
+          .from("crm_pipeline")
+          .select("id, nome, agent_id")
+          .eq("company_id", companyId)
+          .order("ordem", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (defaultPipe) {
+          pipelineId = defaultPipe.id;
+        }
+      }
 
       const { data: pipe, error: pipeErr } = await supabaseAdmin
         .from("crm_pipeline")
@@ -250,7 +339,7 @@ export const executeCrmCopilotAction = createServerFn({ method: "POST" })
 
       if (pipeErr || !pipe) throw new Error("Embudo no encontrado.");
 
-      // Si el embudo tiene un agente vinculado, registrar en el agente
+      // Si el embudo tiene un agente vinculado, registrar en el agente, o actualizar el agente de la empresa
       if (pipe.agent_id) {
         await supabaseAdmin
           .from("agent_config")
@@ -258,6 +347,13 @@ export const executeCrmCopilotAction = createServerFn({ method: "POST" })
             como_vender: crmMasterPrompt,
           })
           .eq("id", pipe.agent_id);
+      } else {
+        await supabaseAdmin
+          .from("agent_config")
+          .update({
+            como_vender: crmMasterPrompt,
+          })
+          .eq("company_id", companyId);
       }
 
       await supabaseAdmin.from("audit_log").insert({
@@ -279,19 +375,38 @@ export const executeCrmCopilotAction = createServerFn({ method: "POST" })
 
     // 4. Cambiar automatización de la etapa
     if (action.type === "stage_automation") {
-      const stageId = String(action.payload?.stageId || "").trim();
-      const modoAtendimento = String(action.payload?.modo_atendimento || "auto").trim();
+      const rawStageId = String(
+        action.payload?.stageId || action.payload?.stage_id || action.payload?.id || ""
+      ).trim();
+      const stageNameFallback = String(
+        action.payload?.stageName || action.payload?.stage_name || action.payload?.nome || ""
+      ).trim();
+      const modoAtendimento = String(
+        action.payload?.modo_atendimento || action.payload?.modo || action.payload?.mode || "auto"
+      ).trim();
 
-      if (!stageId) throw new Error("ID de etapa no proporcionado.");
+      let stage: any = null;
+      if (rawStageId) {
+        const { data: stById } = await supabaseAdmin
+          .from("crm_stage")
+          .select("id, nome")
+          .eq("id", rawStageId)
+          .eq("company_id", companyId)
+          .maybeSingle();
+        stage = stById;
+      }
+      if (!stage && (stageNameFallback || rawStageId)) {
+        const queryName = stageNameFallback || rawStageId;
+        const { data: stByName } = await supabaseAdmin
+          .from("crm_stage")
+          .select("id, nome")
+          .eq("company_id", companyId)
+          .ilike("nome", queryName)
+          .maybeSingle();
+        stage = stByName;
+      }
 
-      const { data: stage } = await supabaseAdmin
-        .from("crm_stage")
-        .select("id, nome")
-        .eq("id", stageId)
-        .eq("company_id", companyId)
-        .maybeSingle();
-
-      if (!stage) throw new Error("Etapa no encontrada.");
+      if (!stage) throw new Error(`Etapa no encontrada (ID: ${rawStageId || stageNameFallback}).`);
 
       const { error: upErr } = await supabaseAdmin
         .from("crm_stage")

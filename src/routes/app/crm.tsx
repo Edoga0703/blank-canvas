@@ -592,9 +592,12 @@ function KanbanPage() {
   async function createPipeline(nome: string, queueId?: string | null, agentId?: string | null, crmMasterPrompt?: string | null) {
     const ordem = pipelines.length;
     const { data, error } = await supabase.from("crm_pipeline")
-      .insert({ company_id: companyId, nome, tipo: "custom", ordem, sistema: false, distribution_queue_id: queueId || null, agent_id: agentId || null, crm_master_prompt: crmMasterPrompt || null })
+      .insert({ company_id: companyId, nome, tipo: "custom", ordem, sistema: false, distribution_queue_id: queueId || null, agent_id: agentId || null })
       .select("id").maybeSingle();
     if (error || !data) return toast.error(error?.message ?? "Falha ao criar funil");
+    if (agentId && crmMasterPrompt) {
+      await supabase.from("agent_config").update({ como_vender: crmMasterPrompt }).eq("id", agentId);
+    }
     // Cria etapas iniciais
     await supabase.from("crm_stage").insert([
       { company_id: companyId, pipeline_id: data.id, nome: "A fazer", ordem: 0, cor: "#8AA89A", tipo: "normal" },
@@ -608,8 +611,11 @@ function KanbanPage() {
   }
 
   async function renamePipeline(id: string, nome: string, queueId?: string | null, agentId?: string | null, crmMasterPrompt?: string | null) {
-    const { error } = await supabase.from("crm_pipeline").update({ nome, distribution_queue_id: queueId || null, agent_id: agentId || null, crm_master_prompt: crmMasterPrompt || null }).eq("id", id);
+    const { error } = await supabase.from("crm_pipeline").update({ nome, distribution_queue_id: queueId || null, agent_id: agentId || null }).eq("id", id);
     if (error) return toast.error(error.message);
+    if (agentId && crmMasterPrompt) {
+      await supabase.from("agent_config").update({ como_vender: crmMasterPrompt }).eq("id", agentId);
+    }
 
     toast.success("Funil renomeado");
   }

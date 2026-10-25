@@ -266,27 +266,64 @@ Puedes proponer ACCIONES ESTRUCTURADAS que el usuario podrá revisar y aplicar c
 5. 'move_lead': Mover el lead en análisis a la etapa sugerida.
 
 FORMATO DE ACCIONES (OBLIGATORIO):
-Cuando recomiendes cambios concretos, redacta tu respuesta conversacional en español claro, profesional y constructivo, y AL FINAL incluye un bloque de código exactamente con la etiqueta \`\`\`json_actions:
+Cuando recomiendes cambios concretos, redacta tu respuesta conversacional en español claro, profesional y constructivo, y AL FINAL incluye un bloque de código exactamente con la etiqueta \`\`\`json_actions con una lista de objetos.
+EJEMPLOS DE LAS ESTRUCTURAS DISPONIBLES:
 
-\`\`\`json_actions
-[
-  {
-    "type": "stage_criteria",
-    "title": "Ajustar Criterio de la Etapa 'Atención humana'",
-    "description": "Especifica cuándo un cliente debe pasar a ser atendido por un humano.",
-    "payload": {
-      "stageId": "ID_DE_LA_ETAPA",
-      "stageName": "Atención humana",
-      "criterio_ia": "El lead solicita hablar con una persona o requiere cotización personalizada compleja.",
-      "bloqueada_para_ia": false
-    }
+1) Modificar Criterio de Etapa existente:
+{
+  "type": "stage_criteria",
+  "title": "Ajustar Criterio de la Etapa 'Atención humana'",
+  "description": "Especifica cuándo un cliente debe pasar a ser atendido por un humano.",
+  "payload": {
+    "stageId": "ID_DE_LA_ETAPA",
+    "stageName": "Atención humana",
+    "criterio_ia": "El lead solicita hablar con una persona o requiere cotización personalizada compleja.",
+    "bloqueada_para_ia": false
   }
-]
-\`\`\`
+}
+
+2) Crear una Nueva Etapa:
+{
+  "type": "create_stage",
+  "title": "Crear Etapa 'Demostración Agendada'",
+  "description": "Etapa para leads con cita confirmada en Google Meet o llamada.",
+  "payload": {
+    "pipelineId": "${pipe.id || ""}",
+    "nome": "Demostración Agendada",
+    "cor": "#60A5FA",
+    "tipo": "normal",
+    "criterio_ia": "El lead acordó fecha y hora o tiene una reunión agendada en calendario.",
+    "bloqueada_para_ia": false
+  }
+}
+
+3) Actualizar Prompt Maestro del Embudo:
+{
+  "type": "pipeline_prompt",
+  "title": "Actualizar Prompt Maestro del Embudo",
+  "description": "Reglas globales para evaluación y auditoría comercial.",
+  "payload": {
+    "pipelineId": "${pipe.id || ""}",
+    "crm_master_prompt": "Texto completo del prompt maestro con reglas y fuentes de auditoría..."
+  }
+}
+
+4) Cambiar Automatización / Modo de Atención de una Etapa:
+{
+  "type": "stage_automation",
+  "title": "Cambiar Modo de Atención a Humano",
+  "description": "Solo asesores humanos responderán en esta etapa.",
+  "payload": {
+    "stageId": "ID_DE_LA_ETAPA",
+    "modo_atendimento": "manual"
+  }
+}
 
 DIRECTIVAS IMPORTANTES:
 - Si el usuario te envía una sugerencia de auditoría generada por un lead real, genera de inmediato la acción correspondiente lista para aplicar con 1 clic.
 - Si el ID del embudo es "${pipe.id || ""}", usa "${pipe.id || ""}" como pipelineId en las acciones.
+- Al proponer 'create_stage', es OBLIGATORIO incluir la propiedad "nome": "Nombre de la etapa".
+- Al proponer 'stage_criteria', incluye "stageId": "ID_DE_LA_ETAPA" (o "stageName": "Nombre de la etapa").
 - Si una etapa como 'Ganado' o 'Perdido' debe requerir confirmación humana, pon 'bloqueada_para_ia': true.
 - Sé conciso, proactivo y explica brevemente por qué tu ajuste hace el análisis automático más inteligente, rápido y confiable.`;
 }
@@ -330,13 +367,42 @@ export function parseCrmCopilotOutput(rawText: string): CrmCopilotTurnResult {
 
     if (Array.isArray(parsed) && parsed.length > 0) {
       for (const item of parsed) {
-        if (item?.type && item?.title) {
+        if (item?.type) {
+          const payload = { ...(item.payload || {}) };
+
+          // Normalizar create_stage
+          if (item.type === "create_stage") {
+            payload.nome = String(payload.nome || payload.name || payload.stageName || payload.stage_name || payload.nombre || payload.title || item.title || "").trim();
+            payload.cor = String(payload.cor || payload.color || "#60A5FA").trim();
+            payload.tipo = String(payload.tipo || payload.type || "normal").trim();
+            payload.criterio_ia = String(payload.criterio_ia || payload.criterio || payload.criteria || payload.ai_criteria || "").trim();
+          }
+
+          // Normalizar stage_criteria
+          if (item.type === "stage_criteria") {
+            payload.stageId = String(payload.stageId || payload.stage_id || payload.id || "").trim();
+            payload.stageName = String(payload.stageName || payload.stage_name || payload.nome || payload.name || "").trim();
+            payload.criterio_ia = String(payload.criterio_ia || payload.criterio || payload.criteria || payload.ai_criteria || "").trim();
+          }
+
+          // Normalizar pipeline_prompt
+          if (item.type === "pipeline_prompt") {
+            payload.crm_master_prompt = String(payload.crm_master_prompt || payload.master_prompt || payload.prompt || payload.crmMasterPrompt || payload.content || "").trim();
+          }
+
+          // Normalizar stage_automation
+          if (item.type === "stage_automation") {
+            payload.stageId = String(payload.stageId || payload.stage_id || payload.id || "").trim();
+            payload.stageName = String(payload.stageName || payload.stage_name || payload.nome || payload.name || "").trim();
+            payload.modo_atendimento = String(payload.modo_atendimento || payload.modo || payload.mode || "auto").trim();
+          }
+
           proposals.push({
             type: item.type,
-            title: String(item.title),
-            description: String(item.description || ""),
+            title: String(item.title || item.name || `Acción de ${item.type}`),
+            description: String(item.description || item.justification || ""),
             status: "pending",
-            payload: item.payload || {},
+            payload,
           });
         }
       }
