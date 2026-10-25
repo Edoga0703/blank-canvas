@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-25T03:14:07.923208+00:00",
+  "generated_at": "2026-10-25T05:12:11.718220+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -551,7 +551,7 @@
     },
     {
       "path": "src/components/route-fallbacks.tsx",
-      "bytes": 3070
+      "bytes": 4189
     },
     {
       "path": "src/components/legal-shell.tsx",
@@ -2659,7 +2659,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 150494
+      "bytes": 150525
     },
     {
       "path": "src/routes/app/treinamentos.$courseId.tsx",
