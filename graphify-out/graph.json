@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-25T09:27:17.260408+00:00",
+  "generated_at": "2026-10-25T09:56:15.665066+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -955,7 +955,7 @@
     },
     {
       "path": "src/lib/crm-copilot.server.ts",
-      "bytes": 10866
+      "bytes": 13501
     },
     {
       "path": "src/lib/agendamentos-dispatch.server.ts",
@@ -987,7 +987,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.server.ts",
-      "bytes": 15167
+      "bytes": 15549
     },
     {
       "path": "src/lib/wablast.server.ts",
