@@ -304,7 +304,7 @@ export async function processAiResponse(
     // usamos o mais recente. maybeSingle() aqui retornava erro e travava a IA.
     const { data: cardRows } = await (supabaseAdmin as any)
       .from("crm_cards")
-      .select("user_id, owner_id, id, stage_id, updated_at")
+      .select("user_id, owner_id, id, stage_id, pipeline_id, updated_at")
       .eq("company_id", companyId)
       .eq("numero", number)
       .not("stage_id", "is", null)
@@ -347,10 +347,12 @@ export async function processAiResponse(
     }
 
 
+    const { resolveStageAiMeta } = await import("./crm-stage-meta");
+    const cleanStageCfgPrompt = resolveStageAiMeta(stageCfg).mensagem_prompt;
     const stageHasFixedRule = Boolean(
       stageCfg?.regua_ativa &&
         stageCfg?.mensagem_tipo !== "sem_mensagem" &&
-        (stageCfg?.mensagem_texto?.trim() || stageCfg?.mensagem_prompt?.trim() || stageCfg?.mensagem_midia_url?.trim()),
+        (stageCfg?.mensagem_texto?.trim() || (stageCfg?.mensagem_tipo === "ia_leve" && cleanStageCfgPrompt) || stageCfg?.mensagem_midia_url?.trim()),
     );
     const aiAllowed = stageCfg?.modo_atendimento === "ia" ||
       (stageCfg?.modo_atendimento === "auto" && !stageHasFixedRule);
@@ -442,7 +444,7 @@ export async function processAiResponse(
 
     // 4. Buscar estágios do CRM e o catálogo (produtos + serviços) para o prompt
     const [stages, { data: catRows }] = await Promise.all([
-      getStagesBrief(supabaseAdmin, companyId),
+      getStagesBrief(supabaseAdmin, companyId, card?.pipeline_id),
       (supabaseAdmin as any)
         .from("produto")
         .select("nome, preco, descricao, sku, foto_url, tipo, duracao_min, agendavel")
@@ -949,6 +951,41 @@ export async function processAiResponse(
     }
 
 
+    // Helper unificado para mover card respetando bloqueada_para_ia y asignación a humano
+    async function tryAutoMoveCard(targetStageId: string, reasonLog: string): Promise<string | null> {
+      if (!card || !targetStageId || targetStageId === card.stage_id) return null;
+
+      const { data: targetStageCfg } = await supabaseAdmin
+        .from("crm_stage")
+        .select("id, nome, pipeline_id, modo_atendimento, criterio_ia, bloqueada_para_ia, mensagem_prompt")
+        .eq("id", targetStageId)
+        .eq("company_id", companyId)
+        .maybeSingle();
+
+      if (!targetStageCfg) return null;
+
+      const { resolveStageAiMeta } = await import("./crm-stage-meta");
+      const stageMeta = resolveStageAiMeta(targetStageCfg);
+      if (stageMeta.bloqueada_para_ia) {
+        console.log(`[ai-engine] Stage '${targetStageCfg.nome}' (${targetStageCfg.id}) is locked (bloqueada_para_ia=true). Skipping auto move (${reasonLog}).`);
+        return null;
+      }
+
+      let newOwnerId = card.owner_id;
+      if (targetStageCfg.modo_atendimento === "manual") {
+        const { pickLeadOwner } = await import("./crm-engine.server");
+        const queueOwnerId = await pickLeadOwner(supabaseAdmin, companyId, targetStageCfg.id);
+        newOwnerId = queueOwnerId || newOwnerId || null;
+      }
+
+      const { moveCardToStage } = await import("./crm-engine.server");
+      await moveCardToStage(supabaseAdmin, card.id, targetStageCfg.id, { owner_id: newOwnerId });
+      card.stage_id = targetStageCfg.id;
+      card.owner_id = newOwnerId;
+      console.log(`[ai-engine] Card ${card.id} moved to ${targetStageCfg.nome} (${reasonLog})`);
+      return newOwnerId || null;
+    }
+
     // 8. Lógica de Intenção e Movimentação Automática
     if (intent && card) {
       console.log(`[ai-engine] Intent detected for ${number}: ${intent}`);
@@ -960,20 +997,14 @@ export async function processAiResponse(
         .maybeSingle();
 
       if (stgFull?.intent_handling_enabled) {
-        let targetId = null;
-        if (intent === "NEGATIVA") targetId = stgFull.move_se_negativo_para;
-        if (intent === "POSITIVA") targetId = stgFull.move_se_positivo_para;
-
+        const targetId =
+          intent === "NEGATIVA"
+            ? stgFull.move_se_negativo_para
+            : intent === "POSITIVA"
+              ? stgFull.move_se_positivo_para
+              : null;
         if (targetId) {
-          const targetStage = (stages as any[]).find((s: any) => s.id === targetId);
-          if (targetStage) {
-            console.log(`[ai-engine] ${intent} intent: moving ${number} to stage ${targetStage.nome}`);
-            const { moveCardToStage } = await import("./crm-engine.server");
-            await moveCardToStage(supabaseAdmin, card.id, targetStage.id);
-
-            
-            // Se mover, a automação de estágio atualizada pode disparar novas lógicas no próximo webhook
-          }
+          await tryAutoMoveCard(targetId, `intent:${intent}`);
         }
       }
     }
@@ -988,63 +1019,25 @@ export async function processAiResponse(
         .eq("id", card.stage_id)
         .maybeSingle();
 
-      // Marcadores de automação têm prioridade sobre [ESTAGIO]. A IA normalmente
-      // informa a etapa atual junto com [QUALIFICADO], e isso antes impedia a saída dela.
-      const configuredTargetId = qualified && currentStg?.move_apos_qualificar_para
-        ? currentStg.move_apos_qualificar_para
-        : handoff && currentStg?.ia_handoff_stage_id
-          ? currentStg.ia_handoff_stage_id
-          : null;
-      let foundStage = configuredTargetId
-        ? (stages as any[]).find(s => s.id === configuredTargetId)
-        : stage
-          ? (stages as any[]).find(s => s.nome.toLowerCase() === stage.toLowerCase())
-          : null;
+      const configuredTargetId =
+        qualified && currentStg?.move_apos_qualificar_para
+          ? currentStg.move_apos_qualificar_para
+          : handoff && currentStg?.ia_handoff_stage_id
+            ? currentStg.ia_handoff_stage_id
+            : null;
 
-      console.log(`[ai-engine] Automation target for ${number}: qualified=${qualified}, handoff=${handoff}, configured=${configuredTargetId}, resolved=${foundStage?.id ?? "none"}`);
+      const resolvedStageId =
+        configuredTargetId ||
+        (stage
+          ? (stages as any[]).find((s) => s.nome.toLowerCase() === stage.toLowerCase())?.id ?? null
+          : null);
 
-      if (foundStage && foundStage.id !== card.stage_id) {
-        console.log(`[ai-engine] Moving card ${card.id} to stage ${foundStage.nome} (Qualified: ${qualified})`);
-        
-        const { data: targetStageCfg } = await supabaseAdmin
-          .from("crm_stage")
-          .select("modo_atendimento, mensagem_prompt")
-          .eq("id", foundStage.id)
-          .maybeSingle();
-
-        const { parseStageAiMeta } = await import("./crm-lead-analyzer.server");
-        const stageMeta = parseStageAiMeta(targetStageCfg?.mensagem_prompt);
-        if (stageMeta.bloqueada_para_ia) {
-          console.log(`[ai-engine] Stage '${foundStage.nome}' (${foundStage.id}) is locked against auto AI transitions (bloqueada_para_ia=true). Skipping automatic move.`);
-        } else {
-          console.log(`[ai-engine] Target stage mode: ${targetStageCfg?.modo_atendimento}`);
-
-        let newOwnerId = card.owner_id;
-        if (targetStageCfg?.modo_atendimento === 'manual') {
-          // Ao sair da IA para atendimento manual, o dono precisa vir da fila humana.
-          const { pickLeadOwner } = await import("./crm-engine.server");
-          const queueOwnerId = await pickLeadOwner(supabaseAdmin, companyId, foundStage.id);
-          newOwnerId = queueOwnerId || newOwnerId || null;
-          console.log(`[ai-engine] Handoff to human in manual stage. Assigned owner: ${newOwnerId}`);
-        }
-
-        const updateResult = await (async () => {
-          try {
-            const { moveCardToStage } = await import("./crm-engine.server");
-            await moveCardToStage(supabaseAdmin, card.id, foundStage.id, { owner_id: newOwnerId });
-            return { error: null as any };
-          } catch (e: any) {
-            return { error: e };
-          }
-        })();
-
-        if (updateResult.error) {
-          console.error(`[ai-engine] Error updating card ${card.id} to stage ${foundStage.id}:`, updateResult.error);
-        } else {
-          resolvedHandoffUserId = newOwnerId || resolvedHandoffUserId;
-          console.log(`[ai-engine] Card ${card.id} successfully moved to ${foundStage.nome}`);
-        }
-        }
+      if (resolvedStageId && resolvedStageId !== card.stage_id) {
+        const assignedOwner = await tryAutoMoveCard(
+          resolvedStageId,
+          `qualified=${qualified},handoff=${handoff},stage=${stage}`,
+        );
+        if (assignedOwner) resolvedHandoffUserId = assignedOwner;
       }
     }
 

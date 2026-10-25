@@ -38,7 +38,8 @@ import { CANAL_LABEL, CANAL_COLOR, CANAIS_MANUAIS, type CanalEntrada } from "@/l
 import { QuickScheduleDialog } from "@/components/agenda/quick-schedule-dialog";
 import { EncaminharDialog } from "@/components/chat/encaminhar-dialog";
 import { useFeatureEnabled } from "@/hooks/use-feature-flags";
-import { parseStageAiMeta, formatStageAiMeta } from "@/lib/crm-lead-analyzer.server";
+import { resolveStageAiMeta, DEFAULT_CRM_MASTER_PROMPT } from "@/lib/crm-stage-meta";
+import { applyStageMovement } from "@/lib/crm-lead-analyzer.functions";
 import { useLanguage, translateDefaultStageName, translateDefaultPipelineName } from "@/lib/i18n/context";
 
 
@@ -49,7 +50,7 @@ export const Route = createFileRoute("/app/crm")({
 
 const STAGE_COLORS = ["#8AA89A", "#FFB020", "#22B85F", "#FF5A5A", "#3FD27C", "#60A5FA", "#A78BFA", "#F472B6"];
 
-type Pipeline = { id: string; nome: string; tipo: string | null; agent_id: string | null; ordem: number | null; sistema: boolean };
+type Pipeline = { id: string; nome: string; tipo: string | null; agent_id: string | null; ordem: number | null; sistema: boolean; crm_master_prompt?: string | null };
 type KanbanStage = Stage & { pipeline_id: string | null; ordem?: number | null; tipo?: string | null; mostrar_valor?: boolean | null };
 type KanbanCard = LeadCard & { pipeline_id?: string | null; avatar_traits?: any | null };
 type AgentOpt = { id: string; nome: string; tipo: string | null; nome_agente: string | null; avatar_traits?: any | null };
@@ -585,10 +586,10 @@ function KanbanPage() {
 
 
 
-  async function createPipeline(nome: string, queueId?: string | null, agentId?: string | null) {
+  async function createPipeline(nome: string, queueId?: string | null, agentId?: string | null, crmMasterPrompt?: string | null) {
     const ordem = pipelines.length;
     const { data, error } = await supabase.from("crm_pipeline")
-      .insert({ company_id: companyId, nome, tipo: "custom", ordem, sistema: false, distribution_queue_id: queueId || null, agent_id: agentId || null })
+      .insert({ company_id: companyId, nome, tipo: "custom", ordem, sistema: false, distribution_queue_id: queueId || null, agent_id: agentId || null, crm_master_prompt: crmMasterPrompt || null })
       .select("id").maybeSingle();
     if (error || !data) return toast.error(error?.message ?? "Falha ao criar funil");
     // Cria etapas iniciais
@@ -603,8 +604,8 @@ function KanbanPage() {
     await loadAll(companyId);
   }
 
-  async function renamePipeline(id: string, nome: string, queueId?: string | null, agentId?: string | null) {
-    const { error } = await supabase.from("crm_pipeline").update({ nome, distribution_queue_id: queueId || null, agent_id: agentId || null }).eq("id", id);
+  async function renamePipeline(id: string, nome: string, queueId?: string | null, agentId?: string | null, crmMasterPrompt?: string | null) {
+    const { error } = await supabase.from("crm_pipeline").update({ nome, distribution_queue_id: queueId || null, agent_id: agentId || null, crm_master_prompt: crmMasterPrompt || null }).eq("id", id);
     if (error) return toast.error(error.message);
 
     toast.success("Funil renomeado");
@@ -1506,7 +1507,9 @@ function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete
   const tipo = (stage as any).tipo ?? "normal";
   const entradaForm = !!(stage as any).entrada_formulario;
   const mostrarValor = (stage as any).mostrar_valor !== false;
-  const isAiLocked = parseStageAiMeta(stage.mensagem_prompt).bloqueada_para_ia;
+  const stageMeta = resolveStageAiMeta(stage as any);
+  const isAiLocked = stageMeta.bloqueada_para_ia;
+  const hasAiCriteria = Boolean(stageMeta.criterio_ia);
 
   return (
     <div ref={setColRef} id={`kcol-${stage.id}`}
@@ -1519,11 +1522,16 @@ function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete
         <span className="size-2.5 rounded-full shrink-0" style={{ background: stage.cor }} />
         <b className="font-display text-[13.5px] truncate flex-1">{translateDefaultStageName(stage.nome)}</b>
         <span className="text-[11px] font-semibold text-muted-foreground bg-[color:var(--panel-2)] px-2 py-0.5 rounded-md min-w-[22px] text-center leading-5">{count}</span>
-        {isDefault && <span className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground bg-[color:var(--panel-2)] px-1.5 py-0.5 rounded">Padrão</span>}
+        {isDefault && <span className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground bg-[color:var(--panel-2)] px-1.5 py-0.5 rounded">{t("common.default", undefined, "Padrão")}</span>}
         {tipo === "ganho" && <span className="text-[9px] font-bold uppercase tracking-wide text-[#22B85F] bg-[#22B85F]/12 px-1.5 py-0.5 rounded">{t("crm.stage_won", undefined, "Ganho")}</span>}
         {tipo === "perda" && <span className="text-[9px] font-bold uppercase tracking-wide text-[#FF5A5A] bg-[#FF5A5A]/12 px-1.5 py-0.5 rounded">{t("crm.stage_lost", undefined, "Perda")}</span>}
-        {entradaForm && <span className="text-[9px] font-bold uppercase tracking-wide text-[var(--brand)] bg-[var(--brand)]/12 px-1.5 py-0.5 rounded">Formulário</span>}
-        {isAiLocked && <span className="text-[9px] font-bold uppercase tracking-wide text-amber-700 bg-amber-500/10 border border-amber-200/60 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={t("crm.stage_locked_alert")}><Lock className="size-2.5" />{t("crm.stage_locked_badge", undefined, "Bloqueada")}</span>}
+        {entradaForm && <span className="text-[9px] font-bold uppercase tracking-wide text-[var(--brand)] bg-[var(--brand)]/12 px-1.5 py-0.5 rounded">{t("crm.form", undefined, "Formulário")}</span>}
+        {hasAiCriteria && (
+          <span className="text-[9px] font-bold uppercase tracking-wide text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded flex items-center gap-0.5 cursor-help" title={stageMeta.criterio_ia}>
+            <Sparkles className="size-2.5 text-primary" />IA
+          </span>
+        )}
+        {isAiLocked && <span className="text-[9px] font-bold uppercase tracking-wide text-amber-700 bg-amber-500/10 border border-amber-200/60 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={t("crm.stage_locked_alert", undefined, "Esta etapa está protegida contra movimentos automáticos de IA.")}><Lock className="size-2.5" />{t("crm.stage_locked_badge", undefined, "Bloqueada")}</span>}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="text-muted-foreground hover:text-foreground p-1 rounded-md" onPointerDown={(e) => e.stopPropagation()}>
@@ -1667,6 +1675,22 @@ function CardBody({ card, pauses, members, dragging, onMove, iaActive, slaHoras 
           </span>
         )}
       </div>
+
+      {/* Banner de sugestão da IA */}
+      {(() => {
+        const diag = (card as any).campos_extras?.ultimo_diagnostico_ia;
+        if (diag?.etapa_sugerida_id && diag.etapa_sugerida_id !== card.stage_id) {
+          return (
+            <div className="mt-1.5 mb-1 flex items-center gap-1.5 rounded-md bg-amber-500/10 border border-amber-500/25 px-2 py-1 text-[11px] text-amber-800 dark:text-amber-300">
+              <Sparkles className="size-3 shrink-0 text-amber-600 animate-pulse" />
+              <span className="truncate">
+                <span className="font-semibold">{t("crm.ai_suggests", undefined, "IA sugiere")}:</span> {diag.etapa_sugerida_nome}
+              </span>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       {/* etiquetas + ações rápidas */}
       {(card.tags?.length > 0 || iaOn || canal || slaAtraso || !dragging) && (
@@ -2059,7 +2083,7 @@ function AutomacaoDialog({ companyId, stage, stages, allStages, pipelines, agent
   useEffect(() => {
     if (!stage) { setForm(null); return; }
     const s = stage as any;
-    const aiMeta = parseStageAiMeta(s.mensagem_prompt);
+    const aiMeta = resolveStageAiMeta(s);
     setForm({
       modo_atendimento: s.modo_atendimento ?? "auto",
       criterio_ia: aiMeta.criterio_ia ?? "",
@@ -2075,7 +2099,7 @@ function AutomacaoDialog({ companyId, stage, stages, allStages, pipelines, agent
       hora_do_dia: s.hora_do_dia ?? "",
       mensagem_tipo: s.mensagem_tipo ?? "template",
       mensagem_texto: s.mensagem_texto ?? "",
-      mensagem_prompt: s.mensagem_prompt ?? "",
+      mensagem_prompt: aiMeta.mensagem_prompt ?? "",
       mensagem_midia_url: s.mensagem_midia_url ?? "",
       mensagem_midia_tipo: s.mensagem_midia_tipo ?? "",
       mensagem_midia_mime: s.mensagem_midia_mime ?? "",
@@ -2220,11 +2244,9 @@ function AutomacaoDialog({ companyId, stage, stages, allStages, pipelines, agent
       hora_do_dia: form.hora_do_dia || null,
       mensagem_tipo: form.mensagem_tipo,
       mensagem_texto: form.mensagem_texto || null,
-      mensagem_prompt: formatStageAiMeta({
-        mensagem_prompt: form.mensagem_prompt || "",
-        criterio_ia: form.criterio_ia || "",
-        bloqueada_para_ia: !!form.bloqueada_para_ia,
-      }),
+      mensagem_prompt: (form.mensagem_prompt || "").trim() || null,
+      criterio_ia: (form.criterio_ia || "").trim() || null,
+      bloqueada_para_ia: !!form.bloqueada_para_ia,
       mensagem_midia_url: form.mensagem_tipo === "template" ? (form.mensagem_midia_url || null) : null,
       mensagem_midia_tipo: form.mensagem_tipo === "template" ? (form.mensagem_midia_tipo || null) : null,
       mensagem_midia_mime: form.mensagem_tipo === "template" ? (form.mensagem_midia_mime || null) : null,
@@ -2717,17 +2739,19 @@ function PipelineDialog({ state, queues, agents, onClose, onCreate, onRename }: 
 
   onClose: () => void;
   agents?: AgentOpt[];
-  onCreate: (nome: string, queueId?: string | null, agentId?: string | null) => void;
-  onRename: (id: string, nome: string, queueId?: string | null, agentId?: string | null) => void;
+  onCreate: (nome: string, queueId?: string | null, agentId?: string | null, crmMasterPrompt?: string | null) => void;
+  onRename: (id: string, nome: string, queueId?: string | null, agentId?: string | null, crmMasterPrompt?: string | null) => void;
 }) {
   const { t } = useLanguage();
   const [nome, setNome] = useState("");
   const [queueId, setQueueId] = useState<string>("");
   const [agentId, setAgentId] = useState<string>("");
+  const [crmMasterPrompt, setCrmMasterPrompt] = useState<string>("");
   useEffect(() => { 
     setNome(state?.mode === "edit" ? state.pipeline.nome : ""); 
     setQueueId(state?.mode === "edit" ? (state.pipeline as any).distribution_queue_id ?? "" : "");
     setAgentId(state?.mode === "edit" ? (state.pipeline as any).agent_id ?? "" : "");
+    setCrmMasterPrompt(state?.mode === "edit" ? (state.pipeline as any).crm_master_prompt ?? "" : "");
   }, [state]);
 
   if (!state) return null;
@@ -2768,12 +2792,12 @@ function PipelineDialog({ state, queues, agents, onClose, onCreate, onRename }: 
             <div className="space-y-2 pt-2 border-t border-[var(--border)]">
               <Label className="flex items-center gap-1.5 text-xs font-semibold">
                 <Sparkles className="size-3.5 text-primary" />
-                Agente de IA do Funil
+                {t("crm.pipeline_agent_label", undefined, "Agente de IA do Funil")}
               </Label>
               <select className="w-full mt-1 rounded-md border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm"
                 value={agentId}
                 onChange={(e) => setAgentId(e.target.value)}>
-                <option value="">— usar agente padrão da empresa —</option>
+                <option value="">{t("crm.pipeline_use_default_agent", undefined, "— usar agente padrão da empresa —")}</option>
                 {agents.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.nome_agente ? `${a.nome_agente} — ${a.nome}` : a.nome}
@@ -2781,20 +2805,47 @@ function PipelineDialog({ state, queues, agents, onClose, onCreate, onRename }: 
                 ))}
               </select>
               <p className="text-[11px] text-muted-foreground">
-                Define el bot de IA especializado que atenderá y auditará este embudo.
+                {t("crm.pipeline_agent_desc", undefined, "Define el bot de IA especializado que atenderá y auditará este embudo.")}
               </p>
             </div>
           )}
+
+          <div className="space-y-2 pt-2 border-t border-[var(--border)]">
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-1.5 text-xs font-semibold">
+                <Sparkles className="size-3.5 text-primary" />
+                {t("crm.pipeline_master_prompt_label", undefined, "Prompt Maestro del Analista IA (Auditor del Embudo)")}
+              </Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 text-[11px] px-2 text-primary"
+                onClick={() => setCrmMasterPrompt(DEFAULT_CRM_MASTER_PROMPT)}
+              >
+                {t("crm.restore_default_prompt", undefined, "Restaurar prompt base")}
+              </Button>
+            </div>
+            <textarea
+              value={crmMasterPrompt}
+              onChange={(e) => setCrmMasterPrompt(e.target.value)}
+              placeholder={t("crm.pipeline_master_prompt_placeholder", undefined, "Instrucciones de auditoría para evaluar los leads de este embudo...")}
+              className="w-full min-h-[90px] rounded-md border border-[var(--border)] bg-[var(--panel)] p-2.5 text-xs font-mono resize-y"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              {t("crm.pipeline_master_prompt_hint", undefined, "La IA usará estas reglas para calificar leads y sugerir movimientos de etapa.")}
+            </p>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
           <Button
             disabled={!nome.trim()}
             onClick={() => {
-              if (isEdit) onRename(state.pipeline.id, nome.trim(), queueId || null, agentId || null);
-              else onCreate(nome.trim(), queueId || null, agentId || null);
+              if (isEdit) onRename(state.pipeline.id, nome.trim(), queueId || null, agentId || null, crmMasterPrompt.trim() || null);
+              else onCreate(nome.trim(), queueId || null, agentId || null, crmMasterPrompt.trim() || null);
             }}
-          >{isEdit ? "Salvar" : "Criar funil"}</Button>
+          >{isEdit ? t("common.save", undefined, "Salvar") : t("crm.create_pipeline", undefined, "Criar funil")}</Button>
         </DialogFooter>
 
       </DialogContent>

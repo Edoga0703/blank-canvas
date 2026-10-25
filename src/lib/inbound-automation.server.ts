@@ -72,41 +72,50 @@ export async function processInboundAutomation(
   const { data: stage } = stageId
     ? await admin
         .from("crm_stage")
-        .select("modo_atendimento, regua_ativa, mensagem_tipo, mensagem_texto, mensagem_prompt, mensagem_midia_url")
+        .select("modo_atendimento, regua_ativa, mensagem_tipo, mensagem_texto, mensagem_prompt, mensagem_midia_url, criterio_ia, bloqueada_para_ia")
         .eq("id", stageId)
         .maybeSingle()
     : { data: null };
+
+  const { resolveStageAiMeta } = await import("@/lib/crm-stage-meta");
+  const cleanPrompt = resolveStageAiMeta(stage).mensagem_prompt;
 
   const mode = stage?.modo_atendimento || "auto";
   const hasFixedRule = Boolean(
     stage?.regua_ativa &&
       stage?.mensagem_tipo !== "sem_mensagem" &&
-      (stage?.mensagem_texto?.trim() || stage?.mensagem_prompt?.trim() || stage?.mensagem_midia_url?.trim()),
+      (stage?.mensagem_texto?.trim() || (stage?.mensagem_tipo === "ia_leve" && cleanPrompt) || stage?.mensagem_midia_url?.trim()),
   );
+
+  const triggerBackgroundLeadAudit = () => {
+    void (async () => {
+      try {
+        const { checkAndAnalyzeLeadCooldown } = await import("@/lib/crm-lead-analyzer.server");
+        await checkAndAnalyzeLeadCooldown(companyId, numero);
+      } catch (e: any) {
+        console.warn("[inbound-automation] checkAndAnalyzeLeadCooldown background error:", e?.message);
+      }
+    })();
+  };
 
   if (mode !== "ia") {
     const regua = await processKanbanReguaForNumero(admin, companyId, numero);
     if (mode === "manual" || hasFixedRule) {
+      triggerBackgroundLeadAudit();
       return { engine: "regua", result: regua };
     }
   }
 
-  // Dispara el Bot Analista de Leads CRM en segundo plano (regla estricta de 30 minutos de cooldown)
-  void (async () => {
-    try {
-      const { checkAndAnalyzeLeadCooldown } = await import("@/lib/crm-lead-analyzer.server");
-      await checkAndAnalyzeLeadCooldown(companyId, numero);
-    } catch (e: any) {
-      console.warn("[inbound-automation] checkAndAnalyzeLeadCooldown background error:", e?.message);
-    }
-  })();
-
   if (mode === "manual") {
+    triggerBackgroundLeadAudit();
     return { engine: "none", reason: "manual" };
   }
 
   await processAiResponse(companyId, numero, texto, inboundMessageId, {
     responderEmAudio: !!params.responderEmAudio,
   });
+
+  // Se ejecuta DESPUÉS de processAiResponse para evitar condición de carrera en stage_id
+  triggerBackgroundLeadAudit();
   return { engine: "ia" };
 }

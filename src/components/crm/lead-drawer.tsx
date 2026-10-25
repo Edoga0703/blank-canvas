@@ -24,6 +24,8 @@ import { CANAL_LABEL, CANAL_COLOR, type CanalEntrada } from "@/lib/tracking-util
 import { ConversationMediaTab } from "@/components/chat/conversation-media-panel";
 import { OlistPedidosTab } from "@/components/crm/olist-pedidos-tab";
 import { useLanguage, formatDate, formatTime, formatCurrency, translateDefaultStageName, translateDefaultPipelineName } from "@/lib/i18n/context";
+import { useServerFn } from "@tanstack/react-start";
+import { applyStageMovement } from "@/lib/crm-lead-analyzer.functions";
 import { useCapacidadeAtiva } from "@/hooks/use-capacidades";
 import { LeadAiAnalyzerDialog } from "@/components/crm/lead-ai-analyzer-dialog";
 
@@ -225,16 +227,12 @@ export function LeadDetailsPanel({
       company_id: companyId, card_id: local.id, tipo: "atualizacao", descricao: "Dados atualizados",
     });
 
-    // Se houve mudança de etapa, dispara a automação imediatamente
-    if (local.stage_id !== card.stage_id && local.numero) {
-      console.log("[LeadDetails] Stage changed, automation will pick it up.");
-      // Dispara o motor de régua para o número de forma imediata
+    // Se houve mudança de etapa, usa applyStageMovement no servidor
+    if (local.stage_id && local.stage_id !== card.stage_id) {
       try {
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { processKanbanReguaForNumero } = await import("@/lib/kanban-engine.server");
-        await processKanbanReguaForNumero(supabaseAdmin, companyId, local.numero);
+        await moveStageFn({ data: { cardId: local.id, stageId: local.stage_id, reason: "Etapa actualizada desde el detalle del lead" } });
       } catch (e) {
-        console.error("[LeadDetails] Failed to trigger immediate automation:", e);
+        console.error("[LeadDetails] Error moving stage:", e);
       }
     }
 
@@ -350,15 +348,18 @@ export function LeadDetailsPanel({
             <Button
               className="h-9 w-full"
               onClick={async () => {
-                const st = allStages.find((s) => s.id === local.stage_id);
-                const ok = await persist(
-                  { stage_id: local.stage_id, pipeline_id: currentPipelineId, status: st?.nome ?? local.status },
-                  "Funil / etapa atualizados",
-                );
-                if (ok) setFunilOpen(false);
+                if (!local.stage_id) return;
+                try {
+                  await moveStageFn({ data: { cardId: local.id, stageId: local.stage_id, reason: "Cambio de etapa desde cabecera del lead" } });
+                  toast.success(t("crm.stage_updated", undefined, "Funil / etapa atualizados"));
+                  setFunilOpen(false);
+                  onChanged();
+                } catch (err: any) {
+                  toast.error(err?.message || "Error al mover etapa");
+                }
               }}
             >
-              <Save className="size-4 mr-2" /> Salvar funil / etapa
+              <Save className="size-4 mr-2" /> {t("crm.save_pipeline_stage", undefined, "Salvar funil / etapa")}
             </Button>
           </PopoverContent>
         </Popover>
@@ -376,12 +377,67 @@ export function LeadDetailsPanel({
         <span>{t("crm.audit_lead", undefined, "Auditar Lead con IA (Diagnóstico & Etapa)")}</span>
       </Button>
 
+      {/* Banner de recomendación de IA guardada */}
+      {(() => {
+        const diag = (local as any).campos_extras?.ultimo_diagnostico_ia;
+        if (diag?.etapa_sugerida_id && diag.etapa_sugerida_id !== local.stage_id) {
+          return (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-800 dark:text-amber-300">
+                  <Sparkles className="size-3.5 shrink-0 text-amber-600 animate-pulse" />
+                  <span>{t("crm.ai_recommends_stage", undefined, "Recomendación de Etapa por IA")}:</span>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-200">
+                  {diag.intencao || "AUDITORÍA"}
+                </span>
+              </div>
+              <p className="text-xs text-foreground/80 leading-relaxed">
+                {diag.justificativa || diag.resumo}
+              </p>
+              <div className="pt-1 flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-foreground">
+                  ➔ {diag.etapa_sugerida_nome}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white font-medium"
+                  onClick={async () => {
+                    try {
+                      await moveStageFn({
+                        data: {
+                          cardId: local.id,
+                          stageId: diag.etapa_sugerida_id,
+                          reason: `Movido a "${diag.etapa_sugerida_nome}" por confirmación humana de recomendación IA`,
+                        },
+                      });
+                      setLocal((prev: any) => ({ ...prev, stage_id: diag.etapa_sugerida_id }));
+                      toast.success(t("crm.stage_moved_success", { name: diag.etapa_sugerida_nome }, `Movido a "${diag.etapa_sugerida_nome}"`));
+                      onChanged();
+                    } catch (err: any) {
+                      toast.error(err?.message || "Error al mover lead");
+                    }
+                  }}
+                >
+                  <Check className="size-3.5 mr-1" />
+                  {t("crm.confirm_and_move", undefined, "Confirmar y mover")}
+                </Button>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
+
       <LeadAiAnalyzerDialog
         cardId={local.id}
         leadName={local.nome || local.numero}
         currentStageName={currentStage?.nome || "Etapa actual"}
         open={aiAnalyzerOpen}
         onOpenChange={setAiAnalyzerOpen}
+        initialDiagnostic={(local as any).campos_extras?.ultimo_diagnostico_ia}
+        initialAnalyzedAt={(local as any).ultimo_analise_ia_em || (local as any).campos_extras?.ultimo_analise_ia_em}
         onStageChanged={(newStageId) => {
           setLocal((prev: any) => ({ ...prev, stage_id: newStageId }));
           onChanged();
@@ -518,6 +574,7 @@ export function LeadDetailsPanel({
             <CamposExtrasSection
               cardId={local.id}
               respostas={((local as any).campos_extras?.respostas ?? []) as RespostaExtra[]}
+              outros={(local as any).campos_extras ?? {}}
               onChanged={(lista) => {
                 setLocal((p: any) => ({ ...p, campos_extras: { ...(p.campos_extras ?? {}), respostas: lista } }));
                 onChanged();
@@ -1421,8 +1478,8 @@ function OrigemPicker({ companyId, value, onChange, hideLabel }: { companyId: st
 
 /* ========== Respostas do formulário / informações extras ========== */
 function CamposExtrasSection({
-  cardId, respostas, onChanged,
-}: { cardId: string; respostas: RespostaExtra[]; onChanged: (lista: RespostaExtra[]) => void }) {
+  cardId, respostas, outros, onChanged,
+}: { cardId: string; respostas: RespostaExtra[]; outros: Record<string, any>; onChanged: (lista: RespostaExtra[]) => void }) {
   const [editando, setEditando] = useState<number | null>(null);
   const [rascunho, setRascunho] = useState("");
   const [novoLabel, setNovoLabel] = useState("");
@@ -1434,7 +1491,7 @@ function CamposExtrasSection({
     setSalvando(true);
     const { error } = await supabase
       .from("crm_cards")
-      .update({ campos_extras: { respostas: lista } } as any)
+      .update({ campos_extras: { ...(outros ?? {}), respostas: lista } } as any)
       .eq("id", cardId);
     setSalvando(false);
     if (error) return toast.error("Não foi possível salvar");

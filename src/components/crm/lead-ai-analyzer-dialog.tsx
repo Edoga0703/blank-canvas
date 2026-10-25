@@ -3,9 +3,10 @@ import { useServerFn } from "@tanstack/react-start";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Loader2, CheckCircle2, AlertTriangle, ArrowRight, Lightbulb, Lock, HelpCircle } from "lucide-react";
+import { Sparkles, Loader2, CheckCircle2, AlertTriangle, ArrowRight, Lightbulb, Lock, HelpCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { analyzeLeadNow, applyStageMovement, type LeadAnalysisResult } from "@/lib/crm-lead-analyzer.server";
+import { analyzeLeadNow, applyStageMovement } from "@/lib/crm-lead-analyzer.functions";
+import type { LeadAnalysisResult } from "@/lib/crm-stage-meta";
 import { useLanguage } from "@/lib/i18n/context";
 
 export function LeadAiAnalyzerDialog({
@@ -14,6 +15,8 @@ export function LeadAiAnalyzerDialog({
   currentStageName,
   open,
   onOpenChange,
+  initialDiagnostic,
+  initialAnalyzedAt,
   onStageChanged,
 }: {
   cardId: string;
@@ -21,37 +24,46 @@ export function LeadAiAnalyzerDialog({
   currentStageName: string;
   open: boolean;
   onOpenChange: (o: boolean) => void;
+  initialDiagnostic?: LeadAnalysisResult | null;
+  initialAnalyzedAt?: string | null;
   onStageChanged?: (newStageId: string) => void;
 }) {
-  const { t } = useLanguage();
+  const { t, formatDate, formatTime } = useLanguage();
   const analyzeFn = useServerFn(analyzeLeadNow);
   const moveFn = useServerFn(applyStageMovement);
 
   const [loading, setLoading] = useState(false);
   const [moving, setMoving] = useState(false);
-  const [result, setResult] = useState<LeadAnalysisResult | null>(null);
+  const [result, setResult] = useState<LeadAnalysisResult | null>(initialDiagnostic || null);
+  const [analyzedAt, setAnalyzedAt] = useState<string | null>(initialAnalyzedAt || null);
   const [suggestedBlocked, setSuggestedBlocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !cardId) return;
-    runAnalysis();
-  }, [open, cardId]);
+    if (initialDiagnostic) {
+      setResult(initialDiagnostic);
+      setAnalyzedAt(initialAnalyzedAt || null);
+      setError(null);
+    } else {
+      runAnalysis();
+    }
+  }, [open, cardId, initialDiagnostic, initialAnalyzedAt]);
 
   async function runAnalysis() {
     setLoading(true);
     setError(null);
-    setResult(null);
     try {
       const res = await analyzeFn({ data: { cardId } });
       if (!res.ok) {
-        setError(res.error || "No se pudo completar el análisis");
+        setError(res.error || t("crm.audit_error_generic", undefined, "No se pudo completar el análisis"));
       } else {
         setResult(res.result);
         setSuggestedBlocked(res.suggestedStageBlocked);
+        setAnalyzedAt(res.analyzedAt || new Date().toISOString());
       }
     } catch (err: any) {
-      setError(err?.message || "Error al conectar con el Analista de IA");
+      setError(err?.message || t("crm.audit_connection_error", undefined, "Error al conectar con el Analista de IA"));
     } finally {
       setLoading(false);
     }
@@ -61,12 +73,18 @@ export function LeadAiAnalyzerDialog({
     if (!result?.etapa_sugerida_id) return;
     setMoving(true);
     try {
-      await moveFn({ data: { cardId, stageId: result.etapa_sugerida_id } });
-      toast.success(`Lead movido a "${result.etapa_sugerida_nome}"`);
+      await moveFn({
+        data: {
+          cardId,
+          stageId: result.etapa_sugerida_id,
+          reason: `Movido a "${result.etapa_sugerida_nome}" por recomendación de Auditoría IA`,
+        },
+      });
+      toast.success(t("crm.stage_moved_success", { name: result.etapa_sugerida_nome }, `Lead movido a "${result.etapa_sugerida_nome}"`));
       onStageChanged?.(result.etapa_sugerida_id);
       onOpenChange(false);
     } catch (err: any) {
-      toast.error(err?.message || "No se pudo mover el lead");
+      toast.error(err?.message || t("crm.stage_move_error", undefined, "No se pudo mover el lead"));
     } finally {
       setMoving(false);
     }
@@ -90,7 +108,7 @@ export function LeadAiAnalyzerDialog({
             <div>
               <DialogTitle className="text-base font-semibold">{t("crm.audit_dialog_title", undefined, "Auditoría y Diagnóstico de Lead")}</DialogTitle>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Lead: <span className="font-medium text-foreground">{leadName || "Sin nombre"}</span> • Etapa actual:{" "}
+                Lead: <span className="font-medium text-foreground">{leadName || t("common.no_name", undefined, "Sin nombre")}</span> • {t("crm.current_stage", undefined, "Etapa actual")}:{" "}
                 <span className="font-medium text-foreground">{currentStageName}</span>
               </p>
             </div>
@@ -99,83 +117,85 @@ export function LeadAiAnalyzerDialog({
 
         <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
           {loading && (
-            <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
-              <Loader2 className="size-8 text-primary animate-spin" />
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Analizando historial de la negociación...</p>
-                <p className="text-xs text-muted-foreground">
-                  Leyendo hasta 100 mensajes y contrastando con los criterios del embudo.
-                </p>
-              </div>
+            <div className="py-12 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+              <Loader2 className="size-8 animate-spin text-primary" />
+              <p className="text-sm font-medium">{t("crm.audit_in_progress", undefined, "Analizando negociación y mensajes con IA...")}</p>
+              <p className="text-xs text-muted-foreground/80 max-w-xs text-center">
+                {t("crm.audit_in_progress_desc", undefined, "Leyendo el historial completo para comparar los hechos contra los criterios de las etapas.")}
+              </p>
             </div>
           )}
 
           {error && !loading && (
-            <div className="p-4 rounded-xl border border-destructive/20 bg-destructive/5 text-destructive space-y-2">
-              <div className="flex items-center gap-2 font-medium text-sm">
-                <AlertTriangle className="size-4 shrink-0" />
-                <span>No fue posible analizar la conversación</span>
+            <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 text-destructive space-y-2">
+              <div className="flex items-center gap-2 font-semibold text-sm">
+                <AlertTriangle className="size-4" />
+                <span>{t("crm.audit_cannot_complete", undefined, "No se pudo completar el análisis")}</span>
               </div>
-              <p className="text-xs opacity-90">{error}</p>
+              <p className="text-xs leading-relaxed text-destructive/90">{error}</p>
               <Button size="sm" variant="outline" onClick={runAnalysis} className="mt-2 text-xs">
-                Reintentar análisis
+                {t("crm.audit_retry", undefined, "Reintentar análisis")}
               </Button>
             </div>
           )}
 
           {result && !loading && (
-            <div className="space-y-4 animate-in fade-in duration-200">
-              {/* Badge de Intención y Calificación */}
+            <div className="space-y-4">
+              {/* Encabezado de resultado y Timestamp */}
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium text-muted-foreground">{t("crm.customer_intent", undefined, "Intención del cliente:")}</span>
-                  <Badge variant="outline" className={`font-semibold text-xs px-2.5 py-0.5 ${intencionColor}`}>
-                    {result.intencao}
-                  </Badge>
-                </div>
-                {result.calificado && (
-                  <Badge className="bg-primary/10 text-primary border-primary/20 text-[11px] font-medium gap-1">
-                    <CheckCircle2 className="size-3" /> Lead Calificado
-                  </Badge>
+                <Badge variant="outline" className={`text-xs px-2.5 py-1 font-bold ${intencionColor}`}>
+                  {result.intencao === "POSITIVA" ? "🟢" : result.intencao === "NEGATIVA" ? "🔴" : "🟡"}{" "}
+                  {t("crm.intent", undefined, "Intención")}: {result.intencao}
+                </Badge>
+                {analyzedAt && (
+                  <span className="text-[11px] text-muted-foreground">
+                    {t("crm.analyzed_at", undefined, "Analizado")}: {formatDate(analyzedAt, { day: "2-digit", month: "2-digit" })} {formatTime(analyzedAt, { hour: "2-digit", minute: "2-digit" })}
+                  </span>
                 )}
               </div>
 
-              {/* Resumen de la Negociación */}
-              <div className="p-3.5 rounded-xl border border-border bg-background space-y-1.5 shadow-sm">
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  {t("crm.executive_summary", undefined, "Resumen Ejecutivo")}
+              {/* Resumen ejecutivo */}
+              <div className="p-3.5 rounded-xl border border-border bg-muted/40 space-y-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {t("crm.executive_summary", undefined, "Resumen de la Negociación")}
                 </span>
-                <p className="text-[13.5px] leading-relaxed text-foreground">{result.resumo}</p>
+                <p className="text-sm text-foreground leading-relaxed">{result.resumo}</p>
               </div>
 
-              {/* Recomendación de Etapa */}
-              <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-3">
-                <span className="text-xs font-semibold text-primary uppercase tracking-wider block">
-                  Recomendación de Movimiento
+              {/* Comparación de Etapa Actual vs Sugerida */}
+              <div className="p-3.5 rounded-xl border border-border bg-card space-y-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {t("crm.stage_classification", undefined, "Clasificación de Etapa")}
                 </span>
 
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <span className="px-2.5 py-1 rounded-md bg-muted text-muted-foreground border border-border">
-                    {currentStageName}
-                  </span>
-                  <ArrowRight className="size-4 text-primary shrink-0" />
-                  <span className="px-2.5 py-1 rounded-md bg-primary text-primary-foreground font-semibold shadow-sm">
-                    {result.etapa_sugerida_nome}
-                  </span>
+                <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-muted/50 border border-border/60">
+                  <div className="min-w-0">
+                    <span className="text-[10px] uppercase text-muted-foreground block">{t("crm.current_stage", undefined, "Etapa Actual")}</span>
+                    <span className="text-xs font-semibold text-foreground truncate block">{currentStageName}</span>
+                  </div>
+                  <ArrowRight className="size-4 text-muted-foreground shrink-0" />
+                  <div className="min-w-0 text-right">
+                    <span className="text-[10px] uppercase text-primary font-semibold block">{t("crm.suggested_by_ai", undefined, "Sugerida por IA")}</span>
+                    <span className="text-xs font-bold text-primary truncate block">{result.etapa_sugerida_nome}</span>
+                  </div>
                 </div>
 
-                <div className="text-xs text-muted-foreground leading-relaxed pt-1">
-                  <span className="font-semibold text-foreground">Criterio evaluado: </span>
-                  {result.justificativa}
+                <div className="space-y-1 text-xs">
+                  <span className="font-semibold text-muted-foreground">{t("crm.justification", undefined, "Justificación")}:</span>
+                  <p className="text-muted-foreground leading-relaxed pl-2 border-l-2 border-primary/40">
+                    {result.justificativa}
+                  </p>
                 </div>
 
                 {suggestedBlocked && (
-                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 text-xs">
-                    <Lock className="size-3.5 shrink-0 mt-0.5" />
-                    <span>
-                      Esta etapa está protegida como <strong>exclusiva para decisión humana</strong>. Puedes moverla
-                      haciendo clic en el botón de abajo.
-                    </span>
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-800 text-xs">
+                    <Lock className="size-4 shrink-0 text-amber-600 mt-0.5" />
+                    <div>
+                      <span className="font-semibold block">{t("crm.stage_protected_title", undefined, "Etapa Protegida (Bloqueada para IA)")}</span>
+                      <p className="text-[11px] text-amber-800/90 mt-0.5">
+                        {t("crm.stage_protected_desc", undefined, "Esta etapa no permite movimientos automáticos sin aprobación. Debes pulsar el botón inferior para confirmar el cambio.")}
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -185,7 +205,7 @@ export function LeadAiAnalyzerDialog({
                 <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/5 space-y-1.5">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700">
                     <Lightbulb className="size-4" />
-                    <span>Sugerencia para mejorar las reglas de tu embudo</span>
+                    <span>{t("crm.pipeline_training_suggestion", undefined, "Sugerencia para mejorar las reglas de tu embudo")}</span>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     {result.sugestao_treinamento}
@@ -203,8 +223,9 @@ export function LeadAiAnalyzerDialog({
 
           {result && (
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={runAnalysis} disabled={loading || moving}>
-                Re-analizar
+              <Button variant="outline" size="sm" onClick={runAnalysis} disabled={loading || moving} className="gap-1.5">
+                <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
+                {t("crm.reanalyze_now", undefined, "Re-analizar")}
               </Button>
               {result.etapa_sugerida_nome.toLowerCase() !== currentStageName.toLowerCase() ? (
                 <Button
@@ -214,11 +235,11 @@ export function LeadAiAnalyzerDialog({
                   className="bg-primary text-primary-foreground font-semibold gap-1.5"
                 >
                   {moving ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
-                  Mover a {result.etapa_sugerida_nome}
+                  {t("crm.move_to", { name: result.etapa_sugerida_nome }, `Mover a ${result.etapa_sugerida_nome}`)}
                 </Button>
               ) : (
                 <Badge variant="outline" className="text-xs text-muted-foreground px-2.5 py-1">
-                  Lead ya en la etapa correcta
+                  {t("crm.already_in_correct_stage", undefined, "Lead ya en la etapa correcta")}
                 </Badge>
               )}
             </div>

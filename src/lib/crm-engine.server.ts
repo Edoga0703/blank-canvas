@@ -2,7 +2,14 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isGenericLeadName } from "@/lib/lead-name";
 
 export interface AgendarBrief { inicio: string; fim: string; titulo: string; }
-export interface StageBrief { id: string; nome: string; pipeline_id: string; tipo: string; }
+export interface StageBrief {
+  id: string;
+  nome: string;
+  pipeline_id: string;
+  tipo: string;
+  criterio_ia?: string;
+  bloqueada_para_ia?: boolean;
+}
 
 /** Empresa configurada para triagem 100% manual (sem rodízio automático). */
 export async function isManualDistribution(admin: any, companyId: string): Promise<boolean> {
@@ -211,16 +218,22 @@ export async function upsertCard(
 /**
  * Busca lista resumida de etapas para o motor de IA.
  */
-export async function getStagesBrief(admin: any, companyId: string): Promise<StageBrief[]> {
-  // Funil de entrada explícito tem prioridade; senão mantém o comportamento atual (comercial).
-  const { data: entrada } = await admin
-    .from("crm_pipeline")
-    .select("id")
-    .eq("company_id", companyId)
-    .eq("entrada", true)
-    .limit(1);
+export async function getStagesBrief(
+  admin: any,
+  companyId: string,
+  preferredPipelineId?: string | null,
+): Promise<StageBrief[]> {
+  let pipelineId = preferredPipelineId || null;
 
-  let pipelineId = entrada?.[0]?.id;
+  if (!pipelineId) {
+    const { data: entrada } = await admin
+      .from("crm_pipeline")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("entrada", true)
+      .limit(1);
+    pipelineId = entrada?.[0]?.id ?? null;
+  }
 
   if (!pipelineId) {
     const { data: pipelines } = await admin
@@ -229,18 +242,29 @@ export async function getStagesBrief(admin: any, companyId: string): Promise<Sta
       .eq("company_id", companyId)
       .eq("tipo", "comercial")
       .limit(1);
-    pipelineId = pipelines?.[0]?.id;
+    pipelineId = pipelines?.[0]?.id ?? null;
   }
 
   if (!pipelineId) return [];
 
   const { data: stages } = await admin
     .from("crm_stage")
-    .select("id, nome, pipeline_id, tipo")
+    .select("id, nome, pipeline_id, tipo, criterio_ia, bloqueada_para_ia, mensagem_prompt")
     .eq("pipeline_id", pipelineId)
     .order("ordem", { ascending: true });
-  
-  return (stages || []) as StageBrief[];
+
+  const { resolveStageAiMeta } = await import("./crm-stage-meta");
+  return (stages || []).map((s: any) => {
+    const meta = resolveStageAiMeta(s);
+    return {
+      id: s.id,
+      nome: s.nome,
+      pipeline_id: s.pipeline_id,
+      tipo: s.tipo,
+      criterio_ia: meta.criterio_ia,
+      bloqueada_para_ia: meta.bloqueada_para_ia,
+    };
+  });
 }
 
 /**
@@ -258,10 +282,15 @@ export async function pickLeadOwner(admin: any, companyId: string, stageId?: str
     if (stageId) {
       const { data: stage } = await admin
         .from("crm_stage")
-        .select("distribution_queue_id")
+        .select("distribution_queue_id, distribution_user_id")
         .eq("id", stageId)
         .eq("company_id", companyId)
         .maybeSingle();
+
+      // Si la etapa asigna a un usuario específico, retornarlo directamente
+      if (stage?.distribution_user_id) {
+        return stage.distribution_user_id;
+      }
 
       if (stage?.distribution_queue_id) {
         const { data: configuredQueue } = await admin

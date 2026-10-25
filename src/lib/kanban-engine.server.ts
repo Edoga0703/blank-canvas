@@ -46,11 +46,14 @@ async function processKanbanReguaCard(admin: Admin, card: KanbanCardRow): Promis
   const nowIso = new Date().toISOString();
   const { data: stage } = await admin
     .from("crm_stage")
-    .select("id, nome, regua_ativa, delay_valor, delay_unidade, hora_do_dia, mensagem_tipo, mensagem_texto, mensagem_prompt, mensagem_midia_url, mensagem_midia_tipo, mensagem_midia_mime, mensagem_midia_nome, move_se_sem_resposta_dias, move_se_sem_resposta_para, parar_se_humano, modo_atendimento")
+    .select("id, nome, regua_ativa, delay_valor, delay_unidade, hora_do_dia, mensagem_tipo, mensagem_texto, mensagem_prompt, mensagem_midia_url, mensagem_midia_tipo, mensagem_midia_mime, mensagem_midia_nome, move_se_sem_resposta_dias, move_se_sem_resposta_para, parar_se_humano, modo_atendimento, criterio_ia, bloqueada_para_ia")
     .eq("id", card.stage_id)
     .maybeSingle();
   
   if (!stage || !stage.regua_ativa) return { id: card.id, status: "nao_aplicavel" };
+
+  const { resolveStageAiMeta } = await import("@/lib/crm-stage-meta");
+  const cleanStagePrompt = resolveStageAiMeta(stage).mensagem_prompt;
 
   if (stage.parar_se_humano) {
     const { data: pause } = await admin
@@ -68,7 +71,9 @@ async function processKanbanReguaCard(admin: Admin, card: KanbanCardRow): Promis
   const readyAt = entrouMs + delayMs;
   const now = Date.now();
   const iaMode = (stage as any).modo_atendimento === "ia";
-  const onlyRules = stage.mensagem_tipo === "sem_mensagem" || (!stage.mensagem_texto && !stage.mensagem_prompt && !stage.mensagem_midia_url);
+  const onlyRules =
+    stage.mensagem_tipo === "sem_mensagem" ||
+    (!stage.mensagem_texto && !(stage.mensagem_tipo === "ia_leve" && cleanStagePrompt) && !stage.mensagem_midia_url);
   const ultimoDisparoMs = card.regua_ultimo_disparo_em
     ? new Date(card.regua_ultimo_disparo_em).getTime()
     : 0;
@@ -151,9 +156,9 @@ async function processKanbanReguaCard(admin: Admin, card: KanbanCardRow): Promis
   };
 
   let texto = "";
-  if (stage.mensagem_tipo === "ia_leve" && stage.mensagem_prompt) {
+  if (stage.mensagem_tipo === "ia_leve" && cleanStagePrompt) {
     const { lovableAiChat } = await import("./lovable-ai.server");
-    const prompt = renderTemplate(stage.mensagem_prompt, vars);
+    const prompt = renderTemplate(cleanStagePrompt, vars);
     texto = (await lovableAiChat(
       [
         { role: "system", content: "Você redige mensagens curtas de WhatsApp em português brasileiro, tom natural, sem hashtags nem markdown, máximo 3 linhas." },
