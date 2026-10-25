@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { InstagramGlyph, MessengerGlyph, WhatsAppGlyph, TelegramGlyph } from "@/components/ui/channel-icons";
 import { brand } from "@/config/brand";
+import { useLanguage } from "@/lib/i18n/context";
 import { betaConfig } from "@/config/beta";
 import {
   connectWhatsapp, connectDapiOfficial, checkWhatsappStatus, disconnectWhatsapp, deleteWhatsapp,
@@ -334,10 +335,10 @@ function ConexoesPage() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              Conexões <HelpTip text="Cada card é um canal. Ao conectar, a conta aparece dentro do próprio card." />
+              {t("connection.title", undefined, "Conexões")} <HelpTip text={t("connection.subtitle", undefined, "Cada card é um canal. Ao conectar, a conta aparece dentro do próprio card.")} />
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground">
-              {totalConectadas > 0 ? `${totalConectadas} conta(s) conectada(s)` : "Nenhuma conta conectada ainda."}
+              {totalConectadas > 0 ? `${totalConectadas} ${t("connection.connected_accounts", undefined, "conta(s) conectada(s)")}` : t("connection.no_connected_accounts", undefined, "Nenhuma conta conectada ainda.")}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -355,7 +356,7 @@ function ConexoesPage() {
               }}
               disabled={!canAdd}
             >
-              <Plus className="size-4" /> Nova Conexão
+              <Plus className="size-4" /> {t("connection.new_connection", undefined, "Nova Conexão")}
             </Button>
           </div>
         </div>

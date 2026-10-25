@@ -205,7 +205,7 @@ export function AppShell({
 
   async function signOut() {
     await supabase.auth.signOut();
-    toast.success("Sessão encerrada");
+    toast.success(t("auth.session_ended", undefined, "Sessão encerrada"));
     navigate({ to: "/entrar", replace: true });
   }
 
@@ -215,10 +215,10 @@ export function AppShell({
   const primary = !rawPrimary || LEGACY_COLORS.includes(rawPrimary) ? brand.primary : company!.primary_color;
   const isAdmin = membership?.role === "owner" || membership?.role === "admin";
   const roleLabel =
-    membership?.role === "owner" ? "Dono"
-    : membership?.role === "admin" ? "Admin"
-    : membership?.role === "atendente" ? "Atendente"
-    : "Membro";
+    membership?.role === "owner" ? t("roles.owner", undefined, "Dono")
+    : membership?.role === "admin" ? t("roles.admin", undefined, "Admin")
+    : membership?.role === "atendente" ? t("roles.attendant", undefined, "Atendente")
+    : t("roles.member", undefined, "Membro");
   const fallbackName = (email || "Você").split("@")[0];
   const [profile, setProfile] = useState<{ nome: string; avatar_url: string }>({ nome: "", avatar_url: "" });
   const [companyBrand, setCompanyBrand] = useState<{ nome: string; logo_url: string }>({
@@ -295,11 +295,11 @@ export function AppShell({
 
   const crmOculto = !!(company as any)?.funcoes_individuais && (company as any)?.atendimento_operacional !== true && !isAdmin && !isSuperAdmin;
   const mobileItems: MobileNavItem[] = [
-    { to: "/app/dashboard", label: "Início", icon: LayoutDashboard },
-    { to: "/app/conversas", label: "Conversas", icon: Inbox, badge: unreadConversationsCount },
-    ...(crmOculto ? [] : [{ to: "/app/crm", label: "CRM", icon: KanbanSquare } as MobileNavItem]),
-    { to: "/app/contatos", label: "Contatos", icon: Contact },
-    { label: "Mais", icon: MoreHorizontal, onClick: () => setMoreOpen(true), active: moreOpen },
+    { to: "/app/dashboard", label: t("nav.dashboard", undefined, "Início"), icon: LayoutDashboard },
+    { to: "/app/conversas", label: t("nav.conversations", undefined, "Conversas"), icon: Inbox, badge: unreadConversationsCount },
+    ...(crmOculto ? [] : [{ to: "/app/crm", label: t("nav.crm", undefined, "CRM"), icon: KanbanSquare } as MobileNavItem]),
+    { to: "/app/contatos", label: t("nav.contacts", undefined, "Contatos"), icon: Contact },
+    { label: t("common.more", undefined, "Mais"), icon: MoreHorizontal, onClick: () => setMoreOpen(true), active: moreOpen },
   ];
 
 
@@ -425,10 +425,10 @@ export function AppShell({
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
         <SheetContent side="bottom" className="lg:hidden rounded-t-2xl max-h-[80vh] overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
           <SheetHeader className="text-left">
-            <SheetTitle>Mais módulos</SheetTitle>
+            <SheetTitle>{t("nav.more_modules", undefined, "Mais módulos")}</SheetTitle>
           </SheetHeader>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Módulos administrativos (Plugins, Conexão, Agente IA, Campanhas) estão disponíveis no desktop.
+            {t("nav.more_modules_tip", undefined, "Módulos administrativos estão disponíveis no desktop.")}
           </p>
 
           <div className="mt-3 grid grid-cols-3 gap-2.5">
@@ -453,7 +453,7 @@ export function AppShell({
                   >
                     <Icon className="size-[18px]" strokeWidth={2} />
                   </span>
-                  <span className="text-[11px] font-semibold leading-tight line-clamp-2">{it.label}</span>
+                  <span className="text-[11px] font-semibold leading-tight line-clamp-2">{PATH_TO_NAV_KEY[it.to] ? t(PATH_TO_NAV_KEY[it.to], undefined, it.label) : it.label}</span>
                 </Link>
               );
             })}
@@ -610,7 +610,7 @@ function Sidebar({
               <Link to="/app/configuracoes"><Settings className="size-4 mr-2" />{t("nav.settings", undefined, "Configurações")}</Link>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => window.dispatchEvent(new Event("tour:start"))}>
-              <Zap className="size-4 mr-2" />Fazer tour novamente
+              <Zap className="size-4 mr-2" />{t("common.retake_tour", undefined, "Fazer tour novamente")}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
@@ -640,7 +640,7 @@ function NavLink({ item, active, primary, collapsed, badgeCount, onNavigateStart
         if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
         onNavigateStart?.(item.to);
       }}
-      title={collapsed ? item.label : undefined}
+      title={collapsed ? displayLabel : undefined}
       className={`group relative flex items-center ${collapsed ? "justify-center px-0 py-2.5 [@media(max-height:820px)]:py-1.5" : "gap-3 px-3 py-2 [@media(max-height:820px)]:py-1.5"} rounded-lg text-[13.5px] font-medium whitespace-nowrap transition-colors ${
         active
            ? "bg-accent text-primary font-bold"
@@ -736,10 +736,11 @@ function NavGroup({ item, activePath, primary, collapsed, isAdmin, onNavigateSta
 
 
 function WhatsappStatusPill() {
+  const { t } = useLanguage();
   const status = useWhatsappStatus();
   const connected = status === "connected";
   const connecting = status === "connecting";
-  const label = connected ? "WhatsApp conectado" : connecting ? "Conectando…" : "WhatsApp desconectado";
+  const label = connected ? t("connection.connected", undefined, "WhatsApp conectado") : connecting ? t("connection.connecting", undefined, "Conectando…") : t("connection.disconnected", undefined, "WhatsApp desconectado");
   const color = connected ? "#16a34a" : connecting ? "#f59e0b" : "#dc2626";
   return (
     <div
@@ -753,17 +754,18 @@ function WhatsappStatusPill() {
 }
 
 function WhatsappDisconnectedBanner() {
+  const { t } = useLanguage();
   const status = useWhatsappStatus();
   if (status !== "disconnected") return null;
   return (
     <div className="flex items-center justify-between gap-3 px-4 lg:px-6 py-2 bg-red-50 border-b border-red-200 text-red-700 text-[13px]">
       <div className="flex items-center gap-2">
         <span className="size-2 rounded-full bg-red-600 animate-pulse" />
-        <span className="font-medium">WhatsApp desconectado.</span>
-        <span className="hidden sm:inline text-red-600/80">Verifique internet/bateria do celular e reconecte.</span>
+        <span className="font-medium">{t("connection.disconnected", undefined, "WhatsApp desconectado.")} </span>
+        <span className="hidden sm:inline text-red-600/80">{t("connection.check_battery", undefined, "Verifique internet/bateria do celular e reconecte.")}</span>
       </div>
       <Link to="/app/conexao" className="text-[12.5px] font-semibold underline underline-offset-2 hover:text-red-800">
-        Ir para Conexão
+        {t("connection.go_to_connection", undefined, "Ir para Conexão")}
       </Link>
     </div>
   );

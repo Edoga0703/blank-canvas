@@ -12,12 +12,14 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
+import { useLanguage } from "@/lib/i18n/context";
 import { LanguageProvider } from "@/lib/i18n/context";
 
 import metrixLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import mascotLogin from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 
 function NotFoundComponent() {
+  const { t } = useLanguage();
   return (
     <div className="public-surface relative min-h-screen bg-[#F8F9FB] text-[#0A0A0F] overflow-hidden flex flex-col">
       <div className="absolute inset-0 -z-10 pointer-events-none">
@@ -53,26 +55,26 @@ function NotFoundComponent() {
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center max-w-5xl w-full">
           <div className="order-2 lg:order-1 text-center lg:text-left">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#334155]/15 bg-[#334155]/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#334155]">
-              Erro 404
+              {t("common.error_404", undefined, "Error 404")}
             </div>
             <h1 className="mt-4 text-5xl sm:text-6xl md:text-7xl font-black tracking-tight text-[#0A0A0F]">
-              Página não<br />encontrada
+              {t("common.page_not_found", undefined, "Página no encontrada")}
             </h1>
             <p className="mt-4 text-base sm:text-lg text-[#0A0A0F]/60 max-w-md mx-auto lg:mx-0">
-               A página que você procura não existe ou foi movida. Vamos te levar de volta pra rota certa.
+               {t("common.page_not_found_desc", undefined, "La página que buscas no existe o fue movida. Te llevamos de vuelta.")}
             </p>
             <div className="mt-8 flex flex-wrap justify-center lg:justify-start gap-3">
               <Link
                 to="/"
                 className="inline-flex items-center justify-center rounded-xl bg-[#334155] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#1E293B] transition-colors"
               >
-                Voltar para o início
+                {t("common.back_to_home", undefined, "Volver al inicio")}
               </Link>
               <Link
                 to="/entrar"
                 className="inline-flex items-center justify-center rounded-xl border border-[#334155]/20 bg-white px-6 py-3 text-sm font-semibold text-[#0A0A0F] hover:border-[#334155]/40 transition-colors"
               >
-                Entrar no sistema
+                {t("common.enter_system", undefined, "Entrar al sistema")}
               </Link>
             </div>
             <p className="mt-6 text-xs text-[#0A0A0F]/40">
@@ -100,6 +102,7 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
+  const { t } = useLanguage();
   console.error(error);
   const router = useRouter();
   useEffect(() => {
@@ -111,10 +114,10 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
     <div className="public-surface flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Esta página não carregou
+          {t("common.page_failed_to_load", undefined, "Esta página no cargó")}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Algo deu errado. Tente novamente ou volte para a home.
+          {t("common.something_went_wrong", undefined, "Algo salió mal. Intenta nuevamente o vuelve al inicio.")}
         </p>
         {errorMessage && (
           <p className="mt-2 text-xs text-red-600 font-mono break-words bg-red-50 p-2 rounded border border-red-200 text-left">
@@ -187,11 +190,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
-const NO_FLASH_THEME = `(()=>{try{document.documentElement.classList.remove('dark');localStorage.removeItem('theme');}catch(e){}})();`;
+const NO_FLASH_THEME = `(()=>{try{document.documentElement.classList.remove('dark');localStorage.removeItem('theme');var l=localStorage.getItem('capiversa_locale')||'es';document.documentElement.lang=l;}catch(e){}})();`;
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning>
 
       <head>
         <script dangerouslySetInnerHTML={{ __html: NO_FLASH_THEME }} />

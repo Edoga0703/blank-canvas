@@ -115,7 +115,7 @@ export function LeadDetailsPanel({
   companyId: string; onChanged: () => void; hideConversation?: boolean;
   onDeleted?: () => void; operationalMode?: boolean;
 }) {
-  const { t } = useLanguage();
+  const { t, formatDate, formatTime, formatCurrency, translateDefaultStageName, translateDefaultPipelineName, localeCode } = useLanguage();
   const [local, setLocal] = useState<LeadCard & { pipeline_id?: string | null }>(card as any);
   const [encaminharOpen, setEncaminharOpen] = useState(false);
   const chatActionFn = useServerFn(handleChatAction);
@@ -280,7 +280,7 @@ export function LeadDetailsPanel({
                 type="text"
                 inputMode="decimal"
                 readOnly={!editValor}
-                value={new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(local.valor ?? 0))}
+                value={new Intl.NumberFormat(localeCode || "es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(local.valor ?? 0))}
                 onChange={(e) => {
                   const digits = e.target.value.replace(/\D/g, "");
                   set("valor", digits ? Number(digits) / 100 : 0);
@@ -329,7 +329,7 @@ export function LeadDetailsPanel({
                 <Select value={currentPipelineId ?? ""} onValueChange={changePipeline}>
                   <SelectTrigger><SelectValue placeholder="Selecionar funil" /></SelectTrigger>
                   <SelectContent>
-                    {pipelines.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                    {pipelines.map((p) => <SelectItem key={p.id} value={p.id}>{translateDefaultPipelineName(p.nome)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -341,7 +341,7 @@ export function LeadDetailsPanel({
                 <SelectContent>
                   {pipelineStages.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      <span className="inline-flex items-center gap-2"><span className="size-2 rounded-full" style={{ background: s.cor }} />{s.nome}</span>
+                      <span className="inline-flex items-center gap-2"><span className="size-2 rounded-full" style={{ background: s.cor }} />{translateDefaultStageName(s.nome)}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -707,7 +707,7 @@ function dayLabel(iso: string) {
   const same = (a: Date, b: Date) => a.toDateString() === b.toDateString();
   if (same(d, hoje)) return "Hoje";
   if (same(d, ontem)) return "Ontem";
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: d.getFullYear() === hoje.getFullYear() ? undefined : "numeric" });
+  return d.toLocaleDateString(localeCode || "es-ES", { day: "2-digit", month: "long", year: d.getFullYear() === hoje.getFullYear() ? undefined : "numeric" });
 }
 
 function autorLabel(m: any) {
@@ -838,7 +838,7 @@ function ConversaTab({ numero, companyId, cardId }: { numero: string; companyId:
         <span className="truncate">Mensagens: <b className="text-foreground">{total}</b></span>
         <span className="truncate">Cliente: <b className="text-foreground">{recebidas}</b></span>
         <span className="truncate">Equipe: <b className="text-foreground">{enviadas}</b></span>
-        {ultima && <span className="truncate">Última: <b className="text-foreground">{new Date(ultima).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</b></span>}
+        {ultima && <span className="truncate">Última: <b className="text-foreground">{formatDate(ultima, { day: "2-digit", month: "2-digit" })} {formatTime(ultima, { hour: "2-digit", minute: "2-digit" })}</b></span>}
       </div>
 
 
@@ -885,7 +885,7 @@ function ConversaTab({ numero, companyId, cardId }: { numero: string; companyId:
                       <MediaBubble m={m} />
                       {m.texto && <div className="whitespace-pre-wrap break-words">{linkify(m.texto)}</div>}
                       <div className="text-[10px] opacity-60 text-right tabular-nums">
-                        {new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                        {formatTime(m.created_at, { hour: "2-digit", minute: "2-digit" })}
                         {saida && m.status_envio && m.status_envio !== "enviado" ? ` • ${m.status_envio}` : ""}
                       </div>
                     </div>
@@ -914,7 +914,7 @@ function ConversaTab({ numero, companyId, cardId }: { numero: string; companyId:
                 >
                   <Sparkles className="size-3.5 shrink-0 text-primary" />
                   <span className="flex-1 truncate text-[12px] font-medium text-foreground">
-                    Análise feita em {dt.toLocaleDateString("pt-BR")} às {dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    Análise feita em {formatDate(dt)} às {formatTime(dt, { hour: "2-digit", minute: "2-digit" })}
                   </span>
                   {aberta ? <ChevronUp className="size-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="size-4 shrink-0 text-muted-foreground" />}
                 </button>
@@ -1012,7 +1012,7 @@ function NotasTab({ cardId, companyId }: { cardId: string; companyId: string }) 
         {notas.map((n) => (
           <li key={n.id} className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-sm">
             <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
-              <span>{new Date(n.created_at).toLocaleString("pt-BR")}</span>
+              <span>{formatDate(n.created_at)} {formatTime(n.created_at)}</span>
               <button onClick={() => del(n.id)} className="hover:text-destructive"><Trash2 className="size-3.5" /></button>
             </div>
             <div className="whitespace-pre-wrap">{n.texto}</div>
@@ -1037,7 +1037,7 @@ function HistTab({ cardId }: { cardId: string }) {
       {evs.length === 0 && <li className="text-sm text-muted-foreground text-center py-6">Sem eventos.</li>}
       {evs.map((e) => (
         <li key={e.id} className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-sm">
-          <div className="text-[11px] text-muted-foreground mb-1">{new Date(e.created_at).toLocaleString("pt-BR")}</div>
+          <div className="text-[11px] text-muted-foreground mb-1">{formatDate(e.created_at)} {formatTime(e.created_at)}</div>
           <div><b className="text-[var(--brand-text)]">{e.tipo}</b> — {e.descricao}</div>
         </li>
       ))}
@@ -1111,7 +1111,7 @@ function LeadResumo({
             className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium"
             style={{ background: `${stage.cor}22`, color: stage.cor }}
           >
-            {stage.nome}
+            {translateDefaultStageName(stage.nome)}
           </span>
         )}
       </div>
@@ -1121,12 +1121,12 @@ function LeadResumo({
         <ResumoItem label="CPF/CNPJ" value={card.cpf_cnpj} copy />
         <ResumoItem label="Empresa" value={card.empresa} />
         <ResumoItem label="Endereço" value={card.endereco} />
-        <ResumoItem label="Valor" value={valor ? valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : ""} />
+        <ResumoItem label="Valor" value={valor ? formatCurrency(valor) : ""} />
         <ResumoItem label="Dono" value={owner?.nome || owner?.email || ""} />
         <ResumoItem label="Origem" value={card.origem} />
         <ResumoItem
           label="Último contato"
-          value={card.ultima_em ? new Date(card.ultima_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : ""}
+          value={card.ultima_em ? `${formatDate(card.ultima_em, { dateStyle: "short" })} ${formatTime(card.ultima_em, { timeStyle: "short" })}` : ""}
         />
       </div>
 
@@ -1291,7 +1291,7 @@ function OrigemBlock({ cardId }: { cardId: string }) {
         {row.primeiro_contato_em && (
           <li className="flex justify-between border-t border-[var(--border)] pt-1 text-[10.5px] text-muted-foreground">
             <span>Primeiro contato</span>
-            <span>{new Date(row.primeiro_contato_em).toLocaleString("pt-BR")}</span>
+            <span>{formatDate(row.primeiro_contato_em)} {formatTime(row.primeiro_contato_em)}</span>
           </li>
         )}
       </ul>
@@ -1320,7 +1320,7 @@ function JornadaTab({ cardId }: { cardId: string }) {
           <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
             <div className="text-[11px] text-muted-foreground mb-1 flex items-center gap-1">
               <RouteIcon className="size-3" />
-              {new Date(r.created_at).toLocaleString("pt-BR")}
+              {formatDate(r.created_at)} {formatTime(r.created_at)}
             </div>
             <div className="text-sm">
               {r.stage_from_nome ? (

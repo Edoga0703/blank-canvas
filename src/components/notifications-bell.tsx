@@ -122,7 +122,7 @@ export function NotificationsBell({
   const trigger =
     variant === "menu" ? (
           <button className="w-full flex items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent focus:bg-accent">
-            <span className="flex items-center"><Bell className="size-4 mr-2" />Notificações</span>
+            <span className="flex items-center"><Bell className="size-4 mr-2" />{t("common.notifications", undefined, "Notificações")}</span>
             {unread > 0 && (
               <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-white text-[10px] font-bold grid place-items-center">
                 {unread > 99 ? "99+" : unread}
@@ -131,7 +131,7 @@ export function NotificationsBell({
           </button>
         ) : (
           <button
-            title="Notificações"
+            title={t("common.notifications", undefined, "Notificações")}
             className="relative size-9 grid place-items-center rounded-full bg-[#f1f2f4] border-0 outline-none ring-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 text-foreground hover:bg-[#292cff] hover:text-white transition-colors"
           >
             <Bell className="size-[16px]" />
@@ -180,7 +180,7 @@ export function NotificationsBell({
 
   const header = (
     <div className="flex items-center justify-between gap-2 px-3 py-2">
-      <span className="text-[13px] font-semibold">Notificações</span>
+      <span className="text-[13px] font-semibold">{t("common.notifications", undefined, "Notificações")}</span>
       {unread > 0 && (
         <button
           onClick={(e) => { e.preventDefault(); void markAll(); }}
@@ -201,7 +201,7 @@ export function NotificationsBell({
           className="p-0 rounded-t-2xl max-h-[75vh] flex flex-col pb-[max(0.5rem,env(safe-area-inset-bottom))]"
         >
           <SheetHeader className="sr-only">
-            <SheetTitle>Notificações</SheetTitle>
+            <SheetTitle>{t("common.notifications", undefined, "Notificações")}</SheetTitle>
           </SheetHeader>
           <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-muted-foreground/30" />
           {header}

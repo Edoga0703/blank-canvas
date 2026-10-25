@@ -11,6 +11,7 @@ import { OpsWorkspaceProvider } from "./ops-data";
 import { WidgetPicker } from "./WidgetPicker";
 import { WidgetSettingsDialog } from "./WidgetSettingsDialog";
 import { PeriodFilterButton } from "./PeriodFilterButton";
+import { useLanguage } from "@/lib/i18n/context";
 
 
 interface WidgetState {
@@ -338,8 +339,8 @@ export function DashboardGrid({ workspaceId, operationalMode = false }: Props) {
             <PeriodFilterButton value={range} onChange={setRange} />
           </div>
 
-          <Button aria-label="Adicionar widget" variant="outline" size="sm" className="rounded-full h-8 w-8 sm:h-9 p-0 sm:w-auto sm:px-4 shadow-sm shrink-0" onClick={() => { setPickerCell(null); setPickerOpen(true); }}>
-            <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Widget</span>
+          <Button aria-label={t("dashboard.add_widget", undefined, "Adicionar widget")} variant="outline" size="sm" className="rounded-full h-8 w-8 sm:h-9 p-0 sm:w-auto sm:px-4 shadow-sm shrink-0" onClick={() => { setPickerCell(null); setPickerOpen(true); }}>
+            <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">{t("dashboard.add_widget", undefined, "Widget")}</span>
           </Button>
           {editing && (
             <Button aria-label="Restaurar" variant="ghost" size="sm" className="rounded-full h-8 w-8 sm:h-9 p-0 sm:w-auto sm:px-3 shrink-0" onClick={restore}>
@@ -347,7 +348,7 @@ export function DashboardGrid({ workspaceId, operationalMode = false }: Props) {
             </Button>
           )}
           <Button aria-label={editing ? "Concluir" : "Personalizar"} variant={editing ? "default" : "outline"} size="sm" className="rounded-full h-8 w-8 sm:h-9 p-0 sm:w-auto sm:px-4 shadow-sm shrink-0" onClick={() => setEditing((v) => !v)}>
-            <Settings className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">{editing ? "Concluir" : "Personalizar"}</span>
+            <Settings className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">{editing ? t("dashboard.finish", undefined, "Concluir") : t("dashboard.customize", undefined, "Personalizar")}</span>
           </Button>
         </div>
       </div>

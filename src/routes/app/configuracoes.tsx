@@ -323,23 +323,23 @@ function ConfigPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">Configurações <HelpTip text="Perfil, empresa, identidade, templates, horários, satisfação, segurança, integrações e plano." /></h1>
-        <p className="text-xs sm:text-sm text-muted-foreground">Gerencie sua conta, sua empresa e o funcionamento do sistema.</p>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">{t("config.title", undefined, "Configurações")} <HelpTip text={t("config.helptip", undefined, "Perfil, empresa, identidade, templates, horários, satisfação, segurança, integrações e plano.")} /></h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">{t("config.subtitle", undefined, "Gerencie sua conta, sua empresa e o funcionamento do sistema.")}</p>
       </div>
       <Tabs defaultValue="perfil">
         <TabsList className="flex h-auto gap-1 bg-transparent p-0 border-b border-border rounded-none w-full justify-start overflow-x-auto no-scrollbar flex-nowrap md:flex-wrap">
-          <StyledTab value="perfil" icon={<User className="size-4" />}>Perfil</StyledTab>
+          <StyledTab value="perfil" icon={<User className="size-4" />}>{t("config.profile_tab", undefined, "Perfil")}</StyledTab>
           
-          {!isAtendente && <StyledTab value="tags" icon={<Tag className="size-4" />}>Tags</StyledTab>}
+          {!isAtendente && <StyledTab value="tags" icon={<Tag className="size-4" />}>{t("config.tags_tab", undefined, "Tags")}</StyledTab>}
            
-          {!isAtendente && <StyledTab value="departamentos" icon={<Building2 className="size-4" />}>Departamentos</StyledTab>}
-          {!isAtendente && <StyledTab value="horarios" icon={<Clock className="size-4" />}>Horários</StyledTab>}
-          <StyledTab value="csat" icon={<Star className="size-4" />}>Satisfação</StyledTab>
-          <StyledTab value="sugestoes" icon={<Lightbulb className="size-4" />}>Sugestões</StyledTab>
-          {!isAtendente && <StyledTab value="integracoes" icon={<Webhook className="size-4" />}>Integrações</StyledTab>}
-          {!isAtendente && formulariosOn && <StyledTab value="formularios" icon={<FileText className="size-4" />}>Formulários</StyledTab>}
+          {!isAtendente && <StyledTab value="departamentos" icon={<Building2 className="size-4" />}>{t("config.departments_tab", undefined, "Departamentos")}</StyledTab>}
+          {!isAtendente && <StyledTab value="horarios" icon={<Clock className="size-4" />}>{t("config.schedules_tab", undefined, "Horários")}</StyledTab>}
+          <StyledTab value="csat" icon={<Star className="size-4" />}>{t("config.satisfaction_tab", undefined, "Satisfação")}</StyledTab>
+          <StyledTab value="sugestoes" icon={<Lightbulb className="size-4" />}>{t("config.suggestions_tab", undefined, "Sugestões")}</StyledTab>
+          {!isAtendente && <StyledTab value="integracoes" icon={<Webhook className="size-4" />}>{t("config.integrations_tab", undefined, "Integrações")}</StyledTab>}
+          {!isAtendente && formulariosOn && <StyledTab value="formularios" icon={<FileText className="size-4" />}>{t("config.forms_tab", undefined, "Formulários")}</StyledTab>}
           
-          {!isAtendente && <StyledTab value="plano" icon={<CreditCard className="size-4" />}>Plano</StyledTab>}
+          {!isAtendente && <StyledTab value="plano" icon={<CreditCard className="size-4" />}>{t("config.plan_tab", undefined, "Plano")}</StyledTab>}
 
         </TabsList>
 
@@ -350,7 +350,7 @@ function ConfigPage() {
             <div className="space-y-4">
               <Card className="p-4 sm:p-5 space-y-4">
 
-                <h3 className="font-semibold">Meu Perfil</h3>
+                <h3 className="font-semibold">{t("config.my_profile", undefined, "Meu Perfil")}</h3>
                 <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                   <div className="size-14 sm:size-16 rounded-full bg-muted grid place-items-center text-muted-foreground overflow-hidden">
                     {perfil.avatar_url ? (
@@ -379,7 +379,7 @@ function ConfigPage() {
                     <Input value={perfil.nome} onChange={(e) => setPerfil({ ...perfil, nome: e.target.value })} />
                   </div>
                   <div>
-                    <Label>E-mail</Label>
+                    <Label>{t("auth.email", undefined, "E-mail")}</Label>
                     <Input value={perfil.email} disabled />
                   </div>
                 </div>
@@ -424,9 +424,9 @@ function ConfigPage() {
                       onChange={(e) => setPerfil({ ...perfil, assinatura_ativa: e.target.checked })}
                     />
                     <span className="text-sm">
-                      <span className="font-medium">Assinar minhas mensagens</span>
+                      <span className="font-medium">{t("config.sign_messages", undefined, "Assinar minhas mensagens")}</span>
                       <span className="block text-xs text-muted-foreground">
-                        Envia o seu nome antes do texto nas mensagens que você escreve no chat.
+                        {t("config.sign_messages_desc", undefined, "Envia o seu nome antes do texto nas mensagens que você escreve no chat.")}
                       </span>
                     </span>
                   </label>
@@ -454,22 +454,22 @@ function ConfigPage() {
 
               <Card className="p-4 sm:p-5 space-y-4">
                 <div>
-                  <h3 className="font-semibold flex items-center gap-2"><KeyRound className="size-4" /> Alterar Senha</h3>
-                  <p className="text-xs text-muted-foreground">Mínimo 8 caracteres, incluindo letras e números.</p>
+                  <h3 className="font-semibold flex items-center gap-2"><KeyRound className="size-4" /> {t("config.change_password", undefined, "Alterar Senha")}</h3>
+                  <p className="text-xs text-muted-foreground">{t("config.change_password_desc", undefined, "Mínimo 8 caracteres, incluindo letras e números.")}</p>
                 </div>
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
-                    <Label>Nova senha</Label>
+                    <Label>{t("config.new_password", undefined, "Nova senha")}</Label>
                     <Input type="password" value={senha.nova} onChange={(e) => setSenha({ ...senha, nova: e.target.value })} />
                   </div>
                   <div>
-                    <Label>Confirmar nova senha</Label>
+                    <Label>{t("config.confirm_password", undefined, "Confirmar nova senha")}</Label>
                     <Input type="password" value={senha.confirma} onChange={(e) => setSenha({ ...senha, confirma: e.target.value })} />
                   </div>
                 </div>
                 <div className="flex justify-stretch sm:justify-end">
                   <Button className="w-full sm:w-auto" onClick={saveSenha} disabled={savingS || !senha.nova}>
-                    {savingS ? <Loader2 className="size-4 mr-1.5 animate-spin" /> : <Save className="size-4 mr-1.5" />} Alterar Senha
+                    {savingS ? <Loader2 className="size-4 mr-1.5 animate-spin" /> : <Save className="size-4 mr-1.5" />} {t("config.save_password", undefined, "Alterar Senha")}
                   </Button>
                 </div>
               </Card>
@@ -480,7 +480,7 @@ function ConfigPage() {
 
             <div className="space-y-4">
               <Card className="p-4 sm:p-5 space-y-4">
-                <h3 className="font-semibold">Dados da Empresa</h3>
+                <h3 className="font-semibold">{t("config.company_data", undefined, "Dados da Empresa")}</h3>
 
                 <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                   <div className="size-14 sm:size-16 rounded-xl bg-muted grid place-items-center text-muted-foreground overflow-hidden border border-border">
@@ -660,8 +660,8 @@ function ConfigPage() {
         <TabsContent value="csat">
           <Tabs defaultValue="config" className="space-y-4">
             <TabsList>
-              <TabsTrigger value="config">Configuração</TabsTrigger>
-              <TabsTrigger value="respostas">Respostas</TabsTrigger>
+              <TabsTrigger value="config">{t("config.title", undefined, "Configuração")}</TabsTrigger>
+              <TabsTrigger value="respostas">{t("common.replies", undefined, "Respostas")}</TabsTrigger>
             </TabsList>
             <TabsContent value="config"><CsatConfigCard /></TabsContent>
             <TabsContent value="respostas"><CsatRespostasTab /></TabsContent>

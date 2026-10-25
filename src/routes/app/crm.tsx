@@ -64,7 +64,7 @@ let crmCache: {
 } | null = null;
 
 function KanbanPage() {
-  const { t } = useLanguage();
+  const { t, translateDefaultStageName, translateDefaultPipelineName, formatDate, formatTime, formatCurrency } = useLanguage();
   const ctx = Route.useRouteContext();
   const companyId = ctx.company?.id ?? "";
   const userId = ctx.user.id;
@@ -723,7 +723,7 @@ function KanbanPage() {
                   <TrendingUp className="size-4" />
                 </span>
                 <span className="flex flex-col min-w-0 flex-1">
-                  <span className="text-[13px] font-bold leading-tight truncate">{activePipeline?.nome ?? "Funil"}</span>
+                  <span className="text-[13px] font-bold leading-tight truncate">{translateDefaultPipelineName(activePipeline?.nome ?? "Funil")}</span>
                   <span className="text-[10.5px] text-muted-foreground leading-tight">
                     {stages.length} coluna{stages.length === 1 ? "" : "s"} · {totalContatos} contato{totalContatos === 1 ? "" : "s"}
                   </span>
@@ -739,7 +739,7 @@ function KanbanPage() {
                   className="gap-2"
                 >
                   <span className="size-2.5 rounded-full bg-[var(--brand)]" />
-                  <span className="flex-1">{pipeline.nome}</span>
+                  <span className="flex-1">{translateDefaultPipelineName(pipeline.nome)}</span>
                   {pipeline.sistema && <span className="text-[10px] uppercase text-muted-foreground">sistema</span>}
                 </DropdownMenuItem>
               ))}
@@ -769,7 +769,7 @@ function KanbanPage() {
                   {hiddenPipelines.map((p) => (
                     <DropdownMenuItem key={p.id} onClick={() => togglePipelineHidden(p.id, false)} className="gap-2">
                       <Eye className="size-3.5" />
-                      <span className="flex-1 truncate">{p.nome}</span>
+                      <span className="flex-1 truncate">{translateDefaultPipelineName(p.nome)}</span>
                       <span className="text-[10px] uppercase text-muted-foreground">reativar</span>
                     </DropdownMenuItem>
                   ))}
@@ -928,7 +928,7 @@ function KanbanPage() {
               className="inline-flex shrink-0 items-center gap-1.5 text-[11.5px] font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               <span className="size-2 rounded-full" style={{ background: s.cor || "#9ca3af" }} />
-              <span className="whitespace-nowrap">{s.nome}: <b className="text-foreground">{stageCounts[s.id] ?? 0}</b></span>
+              <span className="whitespace-nowrap">{translateDefaultStageName(s.nome)}: <b className="text-foreground">{stageCounts[s.id] ?? 0}</b></span>
             </button>
           ))}
 
@@ -1426,7 +1426,7 @@ function RotaRetornoDialog({ stage, allStages, pipelines, members, onClose, onSa
                   <option value="">— selecione —</option>
                   {groups.map((g) => (
                     <optgroup key={g.pipeline.id} label={`Funil: ${g.pipeline.nome}`}>
-                      {g.stages.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                      {g.stages.map((s) => <option key={s.id} value={s.id}>{translateDefaultStageName(s.nome)}</option>)}
                     </optgroup>
                   ))}
                 </select>
@@ -1502,7 +1502,7 @@ function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete
   { stage: KanbanStage; count: number; total?: number; onToggleValor?: (v: boolean) => void; children: React.ReactNode; onEdit: () => void; onDelete: () => void; onAutomacao: () => void; onSetTipo: (t: "normal" | "ganho" | "perda" | "formulario" | "sem-formulario") => void; onLimpar?: () => void; onRetorno?: () => void; allowAutomacao: boolean; onAdd: () => void; isDefault?: boolean; isEmpty: boolean }) {
   const { setNodeRef: setColRef, isOver } = useDroppable({ id: `col:${stage.id}` });
   const { attributes, listeners, setNodeRef: setHandleRef } = useDraggable({ id: `stage:${stage.id}` });
-  const { t } = useLanguage();
+  const { t, translateDefaultStageName } = useLanguage();
   const tipo = (stage as any).tipo ?? "normal";
   const entradaForm = !!(stage as any).entrada_formulario;
   const mostrarValor = (stage as any).mostrar_valor !== false;
@@ -1517,7 +1517,7 @@ function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete
         className="px-3.5 pt-3 pb-2.5 cursor-grab">
         <div className="flex items-center gap-2">
         <span className="size-2.5 rounded-full shrink-0" style={{ background: stage.cor }} />
-        <b className="font-display text-[13.5px] truncate flex-1">{stage.nome}</b>
+        <b className="font-display text-[13.5px] truncate flex-1">{translateDefaultStageName(stage.nome)}</b>
         <span className="text-[11px] font-semibold text-muted-foreground bg-[color:var(--panel-2)] px-2 py-0.5 rounded-md min-w-[22px] text-center leading-5">{count}</span>
         {isDefault && <span className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground bg-[color:var(--panel-2)] px-1.5 py-0.5 rounded">Padrão</span>}
         {tipo === "ganho" && <span className="text-[9px] font-bold uppercase tracking-wide text-[#22B85F] bg-[#22B85F]/12 px-1.5 py-0.5 rounded">{t("crm.stage_won", undefined, "Ganho")}</span>}
@@ -1986,7 +1986,7 @@ function ManualLeadDialog({ open, onClose, companyId, userId, pipelineId, stages
               <Select value={stageId} onValueChange={setStageId}>
                 <SelectTrigger><SelectValue placeholder="Escolher" /></SelectTrigger>
                 <SelectContent>
-                  {stages.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                  {stages.map((s) => <SelectItem key={s.id} value={s.id}>{translateDefaultStageName(s.nome)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -2120,7 +2120,7 @@ function AutomacaoDialog({ companyId, stage, stages, allStages, pipelines, agent
           <optgroup key={g.pipeline.id} label={`Funil: ${g.pipeline.nome}`}>
             {g.stages.map((s) => (
               <option key={s.id} value={s.id}>
-                 {s.pipeline_id === currentStage.pipeline_id ? s.nome : `${s.nome} (${g.pipeline.nome})`}
+                 {s.pipeline_id === currentStage.pipeline_id ? translateDefaultStageName(s.nome) : `${translateDefaultStageName(s.nome)} (${translateDefaultPipelineName(g.pipeline.nome)})`}
               </option>
             ))}
           </optgroup>

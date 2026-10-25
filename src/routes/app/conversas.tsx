@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { brand } from "@/config/brand";
+import { useLanguage } from "@/lib/i18n/context";
 import { AgentAvatar } from "@/components/agente/agent-avatar";
 import {
   Hand, MessageSquareText, Send, Search, Bot,
@@ -210,6 +211,27 @@ const numeroComparable = (numero: string) => {
 
 
 function ConversasPage() {
+  const { t, formatDate, formatTime } = useLanguage();
+  const getFilterLabel = (f: Filter) => {
+    switch (f) {
+      case "todas": return t("chat.filter_all", undefined, "Todas as Mensagens");
+      case "nao_lidas": return t("chat.filter_unread", undefined, "Aguardando Resposta");
+      case "minhas": return t("chat.filter_mine", undefined, "Meus Atendimentos");
+      case "grupos": return t("chat.filter_groups", undefined, "Grupos");
+      case "sem_responsavel": return t("chat.filter_unassigned", undefined, "Sem Responsável");
+      case "ia_ativa": return t("chat.filter_ai", undefined, "Atendimento IA");
+      case "resolvidas": return t("chat.filter_closed", undefined, "Encerradas");
+    }
+  };
+  const getQuickLabel = (key: Filter) => {
+    switch (key) {
+      case "todas": return t("chat.quick_all", undefined, "Todas");
+      case "nao_lidas": return t("chat.quick_unread", undefined, "Não lidas");
+      case "minhas": return t("chat.quick_mine", undefined, "Minhas");
+      case "grupos": return t("chat.filter_groups", undefined, "Grupos");
+      default: return key;
+    }
+  };
   const ctx = Route.useRouteContext();
   const companyId = ctx.company?.id;
   const userId = ctx.user.id;
@@ -1595,7 +1617,7 @@ function ConversasPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
               <Input
-                placeholder="Buscar conversas..."
+                placeholder={t("chat.search_conversation", undefined, "Buscar conversas...")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9 h-10 rounded-xl bg-muted/60 border-transparent focus-visible:border-[color:var(--hairline)] text-[12.5px]"

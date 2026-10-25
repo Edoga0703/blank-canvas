@@ -225,7 +225,7 @@ function EntrarPage() {
 
     if (signUpData.session) {
       setLoading(false);
-      toast.success("Conta criada!");
+      toast.success(t("auth.signup_success", undefined, "Conta criada!"));
       return routeAfterAuth(search.ref);
     }
 
@@ -270,7 +270,7 @@ function EntrarPage() {
           <div className="flex items-center justify-between gap-4">
             <Link to="/" className="inline-flex items-center gap-2 text-sm text-[#12263A]/60 hover:text-[#334155] transition-colors">
               <ArrowLeft className="size-4" />
-              voltar ao site
+              {t("common.back_to_site", undefined, "voltar ao site")}
             </Link>
           </div>
 
@@ -377,13 +377,13 @@ function EntrarPage() {
                 {planInfo && (
                   <div className="mb-5 rounded-xl border border-[#334155]/20 bg-[#334155]/5 p-4">
                     <div className="flex items-center gap-2 text-[11px] uppercase font-bold tracking-[0.14em] text-[#334155]">
-                      <Sparkles className="size-3.5" /> Plano escolhido
+                      <Sparkles className="size-3.5" /> {t("auth.chosen_plan", undefined, "Plano escolhido")}
                     </div>
                     <div className="mt-1 flex items-baseline justify-between">
                       <div className="font-display text-lg font-bold">{planInfo.nome}</div>
                       <div className="text-sm font-semibold">{planInfo.preco}</div>
                     </div>
-                    <div className="text-xs text-[#12263A]/60 mt-1">7 dias grátis • cancele antes e não paga nada</div>
+                    <div className="text-xs text-[#12263A]/60 mt-1">{t("auth.free_trial_note", undefined, "7 dias grátis • cancele antes e não paga nada")}</div>
                   </div>
                 )}
 
@@ -393,15 +393,15 @@ function EntrarPage() {
                       <CheckCircle2 className="size-8 text-[#334155]" />
                     </div>
                     <h1 className="font-display text-[22px] sm:text-[26px] font-black leading-tight tracking-tight">
-                      Verifique seu e-mail
+                      {t("auth.verify_email", undefined, "Verifique seu e-mail")}
                     </h1>
                     <p className="text-sm text-[#12263A]/70 mt-2 leading-relaxed">
-                      Enviamos um link de confirmação para
+                      {t("auth.we_sent_link", undefined, "Enviamos um link de confirmação para")}
                       <br />
                       <span className="font-semibold text-[#12263A]">{signupSentTo}</span>
                     </p>
                     <p className="text-xs text-[#12263A]/55 mt-3">
-                      Clique no link do e-mail para ativar sua conta. Não esqueça de conferir a caixa de spam.
+                      {t("auth.check_spam", undefined, "Clique no link do e-mail para ativar sua conta. Não esqueça de conferir a caixa de spam.")}
                     </p>
                     <div className="mt-6 space-y-3">
                       <Button
@@ -410,7 +410,7 @@ function EntrarPage() {
                         onClick={() => { setSignupSentTo(null); setMode("login"); setPassword(""); setConfirmPassword(""); }}
                         className="w-full h-12 bg-[#334155] hover:bg-[#1E293B] text-white font-semibold rounded-full shadow-sm"
                       >
-                        Ir para o login
+                        {t("auth.go_to_login", undefined, "Ir para o login")}
                       </Button>
                       <Button
                         type="button"
@@ -426,7 +426,7 @@ function EntrarPage() {
                         className="w-full h-10 text-sm text-[#12263A]/70 hover:text-[#334155]"
                       >
                         {loading && <Loader2 className="size-4 mr-2 animate-spin" />}
-                        Reenviar link de confirmação
+                        {t("auth.resend_link", undefined, "Reenviar link de confirmação")}
                       </Button>
                     </div>
                   </div>
@@ -441,7 +441,7 @@ function EntrarPage() {
                       mode === "signup" ? "bg-primary text-primary-foreground shadow-md shadow-[#334155]/25" : "text-[#12263A]/60 hover:text-[#334155]"
                     }`}
                   >
-                    Criar conta
+                    {t("auth.sign_up", undefined, "Criar conta")}
                   </button>
                   <button
                     type="button"
@@ -450,23 +450,23 @@ function EntrarPage() {
                       mode === "login" ? "bg-primary text-primary-foreground shadow-md shadow-[#334155]/25" : "text-[#12263A]/60 hover:text-[#334155]"
                     }`}
                   >
-                    Entrar
+                    {t("auth.sign_in", undefined, "Entrar")}
                   </button>
                 </div>
 
                 <h1 className="font-display text-[24px] sm:text-[28px] font-black leading-tight tracking-tight">
-                  {mode === "login" ? "Bem-vindo de volta" : "Crie sua conta"}
+                  {mode === "login" ? t("auth.welcome_back", undefined, "Bem-vindo de volta") : t("auth.create_account", undefined, "Crie sua conta")}
                 </h1>
                 <p className="text-sm text-[#12263A]/60 mt-1.5 mb-6">
                   {mode === "login"
-                    ? "Entre com seu e-mail e senha pra continuar."
-                    : "Preencha os dados abaixo pra começar seu teste grátis."}
+                    ? t("auth.login_subtitle", undefined, "Entre com seu e-mail e senha pra continuar.")
+                    : t("auth.signup_subtitle", undefined, "Preencha os dados abaixo pra começar seu teste grátis.")}
                 </p>
 
                 {mode === "signup" ? (
                   <form onSubmit={handleSignup} className="space-y-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="nome">Nome completo</Label>
+                      <Label htmlFor="nome">{t("common.name", undefined, "Nome completo")}</Label>
                       <Input id="nome" type="text" value={nome} onChange={(e) => setNome(e.target.value)} required placeholder="Seu nome" className="h-11" autoComplete="name" />
                     </div>
 
@@ -487,14 +487,14 @@ function EntrarPage() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label htmlFor="email">E-mail</Label>
+                      <Label htmlFor="email">{t("auth.email", undefined, "E-mail")}</Label>
                       <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="voce@empresa.com" className="h-11" autoComplete="email" />
                     </div>
 
                     <div className="space-y-2">
                       <PasswordField
                         id="pwd"
-                        label="Senha"
+                        label={t("auth.password", undefined, "Senha")}
                         value={password}
                         onChange={setPassword}
                         show={showPwd}
@@ -507,7 +507,7 @@ function EntrarPage() {
 
                     <PasswordField
                       id="pwd2"
-                      label="Confirmar senha"
+                      label={t("config.confirm_password", undefined, "Confirmar senha")}
                       value={confirmPassword}
                       onChange={setConfirmPassword}
                       show={showConfirmPwd}
@@ -518,7 +518,7 @@ function EntrarPage() {
 
                     <Button type="submit" disabled={loading} size="lg" className="w-full h-12 bg-[#334155] hover:bg-[#1E293B] text-white font-semibold rounded-full shadow-sm">
                       {loading && <Loader2 className="size-4 mr-2 animate-spin" />}
-                      {planInfo ? "Criar conta e continuar" : "Criar conta grátis"}
+                      {planInfo ? t("auth.create_and_continue", undefined, "Criar conta e continuar") : t("auth.create_free_account", undefined, "Criar conta grátis")}
                     </Button>
 
                     <p className="text-[11.5px] text-[#12263A]/60 text-center pt-1 leading-relaxed">
@@ -543,7 +543,7 @@ function EntrarPage() {
                       autoComplete="current-password"
                       rightSlot={
                         <Link to="/esqueci-senha" className="text-[11.5px] font-medium text-[#12263A]/60 hover:text-[#334155] transition-colors">
-                          Esqueci minha senha
+                          {t("auth.forgot_password", undefined, "Esqueci minha senha")}
                         </Link>
                       }
                     />
@@ -567,7 +567,7 @@ function EntrarPage() {
 
                     <Button type="submit" disabled={loading} size="lg" className="w-full h-12 bg-[#334155] hover:bg-[#1E293B] text-white font-semibold rounded-full shadow-sm">
                       {loading && <Loader2 className="size-4 mr-2 animate-spin" />}
-                      Entrar
+                      {t("auth.sign_in", undefined, "Entrar")}
                     </Button>
 
 

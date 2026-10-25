@@ -47,15 +47,15 @@ export function TrialBanner({ company, isSuperAdmin }: Props) {
   const Icon = isCarencia ? Lock : tone === "red" ? AlertTriangle : Sparkles;
 
   const diasTexto =
-    acesso.diasDesdeFim <= 0 ? "hoje" : acesso.diasDesdeFim === 1 ? "há 1 dia" : `há ${acesso.diasDesdeFim} dias`;
+    acesso.diasDesdeFim <= 0 ? t("common.today", undefined, "hoje") : acesso.diasDesdeFim === 1 ? t("trial.one_day_ago", undefined, "hace 1 día") : `${acesso.diasDesdeFim} ${t("common.days", undefined, "días")}`;
 
   const label = isCarencia
-    ? `Seu período de teste terminou ${diasTexto}. A conta está em modo somente leitura por mais ${acesso.horasCarencia}h`
+    ? `${t("trial.ended", undefined, "Seu período de teste terminou")} ${diasTexto}. ${t("trial.read_only_mode", { hours: acesso.horasCarencia }, `A conta está em modo somente leitura por mais ${acesso.horasCarencia}h`)}`
     : days <= 0
-    ? "Seu teste grátis termina hoje"
+    ? t("trial.ends_today", undefined, "Seu teste grátis termina hoje")
     : days === 1
-    ? "Último dia do seu teste grátis"
-    : `Faltam ${days} dias do seu teste grátis`;
+    ? t("trial.last_day", undefined, "Último dia do seu teste grátis")
+    : t("trial.days_left", { days }, `Faltam ${days} dias do seu teste grátis`);
 
   function dismiss() {
     setDismissed(true);
@@ -80,7 +80,7 @@ export function TrialBanner({ company, isSuperAdmin }: Props) {
             to="/app/checkout"
             className="shrink-0 inline-flex items-center rounded-md bg-[#0B22FE] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[#0A1FE0] transition-colors"
           >
-            {isCarencia ? "Ativar meu plano" : "Assinar agora"}
+            {isCarencia ? t("trial.activate_plan", undefined, "Ativar meu plano") : t("trial.subscribe_now", undefined, "Assinar agora")}
           </Link>
           {tone !== "red" && (
             <button

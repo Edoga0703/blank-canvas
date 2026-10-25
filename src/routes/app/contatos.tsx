@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { brand } from "@/config/brand";
+import { useLanguage } from "@/lib/i18n/context";
 import { toast } from "sonner";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { LeadDrawer, type LeadCard, type Stage, type Member } from "@/components/crm/lead-drawer";
@@ -37,6 +38,7 @@ type SortDir = "asc" | "desc";
 const PAGE_SIZE = 25;
 
 function ContatosPage() {
+  const { t } = useLanguage();
   const ctx = Route.useRouteContext();
   const companyId = ctx.company?.id;
   const navigate = useNavigate();
@@ -396,9 +398,9 @@ function ContatosPage() {
       {/* Title */}
       <div>
         <h1 className="font-display text-[20px] sm:text-[26px] font-extrabold tracking-tight flex items-center gap-2">
-          Contatos <HelpTip text="Sua base de clientes. Cada contato representa um número de WhatsApp e guarda todo o histórico de conversa e dados do CRM." />
+          {t("contacts.title", undefined, "Contatos")} <HelpTip text={t("contacts.helptip", undefined, "Sua base de clientes. Cada contato representa um número de WhatsApp e guarda todo o histórico de conversa e dados do CRM.")} />
         </h1>
-        <p className="text-xs sm:text-sm text-muted-foreground">Todos os leads gerados pelo WhatsApp.</p>
+        <p className="text-xs sm:text-sm text-muted-foreground">{t("contacts.subtitle", undefined, "Todos os leads gerados pelo WhatsApp.")}</p>
       </div>
 
       {/* KPIs */}

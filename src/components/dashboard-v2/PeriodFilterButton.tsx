@@ -5,6 +5,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { DateRange } from "react-day-picker";
 import type { Range } from "./widget-data";
+import { useLanguage } from "@/lib/i18n/context";
 
 const PRESETS: { key: Range; label: string }[] = [
   { key: "today", label: "Hoje" },
@@ -29,18 +30,24 @@ export function PeriodFilterButton({
   value: Range;
   onChange: (r: Range) => void;
 }) {
+  const { t } = useLanguage();
+  const PRESET_MAP: Record<Range, string> = {
+    today: t("dashboard.today", undefined, "Hoje"),
+    "7d": t("dashboard.week", undefined, "Semana"),
+    "30d": t("dashboard.month", undefined, "Mês"),
+    "90d": t("dashboard.days_90", undefined, "90 dias"),
+  };
   const [open, setOpen] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [draft, setDraft] = useState<DateRange | undefined>();
 
   const label = useMemo(() => {
-    const preset = PRESETS.find((p) => p.key === value);
-    if (preset) return preset.label;
+    if (PRESET_MAP[value]) return PRESET_MAP[value];
     if (typeof value === "string" && value.startsWith("custom:")) {
       const [, f, t] = value.split(":");
       return `${fmt(f)} – ${fmt(t)}`;
     }
-    return "Período";
+    return t("dashboard.period", undefined, "Período");
   }, [value]);
 
   const isCustom = typeof value === "string" && value.startsWith("custom:");
@@ -78,7 +85,7 @@ export function PeriodFilterButton({
                   value === p.key ? "text-primary font-medium" : "text-foreground"
                 }`}
               >
-                {p.label}
+                {PRESET_MAP[p.key] || p.label}
                 {value === p.key && <Check className="h-4 w-4" />}
               </button>
             ))}
