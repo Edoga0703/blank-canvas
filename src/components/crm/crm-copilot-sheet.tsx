@@ -19,6 +19,7 @@ import {
   type CrmCopilotChatMessage,
 } from "@/lib/crm-copilot.functions";
 import type { CrmCopilotActionProposal } from "@/lib/crm-copilot.server";
+import { extractCleanStageName } from "@/lib/crm-stage-meta";
 import {
   Sparkles,
   Send,
@@ -149,10 +150,18 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
     const key = `${mIdx}-${pIdx}`;
     setExecutingIdx(key);
 
+    const safeAction: CrmCopilotActionProposal = {
+      ...action,
+      payload: { ...(action.payload || {}) },
+    };
+    if (safeAction.type === "create_stage") {
+      safeAction.payload.nome = safeAction.payload.nome || extractCleanStageName(safeAction);
+    }
+
     try {
       const res = await execAction({
         data: {
-          action,
+          action: safeAction,
           pipelineId,
           cardId,
         },
@@ -297,7 +306,7 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
                             <div className="rounded-md bg-background/80 p-2 font-mono text-[11px] border border-border/60 space-y-1">
                               <div className="flex items-center gap-2">
                                 <span className="size-2.5 rounded-full" style={{ background: prop.payload?.cor || prop.payload?.color || "#60A5FA" }} />
-                                <b>{prop.payload?.nome || prop.payload?.name || prop.payload?.stageName || prop.payload?.title || "Nueva Etapa"}</b>
+                                <b>{prop.payload?.nome || extractCleanStageName(prop)}</b>
                                 <span className="text-[10px] text-muted-foreground">({prop.payload?.tipo || prop.payload?.type || "normal"})</span>
                               </div>
                               {(prop.payload?.criterio_ia || prop.payload?.criterio || prop.payload?.criteria) && (

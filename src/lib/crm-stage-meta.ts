@@ -84,3 +84,63 @@ export function resolveStageAiMeta(stage: {
     mensagem_prompt: rawPrompt,
   };
 }
+
+/**
+ * Limpia y normaliza el texto de un nombre de etapa eliminando prefijos y comillas.
+ */
+export function cleanStageNameString(raw: string): string {
+  let s = String(raw || "").trim();
+  if (!s) return "";
+
+  // 1. Si contiene texto entre comillas: '...', "...", “...”
+  const quoteMatch = s.match(/['"“]([^'"“”]+)['"”]/);
+  if (quoteMatch && quoteMatch[1].trim()) {
+    return quoteMatch[1].trim();
+  }
+
+  // 2. Remover prefijos como "Crear Etapa:", "Nueva Etapa -", "Create stage:"
+  s = s.replace(/^(?:crear|nueva|nova|adicionar|create|new|add)\s+(?:etapa|stage|phase)\s*[:\-–]?\s*/i, "").trim();
+
+  // 3. Remover sufijos de tipo " (normal)" o similares
+  s = s.replace(/\s*\((?:normal|ganho|perda|etapa|stage)\)$/i, "").trim();
+
+  return s;
+}
+
+/**
+ * Extrae y limpia el nombre de la etapa desde cualquier estructura de acción del Copilot,
+ * tolerando nombres en español, inglés o portugués, y extrayendo de comillas o títulos.
+ */
+export function extractCleanStageName(item: any): string {
+  if (!item) return "Nueva Etapa";
+  const payload = item.payload && typeof item.payload === "object" ? item.payload : {};
+
+  const candidates = [
+    payload.nome,
+    payload.name,
+    payload.stageName,
+    payload.stage_name,
+    payload.nombre,
+    payload.stage,
+    payload.etapa,
+    payload.title,
+    item.nome,
+    item.name,
+    item.stageName,
+    item.stage_name,
+    item.nombre,
+    item.stage,
+    item.etapa,
+    item.title,
+    item.description,
+  ];
+
+  for (const c of candidates) {
+    if (typeof c === "string" && c.trim().length > 0) {
+      const clean = cleanStageNameString(c);
+      if (clean) return clean;
+    }
+  }
+
+  return "Nueva Etapa";
+}

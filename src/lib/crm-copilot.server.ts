@@ -1,6 +1,6 @@
 // src/lib/crm-copilot.server.ts
 import { lovableAiChat, type ChatMsg } from "@/lib/lovable-ai.server";
-import { resolveStageAiMeta, DEFAULT_CRM_MASTER_PROMPT } from "@/lib/crm-stage-meta";
+import { resolveStageAiMeta, extractCleanStageName, DEFAULT_CRM_MASTER_PROMPT } from "@/lib/crm-stage-meta";
 import {
   gatherLeadComprehensiveContext,
   formatComprehensiveContextForPrompt,
@@ -372,9 +372,12 @@ export function parseCrmCopilotOutput(rawText: string): CrmCopilotTurnResult {
 
           // Normalizar create_stage
           if (item.type === "create_stage") {
-            payload.nome = String(payload.nome || payload.name || payload.stageName || payload.stage_name || payload.nombre || payload.title || item.title || "").trim();
+            payload.nome = extractCleanStageName(item);
             payload.cor = String(payload.cor || payload.color || "#60A5FA").trim();
-            payload.tipo = String(payload.tipo || payload.type || "normal").trim();
+            let tipo = String(payload.tipo || payload.type || "normal").toLowerCase().trim();
+            if (tipo === "ganado" || tipo === "won") tipo = "ganho";
+            if (tipo === "perdido" || tipo === "lost") tipo = "perda";
+            payload.tipo = ["normal", "ganho", "perda"].includes(tipo) ? tipo : "normal";
             payload.criterio_ia = String(payload.criterio_ia || payload.criterio || payload.criteria || payload.ai_criteria || "").trim();
           }
 

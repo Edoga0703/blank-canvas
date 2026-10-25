@@ -205,22 +205,20 @@ export const executeCrmCopilotAction = createServerFn({ method: "POST" })
 
     // 2. Crear nueva etapa en el embudo
     if (action.type === "create_stage") {
+      const { extractCleanStageName } = await import("./crm-stage-meta");
+
       let pipelineId = String(
         action.payload?.pipelineId || action.payload?.pipeline_id || data.pipelineId || ""
       ).trim();
 
-      const nome = String(
-        action.payload?.nome ||
-        action.payload?.name ||
-        action.payload?.stageName ||
-        action.payload?.stage_name ||
-        action.payload?.nombre ||
-        action.payload?.title ||
-        ""
-      ).trim();
+      const nome = extractCleanStageName(action);
 
       const cor = String(action.payload?.cor || action.payload?.color || "#60A5FA").trim();
-      const tipo = String(action.payload?.tipo || action.payload?.type || "normal").trim();
+      let tipo = String(action.payload?.tipo || action.payload?.type || "normal").toLowerCase().trim();
+      if (tipo === "ganado" || tipo === "won") tipo = "ganho";
+      if (tipo === "perdido" || tipo === "lost") tipo = "perda";
+      if (!["normal", "ganho", "perda"].includes(tipo)) tipo = "normal";
+
       const criterioIa = String(
         action.payload?.criterio_ia ??
         action.payload?.criterio ??
@@ -236,7 +234,7 @@ export const executeCrmCopilotAction = createServerFn({ method: "POST" })
         false
       );
 
-      if (!pipelineId) {
+      if (!pipelineId || pipelineId.includes("ID_")) {
         const { data: defaultPipe } = await supabaseAdmin
           .from("crm_pipeline")
           .select("id")
@@ -248,7 +246,6 @@ export const executeCrmCopilotAction = createServerFn({ method: "POST" })
       }
 
       if (!pipelineId) throw new Error("ID del embudo no proporcionado.");
-      if (!nome) throw new Error("El nombre de la etapa no puede estar vacío.");
 
       const { data: stagesCount } = await supabaseAdmin
         .from("crm_stage")
