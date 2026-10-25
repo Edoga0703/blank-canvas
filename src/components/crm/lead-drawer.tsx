@@ -126,6 +126,8 @@ export function LeadDetailsPanel({
   const [editValor, setEditValor] = useState(false);
   const [funilOpen, setFunilOpen] = useState(false);
   const [aiAnalyzerOpen, setAiAnalyzerOpen] = useState(false);
+  const [crmCopilotOpen, setCrmCopilotOpen] = useState(false);
+  const [crmCopilotPrompt, setCrmCopilotPrompt] = useState<string | null>(null);
   const [pipelines, setPipelines] = useState<{ id: string; nome: string; tipo: string | null }[]>([]);
   const [allStages, setAllStages] = useState<{ id: string; nome: string; cor: string; pipeline_id: string | null; ordem: number | null }[]>([]);
   const [itens, setItens] = useState<{ id: string; nome: string; tipo: string | null }[]>([]);
