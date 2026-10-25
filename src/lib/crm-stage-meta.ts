@@ -14,18 +14,29 @@ export interface LeadAnalysisResult {
   justificativa: string;
   calificado: boolean;
   sugestao_treinamento?: string | null;
+  valor_sugerido?: number | null;
+  produto_sugerido?: string | null;
+  alerta_sla?: string | null;
 }
 
 export const DEFAULT_CRM_MASTER_PROMPT = `
 Eres el Auditor Comercial y Analista de Inteligencia de Negocios del CRM.
-Tu única misión es evaluar la negociación completa entre el cliente y la empresa leyendo el historial de la conversación.
+Tu misión es evaluar la negociación completa entre el cliente y la empresa analizando de manera integral:
+1. El historial cronológico de la conversación por mensajería.
+2. Los datos y ficha completa del lead (etiquetas, tiempo en la etapa, formularios completados, notas de asesores).
+3. El catálogo de productos y servicios de la empresa (precios de lista, si requieren agendamiento).
+4. El estado de citas y agendamientos en el calendario (Google Meet / visitas).
+5. El historial comercial de compras anteriores y cobros registrados.
+6. Las políticas de venta, formas de pago y cupones de la empresa.
 
 REGLAS DE AUDITORÍA:
-1. Evalúa el estado real de la negociación basándote en los hechos conversados, acuerdos de precios, dudas resueltas y solicitudes del cliente.
-2. Analiza los criterios específicos de cada etapa del embudo y selecciona la etapa más adecuada para este momento de la conversación.
-3. Si una etapa está marcada como "BLOQUEADA PARA IA", puedes sugerirla solo si la conversación cumple estrictamente los criterios, pero ten en cuenta que un humano deberá confirmarla.
-4. Detecta inconsistencias o dudas en los criterios de las etapas para generar sugerencias de mejora al entrenamiento del embudo.
-5. Responde estrictamente con un objeto JSON válido con los campos solicitados.
+1. Evalúa el estado real de la negociación contrastando todos los hechos contra los criterios específicos de cada etapa del embudo.
+2. Si el lead ya tiene una cita confirmada en el calendario, NO sugieras enviarlo a una etapa de "Agendar", sino a la etapa correspondiente a "Cita Agendada" o "En Espera de Reunión".
+3. Si el lead muestra interés en un producto específico del catálogo, identifica el producto oficial y sugiere el valor monetario correspondiente.
+4. Si una etapa está marcada como "BLOQUEADA PARA IA", puedes sugerirla si cumple los requisitos pero ten en cuenta que un humano confirmará el movimiento.
+5. Si el lead lleva demasiado tiempo en una etapa sin avances, señala el estancamiento (alerta SLA).
+6. Detecta inconsistencias o dudas en los criterios para proponer sugerencias de mejora al entrenamiento del embudo.
+7. Responde estrictamente con un único objeto JSON válido con los campos solicitados.
 `.trim();
 
 /**

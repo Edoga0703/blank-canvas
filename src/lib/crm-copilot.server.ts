@@ -1,6 +1,11 @@
 // src/lib/crm-copilot.server.ts
 import { lovableAiChat, type ChatMsg } from "@/lib/lovable-ai.server";
 import { resolveStageAiMeta, DEFAULT_CRM_MASTER_PROMPT } from "@/lib/crm-stage-meta";
+import {
+  gatherLeadComprehensiveContext,
+  formatComprehensiveContextForPrompt,
+  type ComprehensiveLeadData,
+} from "./crm-lead-context.server";
 
 export interface CrmCopilotActionProposal {
   type: "stage_criteria" | "create_stage" | "pipeline_prompt" | "stage_automation" | "move_lead";
@@ -16,8 +21,8 @@ export interface CrmCopilotTurnResult {
 }
 
 /**
- * Recopila el contexto completo del embudo CRM, sus etapas, criterios actuales
- * y la información del lead (si el chat fue iniciado desde una auditoría).
+ * Recopila el contexto completo del embudo CRM, sus etapas, criterios actuales,
+ * catálogo comercial de la empresa y la información integral 360° del lead.
  */
 export async function getCrmCopilotContext(
   supabase: any,
@@ -43,6 +48,9 @@ export async function getCrmCopilotContext(
     { data: allPipelines },
     { data: stages },
     { data: card },
+    { data: produtos },
+    { data: servicos },
+    leadComprehensiveCtx,
   ] = await Promise.all([
     resolvedPipelineId
       ? supabase
@@ -67,11 +75,25 @@ export async function getCrmCopilotContext(
     cardId
       ? supabase
           .from("crm_cards")
-          .select("id, nome, numero, stage_id, valor, campos_extras, ultimo_analise_ia_em")
+          .select("id, nome, numero, stage_id, valor, campos_extras, ultimo_analise_ia_em, tags, observacao, email, empresa, item_nome, stage_entrou_em")
           .eq("id", cardId)
           .eq("company_id", companyId)
           .maybeSingle()
       : Promise.resolve({ data: null }),
+    supabase
+      .from("produto")
+      .select("id, nome, preco, categoria, sku, agendavel, tipo")
+      .eq("company_id", companyId)
+      .eq("ativo", true)
+      .order("ordem", { ascending: true })
+      .limit(20),
+    supabase
+      .from("servico")
+      .select("id, nome, valor_cents, duracao_min")
+      .eq("company_id", companyId)
+      .eq("ativo", true)
+      .limit(15),
+    cardId ? gatherLeadComprehensiveContext(supabase, companyId, cardId) : Promise.resolve(null),
   ]);
 
   const parsedStages = (stages || []).map((s: any) => {
@@ -95,21 +117,30 @@ export async function getCrmCopilotContext(
     allPipelines: allPipelines || [],
     stages: parsedStages,
     card: card || null,
+    produtos: produtos || [],
+    servicos: servicos || [],
+    leadComprehensiveCtx: leadComprehensiveCtx as ComprehensiveLeadData | null,
   };
 }
 
 /**
- * Construye el System Prompt para el CRM & Pipeline Copilot.
+ * Construye el System Prompt para el CRM & Pipeline Copilot con contexto enriquecido.
  */
 export function buildCrmCopilotSystemPrompt(context: {
   pipeline: any;
   allPipelines: any[];
   stages: any[];
   card: any;
+  produtos?: any[];
+  servicos?: any[];
+  leadComprehensiveCtx?: ComprehensiveLeadData | null;
 }): string {
   const pipe = context.pipeline || {};
   const stages = context.stages || [];
   const card = context.card || null;
+  const produtos = context.produtos || [];
+  const servicos = context.servicos || [];
+  const leadCtx = context.leadComprehensiveCtx || null;
 
   const stagesSummary = stages.length > 0
     ? stages
@@ -122,14 +153,26 @@ export function buildCrmCopilotSystemPrompt(context: {
         .join("\n\n")
     : "No hay etapas configuradas en este embudo.";
 
+  // Resumen del Catálogo
+  let catalogSummary = "CATÁLOGO DE PRODUCTOS Y SERVICIOS DE LA EMPRESA:\n";
+  const prodsList = (produtos || []).map((p: any) => `* "${p.nome}" (${p.categoria || "Gral"}): R$ ${Number(p.preco || 0).toLocaleString("pt-BR")}${p.agendavel ? " [Agendable]" : ""}`);
+  const servsList = (servicos || []).map((s: any) => `* Serv. "${s.nome}": R$ ${(Number(s.valor_cents || 0) / 100).toLocaleString("pt-BR")} (${s.duracao_min} min)`);
+  const allItems = [...prodsList, ...servsList];
+  catalogSummary += allItems.length > 0 ? allItems.join("\n") : "(Sin productos activos en catálogo)";
+
   let leadContextBlock = "";
-  if (card) {
+  if (leadCtx) {
+    leadContextBlock = `\n${formatComprehensiveContextForPrompt(leadCtx, "es-ES")}\n`;
+  } else if (card) {
     const extras = card.campos_extras || {};
     const diag = extras.ultimo_diagnostico_ia;
     leadContextBlock = `
 LEAD EN ANÁLISIS ACTUAL:
 - Nombre / Teléfono: ${card.nome || card.numero} (ID: ${card.id})
 - Etapa Actual: ID "${card.stage_id}"
+${card.empresa ? `- Empresa: ${card.empresa}` : ""}
+${card.email ? `- Email: ${card.email}` : ""}
+${Array.isArray(card.tags) && card.tags.length > 0 ? `- Tags: [${card.tags.join(", ")}]` : ""}
 ${diag ? `- Último Diagnóstico IA:
    * Resumen: "${diag.resumo}"
    * Intención: "${diag.intencao}"
@@ -144,7 +187,12 @@ ${diag ? `- Último Diagnóstico IA:
 CONTEXTO DE TU ENTORNO:
 - Estás conversando con el ADMINISTRADOR o JEFE DE VENTAS dentro del CRM en su navegador web.
 - Tu misión es ayudarle a estructurar, refinar y optimizar su embudo de ventas, los criterios con los que la IA clasifica y mueve leads, y resolver dudas o inconsistencias detectadas en las conversaciones reales.
+- Tienes acceso directo al Catálogo Comercial, Citas, Notas del Equipo, Políticas de Venta y Ficha 360° de los leads.
+
 ${leadContextBlock}
+
+${catalogSummary}
+
 EMBUDO ACTUAL:
 - Nombre: "${pipe.nome || "Comercial"}" (ID: "${pipe.id || ""}")
 - Prompt Maestro del Embudo:
@@ -168,44 +216,22 @@ Cuando recomiendes cambios concretos, redacta tu respuesta conversacional en esp
 [
   {
     "type": "stage_criteria",
-    "title": "Ajustar Criterio de la Etapa 'Soporte'",
-    "description": "Especifica qué ocurre cuando se resuelve el problema del cliente.",
+    "title": "Ajustar Criterio de la Etapa 'Demostración Agendada'",
+    "description": "Especifica que si el lead ya agendó en calendario debe ubicarse en esta etapa.",
     "payload": {
       "stageId": "ID_DE_LA_ETAPA",
-      "stageName": "Soporte",
-      "criterio_ia": "Nuevo texto del criterio exacto...",
+      "stageName": "Demostración Agendada",
+      "criterio_ia": "El lead acordó fecha y hora o tiene una reunión agendada en calendario.",
       "bloqueada_para_ia": false
-    }
-  },
-  {
-    "type": "create_stage",
-    "title": "Crear Etapa 'Reengajamento'",
-    "description": "Para clientes que resolvieron su soporte y pueden volver a comprar.",
-    "payload": {
-      "pipelineId": "${pipe.id || ""}",
-      "nome": "Reengajamento",
-      "cor": "#60A5FA",
-      "tipo": "normal",
-      "criterio_ia": "Criterio para clasificar leads en esta nueva etapa...",
-      "bloqueada_para_ia": false
-    }
-  },
-  {
-    "type": "pipeline_prompt",
-    "title": "Actualizar Reglas del Auditor Comercial",
-    "description": "Añade directrices sobre el tratamiento de quejas y soporte.",
-    "payload": {
-      "pipelineId": "${pipe.id || ""}",
-      "crm_master_prompt": "Texto completo y mejorado del prompt maestro..."
     }
   }
 ]
 \`\`\`
 
 DIRECTIVAS IMPORTANTES:
-- Si el usuario te envía una sugerencia de auditoría generada por un lead real (por ejemplo: "El criterio de Soporte no especifica a qué etapa moverse al resolverse..."), genera de inmediato la acción 'stage_criteria' con el texto redactado con máxima precisión, listo para aplicar con 1 clic.
+- Si el usuario te envía una sugerencia de auditoría generada por un lead real, genera de inmediato la acción correspondiente lista para aplicar con 1 clic.
 - Si una etapa como 'Ganado' o 'Perdido' debe requerir confirmación humana, pon 'bloqueada_para_ia': true.
-- Sé conciso, proactivo y explica brevemente por qué tu ajuste hace el análisis automático más inteligente y confiable.`;
+- Sé conciso, proactivo y explica brevemente por qué tu ajuste hace el análisis automático más inteligente, rápido y confiable.`;
 }
 
 /**

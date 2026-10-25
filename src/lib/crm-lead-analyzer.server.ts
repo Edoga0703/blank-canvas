@@ -8,6 +8,10 @@ import {
   type StageAiMeta,
   type LeadAnalysisResult,
 } from "./crm-stage-meta";
+import {
+  gatherLeadComprehensiveContext,
+  formatComprehensiveContextForPrompt,
+} from "./crm-lead-context.server";
 
 export { resolveStageAiMeta, DEFAULT_CRM_MASTER_PROMPT, type StageAiMeta, type LeadAnalysisResult };
 
@@ -33,7 +37,7 @@ export async function analyzeLeadInternal(
 }> {
   const { data: card, error: cardError } = await supabaseAdmin
     .from("crm_cards")
-    .select("id, company_id, pipeline_id, stage_id, owner_id, numero, nome, valor, campos_extras, canal_chat, ultimo_analise_ia_em")
+    .select("id, company_id, pipeline_id, stage_id, owner_id, numero, nome, valor, campos_extras, canal_chat, ultimo_analise_ia_em, tags, observacao, origem, canal_entrada, stage_entrou_em, email, empresa, cpf_cnpj, item_id, item_nome, item_tipo, proxima_acao, status, primeiro_contato_em, perdido_em, reativado_em")
     .eq("id", cardId)
     .eq("company_id", companyId)
     .maybeSingle();
@@ -81,7 +85,7 @@ export async function analyzeLeadInternal(
     pipelineId = firstPipe?.id;
   }
 
-  const [{ data: pipeline }, { data: rawStages }] = await Promise.all([
+  const [{ data: pipeline }, { data: rawStages }, comprehensiveLeadCtx] = await Promise.all([
     pipelineId
       ? supabaseAdmin
           .from("crm_pipeline")
@@ -96,6 +100,7 @@ export async function analyzeLeadInternal(
           .eq("pipeline_id", pipelineId)
           .order("ordem", { ascending: true })
       : Promise.resolve({ data: [] }),
+    gatherLeadComprehensiveContext(supabaseAdmin, companyId, card),
   ]);
 
   const stages = (rawStages || []).map((st: any) => {
@@ -162,6 +167,10 @@ export async function analyzeLeadInternal(
       ? String(pipeline.crm_master_prompt).trim()
       : DEFAULT_CRM_MASTER_PROMPT;
 
+  const formattedComprehensiveContext = comprehensiveLeadCtx
+    ? formatComprehensiveContextForPrompt(comprehensiveLeadCtx, localeForDates)
+    : `FICHA BÁSICA DEL LEAD:\n- Nombre / Teléfono: ${card.nome || card.numero}\n- Valor: ${card.valor || 0}`;
+
   const systemPrompt = `
 ${masterPrompt}
 
@@ -171,18 +180,25 @@ ETAPA ACTUAL DEL LEAD: "${currentStage?.nome || "Sin etapa"}" (ID: ${currentStag
 ETAPAS CONFIGURADAS Y SUS CRITERIOS:
 ${stagesPromptBlock}
 
+INFORMACIÓN COMERCIAL INTEGRAL DEL LEAD, CATÁLOGO Y OPERACIONES:
+${formattedComprehensiveContext}
+
 IDIOMA DE RESPUESTA OBLIGATORIO:
-Emite los campos de texto ("resumo", "justificativa", "sugestao_treinamento") estrictamente en ${langLabel}.
+Emite los campos de texto ("resumo", "justificativa", "sugestao_treinamento", "alerta_sla", "produto_sugerido") estrictamente en ${langLabel}.
 
 INSTRUCCIONES DE SALIDA:
-Analiza la conversación que se adjunta y responde OBLIGATORIAMENTE con un único bloque JSON válido con el siguiente formato:
+Analiza la conversación que se adjunta cruzándola con la ficha del lead, catálogo, notas del equipo, citas y ventas previas.
+Responde OBLIGATORIAMENTE con un único bloque JSON válido con el siguiente formato:
 {
   "resumo": "Resumen ejecutivo en 2 oraciones del estado de la negociación",
   "intencao": "POSITIVA" | "NEGATIVA" | "NEUTRA" | "DUDOSA",
   "etapa_sugerida_id": "ID exacto de la etapa correspondiente a la lista de arriba",
   "etapa_sugerida_nome": "Nombre exacto de la etapa sugerida",
-  "justificativa": "Explicación concisa de por qué el lead debe estar en esta etapa según los criterios",
+  "justificativa": "Explicación concisa contrastando la conversación, notas, agenda y catálogo contra los criterios de la etapa",
   "calificado": true o false,
+  "valor_sugerido": número con el valor monetario sugerido del negocio según el catálogo si aplica (ej: 1200) o null,
+  "produto_sugerido": "Nombre exacto del producto del catálogo si aplica o null",
+  "alerta_sla": "Aviso breve si detectas estancamiento en la etapa según el tiempo transcurrido o null",
   "sugestao_treinamento": "Opcional: Si detectas que falta un criterio o hay una duda en las etapas, explica qué regla añadir (o null si todo está claro)"
 }
 `.trim();
@@ -254,7 +270,7 @@ Analiza la conversación que se adjunta y responde OBLIGATORIAMENTE con un únic
   try {
     const { data: freshCard } = await supabaseAdmin
       .from("crm_cards")
-      .select("campos_extras")
+      .select("campos_extras, valor, item_nome")
       .eq("id", card.id)
       .maybeSingle();
     const prevExtras =
@@ -262,16 +278,28 @@ Analiza la conversación que se adjunta y responde OBLIGATORIAMENTE con un únic
         ? (freshCard.campos_extras as Record<string, any>)
         : {};
 
+    const updates: Record<string, any> = {
+      ultimo_analise_ia_em: nowIso,
+      campos_extras: {
+        ...prevExtras,
+        ultimo_analise_ia_em: nowIso,
+        ultimo_diagnostico_ia: parsedResult,
+      },
+    };
+
+    // Auto-actualizar valor monetario si el lead no tenía valor y la IA identificó el precio del catálogo
+    if (parsedResult.valor_sugerido && typeof parsedResult.valor_sugerido === "number" && (!freshCard?.valor || Number(freshCard.valor) === 0)) {
+      updates.valor = parsedResult.valor_sugerido;
+    }
+
+    // Auto-actualizar producto consultado si el lead no lo tenía fijado
+    if (parsedResult.produto_sugerido && typeof parsedResult.produto_sugerido === "string" && !freshCard?.item_nome) {
+      updates.item_nome = parsedResult.produto_sugerido;
+    }
+
     await supabaseAdmin
       .from("crm_cards")
-      .update({
-        ultimo_analise_ia_em: nowIso,
-        campos_extras: {
-          ...prevExtras,
-          ultimo_analise_ia_em: nowIso,
-          ultimo_diagnostico_ia: parsedResult,
-        },
-      } as any)
+      .update(updates as any)
       .eq("id", card.id);
   } catch (e) {
     console.warn("[crm-lead-analyzer] Error al guardar diagnóstico:", e);
