@@ -107,6 +107,22 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    const msg = error instanceof Error ? error.message : String(error);
+    const isChunkError =
+      msg.includes("Failed to fetch dynamically imported module") ||
+      msg.includes("error loading dynamically imported module") ||
+      msg.includes("Unexpected identifier 'found'") ||
+      msg.includes("ChunkLoadError") ||
+      msg.includes("Failed to load module script") ||
+      msg.includes("Importing a module script failed");
+    if (isChunkError && typeof window !== "undefined") {
+      const reloadKey = "capiversa_chunk_reload";
+      const last = Number(sessionStorage.getItem(reloadKey) || 0);
+      if (Date.now() - last > 8000) {
+        sessionStorage.setItem(reloadKey, String(Date.now()));
+        window.location.reload();
+      }
+    }
   }, [error]);
   const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -127,12 +143,16 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
-              router.invalidate();
-              reset();
+              if (typeof window !== "undefined") {
+                window.location.reload();
+              } else {
+                router.invalidate();
+                reset();
+              }
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Tentar novamente
+            {t("common.try_again", undefined, "Tentar novamente")}
           </button>
           <a
             href="/"
