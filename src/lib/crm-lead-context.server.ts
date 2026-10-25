@@ -221,7 +221,7 @@ export async function gatherLeadComprehensiveContext(
     // 10. Prospección B2B vinculada
     client
       .from("prospeccao_lead")
-      .select("razao_social, cnpj, categoria, cidade, avaliacoes, abordagem_foco")
+      .select("nome, cnpj, categoria, cidade, avaliacoes")
       .eq("company_id", companyId)
       .eq("card_id", card.id)
       .maybeSingle(),
@@ -230,10 +230,10 @@ export async function gatherLeadComprehensiveContext(
     card.numero
       ? client
           .from("campaign_target")
-          .select("campaign_id, status, sent_at")
+          .select("campaign_id, status, enviado_em")
           .eq("company_id", companyId)
-          .eq("numero", card.numero)
-          .order("sent_at", { ascending: false })
+          .eq("contato_numero", card.numero)
+          .order("enviado_em", { ascending: false })
           .limit(1)
       : Promise.resolve({ data: [] }),
 
@@ -316,13 +316,13 @@ export async function gatherLeadComprehensiveContext(
       campanhaInfo = {
         nome: cData?.nome || "Campaña de WhatsApp",
         status: campaignTargets[0].status,
-        sent_at: campaignTargets[0].sent_at,
+        sent_at: campaignTargets[0].enviado_em || campaignTargets[0].sent_at || null,
       };
     } catch {
       campanhaInfo = {
         nome: "Campaña de WhatsApp",
         status: campaignTargets[0].status,
-        sent_at: campaignTargets[0].sent_at,
+        sent_at: campaignTargets[0].enviado_em || campaignTargets[0].sent_at || null,
       };
     }
   }
