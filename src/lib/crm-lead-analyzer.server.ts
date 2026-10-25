@@ -89,14 +89,14 @@ export async function analyzeLeadInternal(
     pipelineId
       ? supabaseAdmin
           .from("crm_pipeline")
-          .select("id, nome, agent_id, crm_master_prompt")
+          .select("id, nome, agent_id, tipo")
           .eq("id", pipelineId)
           .maybeSingle()
       : Promise.resolve({ data: null }),
     pipelineId
       ? supabaseAdmin
           .from("crm_stage")
-          .select("id, nome, cor, tipo, ordem, criterio_ia, bloqueada_para_ia, mensagem_prompt, agent_id, modo_atendimento")
+          .select("id, nome, cor, tipo, ordem, mensagem_prompt, agent_id, modo_atendimento, pipeline_id")
           .eq("pipeline_id", pipelineId)
           .order("ordem", { ascending: true })
       : Promise.resolve({ data: [] }),
@@ -107,7 +107,7 @@ export async function analyzeLeadInternal(
   if (finalStages.length === 0) {
     const { data: anyStages } = await supabaseAdmin
       .from("crm_stage")
-      .select("id, nome, cor, tipo, ordem, criterio_ia, bloqueada_para_ia, mensagem_prompt, agent_id, modo_atendimento")
+      .select("id, nome, cor, tipo, ordem, mensagem_prompt, agent_id, modo_atendimento, pipeline_id")
       .eq("company_id", companyId)
       .order("ordem", { ascending: true });
     finalStages = anyStages || [];
@@ -172,10 +172,7 @@ export async function analyzeLeadInternal(
     })
     .join("\n\n");
 
-  const masterPrompt =
-    pipeline?.crm_master_prompt && String(pipeline.crm_master_prompt).trim().length > 0
-      ? String(pipeline.crm_master_prompt).trim()
-      : DEFAULT_CRM_MASTER_PROMPT;
+  const masterPrompt = DEFAULT_CRM_MASTER_PROMPT;
 
   const formattedComprehensiveContext = comprehensiveLeadCtx
     ? formatComprehensiveContextForPrompt(comprehensiveLeadCtx, localeForDates)
@@ -184,7 +181,7 @@ export async function analyzeLeadInternal(
   const systemPrompt = `
 ${masterPrompt}
 
-EMBUDO DE VENTAS ACTIVO: "${pipeline?.nome || "Comercial"}"
+EMBUDO DE VENTAS ACTIVO: "${pipeline?.nome || "Atención y ventas"}"
 ETAPA ACTUAL DEL LEAD: "${currentStage?.nome || "Sin etapa"}" (ID: ${currentStage?.id || "N/A"})
 
 ETAPAS CONFIGURADAS Y SUS CRITERIOS:

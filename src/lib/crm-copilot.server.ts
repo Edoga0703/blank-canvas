@@ -30,10 +30,10 @@ export async function getCrmCopilotContext(
   pipelineId?: string | null,
   cardId?: string | null,
 ) {
-  // 1. Obtener todos los embudos de la empresa
+  // 1. Obtener todos los embudos de la empresa (solo columnas existentes en Postgres)
   const { data: allPipelines } = await supabase
     .from("crm_pipeline")
-    .select("id, nome, tipo, agent_id, crm_master_prompt")
+    .select("id, nome, tipo, agent_id")
     .eq("company_id", companyId)
     .order("ordem", { ascending: true });
 
@@ -56,12 +56,12 @@ export async function getCrmCopilotContext(
         .from("crm_pipeline")
         .insert({
           company_id: companyId,
-          nome: "Comercial",
-          tipo: "padrao",
+          nome: "Atención y ventas",
+          tipo: "vendas",
           ordem: 0,
           sistema: true,
         })
-        .select("id, nome, tipo, agent_id, crm_master_prompt")
+        .select("id, nome, tipo, agent_id")
         .maybeSingle();
       pipeline = createdPipe;
       resolvedPipelineId = createdPipe?.id || null;
@@ -70,12 +70,12 @@ export async function getCrmCopilotContext(
     }
   }
 
-  // 3. Consultar etapas asociadas (o todas las etapas de la empresa si no tienen pipeline_id)
+  // 3. Consultar etapas asociadas (solo columnas existentes; criterio_ia se extrae de mensagem_prompt)
   let rawStages: any[] = [];
   if (resolvedPipelineId) {
     const { data: stByPipe } = await supabase
       .from("crm_stage")
-      .select("id, nome, cor, tipo, ordem, criterio_ia, bloqueada_para_ia, mensagem_prompt, modo_atendimento, move_apos_qualificar_para, ia_handoff_stage_id, pipeline_id")
+      .select("id, nome, cor, tipo, ordem, mensagem_prompt, modo_atendimento, move_apos_qualificar_para, ia_handoff_stage_id, pipeline_id")
       .eq("company_id", companyId)
       .or(`pipeline_id.eq.${resolvedPipelineId},pipeline_id.is.null`)
       .order("ordem", { ascending: true });
@@ -85,7 +85,7 @@ export async function getCrmCopilotContext(
   if (rawStages.length === 0) {
     const { data: anyStages } = await supabase
       .from("crm_stage")
-      .select("id, nome, cor, tipo, ordem, criterio_ia, bloqueada_para_ia, mensagem_prompt, modo_atendimento, move_apos_qualificar_para, ia_handoff_stage_id, pipeline_id")
+      .select("id, nome, cor, tipo, ordem, mensagem_prompt, modo_atendimento, move_apos_qualificar_para, ia_handoff_stage_id, pipeline_id")
       .eq("company_id", companyId)
       .order("ordem", { ascending: true });
     rawStages = anyStages || [];
@@ -147,7 +147,7 @@ export async function getCrmCopilotContext(
   });
 
   return {
-    pipeline: pipeline || { id: resolvedPipelineId || "", nome: "Comercial", crm_master_prompt: null },
+    pipeline: pipeline || { id: resolvedPipelineId || "", nome: "Atención y ventas", crm_master_prompt: null },
     allPipelines: allPipelines || [],
     stages: parsedStages,
     card: card || null,
@@ -184,7 +184,7 @@ export function buildCrmCopilotSystemPrompt(context: {
         .map(
           (s, idx) =>
             `${idx + 1}. [ID: "${s.id}"] Etapa "${s.nome}" (${s.tipo}, modo: ${s.modo_atendimento})\n` +
-            `   - Criterio IA: ${s.criterio_ia ? `"${s.criterio_ia}"` : "(Sin criterio definido)"}\n` +
+            `   - Criterio IA: ${s.criterio_ia ? `"${s.criterio_ia}"` : "(Sin criterio definido aún)"}\n` +
             `   - Bloqueada para IA: ${s.bloqueada_para_ia ? "SÍ (Solo humanos pueden mover aquí)" : "NO (La IA puede mover automáticamente)"}`
         )
         .join("\n\n")
@@ -250,9 +250,9 @@ ${leadContextBlock}
 ${catalogSummary}
 ${rulesSummary}
 EMBUDO ACTUAL:
-- Nombre: "${pipe.nome || "Comercial"}" (ID: "${pipe.id || ""}")
+- Nombre: "${pipe.nome || "Atención y ventas"}" (ID: "${pipe.id || ""}")
 - Prompt Maestro del Embudo:
-${pipe.crm_master_prompt ? pipe.crm_master_prompt : DEFAULT_CRM_MASTER_PROMPT}
+${DEFAULT_CRM_MASTER_PROMPT}
 
 ETAPAS ACTUALES Y SUS CRITERIOS:
 ${stagesSummary}
@@ -272,12 +272,12 @@ Cuando recomiendes cambios concretos, redacta tu respuesta conversacional en esp
 [
   {
     "type": "stage_criteria",
-    "title": "Ajustar Criterio de la Etapa 'Demostración Agendada'",
-    "description": "Especifica que si el lead ya agendó en calendario debe ubicarse en esta etapa.",
+    "title": "Ajustar Criterio de la Etapa 'Atención humana'",
+    "description": "Especifica cuándo un cliente debe pasar a ser atendido por un humano.",
     "payload": {
       "stageId": "ID_DE_LA_ETAPA",
-      "stageName": "Demostración Agendada",
-      "criterio_ia": "El lead acordó fecha y hora o tiene una reunión agendada en calendario.",
+      "stageName": "Atención humana",
+      "criterio_ia": "El lead solicita hablar con una persona o requiere cotización personalizada compleja.",
       "bloqueada_para_ia": false
     }
   }
@@ -286,7 +286,7 @@ Cuando recomiendes cambios concretos, redacta tu respuesta conversacional en esp
 
 DIRECTIVAS IMPORTANTES:
 - Si el usuario te envía una sugerencia de auditoría generada por un lead real, genera de inmediato la acción correspondiente lista para aplicar con 1 clic.
-- Si el embudo no tiene etapas todavía o si el ID del embudo es nuevo, usa "${pipe.id || ""}" como pipelineId en las acciones.
+- Si el ID del embudo es "${pipe.id || ""}", usa "${pipe.id || ""}" como pipelineId en las acciones.
 - Si una etapa como 'Ganado' o 'Perdido' debe requerir confirmación humana, pon 'bloqueada_para_ia': true.
 - Sé conciso, proactivo y explica brevemente por qué tu ajuste hace el análisis automático más inteligente, rápido y confiable.`;
 }

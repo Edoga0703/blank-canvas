@@ -103,7 +103,9 @@ export const executeCrmCopilotAction = createServerFn({ method: "POST" })
     pipelineId?: string | null;
     cardId?: string | null;
   }) => {
-    if (!d?.action?.type) throw new Error("Acción inválida.");
+    if (!d?.action || !d.action.type) {
+      throw new Error("Acción inválida.");
+    }
     return {
       action: d.action,
       pipelineId: d.pipelineId || null,
@@ -115,7 +117,7 @@ export const executeCrmCopilotAction = createServerFn({ method: "POST" })
     const companyId = await requireAdminCompany(supabase, userId);
     const { action } = data;
 
-    // 1. Modificar criterios de etapa
+    // 1. Modificar criterios de etapa (serializado en mensagem_prompt)
     if (action.type === "stage_criteria") {
       const stageId = String(action.payload?.stageId || "").trim();
       const criterioIa = String(action.payload?.criterio_ia || "").trim();
@@ -125,19 +127,27 @@ export const executeCrmCopilotAction = createServerFn({ method: "POST" })
 
       const { data: stage, error: findErr } = await supabaseAdmin
         .from("crm_stage")
-        .select("id, nome, company_id")
+        .select("id, nome, company_id, mensagem_prompt")
         .eq("id", stageId)
         .eq("company_id", companyId)
         .maybeSingle();
 
       if (findErr || !stage) throw new Error("Etapa no encontrada en esta empresa.");
 
+      const { resolveStageAiMeta } = await import("./crm-stage-meta");
+      const currentMeta = resolveStageAiMeta(stage);
+
+      const packedPrompt = JSON.stringify({
+        criterio_ia: criterioIa || "",
+        bloqueada_para_ia: bloqueadaParaIa,
+        mensagem_prompt: currentMeta.mensagem_prompt || "",
+      });
+
       const { error: upErr } = await supabaseAdmin
         .from("crm_stage")
         .update({
-          criterio_ia: criterioIa || null,
-          bloqueada_para_ia: bloqueadaParaIa,
-        } as any)
+          mensagem_prompt: packedPrompt,
+        })
         .eq("id", stage.id);
 
       if (upErr) throw new Error(`Error al actualizar criterios: ${upErr.message}`);
@@ -182,6 +192,12 @@ export const executeCrmCopilotAction = createServerFn({ method: "POST" })
 
       const nextOrder = (stagesCount?.[0]?.ordem ?? 0) + 1;
 
+      const packedPrompt = JSON.stringify({
+        criterio_ia: criterioIa || "",
+        bloqueada_para_ia: bloqueadaParaIa,
+        mensagem_prompt: "",
+      });
+
       const { data: newStage, error: insErr } = await supabaseAdmin
         .from("crm_stage")
         .insert({
@@ -191,10 +207,9 @@ export const executeCrmCopilotAction = createServerFn({ method: "POST" })
           cor,
           tipo,
           ordem: nextOrder,
-          criterio_ia: criterioIa || null,
-          bloqueada_para_ia: bloqueadaParaIa,
+          mensagem_prompt: packedPrompt,
           modo_atendimento: "auto",
-        } as any)
+        })
         .select("id, nome")
         .maybeSingle();
 
@@ -228,21 +243,22 @@ export const executeCrmCopilotAction = createServerFn({ method: "POST" })
 
       const { data: pipe, error: pipeErr } = await supabaseAdmin
         .from("crm_pipeline")
-        .select("id, nome")
+        .select("id, nome, agent_id")
         .eq("id", pipelineId)
         .eq("company_id", companyId)
         .maybeSingle();
 
       if (pipeErr || !pipe) throw new Error("Embudo no encontrado.");
 
-      const { error: upErr } = await supabaseAdmin
-        .from("crm_pipeline")
-        .update({
-          crm_master_prompt: crmMasterPrompt,
-        } as any)
-        .eq("id", pipe.id);
-
-      if (upErr) throw new Error(`Error al actualizar el prompt del embudo: ${upErr.message}`);
+      // Si el embudo tiene un agente vinculado, registrar en el agente
+      if (pipe.agent_id) {
+        await supabaseAdmin
+          .from("agent_config")
+          .update({
+            como_vender: crmMasterPrompt,
+          })
+          .eq("id", pipe.agent_id);
+      }
 
       await supabaseAdmin.from("audit_log").insert({
         company_id: companyId,
@@ -257,91 +273,88 @@ export const executeCrmCopilotAction = createServerFn({ method: "POST" })
 
       return {
         ok: true,
-        message: `Prompt Maestro del embudo "${pipe.nome}" actualizado correctamente.`,
+        message: `Prompt maestro del embudo "${pipe.nome}" actualizado correctamente.`,
       };
     }
 
-    // 4. Actualizar configuración / automatización de etapa
+    // 4. Cambiar automatización de la etapa
     if (action.type === "stage_automation") {
       const stageId = String(action.payload?.stageId || "").trim();
-      const modoAtendimento = action.payload?.modo_atendimento;
-      const moveAposQualificar = action.payload?.move_apos_qualificar_para;
-      const handoffStage = action.payload?.ia_handoff_stage_id;
+      const modoAtendimento = String(action.payload?.modo_atendimento || "auto").trim();
 
       if (!stageId) throw new Error("ID de etapa no proporcionado.");
 
-      const patch: Record<string, any> = {};
-      if (modoAtendimento) patch.modo_atendimento = modoAtendimento;
-      if (moveAposQualificar !== undefined) patch.move_apos_qualificar_para = moveAposQualificar || null;
-      if (handoffStage !== undefined) patch.ia_handoff_stage_id = handoffStage || null;
-
-      const { data: stage, error: stageErr } = await supabaseAdmin
+      const { data: stage } = await supabaseAdmin
         .from("crm_stage")
         .select("id, nome")
         .eq("id", stageId)
         .eq("company_id", companyId)
         .maybeSingle();
 
-      if (stageErr || !stage) throw new Error("Etapa no encontrada.");
+      if (!stage) throw new Error("Etapa no encontrada.");
 
       const { error: upErr } = await supabaseAdmin
         .from("crm_stage")
-        .update(patch)
+        .update({
+          modo_atendimento: modoAtendimento,
+        })
         .eq("id", stage.id);
 
-      if (upErr) throw new Error(`Error al actualizar automatización: ${upErr.message}`);
+      if (upErr) throw new Error(`Error al cambiar modo de atención: ${upErr.message}`);
 
       return {
         ok: true,
-        message: `Automatización de la etapa "${stage.nome}" actualizada correctamente.`,
+        message: `Modo de atención de la etapa "${stage.nome}" actualizado a "${modoAtendimento}".`,
       };
     }
 
-    // 5. Mover lead a una etapa
+    // 5. Mover un lead a una etapa sugerida
     if (action.type === "move_lead") {
       const cardId = String(action.payload?.cardId || data.cardId || "").trim();
-      const stageId = String(action.payload?.stageId || "").trim();
-      const reason = String(action.payload?.reason || "Movido por recomendación del Copilot CRM").trim();
+      const targetStageId = String(action.payload?.targetStageId || "").trim();
 
-      if (!cardId || !stageId) throw new Error("Card ID o Stage ID no proporcionado.");
+      if (!cardId || !targetStageId) {
+        throw new Error("Se requiere cardId y targetStageId para mover el lead.");
+      }
 
-      const [{ data: card }, { data: targetStage }] = await Promise.all([
-        supabaseAdmin
-          .from("crm_cards")
-          .select("id, numero, owner_id")
-          .eq("id", cardId)
-          .eq("company_id", companyId)
-          .maybeSingle(),
-        supabaseAdmin
-          .from("crm_stage")
-          .select("id, nome, modo_atendimento")
-          .eq("id", stageId)
-          .eq("company_id", companyId)
-          .maybeSingle(),
-      ]);
+      const { data: card } = await supabaseAdmin
+        .from("crm_cards")
+        .select("id, nome, numero, stage_id, owner_id")
+        .eq("id", cardId)
+        .eq("company_id", companyId)
+        .maybeSingle();
 
-      if (!card || !targetStage) throw new Error("Lead o etapa no encontrada.");
+      if (!card) throw new Error("Lead no encontrado.");
+
+      const { data: destStage } = await supabaseAdmin
+        .from("crm_stage")
+        .select("id, nome, modo_atendimento")
+        .eq("id", targetStageId)
+        .eq("company_id", companyId)
+        .maybeSingle();
+
+      if (!destStage) throw new Error("Etapa de destino no encontrada.");
 
       const extra: Record<string, any> = {};
-      if (!card.owner_id && targetStage.modo_atendimento === "manual") {
-        const assignedOwner = await pickLeadOwner(supabaseAdmin, companyId, targetStage.id);
+      if (!card.owner_id && destStage.modo_atendimento === "manual") {
+        const assignedOwner = await pickLeadOwner(supabaseAdmin, companyId, destStage.id);
         if (assignedOwner) extra.owner_id = assignedOwner;
       }
 
-      await moveCardToStage(supabaseAdmin, card.id, targetStage.id, extra);
+      await moveCardToStage(supabaseAdmin, card.id, destStage.id, extra);
 
       await supabaseAdmin.from("lead_evento").insert({
         company_id: companyId,
         card_id: card.id,
         tipo: "mudanca_etapa",
-        descricao: reason,
+        descricao: `Movido a "${destStage.nome}" mediante acción ejecutada desde CRM Copilot por el usuario.`,
       });
 
       return {
         ok: true,
-        message: `Lead movido a "${targetStage.nome}" correctamente.`,
+        message: `Lead "${card.nome || card.numero}" movido exitosamente a la etapa "${destStage.nome}".`,
       };
     }
 
-    throw new Error(`Tipo de acción desconocido: ${action.type}`);
+    throw new Error(`Tipo de acción "${action.type}" no soportado.`);
   });
