@@ -37,7 +37,7 @@ export async function analyzeLeadInternal(
 }> {
   const { data: card, error: cardError } = await supabaseAdmin
     .from("crm_cards")
-    .select("id, company_id, pipeline_id, stage_id, owner_id, numero, nome, valor, campos_extras, canal_chat, ultimo_analise_ia_em, tags, observacao, origem, canal_entrada, stage_entrou_em, email, empresa, cpf_cnpj, item_id, item_nome, item_tipo, proxima_acao, status, primeiro_contato_em, perdido_em, reativado_em")
+    .select("id, company_id, pipeline_id, stage_id, owner_id, numero, nome, valor, campos_extras, canal_chat, tags, observacao, origem, canal_entrada, stage_entrou_em, email, empresa, cpf_cnpj, item_id, item_nome, item_tipo, proxima_acao, status, primeiro_contato_em, perdido_em, reativado_em")
     .eq("id", cardId)
     .eq("company_id", companyId)
     .maybeSingle();
@@ -286,12 +286,12 @@ Responde OBLIGATORIAMENTE con un único bloque JSON válido con el siguiente for
         : {};
 
     const updates: Record<string, any> = {
-      ultimo_analise_ia_em: nowIso,
       campos_extras: {
         ...prevExtras,
         ultimo_analise_ia_em: nowIso,
         ultimo_diagnostico_ia: parsedResult,
       },
+      updated_at: nowIso,
     };
 
     // Auto-actualizar valor monetario si el lead no tenía valor y la IA identificó el precio del catálogo
@@ -306,7 +306,7 @@ Responde OBLIGATORIAMENTE con un único bloque JSON válido con el siguiente for
 
     await supabaseAdmin
       .from("crm_cards")
-      .update(updates as any)
+      .update(updates)
       .eq("id", card.id);
   } catch (e) {
     console.warn("[crm-lead-analyzer] Error al guardar diagnóstico:", e);
@@ -328,7 +328,7 @@ export async function checkAndAnalyzeLeadCooldown(
   try {
     const { data: card } = await supabaseAdmin
       .from("crm_cards")
-      .select("id, stage_id, owner_id, ultimo_analise_ia_em, campos_extras, updated_at")
+      .select("id, stage_id, owner_id, campos_extras, updated_at")
       .eq("company_id", companyId)
       .eq("numero", numero)
       .order("updated_at", { ascending: false })
@@ -338,7 +338,7 @@ export async function checkAndAnalyzeLeadCooldown(
     if (!card) return { triggered: false, reason: "card_not_found" };
 
     const extras = (card.campos_extras as Record<string, any>) || {};
-    const rawLast = (card as any).ultimo_analise_ia_em || extras.ultimo_analise_ia_em;
+    const rawLast = extras.ultimo_analise_ia_em;
     const ultimoAnalise = rawLast ? new Date(rawLast).getTime() : 0;
     const now = Date.now();
     const treintaMinutosMs = 30 * 60 * 1000;

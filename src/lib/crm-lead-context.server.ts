@@ -109,7 +109,7 @@ export async function gatherLeadComprehensiveContext(
     if (!cardId) return null;
     const { data: dbCard } = await client
       .from("crm_cards")
-      .select("id, company_id, pipeline_id, stage_id, owner_id, numero, nome, valor, campos_extras, canal_chat, ultimo_analise_ia_em, tags, observacao, origem, canal_entrada, stage_entrou_em, email, empresa, cpf_cnpj, item_id, item_nome, item_tipo, proxima_acao, status, primeiro_contato_em, perdido_em, reativado_em")
+      .select("id, company_id, pipeline_id, stage_id, owner_id, numero, nome, valor, campos_extras, canal_chat, tags, observacao, origem, canal_entrada, stage_entrou_em, email, empresa, cpf_cnpj, item_id, item_nome, item_tipo, proxima_acao, status, primeiro_contato_em, perdido_em, reativado_em")
       .eq("id", cardId)
       .eq("company_id", companyId)
       .maybeSingle();

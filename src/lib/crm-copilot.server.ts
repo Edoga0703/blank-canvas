@@ -101,7 +101,7 @@ export async function getCrmCopilotContext(
     cardId
       ? supabase
           .from("crm_cards")
-          .select("id, nome, numero, stage_id, valor, campos_extras, ultimo_analise_ia_em, tags, observacao, email, empresa, item_nome, stage_entrou_em")
+          .select("id, nome, numero, stage_id, valor, campos_extras, tags, observacao, email, empresa, item_nome, stage_entrou_em")
           .eq("id", cardId)
           .eq("company_id", companyId)
           .maybeSingle()
