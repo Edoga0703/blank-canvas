@@ -75,6 +75,7 @@ import { trackReferralClick } from "@/lib/partners.functions";
 const emailSchema = z.string().email("E-mail inválido");
 
 function EntrarPage() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const search = useSearch({ from: "/entrar" }) as Search;
   const [mode, setMode] = useState<"login" | "signup">(search.modo === "login" ? "login" : "signup");

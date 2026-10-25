@@ -1,3 +1,4 @@
+import { useLanguage } from "@/lib/i18n/context";
 import { useEffect, useRef, useState } from "react";
 import {
   Bell, UserPlus, PlugZap, Megaphone, LifeBuoy, CalendarClock, CheckCheck,
@@ -45,6 +46,7 @@ export function NotificationsBell({
   companyId,
   variant = "icon",
 }: { companyId?: string | null; variant?: "icon" | "menu" }) {
+  const { t } = useLanguage();
   const [items, setItems] = useState<Notif[]>([]);
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
@@ -68,7 +70,7 @@ export function NotificationsBell({
     const safeLoad = () => { if (active) void load(); };
 
     safeLoad();
-    const t = window.setInterval(safeLoad, 30000);
+    const timerId = window.setInterval(safeLoad, 30000);
 
     if (companyId) {
       try {
@@ -87,7 +89,7 @@ export function NotificationsBell({
 
     return () => {
       active = false;
-      window.clearInterval(t);
+      window.clearInterval(timerId);
       if (channel) void supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

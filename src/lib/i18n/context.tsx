@@ -23,7 +23,7 @@ export function getLocaleCode(lang: SupportedLanguage): string {
   return "es-ES";
 }
 
-const DEFAULT_STAGE_TRANSLATIONS: Record<string, string> = {
+export const DEFAULT_STAGE_TRANSLATIONS: Record<string, string> = {
   "novo lead": "crm.stage_novo_lead",
   "novo": "crm.stage_novo_lead",
   "qualificação": "crm.stage_qualificacao",
@@ -46,7 +46,7 @@ const DEFAULT_STAGE_TRANSLATIONS: Record<string, string> = {
   "contrato": "crm.stage_contrato",
 };
 
-const DEFAULT_PIPELINE_TRANSLATIONS: Record<string, string> = {
+export const DEFAULT_PIPELINE_TRANSLATIONS: Record<string, string> = {
   "funil de vendas": "crm.pipeline_vendas",
   "funil padrão": "crm.pipeline_vendas",
   "funil padrao": "crm.pipeline_vendas",
@@ -55,6 +55,72 @@ const DEFAULT_PIPELINE_TRANSLATIONS: Record<string, string> = {
   "pos venda": "crm.pipeline_pos_venda",
   "suporte": "crm.pipeline_suporte",
 };
+
+export function getSavedLanguage(): SupportedLanguage {
+  if (typeof window === "undefined") return "es";
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY) as SupportedLanguage | null;
+    if (saved && (saved === "es" || saved === "en" || saved === "pt")) return saved;
+  } catch {}
+  return "es";
+}
+
+export function translateDefaultStageName(name: string, t?: (k: string, p?: any, d?: string) => string): string {
+  if (!name) return "";
+  const clean = name.toLowerCase().trim();
+  const key = DEFAULT_STAGE_TRANSLATIONS[clean];
+  if (!key) return name;
+  if (t) return t(key, undefined, name);
+  const lang = getSavedLanguage();
+  const dict = translations[lang] || translations["es"];
+  const parts = key.split(".");
+  return (dict as any)?.[parts[0]]?.[parts[1]] || name;
+}
+
+export function translateDefaultPipelineName(name: string, t?: (k: string, p?: any, d?: string) => string): string {
+  if (!name) return "";
+  const clean = name.toLowerCase().trim();
+  const key = DEFAULT_PIPELINE_TRANSLATIONS[clean];
+  if (!key) return name;
+  if (t) return t(key, undefined, name);
+  const lang = getSavedLanguage();
+  const dict = translations[lang] || translations["es"];
+  const parts = key.split(".");
+  return (dict as any)?.[parts[0]]?.[parts[1]] || name;
+}
+
+export function formatDate(date: Date | string | number | null | undefined, options?: Intl.DateTimeFormatOptions): string {
+  if (!date) return "";
+  const d = typeof date === "object" ? date : new Date(date);
+  if (isNaN(d.getTime())) return "";
+  const lang = getSavedLanguage();
+  return d.toLocaleDateString(getLocaleCode(lang), options);
+}
+
+export function formatTime(date: Date | string | number | null | undefined, options?: Intl.DateTimeFormatOptions): string {
+  if (!date) return "";
+  const d = typeof date === "object" ? date : new Date(date);
+  if (isNaN(d.getTime())) return "";
+  const lang = getSavedLanguage();
+  return d.toLocaleTimeString(getLocaleCode(lang), options);
+}
+
+export function formatCurrency(value: number | null | undefined, currency?: string): string {
+  if (value == null || isNaN(value)) return "0";
+  const lang = getSavedLanguage();
+  const cur = currency || (lang === "pt" ? "BRL" : "USD");
+  try {
+    return value.toLocaleString(getLocaleCode(lang), { style: "currency", currency: cur });
+  } catch {
+    return value.toLocaleString(getLocaleCode(lang), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+}
+
+export function formatNumber(value: number | null | undefined, options?: Intl.NumberFormatOptions): string {
+  if (value == null || isNaN(value)) return "0";
+  const lang = getSavedLanguage();
+  return value.toLocaleString(getLocaleCode(lang), options);
+}
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 

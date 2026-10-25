@@ -764,7 +764,7 @@ function WhatsappDisconnectedBanner() {
         <span className="font-medium">{t("connection.disconnected", undefined, "WhatsApp desconectado.")} </span>
         <span className="hidden sm:inline text-red-600/80">{t("connection.check_battery", undefined, "Verifique internet/bateria do celular e reconecte.")}</span>
       </div>
-      <Link to="/app/conexao" className="text-[12.5px] font-semibold underline underline-offset-2 hover:text-red-800">
+      <Link to="/app/conexao" search={{ tab: undefined }} className="text-[12.5px] font-semibold underline underline-offset-2 hover:text-red-800">
         {t("connection.go_to_connection", undefined, "Ir para Conexão")}
       </Link>
     </div>

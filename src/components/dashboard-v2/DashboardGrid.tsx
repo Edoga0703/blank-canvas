@@ -84,6 +84,7 @@ const OPERATIONAL_STATE: Omit<WidgetState, "id">[] = [
 ];
 
 export function DashboardGrid({ workspaceId, operationalMode = false }: Props) {
+  const { t } = useLanguage();
   const wrapRef = useRef<HTMLDivElement>(null);
   const [cols, setCols] = useState(6);
   const [cellW, setCellW] = useState(160);

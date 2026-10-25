@@ -23,7 +23,7 @@ import { analyzeLeadConversation } from "@/lib/lead-coach.functions";
 import { CANAL_LABEL, CANAL_COLOR, type CanalEntrada } from "@/lib/tracking-utils";
 import { ConversationMediaTab } from "@/components/chat/conversation-media-panel";
 import { OlistPedidosTab } from "@/components/crm/olist-pedidos-tab";
-import { useLanguage } from "@/lib/i18n/context";
+import { useLanguage, formatDate, formatTime, formatCurrency, translateDefaultStageName, translateDefaultPipelineName } from "@/lib/i18n/context";
 import { useCapacidadeAtiva } from "@/hooks/use-capacidades";
 import { LeadAiAnalyzerDialog } from "@/components/crm/lead-ai-analyzer-dialog";
 
@@ -707,7 +707,7 @@ function dayLabel(iso: string) {
   const same = (a: Date, b: Date) => a.toDateString() === b.toDateString();
   if (same(d, hoje)) return "Hoje";
   if (same(d, ontem)) return "Ontem";
-  return d.toLocaleDateString(localeCode || "es-ES", { day: "2-digit", month: "long", year: d.getFullYear() === hoje.getFullYear() ? undefined : "numeric" });
+  return formatDate(d, { day: "2-digit", month: "long", year: d.getFullYear() === hoje.getFullYear() ? undefined : "numeric" });
 }
 
 function autorLabel(m: any) {

@@ -32,7 +32,7 @@ import { TelegramConnectDialog } from "@/components/conexao/telegram-connect-dia
 import { MetaConnectDialog } from "@/components/conexao/meta-connect-dialog";
 
 export const Route = createFileRoute("/app/conexao")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { tab?: string } => ({
     tab: typeof search?.tab === "string" ? search.tab : undefined,
   }),
   head: () => ({ meta: [{ title: `${brand.name} — Conexões` }] }),
@@ -61,6 +61,7 @@ const PROVIDER_LABEL: Record<string, string> = {
 };
 
 function ConexoesPage() {
+  const { t } = useLanguage();
   const connect = useServerFn(connectWhatsapp);
   const connectOfficial = useServerFn(connectDapiOfficial);
   const check = useServerFn(checkWhatsappStatus);

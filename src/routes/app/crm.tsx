@@ -39,7 +39,7 @@ import { QuickScheduleDialog } from "@/components/agenda/quick-schedule-dialog";
 import { EncaminharDialog } from "@/components/chat/encaminhar-dialog";
 import { useFeatureEnabled } from "@/hooks/use-feature-flags";
 import { parseStageAiMeta, formatStageAiMeta } from "@/lib/crm-lead-analyzer.server";
-import { useLanguage } from "@/lib/i18n/context";
+import { useLanguage, translateDefaultStageName, translateDefaultPipelineName } from "@/lib/i18n/context";
 
 
 export const Route = createFileRoute("/app/crm")({

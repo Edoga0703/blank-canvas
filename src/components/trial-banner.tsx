@@ -1,3 +1,4 @@
+import { useLanguage } from "@/lib/i18n/context";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Sparkles, X, AlertTriangle, Lock } from "lucide-react";
@@ -7,6 +8,7 @@ import { getAccessInfo, trialDaysLeft } from "@/lib/tenant";
 type Props = { company: CompanyRow | null; isSuperAdmin?: boolean };
 
 export function TrialBanner({ company, isSuperAdmin }: Props) {
+  const { t } = useLanguage();
   const [dismissed, setDismissed] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
