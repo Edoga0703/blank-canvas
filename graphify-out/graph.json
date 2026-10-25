@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-25T21:35:55.815431+00:00",
+  "generated_at": "2026-10-25T21:57:04.789137+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -891,7 +891,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.functions.ts",
-      "bytes": 3082
+      "bytes": 3269
     },
     {
       "path": "src/lib/meta-content.functions.ts",
@@ -955,7 +955,7 @@
     },
     {
       "path": "src/lib/crm-copilot.server.ts",
-      "bytes": 18481
+      "bytes": 18442
     },
     {
       "path": "src/lib/agendamentos-dispatch.server.ts",
@@ -1143,7 +1143,7 @@
     },
     {
       "path": "src/lib/crm-copilot.functions.ts",
-      "bytes": 24217
+      "bytes": 22448
     },
     {
       "path": "src/lib/forward.functions.ts",
@@ -1743,7 +1743,7 @@
     },
     {
       "path": "src/components/crm/lead-ai-analyzer-dialog.tsx",
-      "bytes": 16359
+      "bytes": 16509
     },
     {
       "path": "src/components/crm/lead-drawer.tsx",
@@ -1751,7 +1751,7 @@
     },
     {
       "path": "src/components/crm/crm-copilot-sheet.tsx",
-      "bytes": 24229
+      "bytes": 22717
     },
     {
       "path": "src/components/crm/olist-pedidos-tab.tsx",
