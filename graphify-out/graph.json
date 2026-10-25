@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-25T02:02:05.615727+00:00",
+  "generated_at": "2026-10-25T02:56:49.768235+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -2407,7 +2407,7 @@
     },
     {
       "path": "src/lib/i18n/translations.ts",
-      "bytes": 52225
+      "bytes": 52383
     },
     {
       "path": "src/lib/messaging/provider-registry.server.ts",
@@ -2659,7 +2659,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 148951
+      "bytes": 150494
     },
     {
       "path": "src/routes/app/treinamentos.$courseId.tsx",
