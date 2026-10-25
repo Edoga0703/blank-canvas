@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-25T20:44:50.769943+00:00",
+  "generated_at": "2026-10-25T21:35:55.815431+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -955,7 +955,7 @@
     },
     {
       "path": "src/lib/crm-copilot.server.ts",
-      "bytes": 16754
+      "bytes": 18481
     },
     {
       "path": "src/lib/agendamentos-dispatch.server.ts",
@@ -1143,7 +1143,7 @@
     },
     {
       "path": "src/lib/crm-copilot.functions.ts",
-      "bytes": 15455
+      "bytes": 24217
     },
     {
       "path": "src/lib/forward.functions.ts",
@@ -1751,7 +1751,7 @@
     },
     {
       "path": "src/components/crm/crm-copilot-sheet.tsx",
-      "bytes": 18225
+      "bytes": 24229
     },
     {
       "path": "src/components/crm/olist-pedidos-tab.tsx",
@@ -6530,10 +6530,6 @@
     {
       "source": "src/lib/crm-copilot.functions.ts",
       "target": "./crm-engine.server"
-    },
-    {
-      "source": "src/lib/crm-copilot.functions.ts",
-      "target": "./crm-stage-meta"
     },
     {
       "source": "src/lib/crm-copilot.functions.ts",
