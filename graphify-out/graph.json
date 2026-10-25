@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T23:25:42.247976+00:00",
+  "generated_at": "2026-10-25T00:20:43.405653+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -575,11 +575,11 @@
     },
     {
       "path": "src/components/notifications-bell.tsx",
-      "bytes": 8974
+      "bytes": 9140
     },
     {
       "path": "src/components/trial-banner.tsx",
-      "bytes": 5642
+      "bytes": 6011
     },
     {
       "path": "src/components/theme-toggle.tsx",
@@ -587,7 +587,7 @@
     },
     {
       "path": "src/components/app-shell.tsx",
-      "bytes": 35226
+      "bytes": 36008
     },
     {
       "path": "src/components/mobile-app-banner.tsx",
@@ -1579,7 +1579,7 @@
     },
     {
       "path": "src/routes/__root.tsx",
-      "bytes": 9507
+      "bytes": 9969
     },
     {
       "path": "src/routes/master.tsx",
@@ -1615,7 +1615,7 @@
     },
     {
       "path": "src/routes/entrar.tsx",
-      "bytes": 32568
+      "bytes": 33433
     },
     {
       "path": "src/hooks/use-standalone.tsx",
@@ -1727,7 +1727,7 @@
     },
     {
       "path": "src/components/crm/lead-drawer.tsx",
-      "bytes": 74018
+      "bytes": 74184
     },
     {
       "path": "src/components/crm/olist-pedidos-tab.tsx",
@@ -2235,7 +2235,7 @@
     },
     {
       "path": "src/components/dashboard-v2/DashboardGrid.tsx",
-      "bytes": 20616
+      "bytes": 20819
     },
     {
       "path": "src/components/dashboard-v2/widget-data.ts",
@@ -2255,7 +2255,7 @@
     },
     {
       "path": "src/components/dashboard-v2/PeriodFilterButton.tsx",
-      "bytes": 4352
+      "bytes": 4711
     },
     {
       "path": "src/components/dashboard-v2/WidgetSettingsDialog.tsx",
@@ -2383,11 +2383,11 @@
     },
     {
       "path": "src/lib/i18n/context.tsx",
-      "bytes": 4669
+      "bytes": 10564
     },
     {
       "path": "src/lib/i18n/translations.ts",
-      "bytes": 31703
+      "bytes": 43877
     },
     {
       "path": "src/lib/messaging/provider-registry.server.ts",
@@ -2535,7 +2535,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 193281
+      "bytes": 194481
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -2583,7 +2583,7 @@
     },
     {
       "path": "src/routes/app/contatos.tsx",
-      "bytes": 38650
+      "bytes": 38842
     },
     {
       "path": "src/routes/app/integracoes.tsx",
@@ -2591,7 +2591,7 @@
     },
     {
       "path": "src/routes/app/conexao.tsx",
-      "bytes": 25534
+      "bytes": 25810
     },
     {
       "path": "src/routes/app/relatorios.tsx",
@@ -2607,7 +2607,7 @@
     },
     {
       "path": "src/routes/app/configuracoes.tsx",
-      "bytes": 71140
+      "bytes": 72109
     },
     {
       "path": "src/routes/app/campanhas.tsx",
@@ -2639,7 +2639,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 143616
+      "bytes": 144022
     },
     {
       "path": "src/routes/app/treinamentos.$courseId.tsx",
@@ -7761,6 +7761,10 @@
     },
     {
       "source": "src/routes/__root.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
+      "source": "src/routes/__root.tsx",
       "target": "@/assets/capi-conversa-logo-horizontal-black.png.asset.json"
     },
     {
@@ -11804,6 +11808,10 @@
       "target": "./PeriodFilterButton"
     },
     {
+      "source": "src/components/dashboard-v2/DashboardGrid.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
       "source": "src/components/dashboard-v2/widget-data.ts",
       "target": "react"
     },
@@ -11922,6 +11930,10 @@
     {
       "source": "src/components/dashboard-v2/PeriodFilterButton.tsx",
       "target": "./widget-data"
+    },
+    {
+      "source": "src/components/dashboard-v2/PeriodFilterButton.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/components/dashboard-v2/WidgetSettingsDialog.tsx",
@@ -12940,6 +12952,10 @@
       "target": "@/integrations/supabase/client"
     },
     {
+      "source": "src/lib/i18n/context.tsx",
+      "target": "@/integrations/supabase/client"
+    },
+    {
       "source": "src/lib/messaging/provider-registry.server.ts",
       "target": "@/lib/messaging/providers/dapi.server"
     },
@@ -13234,6 +13250,10 @@
     {
       "source": "src/routes/app/conversas.tsx",
       "target": "@/config/brand"
+    },
+    {
+      "source": "src/routes/app/conversas.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/routes/app/conversas.tsx",
@@ -13917,6 +13937,10 @@
     },
     {
       "source": "src/routes/app/contatos.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
+      "source": "src/routes/app/contatos.tsx",
       "target": "sonner"
     },
     {
@@ -14102,6 +14126,10 @@
     {
       "source": "src/routes/app/conexao.tsx",
       "target": "@/config/brand"
+    },
+    {
+      "source": "src/routes/app/conexao.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/routes/app/conexao.tsx",
