@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-25T01:28:31.913483+00:00",
+  "generated_at": "2026-10-25T02:02:05.615727+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -954,6 +954,10 @@
       "bytes": 10454
     },
     {
+      "path": "src/lib/crm-copilot.server.ts",
+      "bytes": 9425
+    },
+    {
       "path": "src/lib/agendamentos-dispatch.server.ts",
       "bytes": 2185
     },
@@ -1136,6 +1140,10 @@
     {
       "path": "src/lib/atendimento-live-analysis.server.ts",
       "bytes": 2106
+    },
+    {
+      "path": "src/lib/crm-copilot.functions.ts",
+      "bytes": 11952
     },
     {
       "path": "src/lib/forward.functions.ts",
@@ -1731,11 +1739,15 @@
     },
     {
       "path": "src/components/crm/lead-ai-analyzer-dialog.tsx",
-      "bytes": 12345
+      "bytes": 13535
     },
     {
       "path": "src/components/crm/lead-drawer.tsx",
-      "bytes": 77281
+      "bytes": 78923
+    },
+    {
+      "path": "src/components/crm/crm-copilot-sheet.tsx",
+      "bytes": 17561
     },
     {
       "path": "src/components/crm/olist-pedidos-tab.tsx",
@@ -2395,7 +2407,7 @@
     },
     {
       "path": "src/lib/i18n/translations.ts",
-      "bytes": 49743
+      "bytes": 52225
     },
     {
       "path": "src/lib/messaging/provider-registry.server.ts",
@@ -2647,7 +2659,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 147644
+      "bytes": 148951
     },
     {
       "path": "src/routes/app/treinamentos.$courseId.tsx",
@@ -5720,6 +5732,14 @@
       "target": "@/lib/google.server"
     },
     {
+      "source": "src/lib/crm-copilot.server.ts",
+      "target": "@/lib/lovable-ai.server"
+    },
+    {
+      "source": "src/lib/crm-copilot.server.ts",
+      "target": "@/lib/crm-stage-meta"
+    },
+    {
       "source": "src/lib/agendamentos-dispatch.server.ts",
       "target": "./wa-dispatch.server"
     },
@@ -6470,6 +6490,34 @@
     {
       "source": "src/lib/atendimento-live-analysis.server.ts",
       "target": "./lovable-ai.server"
+    },
+    {
+      "source": "src/lib/crm-copilot.functions.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/crm-copilot.functions.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/crm-copilot.functions.ts",
+      "target": "@/lib/company-cache"
+    },
+    {
+      "source": "src/lib/crm-copilot.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/crm-copilot.functions.ts",
+      "target": "./crm-copilot.server"
+    },
+    {
+      "source": "src/lib/crm-copilot.functions.ts",
+      "target": "./lovable-ai.server"
+    },
+    {
+      "source": "src/lib/crm-copilot.functions.ts",
+      "target": "./crm-engine.server"
     },
     {
       "source": "src/lib/forward.functions.ts",
@@ -8649,6 +8697,10 @@
     },
     {
       "source": "src/components/crm/lead-drawer.tsx",
+      "target": "@/components/crm/crm-copilot-sheet"
+    },
+    {
+      "source": "src/components/crm/lead-drawer.tsx",
       "target": "@/hooks/use-capacidades"
     },
     {
@@ -8662,6 +8714,54 @@
     {
       "source": "src/components/crm/lead-drawer.tsx",
       "target": "@/components/chat/encaminhar-dialog"
+    },
+    {
+      "source": "src/components/crm/crm-copilot-sheet.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/components/crm/crm-copilot-sheet.tsx",
+      "target": "@/components/ui/sheet"
+    },
+    {
+      "source": "src/components/crm/crm-copilot-sheet.tsx",
+      "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/components/crm/crm-copilot-sheet.tsx",
+      "target": "@/components/ui/textarea"
+    },
+    {
+      "source": "src/components/crm/crm-copilot-sheet.tsx",
+      "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/components/crm/crm-copilot-sheet.tsx",
+      "target": "sonner"
+    },
+    {
+      "source": "src/components/crm/crm-copilot-sheet.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/components/crm/crm-copilot-sheet.tsx",
+      "target": "@/lib/crm-copilot.functions"
+    },
+    {
+      "source": "src/components/crm/crm-copilot-sheet.tsx",
+      "target": "@/lib/crm-copilot.server"
+    },
+    {
+      "source": "src/components/crm/crm-copilot-sheet.tsx",
+      "target": "lucide-react"
+    },
+    {
+      "source": "src/components/crm/crm-copilot-sheet.tsx",
+      "target": "@/lib/utils"
+    },
+    {
+      "source": "src/components/crm/crm-copilot-sheet.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/components/crm/olist-pedidos-tab.tsx",
@@ -15170,6 +15270,10 @@
     {
       "source": "src/routes/app/crm.tsx",
       "target": "@/lib/crm-lead-analyzer.functions"
+    },
+    {
+      "source": "src/routes/app/crm.tsx",
+      "target": "@/components/crm/crm-copilot-sheet"
     },
     {
       "source": "src/routes/app/crm.tsx",
