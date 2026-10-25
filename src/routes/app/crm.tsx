@@ -811,17 +811,16 @@ function KanbanPage() {
         {/* Copilot del Embudo CRM */}
         <Button
           size="sm"
-          variant="outline"
-          title={t("crm.pipeline_copilot", undefined, "Copilot del Embudo")}
-          className="size-8 p-0 shrink-0 sm:size-auto sm:h-9 sm:px-3 rounded-full text-[13px] border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 text-blue-700 dark:text-blue-300 font-semibold gap-1.5 shadow-xs"
+          title={t("crm.pipeline_copilot", undefined, "Copilot IA de Leads")}
+          className="size-8 p-0 shrink-0 sm:size-auto sm:h-9 sm:px-3.5 rounded-full text-[13px] bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium gap-2 shadow-sm border border-white/20 transition-all hover:shadow cursor-pointer"
           disabled={!activePipelineId}
           onClick={() => {
             setCrmCopilotPrompt(null);
             setCrmCopilotOpen(true);
           }}
         >
-          <Sparkles className="size-4 sm:mr-1 text-blue-600 animate-pulse" />
-          <span className="hidden sm:inline">{t("crm.pipeline_copilot", undefined, "Copilot del Embudo")}</span>
+          <Sparkles className="size-4 text-amber-300 animate-pulse" />
+          <span className="hidden sm:inline">{t("crm.pipeline_copilot", undefined, "Copilot IA de Leads")}</span>
         </Button>
 
         <span className="text-[12px] text-muted-foreground font-medium hidden md:inline">
@@ -1007,6 +1006,10 @@ function KanbanPage() {
               onSetTipo={(t) => setStageTipo(col.id, t)}
               onLimpar={() => setLimparStage(col)}
               onRetorno={() => setRetornoStage(col)}
+              onOpenCopilot={() => {
+                setCrmCopilotPrompt(`Quiero revisar, optimizar y entrenar las reglas de IA y los criterios de entrada para la etapa "${col.nome}". ¿Qué sugerencias tienes según las conversaciones de los leads?`);
+                setCrmCopilotOpen(true);
+              }}
 
               allowAutomacao={canGerenciarEtapas}
               onAdd={() => setAdding(true)}
@@ -1238,6 +1241,22 @@ function KanbanPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Botón flotante Copilot IA de Leads */}
+      <div className="fixed bottom-6 right-6 z-40 hidden sm:block">
+        <Button
+          size="sm"
+          className="h-11 px-4 rounded-full shadow-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold gap-2 border border-white/20 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+          disabled={!activePipelineId}
+          onClick={() => {
+            setCrmCopilotPrompt(null);
+            setCrmCopilotOpen(true);
+          }}
+        >
+          <Sparkles className="size-4 text-amber-300 animate-pulse" />
+          <span>{t("crm.pipeline_copilot", undefined, "Copilot IA de Leads")}</span>
+        </Button>
+      </div>
 
 
       <ManualLeadDialog open={manualOpen} onClose={() => setManualOpen(false)}
@@ -1528,8 +1547,8 @@ function RotaRetornoDialog({ stage, allStages, pipelines, members, onClose, onSa
 }
 
 
-function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete, onAutomacao, onSetTipo, onLimpar, onRetorno, allowAutomacao, onAdd, isDefault, isEmpty }:
-  { stage: KanbanStage; count: number; total?: number; onToggleValor?: (v: boolean) => void; children: React.ReactNode; onEdit: () => void; onDelete: () => void; onAutomacao: () => void; onSetTipo: (t: "normal" | "ganho" | "perda" | "formulario" | "sem-formulario") => void; onLimpar?: () => void; onRetorno?: () => void; allowAutomacao: boolean; onAdd: () => void; isDefault?: boolean; isEmpty: boolean }) {
+function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete, onAutomacao, onSetTipo, onLimpar, onRetorno, allowAutomacao, onAdd, isDefault, isEmpty, onOpenCopilot }:
+  { stage: KanbanStage; count: number; total?: number; onToggleValor?: (v: boolean) => void; children: React.ReactNode; onEdit: () => void; onDelete: () => void; onAutomacao: () => void; onSetTipo: (t: "normal" | "ganho" | "perda" | "formulario" | "sem-formulario") => void; onLimpar?: () => void; onRetorno?: () => void; allowAutomacao: boolean; onAdd: () => void; isDefault?: boolean; isEmpty: boolean; onOpenCopilot?: () => void }) {
   const { setNodeRef: setColRef, isOver } = useDroppable({ id: `col:${stage.id}` });
   const { attributes, listeners, setNodeRef: setHandleRef } = useDraggable({ id: `stage:${stage.id}` });
   const { t, translateDefaultStageName } = useLanguage();
@@ -1570,6 +1589,12 @@ function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete
           <DropdownMenuContent align="end">
             {allowAutomacao && <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setTimeout(onEdit, 0); }}><Pencil className="size-3.5 mr-2" />Renomear / cor</DropdownMenuItem>}
             {allowAutomacao && <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setTimeout(onAutomacao, 0); }}><Zap className="size-3.5 mr-2" />Automação</DropdownMenuItem>}
+            {allowAutomacao && onOpenCopilot && (
+              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setTimeout(onOpenCopilot, 0); }}>
+                <Sparkles className="size-3.5 mr-2 text-blue-600" />
+                {t("crm.train_stage_copilot", undefined, "Entrenar etapa con IA")}
+              </DropdownMenuItem>
+            )}
             {onToggleValor && (
               <DropdownMenuItem onClick={() => onToggleValor(!mostrarValor)}>
                 <Coins className="size-3.5 mr-2" />{mostrarValor ? "Ocultar valor total" : "Mostrar valor total"}
