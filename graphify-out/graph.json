@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-25T05:12:11.718220+00:00",
+  "generated_at": "2026-10-25T09:27:17.260408+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -955,7 +955,7 @@
     },
     {
       "path": "src/lib/crm-copilot.server.ts",
-      "bytes": 9425
+      "bytes": 10866
     },
     {
       "path": "src/lib/agendamentos-dispatch.server.ts",
@@ -987,7 +987,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.server.ts",
-      "bytes": 13339
+      "bytes": 15167
     },
     {
       "path": "src/lib/wablast.server.ts",
@@ -1162,6 +1162,10 @@
       "bytes": 1701
     },
     {
+      "path": "src/lib/crm-lead-context.server.ts",
+      "bytes": 16908
+    },
+    {
       "path": "src/lib/produtos.functions.ts",
       "bytes": 3462
     },
@@ -1179,7 +1183,7 @@
     },
     {
       "path": "src/lib/crm-stage-meta.ts",
-      "bytes": 3253
+      "bytes": 4088
     },
     {
       "path": "src/lib/master-training.functions.ts",
@@ -1739,7 +1743,7 @@
     },
     {
       "path": "src/components/crm/lead-ai-analyzer-dialog.tsx",
-      "bytes": 13535
+      "bytes": 16359
     },
     {
       "path": "src/components/crm/lead-drawer.tsx",
@@ -5740,6 +5744,10 @@
       "target": "@/lib/crm-stage-meta"
     },
     {
+      "source": "src/lib/crm-copilot.server.ts",
+      "target": "./crm-lead-context.server"
+    },
+    {
       "source": "src/lib/agendamentos-dispatch.server.ts",
       "target": "./wa-dispatch.server"
     },
@@ -5898,6 +5906,10 @@
     {
       "source": "src/lib/crm-lead-analyzer.server.ts",
       "target": "./crm-stage-meta"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.server.ts",
+      "target": "./crm-lead-context.server"
     },
     {
       "source": "src/lib/crm-lead-analyzer.server.ts",
@@ -6573,6 +6585,10 @@
     },
     {
       "source": "src/lib/dashboard-layout.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/crm-lead-context.server.ts",
       "target": "@/integrations/supabase/client.server"
     },
     {
