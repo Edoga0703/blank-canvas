@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-25T00:45:37.405605+00:00",
+  "generated_at": "2026-10-25T01:28:31.913483+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -615,7 +615,7 @@
     },
     {
       "path": "src/lib/crm-engine.server.ts",
-      "bytes": 16223
+      "bytes": 16882
     },
     {
       "path": "src/lib/knowledge-extract.server.ts",
@@ -675,7 +675,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 45526
+      "bytes": 44778
     },
     {
       "path": "src/lib/tracking.functions.ts",
@@ -835,7 +835,7 @@
     },
     {
       "path": "src/lib/inbound-automation.server.ts",
-      "bytes": 4059
+      "bytes": 4409
     },
     {
       "path": "src/lib/quick-replies.functions.ts",
@@ -888,6 +888,10 @@
     {
       "path": "src/lib/presence.ts",
       "bytes": 1425
+    },
+    {
+      "path": "src/lib/crm-lead-analyzer.functions.ts",
+      "bytes": 3082
     },
     {
       "path": "src/lib/meta-content.functions.ts",
@@ -979,7 +983,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.server.ts",
-      "bytes": 14196
+      "bytes": 13339
     },
     {
       "path": "src/lib/wablast.server.ts",
@@ -1166,6 +1170,10 @@
       "bytes": 211
     },
     {
+      "path": "src/lib/crm-stage-meta.ts",
+      "bytes": 3253
+    },
+    {
       "path": "src/lib/master-training.functions.ts",
       "bytes": 4847
     },
@@ -1215,7 +1223,7 @@
     },
     {
       "path": "src/lib/kanban-engine.server.ts",
-      "bytes": 14910
+      "bytes": 15116
     },
     {
       "path": "src/lib/lead-coach.functions.ts",
@@ -1723,11 +1731,11 @@
     },
     {
       "path": "src/components/crm/lead-ai-analyzer-dialog.tsx",
-      "bytes": 10125
+      "bytes": 12345
     },
     {
       "path": "src/components/crm/lead-drawer.tsx",
-      "bytes": 74251
+      "bytes": 77281
     },
     {
       "path": "src/components/crm/olist-pedidos-tab.tsx",
@@ -2387,7 +2395,7 @@
     },
     {
       "path": "src/lib/i18n/translations.ts",
-      "bytes": 43877
+      "bytes": 49743
     },
     {
       "path": "src/lib/messaging/provider-registry.server.ts",
@@ -2639,7 +2647,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 144079
+      "bytes": 147644
     },
     {
       "path": "src/routes/app/treinamentos.$courseId.tsx",
@@ -3897,6 +3905,10 @@
     },
     {
       "source": "src/lib/crm-engine.server.ts",
+      "target": "./crm-stage-meta"
+    },
+    {
+      "source": "src/lib/crm-engine.server.ts",
       "target": "./distribution.functions"
     },
     {
@@ -4245,6 +4257,10 @@
     },
     {
       "source": "src/lib/ai-engine.server.ts",
+      "target": "./crm-stage-meta"
+    },
+    {
+      "source": "src/lib/ai-engine.server.ts",
       "target": "@/lib/plugin-gate.server"
     },
     {
@@ -4285,11 +4301,7 @@
     },
     {
       "source": "src/lib/ai-engine.server.ts",
-      "target": "./crm-engine.server"
-    },
-    {
-      "source": "src/lib/ai-engine.server.ts",
-      "target": "./crm-lead-analyzer.server"
+      "target": "./crm-stage-meta"
     },
     {
       "source": "src/lib/ai-engine.server.ts",
@@ -5097,6 +5109,10 @@
     },
     {
       "source": "src/lib/inbound-automation.server.ts",
+      "target": "@/lib/crm-stage-meta"
+    },
+    {
+      "source": "src/lib/inbound-automation.server.ts",
       "target": "@/lib/crm-lead-analyzer.server"
     },
     {
@@ -5270,6 +5286,34 @@
     {
       "source": "src/lib/presence.ts",
       "target": "@/integrations/supabase/client"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.functions.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.functions.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.functions.ts",
+      "target": "./company-cache"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.functions.ts",
+      "target": "./crm-lead-analyzer.server"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.functions.ts",
+      "target": "./crm-engine.server"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.functions.ts",
+      "target": "./kanban-engine.server"
     },
     {
       "source": "src/lib/meta-content.functions.ts",
@@ -5821,18 +5865,6 @@
     },
     {
       "source": "src/lib/crm-lead-analyzer.server.ts",
-      "target": "@tanstack/react-start"
-    },
-    {
-      "source": "src/lib/crm-lead-analyzer.server.ts",
-      "target": "@/integrations/supabase/auth-middleware"
-    },
-    {
-      "source": "src/lib/crm-lead-analyzer.server.ts",
-      "target": "./company-cache"
-    },
-    {
-      "source": "src/lib/crm-lead-analyzer.server.ts",
       "target": "@/integrations/supabase/client.server"
     },
     {
@@ -5842,6 +5874,14 @@
     {
       "source": "src/lib/crm-lead-analyzer.server.ts",
       "target": "@/lib/crm-engine.server"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.server.ts",
+      "target": "./crm-stage-meta"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.server.ts",
+      "target": "./crm-lead-analyzer.functions"
     },
     {
       "source": "src/lib/wablast.server.ts",
@@ -6834,6 +6874,10 @@
     {
       "source": "src/lib/kanban-engine.server.ts",
       "target": "@/lib/wa-dispatch.server"
+    },
+    {
+      "source": "src/lib/kanban-engine.server.ts",
+      "target": "@/lib/crm-stage-meta"
     },
     {
       "source": "src/lib/kanban-engine.server.ts",
@@ -8485,7 +8529,11 @@
     },
     {
       "source": "src/components/crm/lead-ai-analyzer-dialog.tsx",
-      "target": "@/lib/crm-lead-analyzer.server"
+      "target": "@/lib/crm-lead-analyzer.functions"
+    },
+    {
+      "source": "src/components/crm/lead-ai-analyzer-dialog.tsx",
+      "target": "@/lib/crm-stage-meta"
     },
     {
       "source": "src/components/crm/lead-ai-analyzer-dialog.tsx",
@@ -8593,6 +8641,14 @@
     },
     {
       "source": "src/components/crm/lead-drawer.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/components/crm/lead-drawer.tsx",
+      "target": "@/lib/crm-lead-analyzer.functions"
+    },
+    {
+      "source": "src/components/crm/lead-drawer.tsx",
       "target": "@/hooks/use-capacidades"
     },
     {
@@ -8606,14 +8662,6 @@
     {
       "source": "src/components/crm/lead-drawer.tsx",
       "target": "@/components/chat/encaminhar-dialog"
-    },
-    {
-      "source": "src/components/crm/lead-drawer.tsx",
-      "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/components/crm/lead-drawer.tsx",
-      "target": "@/lib/kanban-engine.server"
     },
     {
       "source": "src/components/crm/olist-pedidos-tab.tsx",
@@ -15117,7 +15165,11 @@
     },
     {
       "source": "src/routes/app/crm.tsx",
-      "target": "@/lib/crm-lead-analyzer.server"
+      "target": "@/lib/crm-stage-meta"
+    },
+    {
+      "source": "src/routes/app/crm.tsx",
+      "target": "@/lib/crm-lead-analyzer.functions"
     },
     {
       "source": "src/routes/app/crm.tsx",
