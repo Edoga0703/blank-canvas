@@ -589,7 +589,6 @@ export const askCrmCopilot = createServerFn({ method: "POST" })
     messages: CrmCopilotChatMessage[];
     pipelineId?: string | null;
     cardId?: string | null;
-    autoApply?: boolean;
   }) => {
     if (!Array.isArray(d?.messages) || d.messages.length === 0) {
       throw new Error("Mensaje inválido.");
@@ -598,7 +597,6 @@ export const askCrmCopilot = createServerFn({ method: "POST" })
       messages: d.messages,
       pipelineId: d.pipelineId || null,
       cardId: d.cardId || null,
-      autoApply: Boolean(d.autoApply),
     };
   })
   .handler(async ({ context, data }): Promise<CrmCopilotTurnResult> => {
@@ -636,49 +634,10 @@ export const askCrmCopilot = createServerFn({ method: "POST" })
 
     const parsed = parseCrmCopilotOutput(rawOutput);
 
-    // Detección de intención de gestión y ejecución directa en la conversación
-    const lastUserMessage = [...data.messages].reverse().find((m) => m.role === "user")?.content || "";
-    const hasApplyIntent =
-      Boolean(data.autoApply) ||
-      /(?:aplica|aplicar|aplique|aplícalo|aplícala|aplícalas|ejecuta|ejecutar|ejecútalo|crea|crear|agrega|agregar|cambia|cambiar|modifica|modificar|actualiza|actualizar|guarda|guardar|hazlo|hazla|hazlos|procede|adelante|dale|listo|elimina|eliminar|borra|borrar|renombra|renombrar|mover|mueve|configura|configurar|organiza|organizar|haz los cambios|gerencia|administra|ajusta)/i.test(
-        lastUserMessage
-      );
-
-    if (hasApplyIntent && parsed.proposals && parsed.proposals.length > 0) {
-      const executedMessages: string[] = [];
-      for (const prop of parsed.proposals) {
-        try {
-          const res = await executeCrmCopilotActionInternal(
-            supabaseAdmin,
-            companyId,
-            userId,
-            prop,
-            data.pipelineId,
-            data.cardId
-          );
-          prop.status = "applied";
-          executedMessages.push(res.message);
-        } catch (err: any) {
-          prop.description = `${prop.description || ""} (Aviso: ${err.message})`.trim();
-        }
-      }
-
-      if (executedMessages.length > 0) {
-        const alreadyStatesExecution =
-          /he\s+(?:aplicado|ejecutado|creado|actualizado|modificado|configurado)/i.test(parsed.reply) ||
-          /quedó\s+(?:aplicado|creado|actualizado)/i.test(parsed.reply);
-        if (!alreadyStatesExecution) {
-          parsed.reply += `\n\n⚡ **Acciones ejecutadas en el embudo en tiempo real:**\n${executedMessages.map((m) => `• ${m}`).join("\n")}`;
-        }
-      }
-    }
-
+    // Las propuestas se devuelven en estado "pending" para que el usuario las revise y confirme con 1 clic (individual o "Aplicar todas")
     return parsed;
   });
 
-/**
- * Ejecuta con 1 clic una acción estructurada propuesta por el Copilot del Embudo
- */
 export const executeCrmCopilotAction = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: {

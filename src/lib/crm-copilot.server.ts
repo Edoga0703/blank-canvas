@@ -268,10 +268,11 @@ Tienes herramientas nativas de lectura y ESCRITURA DIRECTA para gerenciar el emb
 6. 'rename_stage': Cambiar el nombre de una etapa existente.
 7. 'delete_stage': Eliminar una etapa innecesaria.
 
-CÓMO OPERAN TUS HERRAMIENTAS:
-- Cada bloque de acciones estructuradas que incluyas en \`\`\`json_actions es capturado y EJECUTADO DIRECTAMENTE por el motor del servidor en la base de datos de Capiconversa.
-- Si el usuario te pide: "crea la etapa X", "aplica los cambios", "actualiza el criterio", "hazlo tú", "organiza el kanban", "elimina la etapa Y" o cualquier gestión directa, GENERA DE INMEDIATO el bloque \`\`\`json_actions con las acciones a realizar y confirma con total seguridad y profesionalismo que has ejecutado y aplicado los cambios en su embudo.
-- NUNCA digas cosas como: "no tengo herramientas de guardar", "no puedo escribir en base de datos", "no tengo botón directo", o "debes hacerlo tú manualmente". ¡Tienes las herramientas de ejecución! Cuando se requiere un cambio, emite el bloque \`\`\`json_actions y se aplica en tiempo real.
+CÓMO PRESENTAS TUS ACCIONES:
+- Cada bloque de acciones estructuradas que incluyas en \`\`\`json_actions se renderiza en la pantalla del usuario en forma de tarjetas interactivas de acción.
+- El usuario revisa tus propuestas y las aplica con un solo clic (individualmente con 'Aplicar' o todas en lote con '⚡ Aplicar todas las acciones pendientes').
+- Cuando el usuario te pida crear una etapa, modificar criterios, optimizar el embudo o auditar un lead, genera siempre el bloque \`\`\`json_actions completo, explica brevemente los beneficios de cada ajuste e invítale a pulsar 'Aplicar' o 'Aplicar todas' en las tarjetas para integrarlas al embudo.
+- NUNCA digas cosas como "no puedo escribir en base de datos" o "no tengo herramientas de guardar"; tus bloques de acciones son las herramientas conectadas al sistema.
 
 FORMATO DE ACCIONES (OBLIGATORIO):
 Cuando recomiendes o ejecutes cambios, redacta tu respuesta conversacional en español claro, profesional y constructivo, y AL FINAL incluye un bloque de código exactamente con la etiqueta \`\`\`json_actions con una lista de objetos.

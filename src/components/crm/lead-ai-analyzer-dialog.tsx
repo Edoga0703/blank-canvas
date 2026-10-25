@@ -62,7 +62,7 @@ export function LeadAiAnalyzerDialog({
     setError(null);
     try {
       const resp = await analyzeFn({ data: { cardId } });
-      if (!resp.ok) {
+      if (!resp?.ok) {
         setError(resp.error || t("crm.audit_failed", undefined, "No se pudo auditar el lead."));
         return;
       }
@@ -84,11 +84,13 @@ export function LeadAiAnalyzerDialog({
       const resp = await moveFn({
         data: {
           cardId,
+          stageId: result.etapa_sugerida_id,
           targetStageId: result.etapa_sugerida_id,
+          reason: result.justificativa || `Sugerido por IA a ${result.etapa_sugerida_nome}`,
         },
       });
-      if (!resp.ok) {
-        toast.error(resp.error || t("crm.move_failed", undefined, "No se pudo mover la tarjeta."));
+      if (!resp?.ok) {
+        toast.error((resp as any)?.error || t("crm.move_failed", undefined, "No se pudo mover la tarjeta."));
         return;
       }
       toast.success(t("crm.move_success", { name: result.etapa_sugerida_nome }, `Lead movido a "${result.etapa_sugerida_nome}"`));

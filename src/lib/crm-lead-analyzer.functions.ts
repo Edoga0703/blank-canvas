@@ -20,9 +20,11 @@ export const analyzeLeadNow = createServerFn({ method: "POST" })
 
 export const applyStageMovement = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: { cardId: string; stageId: string; reason?: string }) => {
-    if (!d?.cardId || !d?.stageId) throw new Error("cardId y stageId son requeridos");
-    return { cardId: d.cardId, stageId: d.stageId, reason: d.reason };
+  .validator((d: { cardId: string; stageId?: string; targetStageId?: string; reason?: string }) => {
+    const resolvedCardId = String(d?.cardId || "").trim();
+    const resolvedStageId = String(d?.stageId || d?.targetStageId || "").trim();
+    if (!resolvedCardId || !resolvedStageId) throw new Error("cardId y stageId son requeridos");
+    return { cardId: resolvedCardId, stageId: resolvedStageId, reason: d.reason };
   })
   .handler(async ({ context, data }) => {
     const companyId = await resolveCompanyIdCached(context.supabase, context.userId);

@@ -72,20 +72,18 @@ export function CrmCopilotSheet({
   const execAction = useServerFn(executeCrmCopilotAction);
   const execAllActions = useServerFn(executeAllCrmCopilotActions);
 
-  const [autoApplyMode, setAutoApplyMode] = useState(true);
   const [executingAllIdx, setExecutingAllIdx] = useState<number | null>(null);
 
   const [messages, setMessages] = useState<CrmCopilotChatMessage[]>([
     {
       role: "assistant",
-      content: `¡Hola! Soy tu **Copilot de Ventas y Gerente del Embudo CRM**.
+      content: `¡Hola! Soy tu **Copilot de Ventas y Arquitecto de Embudos CRM**.
 
 Puedo ayudarte a:
 1. **Ajustar los criterios de IA** de tus etapas para que la clasificación automática sea 100% precisa.
 2. **Crear nuevas etapas** cuando detectes que a tu proceso le falta un paso (ej.: Reenganchar, Demo agendada).
 3. **Proteger etapas críticas** (bloquearlas para que solo un humano confirme el movimiento a Ganado o Soporte).
 4. **Optimizar el Prompt Maestro** del Auditor Comercial de este embudo.
-5. **Gestionar y aplicar cambios directamente** en tu Kanban en tiempo real.
 ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.` : ""}
 
 ¿Qué regla o etapa te gustaría configurar o mejorar?`,
@@ -127,7 +125,6 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
           messages: updatedHistory,
           pipelineId,
           cardId,
-          autoApply: autoApplyMode,
         },
       });
 
@@ -138,14 +135,6 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
-
-      // Si alguna propuesta fue aplicada de forma autónoma, actualizar el Kanban
-      if (res.proposals?.some((p) => p.status === "applied")) {
-        onStageUpdated?.();
-        if (res.proposals.some((p) => p.type === "move_lead" && p.status === "applied")) {
-          onLeadMoved?.();
-        }
-      }
     } catch (err: any) {
       toast.error(err?.message || "Error al consultar al Copilot del CRM");
       setMessages((prev) => [
@@ -224,7 +213,7 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
       });
 
       toast.success(
-        t("crm.all_actions_applied", undefined, `Se aplicaron ${res.appliedCount} cambios exitosamente.`)
+        t("crm.all_actions_applied", undefined, `Se aplicaron ${res.appliedCount} cambio(s) exitosamente al embudo.`)
       );
 
       setMessages((prev) => {
@@ -270,30 +259,10 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
                   </Badge>
                 </SheetTitle>
                 <SheetDescription className="text-xs text-muted-foreground">
-                  {t("crm.copilot_subtitle", { pipeline: pipelineName }, `Entrena y gestiona las etapas de "${pipelineName}" con IA.`)}
+                  {t("crm.copilot_subtitle", { pipeline: pipelineName }, `Entrena y optimiza las etapas de "${pipelineName}" conversando con la IA.`)}
                 </SheetDescription>
               </div>
             </div>
-
-            {/* Toggle de Modo Autónomo */}
-            <button
-              type="button"
-              onClick={() => {
-                const next = !autoApplyMode;
-                setAutoApplyMode(next);
-                toast.info(next ? "Modo Autónomo activado: el Copilot aplicará directamente las acciones solicitadas." : "Modo Manual activado: requerirá confirmación para cada acción.");
-              }}
-              className={cn(
-                "text-[11px] px-2.5 py-1 rounded-full font-medium border flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs",
-                autoApplyMode
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
-                  : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
-              )}
-              title="Cuando está activo, el Copilot ejecuta directamente los cambios sobre el CRM sin pedir confirmaciones adicionales"
-            >
-              <Zap className={cn("size-3", autoApplyMode && "text-emerald-500 fill-emerald-500")} />
-              <span>{autoApplyMode ? "⚡ Modo Autónomo" : "Modo Manual"}</span>
-            </button>
           </div>
         </SheetHeader>
 
@@ -323,11 +292,11 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
               >
                 <div className="whitespace-pre-wrap">{msg.content}</div>
 
-                {/* Acciones propuestas o aplicadas por el Copilot */}
+                {/* Acciones propuestas por el Copilot */}
                 {msg.proposals && msg.proposals.length > 0 && (
                   <div className="space-y-2.5 pt-2.5 border-t border-border/50">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
-                      {t("crm.proposed_actions", undefined, "Acciones del Embudo:")}
+                      {t("crm.proposed_actions", undefined, "Acciones sugeridas para aplicar:")}
                     </span>
 
                     {msg.proposals.map((prop, pIdx) => {
@@ -438,7 +407,7 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
                                 "h-7 text-xs font-semibold gap-1.5 transition-all",
                                 isApplied
                                   ? "bg-emerald-600 text-white hover:bg-emerald-600 opacity-90 cursor-default"
-                                  : "bg-blue-600 hover:bg-blue-700 text-white"
+                                  : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
                               )}
                             >
                               {isApplying ? (
@@ -460,7 +429,7 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
                     {/* Botón Aplicar Todas las Acciones */}
                     {(() => {
                       const pendingProps = msg.proposals.filter((p) => p.status !== "applied");
-                      if (pendingProps.length >= 2) {
+                      if (pendingProps.length > 0) {
                         return (
                           <div className="pt-1">
                             <Button
@@ -474,7 +443,9 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
                               ) : (
                                 <Zap className="size-3.5 fill-white" />
                               )}
-                              {t("crm.apply_all", undefined, `⚡ Aplicar todas las acciones pendientes (${pendingProps.length})`)}
+                              {pendingProps.length === 1
+                                ? "⚡ Aplicar cambio al embudo"
+                                : `⚡ Aplicar todas las acciones pendientes (${pendingProps.length})`}
                             </Button>
                           </div>
                         );
@@ -500,7 +471,7 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
               </div>
               <div className="flex items-center gap-1.5">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
-                <span>{t("crm.copilot_thinking", undefined, "Gestionando embudo y ejecutando acciones solicitadas...")}</span>
+                <span>{t("crm.copilot_thinking", undefined, "Analizando arquitectura del embudo y estructurando propuesta...")}</span>
               </div>
             </div>
           )}
@@ -511,10 +482,10 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
           <div className="px-4 py-2 border-t border-border/40 bg-muted/10 flex flex-wrap gap-1.5">
             <button
               type="button"
-              onClick={() => handleSend("Audita el embudo y actualiza los criterios de las etapas para streaming.")}
+              onClick={() => handleSend("Audita el embudo y propón las mejores reglas para optimizar las ventas de streaming.")}
               className="rounded-full bg-muted/60 hover:bg-muted text-[11px] px-2.5 py-1 text-muted-foreground transition border border-border/40 cursor-pointer"
             >
-              ⚡ Auditar y actualizar embudo
+              🔍 Auditar y sugerir mejoras
             </button>
             <button
               type="button"
@@ -525,7 +496,7 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
             </button>
             <button
               type="button"
-              onClick={() => handleSend("Protege las etapas de Ganado y Perdido para que solo humanos puedan mover leads.")}
+              onClick={() => handleSend("¿Cuáles etapas de mi embudo deberían estar protegidas contra movimientos automáticos de la IA?")}
               className="rounded-full bg-muted/60 hover:bg-muted text-[11px] px-2.5 py-1 text-muted-foreground transition border border-border/40 cursor-pointer"
             >
               🔒 Proteger etapas críticas
@@ -551,7 +522,7 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
                   void handleSend();
                 }
               }}
-              placeholder={t("crm.copilot_input_placeholder", undefined, "Indícame qué cambios deseas hacer o aplicar en el embudo...")}
+              placeholder={t("crm.copilot_input_placeholder", undefined, "Describe qué quieres ajustar en el embudo o consulta dudas...")}
               className="min-h-[44px] max-h-32 text-xs resize-none"
               rows={2}
             />
