@@ -40,6 +40,7 @@ import { EncaminharDialog } from "@/components/chat/encaminhar-dialog";
 import { useFeatureEnabled } from "@/hooks/use-feature-flags";
 import { resolveStageAiMeta, DEFAULT_CRM_MASTER_PROMPT } from "@/lib/crm-stage-meta";
 import { applyStageMovement } from "@/lib/crm-lead-analyzer.functions";
+import { CrmCopilotSheet } from "@/components/crm/crm-copilot-sheet";
 import { useLanguage, translateDefaultStageName, translateDefaultPipelineName } from "@/lib/i18n/context";
 
 
@@ -99,6 +100,8 @@ function KanbanPage() {
   const [editingStage, setEditingStage] = useState<Stage | null>(null);
   const [adding, setAdding] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  const [crmCopilotOpen, setCrmCopilotOpen] = useState(false);
+  const [crmCopilotPrompt, setCrmCopilotPrompt] = useState<string | null>(null);
   const [automacaoStage, setAutomacaoStage] = useState<KanbanStage | null>(null);
   const [limparStage, setLimparStage] = useState<KanbanStage | null>(null);
   const [retornoStage, setRetornoStage] = useState<KanbanStage | null>(null);
@@ -805,6 +808,22 @@ function KanbanPage() {
           <UserPlus className="size-4 sm:mr-1" /> <span className="hidden sm:inline">{t("crm.new_lead", undefined, "Novo lead")}</span>
         </Button>
 
+        {/* Copilot del Embudo CRM */}
+        <Button
+          size="sm"
+          variant="outline"
+          title={t("crm.pipeline_copilot", undefined, "Copilot del Embudo")}
+          className="size-8 p-0 shrink-0 sm:size-auto sm:h-9 sm:px-3 rounded-full text-[13px] border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 text-blue-700 dark:text-blue-300 font-semibold gap-1.5 shadow-xs"
+          disabled={!activePipelineId}
+          onClick={() => {
+            setCrmCopilotPrompt(null);
+            setCrmCopilotOpen(true);
+          }}
+        >
+          <Sparkles className="size-4 sm:mr-1 text-blue-600 animate-pulse" />
+          <span className="hidden sm:inline">{t("crm.pipeline_copilot", undefined, "Copilot del Embudo")}</span>
+        </Button>
+
         <span className="text-[12px] text-muted-foreground font-medium hidden md:inline">
           {totalContatos} contato{totalContatos === 1 ? "" : "s"}
         </span>
@@ -1093,6 +1112,16 @@ function KanbanPage() {
 
       <LeadDrawer card={selected} stages={stages} members={members} companyId={companyId}
         onClose={() => setSelected(null)} onChanged={() => loadAll(companyId)} />
+
+      <CrmCopilotSheet
+        open={crmCopilotOpen}
+        onOpenChange={setCrmCopilotOpen}
+        pipelineId={activePipelineId}
+        pipelineName={activePipeline?.nome}
+        initialPrompt={crmCopilotPrompt}
+        onStageUpdated={() => loadAll(companyId)}
+        onLeadMoved={() => loadAll(companyId)}
+      />
 
       <Dialog open={!!pendingSale} onOpenChange={(o) => { if (!o && !saleSaving) { setPendingSale(null); setSaleValor(""); setSaleDescricao(""); setSaleOwnerId(""); } }}>
         <DialogContent className="sm:max-w-[460px]">

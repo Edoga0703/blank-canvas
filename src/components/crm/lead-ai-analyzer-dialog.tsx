@@ -18,6 +18,7 @@ export function LeadAiAnalyzerDialog({
   initialDiagnostic,
   initialAnalyzedAt,
   onStageChanged,
+  onOpenCopilotWithPrompt,
 }: {
   cardId: string;
   leadName: string;
@@ -27,6 +28,7 @@ export function LeadAiAnalyzerDialog({
   initialDiagnostic?: LeadAnalysisResult | null;
   initialAnalyzedAt?: string | null;
   onStageChanged?: (newStageId: string) => void;
+  onOpenCopilotWithPrompt?: (prompt: string) => void;
 }) {
   const { t, formatDate, formatTime } = useLanguage();
   const analyzeFn = useServerFn(analyzeLeadNow);
@@ -202,7 +204,7 @@ export function LeadAiAnalyzerDialog({
 
               {/* Sugerencia de Aprendizaje / Inconsistencia para el Embudo */}
               {result.sugestao_treinamento && (
-                <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/5 space-y-1.5">
+                <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/5 space-y-2">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700">
                     <Lightbulb className="size-4" />
                     <span>{t("crm.pipeline_training_suggestion", undefined, "Sugerencia para mejorar las reglas de tu embudo")}</span>
@@ -210,6 +212,25 @@ export function LeadAiAnalyzerDialog({
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     {result.sugestao_treinamento}
                   </p>
+                  {onOpenCopilotWithPrompt && (
+                    <div className="pt-1 flex justify-end">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-200 font-semibold gap-1.5"
+                        onClick={() => {
+                          onOpenChange(false);
+                          onOpenCopilotWithPrompt(
+                            `Hola Copilot, en la auditoría del lead "${leadName}" la IA generó esta sugerencia para el embudo:\n\n"${result.sugestao_treinamento}"\n\n¿Cómo ajustamos las etapas y criterios para aplicarla?`
+                          );
+                        }}
+                      >
+                        <Sparkles className="size-3.5 text-amber-600" />
+                        {t("crm.send_to_copilot", undefined, "Gestionar con Copilot del Embudo")}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

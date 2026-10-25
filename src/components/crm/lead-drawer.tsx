@@ -26,6 +26,7 @@ import { OlistPedidosTab } from "@/components/crm/olist-pedidos-tab";
 import { useLanguage, formatDate, formatTime, formatCurrency, translateDefaultStageName, translateDefaultPipelineName } from "@/lib/i18n/context";
 import { useServerFn } from "@tanstack/react-start";
 import { applyStageMovement } from "@/lib/crm-lead-analyzer.functions";
+import { CrmCopilotSheet } from "@/components/crm/crm-copilot-sheet";
 import { useCapacidadeAtiva } from "@/hooks/use-capacidades";
 import { LeadAiAnalyzerDialog } from "@/components/crm/lead-ai-analyzer-dialog";
 
@@ -399,30 +400,47 @@ export function LeadDetailsPanel({
                 <span className="text-xs font-medium text-foreground">
                   ➔ {diag.etapa_sugerida_nome}
                 </span>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white font-medium"
-                  onClick={async () => {
-                    try {
-                      await moveStageFn({
-                        data: {
-                          cardId: local.id,
-                          stageId: diag.etapa_sugerida_id,
-                          reason: `Movido a "${diag.etapa_sugerida_nome}" por confirmación humana de recomendación IA`,
-                        },
-                      });
-                      setLocal((prev: any) => ({ ...prev, stage_id: diag.etapa_sugerida_id }));
-                      toast.success(t("crm.stage_moved_success", { name: diag.etapa_sugerida_nome }, `Movido a "${diag.etapa_sugerida_nome}"`));
-                      onChanged();
-                    } catch (err: any) {
-                      toast.error(err?.message || "Error al mover lead");
-                    }
-                  }}
-                >
-                  <Check className="size-3.5 mr-1" />
-                  {t("crm.confirm_and_move", undefined, "Confirmar y mover")}
-                </Button>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs border-amber-500/30 text-amber-800 dark:text-amber-200 hover:bg-amber-500/20 font-medium gap-1"
+                    onClick={() => {
+                      setCrmCopilotPrompt(
+                        `Hola Copilot, la IA analizó al lead "${local.nome || local.numero}" y recomendó moverlo a "${diag.etapa_sugerida_nome}". Justificación: "${diag.justificativa || diag.resumo}". ¿Cómo deberíamos afinar las reglas de esta etapa en el embudo?`
+                      );
+                      setCrmCopilotOpen(true);
+                    }}
+                  >
+                    <Sparkles className="size-3 text-amber-600" />
+                    {t("crm.consult_copilot", undefined, "Consultar Copilot")}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white font-medium"
+                    onClick={async () => {
+                      try {
+                        await moveStageFn({
+                          data: {
+                            cardId: local.id,
+                            stageId: diag.etapa_sugerida_id,
+                            reason: `Movido a "${diag.etapa_sugerida_nome}" por confirmación humana de recomendación IA`,
+                          },
+                        });
+                        setLocal((prev: any) => ({ ...prev, stage_id: diag.etapa_sugerida_id }));
+                        toast.success(t("crm.stage_moved_success", { name: diag.etapa_sugerida_nome }, `Movido a "${diag.etapa_sugerida_nome}"`));
+                        onChanged();
+                      } catch (err: any) {
+                        toast.error(err?.message || "Error al mover lead");
+                      }
+                    }}
+                  >
+                    <Check className="size-3.5 mr-1" />
+                    {t("crm.confirm_and_move", undefined, "Confirmar y mover")}
+                  </Button>
+                </div>
               </div>
             </div>
           );
@@ -442,6 +460,22 @@ export function LeadDetailsPanel({
           setLocal((prev: any) => ({ ...prev, stage_id: newStageId }));
           onChanged();
         }}
+        onOpenCopilotWithPrompt={(prompt) => {
+          setCrmCopilotPrompt(prompt);
+          setCrmCopilotOpen(true);
+        }}
+      />
+
+      <CrmCopilotSheet
+        open={crmCopilotOpen}
+        onOpenChange={setCrmCopilotOpen}
+        pipelineId={currentPipelineId}
+        pipelineName={pipelines.find((p) => p.id === currentPipelineId)?.nome}
+        cardId={local.id}
+        leadName={local.nome || local.numero}
+        initialPrompt={crmCopilotPrompt}
+        onStageUpdated={onChanged}
+        onLeadMoved={onChanged}
       />
 
       <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
