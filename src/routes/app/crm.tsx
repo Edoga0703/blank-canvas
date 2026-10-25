@@ -1674,6 +1674,7 @@ function KCard({ card, pauses, members, onClick, onMove, slaHoras }: { card: Lea
 
 
 function CardBody({ card, pauses, members, dragging, onMove, iaActive, slaHoras }: { card: LeadCard; pauses: Record<string, boolean>; members: Member[]; dragging?: boolean; onMove?: () => void; iaActive?: boolean; slaHoras?: number | null }) {
+  const { t } = useLanguage();
   const time = new Date(card.ultima_em);
   const navigate = useNavigate();
   const owner = members.find((m) => m.user_id === (card as any).owner_id);

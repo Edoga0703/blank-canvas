@@ -42,6 +42,22 @@ export function RouteErrorComponent({ error, reset }: { error: unknown; reset: (
       boundary: "tanstack_default_error_component",
       original_error_type: error === null ? "null" : typeof error,
     });
+    const msg = normalizedError.message || String(error);
+    const isChunkError =
+      msg.includes("Failed to fetch dynamically imported module") ||
+      msg.includes("error loading dynamically imported module") ||
+      msg.includes("Unexpected identifier 'found'") ||
+      msg.includes("ChunkLoadError") ||
+      msg.includes("Failed to load module script") ||
+      msg.includes("Importing a module script failed");
+    if (isChunkError && typeof window !== "undefined") {
+      const reloadKey = "capiversa_route_chunk_reload";
+      const last = Number(sessionStorage.getItem(reloadKey) || 0);
+      if (Date.now() - last > 8000) {
+        sessionStorage.setItem(reloadKey, String(Date.now()));
+        window.location.reload();
+      }
+    }
   }, [error, normalizedError.message]);
 
   return (
@@ -53,11 +69,20 @@ export function RouteErrorComponent({ error, reset }: { error: unknown; reset: (
         <p className="mt-2 text-sm text-muted-foreground">
           Algo deu errado. Tente novamente ou volte para a home.
         </p>
+        {normalizedError.message && (
+          <p className="mt-2 text-xs text-red-600 font-mono break-words bg-red-50 p-2 rounded border border-red-200 text-left">
+            {normalizedError.message}
+          </p>
+        )}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
-              router.invalidate();
-              reset();
+              if (typeof window !== "undefined") {
+                window.location.reload();
+              } else {
+                router.invalidate();
+                reset();
+              }
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
