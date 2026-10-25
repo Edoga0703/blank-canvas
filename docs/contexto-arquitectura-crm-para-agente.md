@@ -1,4 +1,4 @@
-# 📋 Dossier Técnico y Arquitectura Integral de Capiconversa CRM (v1.2.06)
+# 📋 Dossier Técnico y Arquitectura Integral de Capiconversa CRM (v1.2.21)
 
 > **Nota para el Agente Analizador / Desarrollador:**
 > Este documento ha sido diseñado como la **fuente única de verdad (Single Source of Truth)** de **Capiconversa CRM**. Describe la arquitectura técnica completa, flujos omnicanales, contratos de bases de datos en PostgreSQL, funciones de servidor, variables de entorno, APIs de terceros (D-API WhatsApp Oficial/No Oficial, Meta Graph API v25.0, Instagram Direct, Messenger, Lead Ads, Cloudflare R2, Backblaze B2) y la lógica en tiempo real. 
@@ -10,7 +10,7 @@
 ## 1. Ficha Técnica del Proyecto y Estado Actual
 
 - **Nombre del Producto:** Capiconversa CRM (Capiversa SaaS)
-- **Versión Activa:** `v1.2.06`
+- **Versión Activa:** `v1.2.21`
 - **Repositorio Git:** `https://github.com/Edoga0703/blank-canvas.git` (Rama principal: `main`)
 - **Hosting de Producción Lovable:** `https://capiconversa.lovable.app` (ID de Proyecto: `6482688e-8e4c-4f18-a0eb-1577103f5563`)
 - **Backend As A Service:** Supabase PostgreSQL 15 con Row Level Security (RLS) y Realtime WebSockets
