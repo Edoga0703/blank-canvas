@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-25T20:34:39.171000+00:00",
+  "generated_at": "2026-10-25T20:44:50.769943+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -1163,7 +1163,7 @@
     },
     {
       "path": "src/lib/crm-lead-context.server.ts",
-      "bytes": 16886
+      "bytes": 16958
     },
     {
       "path": "src/lib/produtos.functions.ts",
