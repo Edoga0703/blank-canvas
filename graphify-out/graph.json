@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-25T18:13:40.886038+00:00",
+  "generated_at": "2026-10-25T20:34:39.171000+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -955,7 +955,7 @@
     },
     {
       "path": "src/lib/crm-copilot.server.ts",
-      "bytes": 16776
+      "bytes": 16754
     },
     {
       "path": "src/lib/agendamentos-dispatch.server.ts",
@@ -987,7 +987,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.server.ts",
-      "bytes": 15361
+      "bytes": 15262
     },
     {
       "path": "src/lib/wablast.server.ts",
@@ -1163,7 +1163,7 @@
     },
     {
       "path": "src/lib/crm-lead-context.server.ts",
-      "bytes": 16908
+      "bytes": 16886
     },
     {
       "path": "src/lib/produtos.functions.ts",
