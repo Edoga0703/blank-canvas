@@ -30,48 +30,74 @@ export async function getCrmCopilotContext(
   pipelineId?: string | null,
   cardId?: string | null,
 ) {
+  // 1. Obtener todos los embudos de la empresa
+  const { data: allPipelines } = await supabase
+    .from("crm_pipeline")
+    .select("id, nome, tipo, agent_id, crm_master_prompt")
+    .eq("company_id", companyId)
+    .order("ordem", { ascending: true });
+
+  let pipeline = null;
   let resolvedPipelineId = pipelineId;
 
-  if (!resolvedPipelineId) {
-    const { data: firstPipe } = await supabase
-      .from("crm_pipeline")
-      .select("id")
+  if (resolvedPipelineId) {
+    pipeline = (allPipelines || []).find((p: any) => p.id === resolvedPipelineId) || null;
+  }
+
+  if (!pipeline && allPipelines && allPipelines.length > 0) {
+    pipeline = allPipelines[0];
+    resolvedPipelineId = pipeline.id;
+  }
+
+  // 2. Si la empresa aún no tiene ningún registro en crm_pipeline, crear uno por defecto o buscar el ID
+  if (!pipeline) {
+    try {
+      const { data: createdPipe } = await supabase
+        .from("crm_pipeline")
+        .insert({
+          company_id: companyId,
+          nome: "Comercial",
+          tipo: "padrao",
+          ordem: 0,
+          sistema: true,
+        })
+        .select("id, nome, tipo, agent_id, crm_master_prompt")
+        .maybeSingle();
+      pipeline = createdPipe;
+      resolvedPipelineId = createdPipe?.id || null;
+    } catch {
+      // best-effort
+    }
+  }
+
+  // 3. Consultar etapas asociadas (o todas las etapas de la empresa si no tienen pipeline_id)
+  let rawStages: any[] = [];
+  if (resolvedPipelineId) {
+    const { data: stByPipe } = await supabase
+      .from("crm_stage")
+      .select("id, nome, cor, tipo, ordem, criterio_ia, bloqueada_para_ia, mensagem_prompt, modo_atendimento, move_apos_qualificar_para, ia_handoff_stage_id, pipeline_id")
       .eq("company_id", companyId)
-      .order("ordem", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    resolvedPipelineId = firstPipe?.id || null;
+      .or(`pipeline_id.eq.${resolvedPipelineId},pipeline_id.is.null`)
+      .order("ordem", { ascending: true });
+    rawStages = stByPipe || [];
+  }
+
+  if (rawStages.length === 0) {
+    const { data: anyStages } = await supabase
+      .from("crm_stage")
+      .select("id, nome, cor, tipo, ordem, criterio_ia, bloqueada_para_ia, mensagem_prompt, modo_atendimento, move_apos_qualificar_para, ia_handoff_stage_id, pipeline_id")
+      .eq("company_id", companyId)
+      .order("ordem", { ascending: true });
+    rawStages = anyStages || [];
   }
 
   const [
-    { data: pipeline },
-    { data: allPipelines },
-    { data: stages },
     { data: card },
     { data: produtos },
     { data: servicos },
+    { data: agentRules },
     leadComprehensiveCtx,
   ] = await Promise.all([
-    resolvedPipelineId
-      ? supabase
-          .from("crm_pipeline")
-          .select("id, nome, agent_id, crm_master_prompt, tipo")
-          .eq("id", resolvedPipelineId)
-          .eq("company_id", companyId)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
-    supabase
-      .from("crm_pipeline")
-      .select("id, nome, tipo")
-      .eq("company_id", companyId)
-      .order("ordem", { ascending: true }),
-    resolvedPipelineId
-      ? supabase
-          .from("crm_stage")
-          .select("id, nome, cor, tipo, ordem, criterio_ia, bloqueada_para_ia, mensagem_prompt, modo_atendimento, move_apos_qualificar_para, ia_handoff_stage_id")
-          .eq("pipeline_id", resolvedPipelineId)
-          .order("ordem", { ascending: true })
-      : Promise.resolve({ data: [] }),
     cardId
       ? supabase
           .from("crm_cards")
@@ -86,17 +112,24 @@ export async function getCrmCopilotContext(
       .eq("company_id", companyId)
       .eq("ativo", true)
       .order("ordem", { ascending: true })
-      .limit(20),
+      .limit(30),
     supabase
       .from("servico")
       .select("id, nome, valor_cents, duracao_min")
       .eq("company_id", companyId)
       .eq("ativo", true)
-      .limit(15),
+      .limit(20),
+    supabase
+      .from("agent_config")
+      .select("como_vender, diferenciais, cupom, formas_pagamento, faq, descricao_negocio")
+      .eq("company_id", companyId)
+      .order("is_default", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
     cardId ? gatherLeadComprehensiveContext(supabase, companyId, cardId) : Promise.resolve(null),
   ]);
 
-  const parsedStages = (stages || []).map((s: any) => {
+  const parsedStages = (rawStages || []).map((s: any) => {
     const meta = resolveStageAiMeta(s);
     return {
       id: s.id,
@@ -109,16 +142,18 @@ export async function getCrmCopilotContext(
       bloqueada_para_ia: meta.bloqueada_para_ia,
       move_apos_qualificar_para: s.move_apos_qualificar_para,
       ia_handoff_stage_id: s.ia_handoff_stage_id,
+      pipeline_id: s.pipeline_id || resolvedPipelineId,
     };
   });
 
   return {
-    pipeline: pipeline || null,
+    pipeline: pipeline || { id: resolvedPipelineId || "", nome: "Comercial", crm_master_prompt: null },
     allPipelines: allPipelines || [],
     stages: parsedStages,
     card: card || null,
     produtos: produtos || [],
     servicos: servicos || [],
+    agentRules: agentRules || null,
     leadComprehensiveCtx: leadComprehensiveCtx as ComprehensiveLeadData | null,
   };
 }
@@ -133,6 +168,7 @@ export function buildCrmCopilotSystemPrompt(context: {
   card: any;
   produtos?: any[];
   servicos?: any[];
+  agentRules?: any;
   leadComprehensiveCtx?: ComprehensiveLeadData | null;
 }): string {
   const pipe = context.pipeline || {};
@@ -140,6 +176,7 @@ export function buildCrmCopilotSystemPrompt(context: {
   const card = context.card || null;
   const produtos = context.produtos || [];
   const servicos = context.servicos || [];
+  const agentRules = context.agentRules || null;
   const leadCtx = context.leadComprehensiveCtx || null;
 
   const stagesSummary = stages.length > 0
@@ -151,14 +188,27 @@ export function buildCrmCopilotSystemPrompt(context: {
             `   - Bloqueada para IA: ${s.bloqueada_para_ia ? "SÍ (Solo humanos pueden mover aquí)" : "NO (La IA puede mover automáticamente)"}`
         )
         .join("\n\n")
-    : "No hay etapas configuradas en este embudo.";
+    : "No hay etapas configuradas en este embudo. Puedes proponer crearlas usando 'create_stage'.";
 
   // Resumen del Catálogo
   let catalogSummary = "CATÁLOGO DE PRODUCTOS Y SERVICIOS DE LA EMPRESA:\n";
-  const prodsList = (produtos || []).map((p: any) => `* "${p.nome}" (${p.categoria || "Gral"}): R$ ${Number(p.preco || 0).toLocaleString("pt-BR")}${p.agendavel ? " [Agendable]" : ""}`);
+  const prodsList = (produtos || []).map((p: any) => `* "${p.nome}" (${p.categoria || "Geral"}): R$ ${Number(p.preco || 0).toLocaleString("pt-BR")}${p.agendavel ? " [Requiere Cita Previa]" : ""}`);
   const servsList = (servicos || []).map((s: any) => `* Serv. "${s.nome}": R$ ${(Number(s.valor_cents || 0) / 100).toLocaleString("pt-BR")} (${s.duracao_min} min)`);
   const allItems = [...prodsList, ...servsList];
   catalogSummary += allItems.length > 0 ? allItems.join("\n") : "(Sin productos activos en catálogo)";
+
+  // Políticas de venta corporativas
+  let rulesSummary = "";
+  if (agentRules) {
+    const list = [];
+    if (agentRules.cupom) list.push(`Cupones autorizados: "${agentRules.cupom}"`);
+    if (agentRules.formas_pagamento) list.push(`Formas de pago aceptadas: "${agentRules.formas_pagamento}"`);
+    if (agentRules.diferenciais) list.push(`Diferenciales del negocio: "${agentRules.diferenciais}"`);
+    if (agentRules.como_vender) list.push(`Metodología de venta: "${agentRules.como_vender}"`);
+    if (list.length > 0) {
+      rulesSummary = `\nPOLÍTICAS COMERCIALES Y DE DESCUENTO CONFIGURADAS:\n${list.map((x) => `- ${x}`).join("\n")}\n`;
+    }
+  }
 
   let leadContextBlock = "";
   if (leadCtx) {
@@ -180,6 +230,12 @@ ${diag ? `- Último Diagnóstico IA:
    * Justificación: "${diag.justificativa}"
    * Sugerencia de Entrenamiento: "${diag.sugestao_treinamento || "Ninguna"}"` : ""}
 `;
+  } else {
+    leadContextBlock = `
+MODO DE OPERACIÓN ACTUAL:
+Estás en el modo "Arquitectura de Embudo y Configuración General".
+(No hay ningún lead individual seleccionado en este momento. Estás asesorando al administrador sobre el diseño de las etapas, reglas, criterios y optimización comercial general).
+`;
   }
 
   return `Eres el "CRM Pipeline & Leads Copilot", el Consultor Senior de Sales Operations, Arquitecto de Embudos de Venta y Especialista en Auditoría de Leads dentro del CRM Capiconversa.
@@ -192,7 +248,7 @@ CONTEXTO DE TU ENTORNO:
 ${leadContextBlock}
 
 ${catalogSummary}
-
+${rulesSummary}
 EMBUDO ACTUAL:
 - Nombre: "${pipe.nome || "Comercial"}" (ID: "${pipe.id || ""}")
 - Prompt Maestro del Embudo:
@@ -230,6 +286,7 @@ Cuando recomiendes cambios concretos, redacta tu respuesta conversacional en esp
 
 DIRECTIVAS IMPORTANTES:
 - Si el usuario te envía una sugerencia de auditoría generada por un lead real, genera de inmediato la acción correspondiente lista para aplicar con 1 clic.
+- Si el embudo no tiene etapas todavía o si el ID del embudo es nuevo, usa "${pipe.id || ""}" como pipelineId en las acciones.
 - Si una etapa como 'Ganado' o 'Perdido' debe requerir confirmación humana, pon 'bloqueada_para_ia': true.
 - Sé conciso, proactivo y explica brevemente por qué tu ajuste hace el análisis automático más inteligente, rápido y confiable.`;
 }

@@ -103,7 +103,17 @@ export async function analyzeLeadInternal(
     gatherLeadComprehensiveContext(supabaseAdmin, companyId, card),
   ]);
 
-  const stages = (rawStages || []).map((st: any) => {
+  let finalStages = rawStages || [];
+  if (finalStages.length === 0) {
+    const { data: anyStages } = await supabaseAdmin
+      .from("crm_stage")
+      .select("id, nome, cor, tipo, ordem, criterio_ia, bloqueada_para_ia, mensagem_prompt, agent_id, modo_atendimento")
+      .eq("company_id", companyId)
+      .order("ordem", { ascending: true });
+    finalStages = anyStages || [];
+  }
+
+  const stages = finalStages.map((st: any) => {
     const meta = resolveStageAiMeta(st);
     return {
       id: st.id,
