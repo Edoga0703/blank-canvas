@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-25T17:57:33.772574+00:00",
+  "generated_at": "2026-10-25T18:13:40.886038+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -955,7 +955,7 @@
     },
     {
       "path": "src/lib/crm-copilot.server.ts",
-      "bytes": 16627
+      "bytes": 16776
     },
     {
       "path": "src/lib/agendamentos-dispatch.server.ts",
@@ -1143,7 +1143,7 @@
     },
     {
       "path": "src/lib/crm-copilot.functions.ts",
-      "bytes": 15428
+      "bytes": 15455
     },
     {
       "path": "src/lib/forward.functions.ts",
@@ -1183,7 +1183,7 @@
     },
     {
       "path": "src/lib/crm-stage-meta.ts",
-      "bytes": 4088
+      "bytes": 5779
     },
     {
       "path": "src/lib/master-training.functions.ts",
@@ -1751,7 +1751,7 @@
     },
     {
       "path": "src/components/crm/crm-copilot-sheet.tsx",
-      "bytes": 17941
+      "bytes": 18225
     },
     {
       "path": "src/components/crm/olist-pedidos-tab.tsx",
@@ -6536,6 +6536,10 @@
       "target": "./crm-stage-meta"
     },
     {
+      "source": "src/lib/crm-copilot.functions.ts",
+      "target": "./crm-stage-meta"
+    },
+    {
       "source": "src/lib/forward.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -8770,6 +8774,10 @@
     {
       "source": "src/components/crm/crm-copilot-sheet.tsx",
       "target": "@/lib/crm-copilot.server"
+    },
+    {
+      "source": "src/components/crm/crm-copilot-sheet.tsx",
+      "target": "@/lib/crm-stage-meta"
     },
     {
       "source": "src/components/crm/crm-copilot-sheet.tsx",
