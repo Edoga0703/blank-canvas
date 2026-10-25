@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-25T00:20:43.405653+00:00",
+  "generated_at": "2026-10-25T00:45:37.405605+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -575,11 +575,11 @@
     },
     {
       "path": "src/components/notifications-bell.tsx",
-      "bytes": 9140
+      "bytes": 9233
     },
     {
       "path": "src/components/trial-banner.tsx",
-      "bytes": 6011
+      "bytes": 6092
     },
     {
       "path": "src/components/theme-toggle.tsx",
@@ -587,7 +587,7 @@
     },
     {
       "path": "src/components/app-shell.tsx",
-      "bytes": 36008
+      "bytes": 36036
     },
     {
       "path": "src/components/mobile-app-banner.tsx",
@@ -1615,7 +1615,7 @@
     },
     {
       "path": "src/routes/entrar.tsx",
-      "bytes": 33433
+      "bytes": 33464
     },
     {
       "path": "src/hooks/use-standalone.tsx",
@@ -1727,7 +1727,7 @@
     },
     {
       "path": "src/components/crm/lead-drawer.tsx",
-      "bytes": 74184
+      "bytes": 74251
     },
     {
       "path": "src/components/crm/olist-pedidos-tab.tsx",
@@ -2235,7 +2235,7 @@
     },
     {
       "path": "src/components/dashboard-v2/DashboardGrid.tsx",
-      "bytes": 20819
+      "bytes": 20850
     },
     {
       "path": "src/components/dashboard-v2/widget-data.ts",
@@ -2383,7 +2383,7 @@
     },
     {
       "path": "src/lib/i18n/context.tsx",
-      "bytes": 10564
+      "bytes": 13268
     },
     {
       "path": "src/lib/i18n/translations.ts",
@@ -2591,7 +2591,7 @@
     },
     {
       "path": "src/routes/app/conexao.tsx",
-      "bytes": 25810
+      "bytes": 25859
     },
     {
       "path": "src/routes/app/relatorios.tsx",
@@ -2639,7 +2639,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 144022
+      "bytes": 144079
     },
     {
       "path": "src/routes/app/treinamentos.$courseId.tsx",
@@ -3577,6 +3577,10 @@
     },
     {
       "source": "src/components/notifications-bell.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
+      "source": "src/components/notifications-bell.tsx",
       "target": "react"
     },
     {
@@ -3602,6 +3606,10 @@
     {
       "source": "src/components/notifications-bell.tsx",
       "target": "@/integrations/supabase/client"
+    },
+    {
+      "source": "src/components/trial-banner.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/components/trial-banner.tsx",
