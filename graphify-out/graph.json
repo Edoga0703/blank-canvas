@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-26T01:22:05.080690+00:00",
+  "generated_at": "2026-10-26T01:37:25.226696+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -615,7 +615,7 @@
     },
     {
       "path": "src/lib/crm-engine.server.ts",
-      "bytes": 16933
+      "bytes": 18626
     },
     {
       "path": "src/lib/knowledge-extract.server.ts",
@@ -987,7 +987,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.server.ts",
-      "bytes": 15571
+      "bytes": 15936
     },
     {
       "path": "src/lib/wablast.server.ts",
@@ -1183,7 +1183,7 @@
     },
     {
       "path": "src/lib/crm-stage-meta.ts",
-      "bytes": 5779
+      "bytes": 5820
     },
     {
       "path": "src/lib/master-training.functions.ts",
@@ -1747,7 +1747,7 @@
     },
     {
       "path": "src/components/crm/lead-drawer.tsx",
-      "bytes": 79071
+      "bytes": 79672
     },
     {
       "path": "src/components/crm/crm-copilot-sheet.tsx",
@@ -2663,7 +2663,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 150779
+      "bytes": 151924
     },
     {
       "path": "src/routes/app/treinamentos.$courseId.tsx",
