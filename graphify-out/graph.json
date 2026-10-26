@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-26T01:37:25.226696+00:00",
+  "generated_at": "2026-10-26T21:25:02.775677+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -615,7 +615,7 @@
     },
     {
       "path": "src/lib/crm-engine.server.ts",
-      "bytes": 18626
+      "bytes": 18594
     },
     {
       "path": "src/lib/knowledge-extract.server.ts",
@@ -835,7 +835,7 @@
     },
     {
       "path": "src/lib/inbound-automation.server.ts",
-      "bytes": 4409
+      "bytes": 4376
     },
     {
       "path": "src/lib/quick-replies.functions.ts",
@@ -955,7 +955,7 @@
     },
     {
       "path": "src/lib/crm-copilot.server.ts",
-      "bytes": 18538
+      "bytes": 18436
     },
     {
       "path": "src/lib/agendamentos-dispatch.server.ts",
@@ -987,7 +987,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.server.ts",
-      "bytes": 15936
+      "bytes": 15757
     },
     {
       "path": "src/lib/wablast.server.ts",
@@ -1143,7 +1143,7 @@
     },
     {
       "path": "src/lib/crm-copilot.functions.ts",
-      "bytes": 22735
+      "bytes": 22639
     },
     {
       "path": "src/lib/forward.functions.ts",
@@ -1163,7 +1163,7 @@
     },
     {
       "path": "src/lib/crm-lead-context.server.ts",
-      "bytes": 17070
+      "bytes": 17203
     },
     {
       "path": "src/lib/produtos.functions.ts",
