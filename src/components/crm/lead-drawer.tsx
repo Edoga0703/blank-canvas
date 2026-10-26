@@ -562,6 +562,20 @@ export function LeadDetailsPanel({
                 }
               />
               <InfoRow
+                icon={Target}
+                label="Próxima ação"
+                value={local.proxima_acao ?? ""}
+                onCommit={() => persist({ proxima_acao: local.proxima_acao || null }, "Próxima ação atualizada")}
+                editor={
+                  <Input
+                    value={local.proxima_acao ?? ""}
+                    onChange={(e) => set("proxima_acao", e.target.value)}
+                    placeholder="Ex.: Enviar proposta até quinta-feira"
+                    className="h-8"
+                  />
+                }
+              />
+              <InfoRow
                 icon={Share2}
                 label="Origem"
                 value={local.origem ?? ""}

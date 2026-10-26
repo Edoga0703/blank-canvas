@@ -282,7 +282,7 @@ export async function pickLeadOwner(admin: any, companyId: string, stageId?: str
     if (stageId) {
       const { data: stage } = await admin
         .from("crm_stage")
-        .select("distribution_queue_id, distribution_user_id")
+        .select("pipeline_id, distribution_queue_id, distribution_user_id")
         .eq("id", stageId)
         .eq("company_id", companyId)
         .maybeSingle();
@@ -301,6 +301,26 @@ export async function pickLeadOwner(admin: any, companyId: string, stageId?: str
           .eq("ativo", true)
           .maybeSingle();
         queue = configuredQueue;
+      }
+
+      // Fallback a la cola de distribución configurada a nivel de embudo
+      if (!queue && stage?.pipeline_id) {
+        const { data: pipe } = await admin
+          .from("crm_pipeline")
+          .select("distribution_queue_id")
+          .eq("id", stage.pipeline_id)
+          .eq("company_id", companyId)
+          .maybeSingle();
+        if (pipe?.distribution_queue_id) {
+          const { data: pipeQueue } = await admin
+            .from("crm_distribution_queues")
+            .select("id, nome")
+            .eq("id", pipe.distribution_queue_id)
+            .eq("company_id", companyId)
+            .eq("ativo", true)
+            .maybeSingle();
+          queue = pipeQueue;
+        }
       }
     }
 
@@ -350,7 +370,7 @@ export async function moveCardToStage(
 ): Promise<void> {
   const { data: stage } = await admin
     .from("crm_stage")
-    .select("id, nome, pipeline_id, tipo")
+    .select("id, nome, pipeline_id, tipo, trigger_pipeline_destino")
     .eq("id", stageId)
     .maybeSingle();
 
@@ -368,6 +388,35 @@ export async function moveCardToStage(
   };
   if (stage?.pipeline_id) patch.pipeline_id = stage.pipeline_id;
   if (stage?.nome) patch.status = stage.nome;
+
+  // Si la etapa tiene configurado un disparador hacia otro embudo (trigger_pipeline_destino)
+  if (stage?.trigger_pipeline_destino) {
+    const { data: firstStageDest } = await admin
+      .from("crm_stage")
+      .select("id, nome, pipeline_id")
+      .eq("pipeline_id", stage.trigger_pipeline_destino)
+      .order("ordem", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (firstStageDest) {
+      patch.pipeline_id = firstStageDest.pipeline_id;
+      patch.stage_id = firstStageDest.id;
+      patch.status = firstStageDest.nome;
+      if (cardInfo?.company_id) {
+        try {
+          await admin.from("lead_evento").insert({
+            company_id: cardInfo.company_id,
+            card_id: cardId,
+            tipo: "mudanca_etapa",
+            descricao: `Transferido automáticamente al embudo destino por la etapa "${stage.nome}"`,
+          });
+        } catch {
+          // best-effort
+        }
+      }
+    }
+  }
 
   // Entrando em etapa de Perda: encerra o ciclo (régua parada) e marca a data,
   // que é a base da janela de reativação por retorno do lead.

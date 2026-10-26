@@ -137,6 +137,7 @@ function KanbanPage() {
   }
 
   const registerSaleFn = useServerFn(registerSale);
+  const moveStageServerFn = useServerFn(applyStageMovement);
   const listProdutosFn = useServerFn(listProdutos);
   const listServicosFn = useServerFn(listServicos);
 
@@ -216,7 +217,19 @@ function KanbanPage() {
     const reload = () => { clearTimeout(t); t = setTimeout(() => loadAll(companyId), 1500); };
     const ch = supabase.channel(`tenant:${companyId}:crm`)
       .on("postgres_changes", { event: "*", schema: "public", table: "crm_cards", filter: `company_id=eq.${companyId}` },
-        reload)
+        (payload) => {
+          if (payload.eventType === "UPDATE" && payload.new) {
+            setAllCards((prev) => prev.map((c) => c.id === (payload.new as any).id ? { ...c, ...payload.new } : c));
+          } else if (payload.eventType === "INSERT" && payload.new) {
+            setAllCards((prev) => {
+              if (prev.some((c) => c.id === (payload.new as any).id)) return prev;
+              return [payload.new as any, ...prev];
+            });
+          } else if (payload.eventType === "DELETE" && payload.old) {
+            setAllCards((prev) => prev.filter((c) => c.id !== (payload.old as any).id));
+          }
+          reload();
+        })
       .on("postgres_changes", { event: "*", schema: "public", table: "crm_stage", filter: `company_id=eq.${companyId}` },
         reload)
       .on("postgres_changes", { event: "*", schema: "public", table: "contact_pause", filter: `company_id=eq.${companyId}` },
@@ -364,11 +377,21 @@ function KanbanPage() {
     const prev = allCards;
     const pipelineId = stage.pipeline_id ?? activePipelineId;
     setAllCards((cs) => cs.map((c) => (c.id === id ? { ...c, stage_id: stageId, status: stage.nome, pipeline_id: pipelineId } : c)));
-    const { error } = await supabase.from("crm_cards").update({ stage_id: stageId, status: stage.nome, pipeline_id: pipelineId, entrou_stage_em: new Date().toISOString() } as any).eq("id", id);
-    if (error) { setAllCards(prev); return toast.error(error.message); }
-    await supabase.from("lead_evento").insert({
-      company_id: companyId, card_id: id, tipo: "mudanca_etapa", descricao: `Movido para ${stage.nome}`,
-    });
+    try {
+      const res = await moveStageServerFn({
+        data: {
+          cardId: id,
+          stageId,
+          reason: `Movido manualmente en el tablero a "${stage.nome}"`,
+        },
+      });
+      if (res?.ownerId) {
+        setAllCards((cs) => cs.map((c) => (c.id === id ? { ...c, owner_id: res.ownerId } : c)));
+      }
+    } catch (err: any) {
+      setAllCards(prev);
+      toast.error(err?.message || "No se pudo mover el lead");
+    }
   }
 
   async function loadSaleItems(tipo: "produto" | "servico") {
@@ -1762,6 +1785,14 @@ function CardBody({ card, pauses, members, dragging, onMove, iaActive, slaHoras 
         }
         return null;
       })()}
+
+      {/* Próxima ação comercial sugerida */}
+      {card.proxima_acao && (
+        <div className="mt-1.5 mb-1 flex items-center gap-1.5 rounded bg-muted/60 px-2 py-1 text-[11px] text-muted-foreground border border-border/40" title={card.proxima_acao}>
+          <Target className="size-3 shrink-0 text-emerald-600" />
+          <span className="truncate">{card.proxima_acao}</span>
+        </div>
+      )}
 
       {/* etiquetas + ações rápidas */}
       {(card.tags?.length > 0 || iaOn || canal || slaAtraso || !dragging) && (

@@ -205,6 +205,7 @@ Responde OBLIGATORIAMENTE con un único bloque JSON válido con el siguiente for
   "calificado": true o false,
   "valor_sugerido": número con el valor monetario sugerido del negocio según el catálogo si aplica (ej: 1200) o null,
   "produto_sugerido": "Nombre exacto del producto del catálogo si aplica o null",
+  "proxima_acao_sugerida": "Siguiente paso comercial concreto que debe ejecutar el asesor o null",
   "alerta_sla": "Aviso breve si detectas estancamiento en la etapa según el tiempo transcurrido o null",
   "sugestao_treinamento": "Opcional: Si detectas que falta un criterio o hay una duda en las etapas, explica qué regla añadir (o null si todo está claro)"
 }
@@ -303,6 +304,11 @@ Responde OBLIGATORIAMENTE con un único bloque JSON válido con el siguiente for
     // Auto-actualizar producto consultado si el lead no lo tenía fijado
     if (parsedResult.produto_sugerido && typeof parsedResult.produto_sugerido === "string" && !freshCard?.item_nome) {
       updates.item_nome = parsedResult.produto_sugerido;
+    }
+
+    // Auto-actualizar próxima acción comercial sugerida por la IA
+    if (parsedResult.proxima_acao_sugerida && typeof parsedResult.proxima_acao_sugerida === "string") {
+      updates.proxima_acao = parsedResult.proxima_acao_sugerida.trim().slice(0, 240);
     }
 
     await supabaseAdmin

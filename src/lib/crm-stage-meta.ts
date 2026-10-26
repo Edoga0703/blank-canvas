@@ -16,6 +16,7 @@ export interface LeadAnalysisResult {
   sugestao_treinamento?: string | null;
   valor_sugerido?: number | null;
   produto_sugerido?: string | null;
+  proxima_acao_sugerida?: string | null;
   alerta_sla?: string | null;
 }
 
