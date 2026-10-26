@@ -249,7 +249,7 @@ export async function getStagesBrief(
 
   const { data: stages } = await admin
     .from("crm_stage")
-    .select("id, nome, pipeline_id, tipo, criterio_ia, bloqueada_para_ia, mensagem_prompt")
+    .select("id, nome, pipeline_id, tipo, mensagem_prompt")
     .eq("pipeline_id", pipelineId)
     .order("ordem", { ascending: true });
 

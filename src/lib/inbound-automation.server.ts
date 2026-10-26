@@ -87,27 +87,25 @@ export async function processInboundAutomation(
       (stage?.mensagem_texto?.trim() || (stage?.mensagem_tipo === "ia_leve" && cleanPrompt) || stage?.mensagem_midia_url?.trim()),
   );
 
-  const triggerBackgroundLeadAudit = () => {
-    void (async () => {
-      try {
-        const { checkAndAnalyzeLeadCooldown } = await import("@/lib/crm-lead-analyzer.server");
-        await checkAndAnalyzeLeadCooldown(companyId, numero);
-      } catch (e: any) {
-        console.warn("[inbound-automation] checkAndAnalyzeLeadCooldown background error:", e?.message);
-      }
-    })();
+  const triggerBackgroundLeadAudit = async () => {
+    try {
+      const { checkAndAnalyzeLeadCooldown } = await import("@/lib/crm-lead-analyzer.server");
+      await checkAndAnalyzeLeadCooldown(companyId, numero);
+    } catch (e: any) {
+      console.warn("[inbound-automation] checkAndAnalyzeLeadCooldown error:", e?.message);
+    }
   };
 
   if (mode !== "ia") {
     const regua = await processKanbanReguaForNumero(admin, companyId, numero);
     if (mode === "manual" || hasFixedRule) {
-      triggerBackgroundLeadAudit();
+      await triggerBackgroundLeadAudit();
       return { engine: "regua", result: regua };
     }
   }
 
   if (mode === "manual") {
-    triggerBackgroundLeadAudit();
+    await triggerBackgroundLeadAudit();
     return { engine: "none", reason: "manual" };
   }
 
@@ -116,6 +114,6 @@ export async function processInboundAutomation(
   });
 
   // Se ejecuta DESPUÉS de processAiResponse para evitar condición de carrera en stage_id
-  triggerBackgroundLeadAudit();
+  await triggerBackgroundLeadAudit();
   return { engine: "ia" };
 }

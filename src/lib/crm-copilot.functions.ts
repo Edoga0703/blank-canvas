@@ -79,7 +79,7 @@ export async function executeCrmCopilotActionInternal(
     if (rawStageId) {
       const { data: stById } = await adminSupabase
         .from("crm_stage")
-        .select("id, nome, company_id, mensagem_prompt, criterio_ia, bloqueada_para_ia")
+        .select("id, nome, company_id, mensagem_prompt")
         .eq("id", rawStageId)
         .eq("company_id", companyId)
         .maybeSingle();
@@ -90,7 +90,7 @@ export async function executeCrmCopilotActionInternal(
       const queryName = stageNameFallback || rawStageId;
       const { data: stByName } = await adminSupabase
         .from("crm_stage")
-        .select("id, nome, company_id, mensagem_prompt, criterio_ia, bloqueada_para_ia")
+        .select("id, nome, company_id, mensagem_prompt")
         .eq("company_id", companyId)
         .ilike("nome", queryName)
         .order("ordem", { ascending: true })
@@ -182,7 +182,7 @@ export async function executeCrmCopilotActionInternal(
     // Verificar si ya existe una etapa con el mismo nombre en este embudo
     const { data: existingStage } = await adminSupabase
       .from("crm_stage")
-      .select("id, nome, mensagem_prompt, criterio_ia, bloqueada_para_ia")
+      .select("id, nome, mensagem_prompt")
       .eq("company_id", companyId)
       .eq("pipeline_id", pipelineId)
       .ilike("nome", nome)

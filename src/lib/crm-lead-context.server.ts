@@ -109,7 +109,7 @@ export async function gatherLeadComprehensiveContext(
     if (!cardId) return null;
     const { data: dbCard } = await client
       .from("crm_cards")
-      .select("id, company_id, pipeline_id, stage_id, owner_id, numero, nome, valor, campos_extras, canal_chat, tags, observacao, origem, canal_entrada, stage_entrou_em, email, empresa, cpf_cnpj, item_id, item_nome, item_tipo, proxima_acao, status, primeiro_contato_em, perdido_em, reativado_em, entrou_stage_em, ultimo_analise_ia_em")
+      .select("id, company_id, pipeline_id, stage_id, owner_id, numero, nome, valor, campos_extras, canal_chat, tags, observacao, origem, canal_entrada, stage_entrou_em, email, empresa, cpf_cnpj, item_id, item_nome, item_tipo, proxima_acao, status, primeiro_contato_em, perdido_em, reativado_em, entrou_stage_em")
       .eq("id", cardId)
       .eq("company_id", companyId)
       .maybeSingle();
@@ -358,6 +358,8 @@ export function formatComprehensiveContextForPrompt(
 ): string {
   const { card } = ctx;
   const parts: string[] = [];
+  const currencyCode = locale.startsWith("es") || locale.startsWith("en") ? "USD" : "BRL";
+  const zeroCur = currencyCode === "BRL" ? "R$ 0,00" : "$0.00";
 
   // 1. Ficha del Lead
   const tagsStr = Array.isArray(card.tags) && card.tags.length > 0 ? card.tags.join(", ") : "Ninguna";
