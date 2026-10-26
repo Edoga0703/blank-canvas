@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-25T22:42:45.561596+00:00",
+  "generated_at": "2026-10-26T01:22:05.080690+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -615,7 +615,7 @@
     },
     {
       "path": "src/lib/crm-engine.server.ts",
-      "bytes": 16882
+      "bytes": 16933
     },
     {
       "path": "src/lib/knowledge-extract.server.ts",
@@ -643,11 +643,11 @@
     },
     {
       "path": "src/lib/meta-leads.server.ts",
-      "bytes": 4085
+      "bytes": 4136
     },
     {
       "path": "src/lib/resumo.functions.ts",
-      "bytes": 2322
+      "bytes": 2315
     },
     {
       "path": "src/lib/support-kb.ts",
@@ -667,7 +667,7 @@
     },
     {
       "path": "src/lib/master.functions.ts",
-      "bytes": 52250
+      "bytes": 52255
     },
     {
       "path": "src/lib/dapi.server.ts",
@@ -699,7 +699,7 @@
     },
     {
       "path": "src/lib/sentimento.functions.ts",
-      "bytes": 3147
+      "bytes": 3140
     },
     {
       "path": "src/lib/servicos.functions.ts",
@@ -751,7 +751,7 @@
     },
     {
       "path": "src/lib/sectors.functions.ts",
-      "bytes": 14009
+      "bytes": 14162
     },
     {
       "path": "src/lib/integracoes.functions.ts",
@@ -759,7 +759,7 @@
     },
     {
       "path": "src/lib/agent-copilot.server.ts",
-      "bytes": 9885
+      "bytes": 9935
     },
     {
       "path": "src/lib/company-cache.ts",
@@ -823,11 +823,11 @@
     },
     {
       "path": "src/lib/evolution-helpers.ts",
-      "bytes": 9582
+      "bytes": 9633
     },
     {
       "path": "src/lib/sector-assignment.server.ts",
-      "bytes": 3209
+      "bytes": 3260
     },
     {
       "path": "src/lib/agendamentos.functions.ts",
@@ -855,7 +855,7 @@
     },
     {
       "path": "src/lib/handoff-summary.server.ts",
-      "bytes": 3302
+      "bytes": 3349
     },
     {
       "path": "src/lib/meta-oauth.server.ts",
@@ -891,7 +891,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.functions.ts",
-      "bytes": 3269
+      "bytes": 3279
     },
     {
       "path": "src/lib/meta-content.functions.ts",
@@ -955,7 +955,7 @@
     },
     {
       "path": "src/lib/crm-copilot.server.ts",
-      "bytes": 18442
+      "bytes": 18538
     },
     {
       "path": "src/lib/agendamentos-dispatch.server.ts",
@@ -975,7 +975,7 @@
     },
     {
       "path": "src/lib/agent-copilot.functions.ts",
-      "bytes": 9856
+      "bytes": 9956
     },
     {
       "path": "src/lib/sheets.functions.ts",
@@ -987,7 +987,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.server.ts",
-      "bytes": 15262
+      "bytes": 15571
     },
     {
       "path": "src/lib/wablast.server.ts",
@@ -1011,7 +1011,7 @@
     },
     {
       "path": "src/lib/templates.functions.ts",
-      "bytes": 4758
+      "bytes": 4808
     },
     {
       "path": "src/lib/partners.functions.ts",
@@ -1039,7 +1039,7 @@
     },
     {
       "path": "src/lib/comercial.functions.ts",
-      "bytes": 10436
+      "bytes": 10487
     },
     {
       "path": "src/lib/meta.server.ts",
@@ -1139,11 +1139,11 @@
     },
     {
       "path": "src/lib/atendimento-live-analysis.server.ts",
-      "bytes": 2106
+      "bytes": 2099
     },
     {
       "path": "src/lib/crm-copilot.functions.ts",
-      "bytes": 22448
+      "bytes": 22735
     },
     {
       "path": "src/lib/forward.functions.ts",
@@ -1163,7 +1163,7 @@
     },
     {
       "path": "src/lib/crm-lead-context.server.ts",
-      "bytes": 16958
+      "bytes": 17070
     },
     {
       "path": "src/lib/produtos.functions.ts",
@@ -1235,11 +1235,11 @@
     },
     {
       "path": "src/lib/kanban-engine.server.ts",
-      "bytes": 15116
+      "bytes": 15157
     },
     {
       "path": "src/lib/lead-coach.functions.ts",
-      "bytes": 3610
+      "bytes": 3652
     },
     {
       "path": "src/lib/atendimento-relatorios.functions.ts",
@@ -1279,7 +1279,7 @@
     },
     {
       "path": "src/lib/department-menu.server.ts",
-      "bytes": 5892
+      "bytes": 5943
     },
     {
       "path": "src/lib/meta-sync.server.ts",
@@ -1747,7 +1747,7 @@
     },
     {
       "path": "src/components/crm/lead-drawer.tsx",
-      "bytes": 79067
+      "bytes": 79071
     },
     {
       "path": "src/components/crm/crm-copilot-sheet.tsx",
@@ -2407,11 +2407,11 @@
     },
     {
       "path": "src/lib/i18n/context.tsx",
-      "bytes": 13268
+      "bytes": 14284
     },
     {
       "path": "src/lib/i18n/translations.ts",
-      "bytes": 52383
+      "bytes": 57477
     },
     {
       "path": "src/lib/messaging/provider-registry.server.ts",
@@ -2559,7 +2559,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 194481
+      "bytes": 194531
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -2663,7 +2663,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 150729
+      "bytes": 150779
     },
     {
       "path": "src/routes/app/treinamentos.$courseId.tsx",
@@ -8706,10 +8706,6 @@
     {
       "source": "src/components/crm/lead-drawer.tsx",
       "target": "@/lib/i18n/context"
-    },
-    {
-      "source": "src/components/crm/lead-drawer.tsx",
-      "target": "@tanstack/react-start"
     },
     {
       "source": "src/components/crm/lead-drawer.tsx",
