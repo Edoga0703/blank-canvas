@@ -55,7 +55,7 @@ export async function gerarResumoHandoff(
             role: "system",
             content:
               "Você é um assistente de vendas. Resuma a conversa para o atendente humano que vai assumir. " +
-              "Responda em português do Brasil, sem markdown pesado, no formato exato:\n" +
+              "Responda no idioma de atendimento da conversa (Español, English ou Português), sem markdown pesado, no formato exato:\n" +
               "RESUMO: (2 a 4 linhas do que o cliente quer e do que já foi dito)\n" +
               "DADOS: (dados coletados: nome, produto/serviço, valores, prazos — ou 'não informado')\n" +
               "OBJEÇÕES: (dúvidas ou travas do cliente, ou 'nenhuma')\n" +

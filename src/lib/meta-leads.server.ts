@@ -28,7 +28,7 @@ export async function processMetaLeadRecord(admin: Admin, input: { companyId: st
   };
   if (firstStage) { payload.pipeline_id = firstStage.pipeline_id; payload.stage_id = firstStage.id; payload.status = firstStage.nome; }
 
-  const { data: existing } = await admin.from("crm_cards").select("id,meta_lead_id").eq("company_id", input.companyId).eq("numero", cleanNumero).maybeSingle();
+  const { data: existing } = await admin.from("crm_cards").select("id,meta_lead_id").eq("company_id", input.companyId).eq("numero", cleanNumero).order("updated_at", { ascending: false }).limit(1).maybeSingle();
   let cardId: string;
   if (existing?.id) {
     await admin.from("crm_cards").update({ ultima_mensagem: payload.ultima_mensagem, ultima_em: payload.ultima_em, meta_lead_id: input.leadId }).eq("id", existing.id);

@@ -161,7 +161,7 @@ async function processKanbanReguaCard(admin: Admin, card: KanbanCardRow): Promis
     const prompt = renderTemplate(cleanStagePrompt, vars);
     texto = (await lovableAiChat(
       [
-        { role: "system", content: "Você redige mensagens curtas de WhatsApp em português brasileiro, tom natural, sem hashtags nem markdown, máximo 3 linhas." },
+        { role: "system", content: "Você redige mensagens curtas de WhatsApp no idioma de atendimento configurado da empresa (es, en ou pt-BR), tom natural, sem hashtags nem markdown, máximo 3 linhas." },
         { role: "user", content: prompt },
       ],
       "google/gemini-2.5-flash-lite",

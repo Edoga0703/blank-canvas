@@ -592,17 +592,22 @@ function KanbanPage() {
   async function createPipeline(nome: string, queueId?: string | null, agentId?: string | null, crmMasterPrompt?: string | null) {
     const ordem = pipelines.length;
     const { data, error } = await supabase.from("crm_pipeline")
-      .insert({ company_id: companyId, nome, tipo: "custom", ordem, sistema: false, distribution_queue_id: queueId || null, agent_id: agentId || null })
+      .insert({
+        company_id: companyId,
+        nome,
+        tipo: "custom",
+        ordem,
+        sistema: false,
+        distribution_queue_id: queueId || null,
+        agent_id: agentId || null,
+        crm_master_prompt: crmMasterPrompt?.trim() || null,
+      } as any)
       .select("id").maybeSingle();
     if (error || !data) return toast.error(error?.message ?? "Falha ao criar funil");
-    if (agentId && crmMasterPrompt) {
-      await supabase.from("agent_config").update({ como_vender: crmMasterPrompt }).eq("id", agentId);
-    }
     // Cria etapas iniciais
     await supabase.from("crm_stage").insert([
       { company_id: companyId, pipeline_id: data.id, nome: "A fazer", ordem: 0, cor: "#8AA89A", tipo: "normal" },
       { company_id: companyId, pipeline_id: data.id, nome: "Em andamento", ordem: 1, cor: "#FFB020", tipo: "normal" },
-
       { company_id: companyId, pipeline_id: data.id, nome: "Concluído", ordem: 2, cor: "#22B85F", tipo: "ganho" },
     ]);
     toast.success("Funil criado");
@@ -611,13 +616,18 @@ function KanbanPage() {
   }
 
   async function renamePipeline(id: string, nome: string, queueId?: string | null, agentId?: string | null, crmMasterPrompt?: string | null) {
-    const { error } = await supabase.from("crm_pipeline").update({ nome, distribution_queue_id: queueId || null, agent_id: agentId || null }).eq("id", id);
-    if (error) return toast.error(error.message);
-    if (agentId && crmMasterPrompt) {
-      await supabase.from("agent_config").update({ como_vender: crmMasterPrompt }).eq("id", agentId);
+    const updatePayload: Record<string, any> = {
+      nome,
+      distribution_queue_id: queueId || null,
+      agent_id: agentId || null,
+    };
+    if (crmMasterPrompt !== undefined) {
+      updatePayload.crm_master_prompt = crmMasterPrompt?.trim() || null;
     }
+    const { error } = await supabase.from("crm_pipeline").update(updatePayload as any).eq("id", id);
+    if (error) return toast.error(error.message);
 
-    toast.success("Funil renomeado");
+    toast.success("Funil atualizado");
   }
 
   async function deletePipeline(id: string) {

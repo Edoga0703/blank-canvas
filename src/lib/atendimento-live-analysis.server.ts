@@ -20,7 +20,7 @@ export async function analyzeOperationalCards(supabase: any, companyId: string, 
       const resposta = await lovableAiChat([
         { role: "system", content: "Você monitora atendimentos em tempo real. Não invente fatos. Responda só JSON válido: {\"solicitacao\":\"o que o cliente pediu\",\"andamento\":\"o que já foi feito ou o que falta\",\"situacao\":\"resolvido\"|\"pendente\"}." },
         { role: "user", content: historico },
-      ], "openai/gpt-6-astra");
+      ], "gpt-4o-mini");
       const parsed = JSON.parse(resposta.replace(/^```json\s*|\s*```$/g, "").trim());
       const { error } = await supabase.from("atendimento_live_analise").upsert({
         company_id: companyId,

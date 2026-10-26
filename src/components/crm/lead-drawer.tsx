@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -24,7 +25,7 @@ import { CANAL_LABEL, CANAL_COLOR, type CanalEntrada } from "@/lib/tracking-util
 import { ConversationMediaTab } from "@/components/chat/conversation-media-panel";
 import { OlistPedidosTab } from "@/components/crm/olist-pedidos-tab";
 import { useLanguage, formatDate, formatTime, formatCurrency, translateDefaultStageName, translateDefaultPipelineName } from "@/lib/i18n/context";
-import { useServerFn } from "@tanstack/react-start";
+
 import { applyStageMovement } from "@/lib/crm-lead-analyzer.functions";
 import { CrmCopilotSheet } from "@/components/crm/crm-copilot-sheet";
 import { useCapacidadeAtiva } from "@/hooks/use-capacidades";
@@ -122,6 +123,7 @@ export function LeadDetailsPanel({
   const [local, setLocal] = useState<LeadCard & { pipeline_id?: string | null }>(card as any);
   const [encaminharOpen, setEncaminharOpen] = useState(false);
   const chatActionFn = useServerFn(handleChatAction);
+  const moveStageFn = useServerFn(applyStageMovement);
   const [tab, setTab] = useState("dados");
   const [editValor, setEditValor] = useState(false);
   const [funilOpen, setFunilOpen] = useState(false);

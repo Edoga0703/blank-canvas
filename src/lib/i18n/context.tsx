@@ -340,17 +340,49 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 export function useLanguage(): LanguageContextType {
   const context = useContext(LanguageContext);
   if (!context) {
-    const fallbackT = (key: string, params?: Record<string, any> | string, def?: string) =>
-      typeof params === "string" ? params : def || key;
+    const lang = getSavedLanguage();
+    const loc = getLocaleCode(lang);
+    const fallbackT = (key: string, params?: Record<string, any> | string, def?: string) => {
+      const defaultStr = typeof params === "string" ? params : def || key;
+      const parts = key.split(".");
+      let cur: any = (translations as any)[lang];
+      for (const part of parts) {
+        if (cur && typeof cur === "object" && part in cur) {
+          cur = cur[part];
+        } else {
+          cur = undefined;
+          break;
+        }
+      }
+      if (typeof cur !== "string") {
+        let ptCur: any = (translations as any)["pt"];
+        for (const part of parts) {
+          if (ptCur && typeof ptCur === "object" && part in ptCur) {
+            ptCur = ptCur[part];
+          } else {
+            ptCur = undefined;
+            break;
+          }
+        }
+        if (typeof ptCur === "string") cur = ptCur;
+      }
+      let res = typeof cur === "string" ? cur : defaultStr;
+      if (params && typeof params === "object") {
+        for (const [pKey, pVal] of Object.entries(params)) {
+          res = res.replace(new RegExp(`\\{${pKey}\\}`, "g"), String(pVal));
+        }
+      }
+      return res;
+    };
     return {
-      language: "es" as SupportedLanguage,
-      localeCode: "es-ES",
+      language: lang,
+      localeCode: loc,
       setLanguage: async () => {},
       t: fallbackT,
       languages: SUPPORTED_LANGUAGES,
-      formatDate: (d, opt) => (d ? new Date(d).toLocaleDateString("es-ES", opt) : ""),
-      formatTime: (d, opt) => (d ? new Date(d).toLocaleTimeString("es-ES", opt) : ""),
-      formatNumber: (v, opt) => (v != null ? Number(v).toLocaleString("es-ES", opt) : "0"),
+      formatDate: (d, opt) => (d ? new Date(d).toLocaleDateString(loc, opt) : ""),
+      formatTime: (d, opt) => (d ? new Date(d).toLocaleTimeString(loc, opt) : ""),
+      formatNumber: (v, opt) => (v != null ? Number(v).toLocaleString(loc, opt) : "0"),
       formatCurrency: (v) => (v != null ? `$ ${Number(v).toFixed(2)}` : "$ 0.00"),
       translateDefaultStageName: (n) => n,
       translateDefaultPipelineName: (n) => n,

@@ -109,7 +109,7 @@ export async function processDepartmentMenu(
     .select("department_id")
     .eq("company_id", companyId)
     .eq("numero", numero)
-    .maybeSingle();
+    .order("updated_at", { ascending: false }).limit(1).maybeSingle();
   if (card?.department_id) return null;
 
   const { data: session } = await admin

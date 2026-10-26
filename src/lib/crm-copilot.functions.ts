@@ -79,7 +79,7 @@ export async function executeCrmCopilotActionInternal(
     if (rawStageId) {
       const { data: stById } = await adminSupabase
         .from("crm_stage")
-        .select("id, nome, company_id, mensagem_prompt")
+        .select("id, nome, company_id, mensagem_prompt, criterio_ia, bloqueada_para_ia")
         .eq("id", rawStageId)
         .eq("company_id", companyId)
         .maybeSingle();
@@ -90,9 +90,11 @@ export async function executeCrmCopilotActionInternal(
       const queryName = stageNameFallback || rawStageId;
       const { data: stByName } = await adminSupabase
         .from("crm_stage")
-        .select("id, nome, company_id, mensagem_prompt")
+        .select("id, nome, company_id, mensagem_prompt, criterio_ia, bloqueada_para_ia")
         .eq("company_id", companyId)
         .ilike("nome", queryName)
+        .order("ordem", { ascending: true })
+        .limit(1)
         .maybeSingle();
       stage = stByName;
     }
@@ -180,11 +182,13 @@ export async function executeCrmCopilotActionInternal(
     // Verificar si ya existe una etapa con el mismo nombre en este embudo
     const { data: existingStage } = await adminSupabase
       .from("crm_stage")
-      .select("id, nome, mensagem_prompt")
+      .select("id, nome, mensagem_prompt, criterio_ia, bloqueada_para_ia")
       .eq("company_id", companyId)
       .eq("pipeline_id", pipelineId)
       .ilike("nome", nome)
-      .maybeSingle();
+        .order("ordem", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
     if (existingStage) {
       // Actualizar la existente en vez de duplicarla
@@ -299,21 +303,12 @@ export async function executeCrmCopilotActionInternal(
 
     if (pipeErr || !pipe) throw new Error("Embudo no encontrado.");
 
-    if (pipe.agent_id) {
-      await adminSupabase
-        .from("agent_config")
-        .update({
-          como_vender: crmMasterPrompt,
-        })
-        .eq("id", pipe.agent_id);
-    } else {
-      await adminSupabase
-        .from("agent_config")
-        .update({
-          como_vender: crmMasterPrompt,
-        })
-        .eq("company_id", companyId);
-    }
+    await adminSupabase
+      .from("crm_pipeline")
+      .update({
+        crm_master_prompt: crmMasterPrompt || null,
+      } as any)
+      .eq("id", pipe.id);
 
     await adminSupabase.from("audit_log").insert({
       company_id: companyId,
@@ -361,6 +356,8 @@ export async function executeCrmCopilotActionInternal(
         .select("id, nome")
         .eq("company_id", companyId)
         .ilike("nome", queryName)
+        .order("ordem", { ascending: true })
+        .limit(1)
         .maybeSingle();
       stage = stByName;
     }
@@ -418,6 +415,8 @@ export async function executeCrmCopilotActionInternal(
         .select("id, nome, modo_atendimento")
         .eq("company_id", companyId)
         .ilike("nome", targetStageName)
+        .order("ordem", { ascending: true })
+        .limit(1)
         .maybeSingle();
       destStage = stByName;
     }
@@ -469,6 +468,8 @@ export async function executeCrmCopilotActionInternal(
         .select("id, nome")
         .eq("company_id", companyId)
         .ilike("nome", oldName)
+        .order("ordem", { ascending: true })
+        .limit(1)
         .maybeSingle();
       stage = sByName;
     }
@@ -519,6 +520,8 @@ export async function executeCrmCopilotActionInternal(
         .select("id, nome, pipeline_id")
         .eq("company_id", companyId)
         .ilike("nome", stageName)
+        .order("ordem", { ascending: true })
+        .limit(1)
         .maybeSingle();
       stage = sByName;
     }
@@ -585,7 +588,7 @@ export async function executeCrmCopilotActionInternal(
  */
 export const askCrmCopilot = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: {
+  .inputValidator((d: {
     messages: CrmCopilotChatMessage[];
     pipelineId?: string | null;
     cardId?: string | null;
@@ -640,7 +643,7 @@ export const askCrmCopilot = createServerFn({ method: "POST" })
 
 export const executeCrmCopilotAction = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: {
+  .inputValidator((d: {
     action: CrmCopilotActionProposal;
     pipelineId?: string | null;
     cardId?: string | null;
@@ -672,7 +675,7 @@ export const executeCrmCopilotAction = createServerFn({ method: "POST" })
  */
 export const executeAllCrmCopilotActions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: {
+  .inputValidator((d: {
     actions: CrmCopilotActionProposal[];
     pipelineId?: string | null;
     cardId?: string | null;

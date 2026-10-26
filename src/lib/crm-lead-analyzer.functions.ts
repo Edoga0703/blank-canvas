@@ -9,7 +9,7 @@ import { processKanbanReguaForNumero } from "./kanban-engine.server";
 
 export const analyzeLeadNow = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: { cardId: string }) => {
+  .inputValidator((d: { cardId: string }) => {
     if (!d?.cardId) throw new Error("cardId requerido");
     return { cardId: d.cardId };
   })
@@ -20,7 +20,7 @@ export const analyzeLeadNow = createServerFn({ method: "POST" })
 
 export const applyStageMovement = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: { cardId: string; stageId?: string; targetStageId?: string; reason?: string }) => {
+  .inputValidator((d: { cardId: string; stageId?: string; targetStageId?: string; reason?: string }) => {
     const resolvedCardId = String(d?.cardId || "").trim();
     const resolvedStageId = String(d?.stageId || d?.targetStageId || "").trim();
     if (!resolvedCardId || !resolvedStageId) throw new Error("cardId y stageId son requeridos");

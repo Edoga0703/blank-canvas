@@ -33,7 +33,7 @@ export async function getCrmCopilotContext(
   // 1. Obtener todos los embudos de la empresa (solo columnas existentes en Postgres)
   const { data: allPipelines } = await supabase
     .from("crm_pipeline")
-    .select("id, nome, tipo, agent_id")
+    .select("id, nome, tipo, agent_id, crm_master_prompt")
     .eq("company_id", companyId)
     .order("ordem", { ascending: true });
 
@@ -61,7 +61,7 @@ export async function getCrmCopilotContext(
           ordem: 0,
           sistema: true,
         })
-        .select("id, nome, tipo, agent_id")
+        .select("id, nome, tipo, agent_id, crm_master_prompt")
         .maybeSingle();
       pipeline = createdPipe;
       resolvedPipelineId = createdPipe?.id || null;
@@ -75,7 +75,7 @@ export async function getCrmCopilotContext(
   if (resolvedPipelineId) {
     const { data: stByPipe } = await supabase
       .from("crm_stage")
-      .select("id, nome, cor, tipo, ordem, mensagem_prompt, modo_atendimento, move_apos_qualificar_para, ia_handoff_stage_id, pipeline_id")
+      .select("id, nome, cor, tipo, ordem, mensagem_prompt, modo_atendimento, move_apos_qualificar_para, ia_handoff_stage_id, pipeline_id, criterio_ia, bloqueada_para_ia")
       .eq("company_id", companyId)
       .or(`pipeline_id.eq.${resolvedPipelineId},pipeline_id.is.null`)
       .order("ordem", { ascending: true });
@@ -85,7 +85,7 @@ export async function getCrmCopilotContext(
   if (rawStages.length === 0) {
     const { data: anyStages } = await supabase
       .from("crm_stage")
-      .select("id, nome, cor, tipo, ordem, mensagem_prompt, modo_atendimento, move_apos_qualificar_para, ia_handoff_stage_id, pipeline_id")
+      .select("id, nome, cor, tipo, ordem, mensagem_prompt, modo_atendimento, move_apos_qualificar_para, ia_handoff_stage_id, pipeline_id, criterio_ia, bloqueada_para_ia")
       .eq("company_id", companyId)
       .order("ordem", { ascending: true });
     rawStages = anyStages || [];
@@ -192,8 +192,8 @@ export function buildCrmCopilotSystemPrompt(context: {
 
   // Resumen del Catálogo
   let catalogSummary = "CATÁLOGO DE PRODUCTOS Y SERVICIOS DE LA EMPRESA:\n";
-  const prodsList = (produtos || []).map((p: any) => `* "${p.nome}" (${p.categoria || "Geral"}): R$ ${Number(p.preco || 0).toLocaleString("pt-BR")}${p.agendavel ? " [Requiere Cita Previa]" : ""}`);
-  const servsList = (servicos || []).map((s: any) => `* Serv. "${s.nome}": R$ ${(Number(s.valor_cents || 0) / 100).toLocaleString("pt-BR")} (${s.duracao_min} min)`);
+  const prodsList = (produtos || []).map((p: any) => `* "${p.nome}" (${p.categoria || "Geral"}): ${Number(p.preco || 0).toLocaleString("en-US")}${p.agendavel ? " [Requiere Cita Previa]" : ""}`);
+  const servsList = (servicos || []).map((s: any) => `* Serv. "${s.nome}": ${(Number(s.valor_cents || 0) / 100).toLocaleString("en-US")} (${s.duracao_min} min)`);
   const allItems = [...prodsList, ...servsList];
   catalogSummary += allItems.length > 0 ? allItems.join("\n") : "(Sin productos activos en catálogo)";
 

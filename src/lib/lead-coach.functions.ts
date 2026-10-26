@@ -64,7 +64,7 @@ export const analyzeLeadConversation = createServerFn({ method: "POST" })
             role: "system",
             content:
               "Você é um supervisor de atendimento e vendas. Analise a conversa abaixo e ajude o gestor a entender a qualidade do atendimento. " +
-              "Responda em português do Brasil, direto, sem markdown pesado, no formato exato:\n" +
+              "Responda no idioma principal da conversa (Español, English ou Português), direto, sem markdown pesado, no formato exato:\n" +
               "PONTOS FORTES: (2 a 4 itens do que o atendente fez bem)\n" +
               "GARGALOS: (pontos de atrito, demora, falta de clareza ou oportunidades perdidas)\n" +
               "CAUSA PROVÁVEL: (por que a conversa parou ou não avançou; se avançou, escreva 'conversa em andamento')\n" +

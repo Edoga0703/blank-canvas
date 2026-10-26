@@ -32,7 +32,7 @@ export const registerSale = createServerFn({ method: "POST" })
       .select("id, stage_id, pipeline_id")
       .eq("company_id", companyId)
       .eq("numero", cleanNum)
-      .maybeSingle();
+      .order("updated_at", { ascending: false }).limit(1).maybeSingle();
 
     let cardId = existing?.id;
     let stageId = existing?.stage_id;

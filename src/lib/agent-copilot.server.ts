@@ -35,7 +35,7 @@ export async function getAgentCopilotContext(
     { data: suggestions },
     { data: waInstances },
   ] = await Promise.all([
-    agentQuery.maybeSingle(),
+    agentQuery.order("created_at", { ascending: true }).limit(1).maybeSingle(),
     supabase
       .from("produto")
       .select("id, nome, preco, descricao, sku, categoria, ativo, agendavel, tipo")

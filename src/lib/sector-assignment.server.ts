@@ -15,7 +15,7 @@ export async function assignCardToSector(
       .select("id,department_id,owner_id")
       .eq("company_id", companyId)
       .eq("numero", numero)
-      .maybeSingle(),
+      .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
     admin
       .from("department")
       .select("id,nome")

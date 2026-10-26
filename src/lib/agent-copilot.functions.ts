@@ -114,7 +114,7 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
       if (data.agentId) query = query.eq("id", data.agentId);
       else query = query.eq("tipo", data.tipo);
 
-      const { data: cfg, error: cfgErr } = await query.maybeSingle();
+      const { data: cfg, error: cfgErr } = await query.order("created_at", { ascending: true }).limit(1).maybeSingle();
       if (cfgErr || !cfg) throw new Error("Agente não encontrado.");
 
       const current = (cfg.regras_rigidas || "").trim();
@@ -226,7 +226,7 @@ export const auditAgentRules = createServerFn({ method: "POST" })
     if (data.agentId) query = query.eq("id", data.agentId);
     else query = query.eq("company_id", companyId).eq("tipo", data.tipo);
 
-    const { data: cfg } = await query.maybeSingle();
+    const { data: cfg } = await query.order("created_at", { ascending: true }).limit(1).maybeSingle();
     if (!cfg || !cfg.regras_rigidas?.trim()) {
       return {
         has_conflicts: false,

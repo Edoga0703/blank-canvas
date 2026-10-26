@@ -107,7 +107,7 @@ export const getSectorRouting = createServerFn({ method: "GET" })
         supabase.from("crm_stage").select("id,nome,pipeline_id,ordem").eq("company_id", companyId).order("ordem"),
         supabase.from("department_member").select("department_id,user_id"),
         supabase.from("company_user").select("user_id").eq("company_id", companyId).eq("ativo", true),
-        supabase.from("company").select("distribuicao_manual").eq("id", companyId).maybeSingle(),
+        supabase.from("company").select("distribuicao_manual").eq("id", companyId).order("updated_at", { ascending: false }).limit(1).maybeSingle(),
       ]);
 
     const teamIds = ((team ?? []) as any[]).map((t) => t.user_id as string);
@@ -196,7 +196,7 @@ export const encaminharCard = createServerFn({ method: "POST" })
       .select("id,owner_id")
       .eq("company_id", companyId)
       .eq("numero", data.numero)
-      .maybeSingle();
+      .order("updated_at", { ascending: false }).limit(1).maybeSingle();
     if (!card) throw new Error("Conversa não encontrada.");
 
     const patch: Record<string, any> = {};
@@ -325,7 +325,7 @@ export const responderTransferencia = createServerFn({ method: "POST" })
       .select("id,owner_id,transfer_para_user_id,transfer_de_user_id,transfer_status")
       .eq("company_id", companyId)
       .eq("numero", data.numero)
-      .maybeSingle();
+      .order("updated_at", { ascending: false }).limit(1).maybeSingle();
     if (!card) throw new Error("Conversa não encontrada.");
     const c = card as any;
     if (c.transfer_status !== "pendente" || c.transfer_para_user_id !== userId) {

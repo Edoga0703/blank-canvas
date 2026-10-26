@@ -105,7 +105,7 @@ export async function getInstanceForContact(
     .select("canal_chat,canal_entrada")
     .eq("company_id", companyId)
     .eq("numero", numero)
-    .maybeSingle();
+    .order("updated_at", { ascending: false }).limit(1).maybeSingle();
 
   let canal = String((card as any)?.canal_chat ?? "").toLowerCase();
   if (!canal || canal === "null" || canal === "undefined") {

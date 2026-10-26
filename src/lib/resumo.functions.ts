@@ -51,7 +51,7 @@ export const resumirConversa = createServerFn({ method: "POST" })
         },
         { role: "user", content: linhas },
       ],
-      "openai/gpt-6-astra",
+      "gpt-4o-mini",
     );
 
     return { ok: true as const, resumo };

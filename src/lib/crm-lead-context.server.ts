@@ -109,7 +109,7 @@ export async function gatherLeadComprehensiveContext(
     if (!cardId) return null;
     const { data: dbCard } = await client
       .from("crm_cards")
-      .select("id, company_id, pipeline_id, stage_id, owner_id, numero, nome, valor, campos_extras, canal_chat, tags, observacao, origem, canal_entrada, stage_entrou_em, email, empresa, cpf_cnpj, item_id, item_nome, item_tipo, proxima_acao, status, primeiro_contato_em, perdido_em, reativado_em")
+      .select("id, company_id, pipeline_id, stage_id, owner_id, numero, nome, valor, campos_extras, canal_chat, tags, observacao, origem, canal_entrada, stage_entrou_em, email, empresa, cpf_cnpj, item_id, item_nome, item_tipo, proxima_acao, status, primeiro_contato_em, perdido_em, reativado_em, entrou_stage_em, ultimo_analise_ia_em")
       .eq("id", cardId)
       .eq("company_id", companyId)
       .maybeSingle();
@@ -367,13 +367,13 @@ export function formatComprehensiveContextForPrompt(
 
   let ficha = `FICHA COMERCIAL Y CONTEXTO DEL LEAD:
 - Contacto: "${card.nome || card.numero}" (Número: ${card.numero || "N/A"}, Canal: ${card.canal_chat || "whatsapp"})
-- Empresa / Razón Social: ${card.empresa || ctx.prospeccao?.razao_social || "No declarada"}
+- Empresa / Razón Social: ${card.empresa || (ctx.prospeccao as any)?.nome || ctx.prospeccao?.razao_social || "No declarada"}
 - Email: ${card.email || "No declarado"} | CPF/CNPJ: ${card.cpf_cnpj || ctx.prospeccao?.cnpj || "No declarado"}
 - Asesor Comercial Asignado: ${ctx.ownerName ? `"${ctx.ownerName}" (${ctx.ownerEmail || ""})` : "Sin asesor asignado (Turno general)"}
 - Estado de Atención: ${pauseAlert}
 - Etiquetas (Tags): [${tagsStr}]
 - Observaciones internas del lead: ${card.observacao ? `"${card.observacao}"` : "Ninguna"}
-- Valor actual en el CRM: ${card.valor ? `${Number(card.valor).toLocaleString(locale, { style: "currency", currency: "BRL" })}` : "R$ 0,00"}
+- Valor actual en el CRM: ${card.valor ? `${Number(card.valor).toLocaleString(locale, { style: "currency", currency: currencyCode })}` : zeroCur}
 - Tiempo en la etapa actual: ${ctx.diasNaEtapaAtual !== null ? `${ctx.diasNaEtapaAtual} día(s)` : "Reciente"} ${ctx.diasNaEtapaAtual && ctx.diasNaEtapaAtual > 7 ? "(⚠️ Alerta de estancamiento / SLA superado)" : ""}`;
 
   if (card.origem || card.canal_entrada) {
@@ -387,15 +387,15 @@ export function formatComprehensiveContextForPrompt(
   // 2. Catálogo Comercial
   let catBlock = `CATÁLOGO DE PRODUCTOS Y SERVICIOS DE LA EMPRESA:`;
   if (ctx.matchedItem) {
-    catBlock += `\n- Item de interés seleccionado en la tarjeta: "${ctx.matchedItem.nome}" (Tipo: ${ctx.matchedItem.tipo}, Precio: ${ctx.matchedItem.preco !== null ? ctx.matchedItem.preco.toLocaleString(locale, { style: "currency", currency: "BRL" }) : "A consultar"}${ctx.matchedItem.agendavel ? ", Requiere Agendamiento: SÍ" : ""})`;
+    catBlock += `\n- Item de interés seleccionado en la tarjeta: "${ctx.matchedItem.nome}" (Tipo: ${ctx.matchedItem.tipo}, Precio: ${ctx.matchedItem.preco !== null ? ctx.matchedItem.preco.toLocaleString(locale, { style: "currency", currency: currencyCode }) : "A consultar"}${ctx.matchedItem.agendavel ? ", Requiere Agendamiento: SÍ" : ""})`;
   }
   const prodsList = (ctx.produtos || []).slice(0, 10).map((p) => {
     const ag = p.agendavel ? " [Requiere Cita Previa]" : "";
     const cat = p.categoria ? ` (${p.categoria})` : "";
-    return `  * "${p.nome}"${cat}: ${Number(p.preco || 0).toLocaleString(locale, { style: "currency", currency: "BRL" })}${ag}`;
+    return `  * "${p.nome}"${cat}: ${Number(p.preco || 0).toLocaleString(locale, { style: "currency", currency: currencyCode })}${ag}`;
   });
   const servsList = (ctx.servicos || []).slice(0, 5).map((s) => {
-    return `  * Serv. "${s.nome}": ${(Number(s.valor_cents || 0) / 100).toLocaleString(locale, { style: "currency", currency: "BRL" })} (${s.duracao_min} min)`;
+    return `  * Serv. "${s.nome}": ${(Number(s.valor_cents || 0) / 100).toLocaleString(locale, { style: "currency", currency: currencyCode })} (${s.duracao_min} min)`;
   });
   const allItems = [...prodsList, ...servsList];
   if (allItems.length > 0) {
@@ -415,9 +415,9 @@ export function formatComprehensiveContextForPrompt(
 
   // 4. Historial Comercial / Ventas Previas
   if (ctx.vendasPrevias && ctx.vendasPrevias.length > 0) {
-    const totalBrl = (ctx.totalVendidoAnteriorCents / 100).toLocaleString(locale, { style: "currency", currency: "BRL" });
+    const totalBrl = (ctx.totalVendidoAnteriorCents / 100).toLocaleString(locale, { style: "currency", currency: currencyCode });
     const vendList = ctx.vendasPrevias
-      .map((v) => `  * ${v.vendido_em ? new Date(v.vendido_em).toLocaleDateString(locale) : ""}: "${v.item_nome || "Venta"}" por ${(Number(v.valor_cents) / 100).toLocaleString(locale, { style: "currency", currency: "BRL" })} (${v.metodo_pagamento || "Pago"})`)
+      .map((v) => `  * ${v.vendido_em ? new Date(v.vendido_em).toLocaleDateString(locale) : ""}: "${v.item_nome || "Venta"}" por ${(Number(v.valor_cents) / 100).toLocaleString(locale, { style: "currency", currency: currencyCode })} (${v.metodo_pagamento || "Pago"})`)
       .join("\n");
     parts.push(`HISTORIAL COMERCIAL PREVIO (CLIENTE RECURRENTE):\n- Total histórico comprado: ${totalBrl}\n- Ventas anteriores:\n${vendList}`);
   }

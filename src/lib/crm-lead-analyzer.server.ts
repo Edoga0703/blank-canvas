@@ -89,14 +89,14 @@ export async function analyzeLeadInternal(
     pipelineId
       ? supabaseAdmin
           .from("crm_pipeline")
-          .select("id, nome, agent_id, tipo")
+          .select("id, nome, agent_id, tipo, crm_master_prompt")
           .eq("id", pipelineId)
           .maybeSingle()
       : Promise.resolve({ data: null }),
     pipelineId
       ? supabaseAdmin
           .from("crm_stage")
-          .select("id, nome, cor, tipo, ordem, mensagem_prompt, agent_id, modo_atendimento, pipeline_id")
+          .select("id, nome, cor, tipo, ordem, mensagem_prompt, agent_id, modo_atendimento, pipeline_id, criterio_ia, bloqueada_para_ia")
           .eq("pipeline_id", pipelineId)
           .order("ordem", { ascending: true })
       : Promise.resolve({ data: [] }),
@@ -107,7 +107,7 @@ export async function analyzeLeadInternal(
   if (finalStages.length === 0) {
     const { data: anyStages } = await supabaseAdmin
       .from("crm_stage")
-      .select("id, nome, cor, tipo, ordem, mensagem_prompt, agent_id, modo_atendimento, pipeline_id")
+      .select("id, nome, cor, tipo, ordem, mensagem_prompt, agent_id, modo_atendimento, pipeline_id, criterio_ia, bloqueada_para_ia")
       .eq("company_id", companyId)
       .order("ordem", { ascending: true });
     finalStages = anyStages || [];
@@ -172,7 +172,7 @@ export async function analyzeLeadInternal(
     })
     .join("\n\n");
 
-  const masterPrompt = DEFAULT_CRM_MASTER_PROMPT;
+  const masterPrompt = pipeline?.crm_master_prompt && String(pipeline.crm_master_prompt).trim().length > 0 ? String(pipeline.crm_master_prompt).trim() : DEFAULT_CRM_MASTER_PROMPT;
 
   const formattedComprehensiveContext = comprehensiveLeadCtx
     ? formatComprehensiveContextForPrompt(comprehensiveLeadCtx, localeForDates)
@@ -291,6 +291,7 @@ Responde OBLIGATORIAMENTE con un único bloque JSON válido con el siguiente for
         ultimo_analise_ia_em: nowIso,
         ultimo_diagnostico_ia: parsedResult,
       },
+      ultimo_analise_ia_em: nowIso,
       updated_at: nowIso,
     };
 
@@ -328,7 +329,7 @@ export async function checkAndAnalyzeLeadCooldown(
   try {
     const { data: card } = await supabaseAdmin
       .from("crm_cards")
-      .select("id, stage_id, owner_id, campos_extras, updated_at")
+      .select("id, stage_id, owner_id, ultimo_analise_ia_em, campos_extras, updated_at")
       .eq("company_id", companyId)
       .eq("numero", numero)
       .order("updated_at", { ascending: false })
@@ -338,7 +339,7 @@ export async function checkAndAnalyzeLeadCooldown(
     if (!card) return { triggered: false, reason: "card_not_found" };
 
     const extras = (card.campos_extras as Record<string, any>) || {};
-    const rawLast = extras.ultimo_analise_ia_em;
+    const rawLast = (card as any).ultimo_analise_ia_em || extras.ultimo_analise_ia_em;
     const ultimoAnalise = rawLast ? new Date(rawLast).getTime() : 0;
     const now = Date.now();
     const treintaMinutosMs = 30 * 60 * 1000;

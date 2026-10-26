@@ -121,7 +121,7 @@ export const getBusinessHours = createServerFn({ method: "GET" })
       .select("horarios_atendimento, mensagem_fora_horario")
       .eq("company_id", cid)
       .eq("is_default", true)
-      .maybeSingle();
+      .order("created_at", { ascending: true }).limit(1).maybeSingle();
     return {
       horarios: data?.horarios_atendimento ?? null,
       mensagem: data?.mensagem_fora_horario ?? "",

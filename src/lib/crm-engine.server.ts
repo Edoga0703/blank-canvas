@@ -52,7 +52,7 @@ export async function upsertCard(
     .select("*")
     .eq("company_id", companyId)
     .eq("numero", cleanNumero)
-    .maybeSingle();
+    .order("updated_at", { ascending: false }).limit(1).maybeSingle();
 
   // Mesmo contato gravado na outra forma do celular BR (com/sem o 9º dígito):
   // a mensagem recebida traz o número real do WhatsApp, então migramos a

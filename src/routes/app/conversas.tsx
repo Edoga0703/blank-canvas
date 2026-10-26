@@ -286,7 +286,7 @@ function ConversasPage() {
         .select("avatar_traits, avatar_url, nome_agente")
         .eq("company_id", companyId)
         .eq("tipo", "qualificacao")
-        .maybeSingle();
+        .order("created_at", { ascending: true }).limit(1).maybeSingle();
       if (data) setAgentConfig(data as any);
     };
     fetchAgent();

@@ -942,7 +942,7 @@ export const getGlobalAiConfig = createServerFn({ method: "GET" })
 
 export const saveGlobalAiConfig = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((data: any) => data)
+  .inputValidator((data: any) => data)
   .handler(async ({ context, data }) => {
     await assertSuper(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

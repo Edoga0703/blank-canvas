@@ -52,7 +52,7 @@ export const analisarSentimento = createServerFn({ method: "POST" })
         },
         { role: "user", content: linhas },
       ],
-      "openai/gpt-6-astra",
+      "gpt-4o-mini",
     );
 
     let parsed: any = null;
