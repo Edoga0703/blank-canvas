@@ -395,6 +395,19 @@ async function persistMessage(
               )
               .catch(() => null);
           }
+
+          if (hasCtwa) {
+            void import("@/lib/meta-capi.server")
+              .then(({ sendMetaConversionForLead }) =>
+                sendMetaConversionForLead({
+                  companyId: connection.company_id,
+                  cardId: currentCard.id,
+                  eventName: "LeadSubmitted",
+                  dedupKey: `${currentCard.id}_initial_LeadSubmitted`,
+                }),
+              )
+              .catch(() => null);
+          }
         } catch (trackErr: any) {
           console.warn("[ingest.tracking] Error al extraer rastreo de anuncio:", trackErr?.message);
         }

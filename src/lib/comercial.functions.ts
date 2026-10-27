@@ -135,7 +135,24 @@ export const registerSale = createServerFn({ method: "POST" })
       console.error("[integracoes] falha ao enviar venda:", e);
     }
 
-
+    // 2d. Dispara evento Purchase en Meta Conversions API (CAPI) si está activo
+    if (cardId) {
+      try {
+        const { getMetaCapiConfig, sendMetaConversionForLead } = await import("@/lib/meta-capi.server");
+        const capiCfg = await getMetaCapiConfig(companyId);
+        if (capiCfg.ativo && capiCfg.auto_send_on_sale) {
+          void sendMetaConversionForLead({
+            companyId,
+            cardId,
+            eventName: "Purchase",
+            value: Number((data.valor_cents / 100).toFixed(2)),
+            dedupKey: `sale_${novaVenda?.id || cardId}_${Date.now()}`,
+          }).catch((e) => console.warn("[meta-capi.sale] Error:", e?.message));
+        }
+      } catch (e) {
+        console.warn("[meta-capi.sale] Best-effort error:", e);
+      }
+    }
 
     // Marca o contato como cliente após a venda
     if (cardId) {

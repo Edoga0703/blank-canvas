@@ -2190,6 +2190,7 @@ function AutomacaoDialog({ companyId, stage, stages, allStages, pipelines, agent
       modo_atendimento: s.modo_atendimento ?? "auto",
       criterio_ia: aiMeta.criterio_ia ?? "",
       bloqueada_para_ia: !!aiMeta.bloqueada_para_ia,
+      meta_conversion_event: s.meta_conversion_event ?? aiMeta.meta_conversion_event ?? "",
       agent_id: s.agent_id ?? "",
       ia_handoff_stage_id: s.ia_handoff_stage_id ?? "",
       distribution_queue_id: s.distribution_queue_id ?? "",

@@ -1128,7 +1128,7 @@ export const gerarMensagemIA = createServerFn({ method: "POST" })
         "X-Lovable-AIG-SDK": "fetch",
       },
       body: JSON.stringify({
-        model: "openai/gpt-6-astra",
+        model: "gpt-4o-mini",
         stream: true,
         reasoning: { effort: "low", summary: "auto" },
         instructions:

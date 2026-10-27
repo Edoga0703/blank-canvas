@@ -90,13 +90,15 @@ export async function getMetaCapiConfig(companyId: string): Promise<MetaCapiConf
     if (!error && dedicatedCfg) {
       return {
         ativo: Boolean(dedicatedCfg.ativo),
-        modo_conexao: dedicatedCfg.modo_conexao || "waba_official",
+        modo_conexao: dedicatedCfg.modo_conexao || "hibrido",
         access_token: dedicatedCfg.access_token || null,
         waba_id: dedicatedCfg.waba_id || null,
         page_id: dedicatedCfg.page_id || null,
         instagram_account_id: dedicatedCfg.instagram_account_id || null,
         dataset_id: dedicatedCfg.dataset_id || null,
-        currency: dedicatedCfg.currency || "USD",
+        currency: dedicatedCfg.currency || dedicatedCfg.moeda_padrao || "BRL",
+        moeda_padrao: dedicatedCfg.currency || dedicatedCfg.moeda_padrao || "BRL",
+        enviar_somente_com_clique: Boolean(dedicatedCfg.enviar_somente_com_clique),
         test_event_code: dedicatedCfg.test_event_code || null,
         enable_sha256_fallback: dedicatedCfg.enable_sha256_fallback ?? true,
         auto_send_on_stage_change: dedicatedCfg.auto_send_on_stage_change ?? true,
@@ -121,13 +123,15 @@ export async function getMetaCapiConfig(companyId: string): Promise<MetaCapiConf
       const extra = typeof chaveRow.extra === "object" && chaveRow.extra !== null ? chaveRow.extra : {};
       return {
         ativo: Boolean(chaveRow.conectado),
-        modo_conexao: extra.modo_conexao || "waba_official",
+        modo_conexao: extra.modo_conexao || "hibrido",
         access_token: chaveRow.credencial || null,
         waba_id: extra.waba_id || null,
         page_id: extra.page_id || null,
         instagram_account_id: extra.instagram_account_id || null,
         dataset_id: extra.dataset_id || null,
-        currency: extra.currency || "USD",
+        currency: extra.currency || extra.moeda_padrao || "BRL",
+        moeda_padrao: extra.currency || extra.moeda_padrao || "BRL",
+        enviar_somente_com_clique: Boolean(extra.enviar_somente_com_clique),
         test_event_code: extra.test_event_code || null,
         enable_sha256_fallback: extra.enable_sha256_fallback ?? true,
         auto_send_on_stage_change: chaveRow.auto_envio ?? true,
@@ -400,7 +404,9 @@ export async function sendMetaConversionForLead(input: SendConversionInput): Pro
   const finalValue = value ?? (card.valor ? Number(card.valor) : null);
 
   // Mapear modo
-  const isOfficialWaba = cfg.modo_conexao === "waba_official" && Boolean(targetWabaId && card.ctwa_clid);
+  const isOfficialWaba =
+    (cfg.modo_conexao === "waba_official" || cfg.modo_conexao === "hibrido") &&
+    Boolean(targetWabaId && (card.ctwa_clid || card.campos_extras?.ad_referral?.ctwa_clid));
   const isMetaLeadAd = Boolean(card.meta_lead_id);
   const isInstagramOrMessenger = card.canal_chat === "instagram" || card.canal_chat === "messenger";
 
@@ -413,7 +419,8 @@ export async function sendMetaConversionForLead(input: SendConversionInput): Pro
     actionSource = "business_messaging";
     messagingChannel = "whatsapp";
     userData.whatsapp_business_account_id = targetWabaId;
-    userData.ctwa_clid = String(card.ctwa_clid).trim();
+    const resolvedCtwaClid = String(card.ctwa_clid || card.campos_extras?.ad_referral?.ctwa_clid || "").trim();
+    userData.ctwa_clid = resolvedCtwaClid;
 
     if (cfg.enable_sha256_fallback) {
       const hashed = await buildHashedUserDataFromCard(card);
@@ -555,4 +562,71 @@ export async function sendMetaConversionForLead(input: SendConversionInput): Pro
     eventsReceived: responseData?.events_received || (resultStatus === "sent" ? 1 : 0),
     error: errorMsg,
   };
+}
+
+
+export async function sendSyntheticMetaTestEvent(params: {
+  companyId: string;
+  accessToken: string;
+  datasetId: string;
+  testEventCode?: string | null;
+  currency?: string;
+}): Promise<SendConversionResult> {
+  const nowEpoch = Math.floor(Date.now() / 1000);
+  const singleEvent: Record<string, any> = {
+    event_name: "Lead",
+    event_time: nowEpoch,
+    action_source: "system_generated",
+    event_id: `synth_test_${nowEpoch}`,
+    user_data: {
+      ph: [await sha256("5511999999999")],
+      em: [await sha256("test@capiconversa.com")],
+      external_id: [await sha256(params.companyId)],
+    },
+    custom_data: {
+      currency: params.currency || "BRL",
+      value: 1,
+      content_name: "CapiConversa Test Ping",
+    },
+  };
+
+  const requestBody: Record<string, any> = {
+    data: [singleEvent],
+    access_token: params.accessToken,
+  };
+  if (params.testEventCode?.trim()) {
+    requestBody.test_event_code = params.testEventCode.trim();
+  }
+
+  try {
+    const postUrl = `https://graph.facebook.com/${META_CAPI_GRAPH_VERSION}/${encodeURIComponent(params.datasetId)}/events`;
+    const res = await fetch(postUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(15_000),
+    });
+    const responseData: any = await res.json().catch(() => null);
+    const fbtraceId = responseData?.fbtrace_id || res.headers.get("x-fb-trace-id") || null;
+    if (!res.ok || responseData?.error) {
+      return {
+        ok: false,
+        status: "failed",
+        fbtraceId,
+        error: responseData?.error?.message || `HTTP ${res.status}`,
+      };
+    }
+    return {
+      ok: true,
+      status: "sent",
+      fbtraceId,
+      eventsReceived: responseData?.events_received || 1,
+    };
+  } catch (err: any) {
+    return {
+      ok: false,
+      status: "failed",
+      error: err?.message || "Error de red al conectar con Meta Graph API",
+    };
+  }
 }

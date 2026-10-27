@@ -2,7 +2,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { resolveCompanyIdCached } from "./company-cache";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { MetaCapiConfig, MetaMessagingEventName } from "./meta-capi.server";
 
 export const getMetaCapiConfigFn = createServerFn({ method: "GET" })
@@ -16,7 +15,7 @@ export const getMetaCapiConfigFn = createServerFn({ method: "GET" })
 
 export const saveMetaCapiConfigFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((data: Partial<MetaCapiConfig>) => data)
+  .inputValidator((data: Partial<MetaCapiConfig>) => data)
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyIdCached(supabase, userId);
@@ -26,18 +25,30 @@ export const saveMetaCapiConfigFn = createServerFn({ method: "POST" })
 
 export const testMetaCapiConnectionFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((data: { testEventCode?: string }) => data)
+  .inputValidator((data: {
+    testEventCode?: string;
+    accessToken?: string;
+    datasetId?: string;
+    wabaId?: string;
+    modoConexao?: "hibrido" | "waba_official" | "pixel_tradicional";
+    currency?: string;
+  }) => data)
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyIdCached(supabase, userId);
-    const { getMetaCapiConfig, sendMetaConversionForLead } = await import("./meta-capi.server");
-    const cfg = await getMetaCapiConfig(companyId);
+    const { getMetaCapiConfig, sendMetaConversionForLead, sendSyntheticMetaTestEvent } = await import("./meta-capi.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    if (!cfg.access_token || (!cfg.dataset_id && !cfg.waba_id)) {
+    const cfg = await getMetaCapiConfig(companyId);
+    const token = data?.accessToken?.trim() || cfg.access_token;
+    const datasetId = data?.datasetId?.trim() || cfg.dataset_id;
+    const wabaId = data?.wabaId?.trim() || cfg.waba_id;
+    const testEventCode = data?.testEventCode !== undefined ? data.testEventCode.trim() : cfg.test_event_code;
+
+    if (!token || (!datasetId && !wabaId)) {
       throw new Error("Por favor completa el Access Token y el Dataset ID / WABA ID antes de probar.");
     }
 
-    // Buscar un lead reciente o enviar evento sintético
     const { data: latestCard } = await (supabaseAdmin as any)
       .from("crm_cards")
       .select("id")
@@ -46,29 +57,46 @@ export const testMetaCapiConnectionFn = createServerFn({ method: "POST" })
       .limit(1)
       .maybeSingle();
 
-    if (!latestCard) {
-      throw new Error("No hay ningún lead en el CRM para asociar al evento de prueba.");
+    if (latestCard?.id && cfg.ativo && cfg.access_token) {
+      const res = await sendMetaConversionForLead({
+        companyId,
+        cardId: latestCard.id,
+        eventName: "LeadSubmitted",
+        testEventCodeOverride: testEventCode || undefined,
+        dedupKey: `test_ping_${Date.now()}`,
+        customData: {
+          test_event: true,
+          source: "capiconversa_test_button",
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(res.error || "Meta rechazó el evento de prueba. Revisa el Token y el Dataset ID.");
+      }
+
+      return {
+        ok: true,
+        fbtraceId: res.fbtraceId,
+        eventsReceived: res.eventsReceived,
+      };
     }
 
-    const res = await sendMetaConversionForLead({
+    const synthRes = await sendSyntheticMetaTestEvent({
       companyId,
-      cardId: latestCard.id,
-      eventName: "LeadSubmitted",
-      dedupKey: `test_ping_${Date.now()}`,
-      customData: {
-        test_event: true,
-        source: "capiconversa_test_button",
-      },
+      accessToken: token,
+      datasetId: datasetId || wabaId!,
+      testEventCode: testEventCode || null,
+      currency: data?.currency || cfg.currency || "BRL",
     });
 
-    if (!res.ok) {
-      throw new Error(res.error || "Meta rechazó el evento de prueba. Revisa el Token y el ID.");
+    if (!synthRes.ok) {
+      throw new Error(synthRes.error || "Meta rechazó el evento de prueba. Revisa el Token y el Dataset ID.");
     }
 
     return {
       ok: true,
-      fbtraceId: res.fbtraceId,
-      eventsReceived: res.eventsReceived,
+      fbtraceId: synthRes.fbtraceId,
+      eventsReceived: synthRes.eventsReceived,
     };
   });
 
@@ -77,6 +105,7 @@ export const listMetaCapiLogsFn = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyIdCached(supabase, userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     try {
       const { data: logs, error } = await (supabaseAdmin as any)
@@ -88,10 +117,9 @@ export const listMetaCapiLogsFn = createServerFn({ method: "GET" })
 
       if (!error && logs) return logs;
     } catch {
-      // Si la tabla no existe aún
+      // fallback si la tabla aún no existe
     }
 
-    // Fallback a lead_evento
     try {
       const { data: events } = await (supabaseAdmin as any)
         .from("lead_evento")
@@ -108,7 +136,7 @@ export const listMetaCapiLogsFn = createServerFn({ method: "GET" })
         action_source: "fallback",
         dataset_id: "-",
         value: null,
-        currency: "USD",
+        currency: "BRL",
         status: e.descricao.includes("Fallo") ? "failed" : "sent",
         fbtrace_id: null,
         error_message: e.descricao,
@@ -121,7 +149,7 @@ export const listMetaCapiLogsFn = createServerFn({ method: "GET" })
 
 export const sendManualLeadConversionFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((data: { cardId: string; eventName: MetaMessagingEventName; value?: number; currency?: string }) => data)
+  .inputValidator((data: { cardId: string; eventName: MetaMessagingEventName | string; value?: number; currency?: string }) => data)
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyIdCached(supabase, userId);
@@ -130,9 +158,10 @@ export const sendManualLeadConversionFn = createServerFn({ method: "POST" })
     return await sendMetaConversionForLead({
       companyId,
       cardId: data.cardId,
-      eventName: data.eventName,
+      eventName: data.eventName as any,
       value: data.value,
       currency: data.currency,
+      forceSend: true,
       dedupKey: `manual_${data.cardId}_${data.eventName}_${Date.now()}`,
     });
   });

@@ -226,18 +226,22 @@ export function IntegracoesTab() {
                 <>Use o link no anúncio, na bio ou no botão do site — a origem fica registrada na ficha do lead no CRM.</>,
               ]} />
             </TabsContent>
-            <TabsContent value="meta" className="mt-3">
-              <SnippetBox code={origin + "/api/public/meta-leads-webhook"} onCopy={() => copy(origin + "/api/public/meta-leads-webhook")} />
-              <p className="text-xs text-muted-foreground mt-2">Use esta URL como Webhook nas configurações do seu App na Meta (campo "leadgen"). O Token de Verificação padrão é <code>metrix_crm_leads_verify</code>.</p>
-              <Passos itens={[
-                <>Acesse <strong>developers.facebook.com</strong>, abra (ou crie) um App do tipo Empresa e adicione o produto <strong>Webhooks</strong> (objeto <em>Page</em>).</>,
-                <>Em <strong>Callback URL</strong> cole a URL acima; em <strong>Verify Token</strong> informe <code>metrix_crm_leads_verify</code> e salve.</>,
-                <>Assine o campo <code>leadgen</code> e solicite as permissões <code>leads_retrieval</code>, <code>pages_show_list</code> e <code>pages_manage_metadata</code>.</>,
-                <>Conecte a página e teste pelo <strong>Lead Ads Testing Tool</strong> da Meta.</>,
-              ]} />
-              <p className="text-xs text-muted-foreground mt-3">
-                Prefere sem código? Use a aba <strong>API (cURL)</strong> com o Make (<em>Facebook Lead Ads → Watch Leads</em> + <em>HTTP → Make a request</em> apontando para a URL de captura).
-              </p>
+            <TabsContent value="meta" className="mt-3 space-y-4">
+              <MetaCapiCard />
+              <div className="rounded-lg border border-border p-4 bg-muted/20">
+                <h4 className="text-xs font-semibold mb-2">Webhook de Formulários Nativos (Meta Lead Ads)</h4>
+                <SnippetBox code={origin + "/api/public/meta-leads-webhook"} onCopy={() => copy(origin + "/api/public/meta-leads-webhook")} />
+                <p className="text-xs text-muted-foreground mt-2">Use esta URL como Webhook nas configurações do seu App na Meta (campo "leadgen"). O Token de Verificação padrão é <code>metrix_crm_leads_verify</code>.</p>
+                <Passos itens={[
+                  <>Acesse <strong>developers.facebook.com</strong>, abra (ou crie) um App do tipo Empresa e adicione o produto <strong>Webhooks</strong> (objeto <em>Page</em>).</>,
+                  <>Em <strong>Callback URL</strong> cole a URL acima; em <strong>Verify Token</strong> informe <code>metrix_crm_leads_verify</code> e salve.</>,
+                  <>Assine o campo <code>leadgen</code> e solicite as permissões <code>leads_retrieval</code>, <code>pages_show_list</code> e <code>pages_manage_metadata</code>.</>,
+                  <>Conecte a página e teste pelo <strong>Lead Ads Testing Tool</strong> da Meta.</>,
+                ]} />
+                <p className="text-xs text-muted-foreground mt-3">
+                  Prefere sem código? Use a aba <strong>API (cURL)</strong> com o Make (<em>Facebook Lead Ads → Watch Leads</em> + <em>HTTP → Make a request</em> apontando para a URL de captura).
+                </p>
+              </div>
             </TabsContent>
 
           </Tabs>

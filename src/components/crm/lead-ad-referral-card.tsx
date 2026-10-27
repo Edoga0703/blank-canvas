@@ -28,19 +28,28 @@ export function LeadAdReferralCard({ card, onConversionSent }: LeadAdReferralCar
 
   const extras = card?.campos_extras || {};
   const adRef = extras.ad_referral || null;
-  const ctwaClid = extras.ctwa_clid || null;
-  const fbclid = extras.fbclid || null;
-  const gclid = extras.gclid || null;
+  const ctwaClid = card?.ctwa_clid || adRef?.ctwa_clid || extras.ctwa_clid || null;
+  const fbclid = card?.fbclid || extras.fbclid || extras.browser_tracking?.fbc || null;
+  const gclid = card?.gclid || extras.gclid || null;
 
   const utms = [
-    { label: "source", val: extras.utm_source },
-    { label: "medium", val: extras.utm_medium },
-    { label: "campaign", val: extras.utm_campaign },
-    { label: "content", val: extras.utm_content },
-    { label: "term", val: extras.utm_term },
+    { label: "source", val: card?.utm_source || extras.utm_source },
+    { label: "medium", val: card?.utm_medium || extras.utm_medium },
+    { label: "campaign", val: card?.utm_campaign || extras.utm_campaign },
+    { label: "content", val: card?.utm_content || extras.utm_content },
+    { label: "term", val: card?.utm_term || extras.utm_term },
   ].filter((u) => Boolean(u.val));
 
-  const hasTracking = Boolean(adRef || ctwaClid || fbclid || gclid || utms.length > 0 || card?.canal_entrada === "ads_meta");
+  const hasTracking = Boolean(
+    adRef ||
+    ctwaClid ||
+    fbclid ||
+    gclid ||
+    card?.meta_lead_id ||
+    utms.length > 0 ||
+    card?.canal_entrada === "ads_meta" ||
+    card?.canal_entrada === "ads_google"
+  );
 
   if (!hasTracking) {
     return null;
@@ -217,13 +226,14 @@ export function LeadAdReferralCard({ card, onConversionSent }: LeadAdReferralCar
         <select
           value={selectedEvent}
           onChange={(e) => setSelectedEvent(e.target.value)}
-          className="h-8 rounded-md border border-input bg-background px-2 text-xs flex-1 max-w-[180px]"
+          className="h-8 rounded-md border border-input bg-background px-2 text-xs flex-1 max-w-[195px]"
         >
-          <option value="LeadSubmitted">LeadSubmitted</option>
-          <option value="QualifiedLead">QualifiedLead</option>
-          <option value="Contact">Contact</option>
-          <option value="Schedule">Schedule / Cita</option>
-          <option value="Purchase">Purchase (Venda Fechada)</option>
+          <option value="LeadSubmitted">LeadSubmitted (Nuevo Lead)</option>
+          <option value="QualifiedLead">QualifiedLead (Lead Calificado)</option>
+          <option value="AppointmentBooked">AppointmentBooked (Cita Agendada)</option>
+          <option value="InitiateCheckout">InitiateCheckout (En Negociación)</option>
+          <option value="OrderCreated">OrderCreated (Pedido Creado)</option>
+          <option value="Purchase">Purchase (Venta Cerrada)</option>
         </select>
 
         <Button

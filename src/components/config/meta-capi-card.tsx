@@ -50,7 +50,7 @@ export function MetaCapiCard() {
           access_token: cfg.access_token || "",
           waba_id: cfg.waba_id || "",
           test_event_code: cfg.test_event_code || "",
-          moeda_padrao: cfg.moeda_padrao || "BRL",
+          moeda_padrao: cfg.currency || (cfg as any).moeda_padrao || "BRL",
           enviar_somente_com_clique: !!cfg.enviar_somente_com_clique,
         });
       }
@@ -69,7 +69,7 @@ export function MetaCapiCard() {
   async function handleSave() {
     setSaving(true);
     try {
-      await saveConfig({ data: config });
+      await saveConfig({ data: { ...config, currency: config.moeda_padrao } as any });
       toast.success("Configurações do Meta CAPI salvas com sucesso!");
     } catch (e: any) {
       toast.error(e?.message || "Erro ao salvar configuração.");
@@ -85,7 +85,16 @@ export function MetaCapiCard() {
     }
     setTesting(true);
     try {
-      const res = await testConnection({ data: { testEventCode: config.test_event_code } });
+      const res = await testConnection({
+        data: {
+          testEventCode: config.test_event_code,
+          accessToken: config.access_token,
+          datasetId: config.dataset_id,
+          wabaId: config.waba_id,
+          modoConexao: config.modo_conexao as any,
+          currency: config.moeda_padrao,
+        },
+      });
       toast.success(`Evento de teste recebido pela Meta! Trace ID: ${res.fbtraceId || "OK"}`);
       const refreshedLogs = await listLogs().catch(() => []);
       setLogs(refreshedLogs);

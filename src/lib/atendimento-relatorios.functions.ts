@@ -41,7 +41,7 @@ export const sugerirRelatorioAtendimento = createServerFn({ method: "POST" })
     const resposta = await lovableAiChat([
       { role: "system", content: "Analise o atendimento sem inventar fatos. Retorne somente JSON válido com solicitacao, resolucao e situacao ('resolvido' ou 'pendente'). Se algo não estiver claro, deixe o texto vazio ou marque pendente." },
       { role: "user", content: historico },
-    ], "openai/gpt-6-astra");
+    ], "gpt-4o-mini");
     try {
       const clean = resposta.replace(/^```json\s*|\s*```$/g, "").trim();
       const parsed = JSON.parse(clean);
