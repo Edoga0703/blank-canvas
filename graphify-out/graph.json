@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-27T22:17:35.882153+00:00",
+  "generated_at": "2026-10-27T22:44:15.422041+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -771,7 +771,7 @@
     },
     {
       "path": "src/lib/agent-copilot.server.ts",
-      "bytes": 14648
+      "bytes": 15272
     },
     {
       "path": "src/lib/company-cache.ts",
@@ -991,7 +991,7 @@
     },
     {
       "path": "src/lib/agent-copilot.functions.ts",
-      "bytes": 12241
+      "bytes": 14379
     },
     {
       "path": "src/lib/sheets.functions.ts",
