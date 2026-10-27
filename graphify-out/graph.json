@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-26T21:25:02.775677+00:00",
+  "generated_at": "2026-10-27T03:36:05.555210+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -63,7 +63,7 @@
     },
     {
       "path": "README.md",
-      "bytes": 7614
+      "bytes": 10515
     },
     {
       "path": "package.json",
@@ -160,6 +160,10 @@
     {
       "path": "supabase/migrations/20261009050000_rpc_and_auxiliary.sql",
       "bytes": 7438
+    },
+    {
+      "path": "supabase/migrations/20261026120000_meta_capi_business_messaging.sql",
+      "bytes": 3593
     },
     {
       "path": "supabase/migrations/20261009043000_meta_channels_core.sql",
@@ -615,7 +619,7 @@
     },
     {
       "path": "src/lib/crm-engine.server.ts",
-      "bytes": 18594
+      "bytes": 19556
     },
     {
       "path": "src/lib/knowledge-extract.server.ts",
@@ -746,6 +750,10 @@
       "bytes": 2102
     },
     {
+      "path": "src/lib/meta-capi.functions.ts",
+      "bytes": 5005
+    },
+    {
       "path": "src/lib/uazapi-test.functions.ts",
       "bytes": 3066
     },
@@ -787,7 +795,7 @@
     },
     {
       "path": "src/lib/tracking-utils.ts",
-      "bytes": 4721
+      "bytes": 5667
     },
     {
       "path": "src/lib/error-page.ts",
@@ -1050,6 +1058,10 @@
       "bytes": 3200
     },
     {
+      "path": "src/lib/meta-capi.server.ts",
+      "bytes": 19789
+    },
+    {
       "path": "src/lib/ai-prompt.ts",
       "bytes": 43212
     },
@@ -1183,7 +1195,7 @@
     },
     {
       "path": "src/lib/crm-stage-meta.ts",
-      "bytes": 5820
+      "bytes": 7333
     },
     {
       "path": "src/lib/master-training.functions.ts",
@@ -1746,8 +1758,12 @@
       "bytes": 16509
     },
     {
+      "path": "src/components/crm/lead-ad-referral-card.tsx",
+      "bytes": 9124
+    },
+    {
       "path": "src/components/crm/lead-drawer.tsx",
-      "bytes": 79672
+      "bytes": 79898
     },
     {
       "path": "src/components/crm/crm-copilot-sheet.tsx",
@@ -2155,7 +2171,7 @@
     },
     {
       "path": "src/components/config/integracoes-tab.tsx",
-      "bytes": 14151
+      "bytes": 14207
     },
     {
       "path": "src/components/config/avatar-upload-dialog.tsx",
@@ -2168,6 +2184,10 @@
     {
       "path": "src/components/config/formularios-tab.tsx",
       "bytes": 6034
+    },
+    {
+      "path": "src/components/config/meta-capi-card.tsx",
+      "bytes": 16198
     },
     {
       "path": "src/components/config/integracao-guias.tsx",
@@ -2419,7 +2439,7 @@
     },
     {
       "path": "src/lib/messaging/ingest.server.ts",
-      "bytes": 20189
+      "bytes": 25368
     },
     {
       "path": "src/lib/messaging/media-archive.server.ts",
@@ -2663,7 +2683,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 151924
+      "bytes": 151941
     },
     {
       "path": "src/routes/app/treinamentos.$courseId.tsx",
@@ -3932,6 +3952,14 @@
       "target": "./webhooks.server"
     },
     {
+      "source": "src/lib/crm-engine.server.ts",
+      "target": "./crm-stage-meta"
+    },
+    {
+      "source": "src/lib/crm-engine.server.ts",
+      "target": "./meta-capi.server"
+    },
+    {
       "source": "src/lib/knowledge-extract.server.ts",
       "target": "mammoth"
     },
@@ -4590,6 +4618,42 @@
     {
       "source": "src/lib/feature-flags.functions.ts",
       "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/meta-capi.functions.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/meta-capi.functions.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/meta-capi.functions.ts",
+      "target": "./company-cache"
+    },
+    {
+      "source": "src/lib/meta-capi.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-capi.functions.ts",
+      "target": "./meta-capi.server"
+    },
+    {
+      "source": "src/lib/meta-capi.functions.ts",
+      "target": "./meta-capi.server"
+    },
+    {
+      "source": "src/lib/meta-capi.functions.ts",
+      "target": "./meta-capi.server"
+    },
+    {
+      "source": "src/lib/meta-capi.functions.ts",
+      "target": "./meta-capi.server"
+    },
+    {
+      "source": "src/lib/meta-capi.functions.ts",
+      "target": "./meta-capi.server"
     },
     {
       "source": "src/lib/uazapi-test.functions.ts",
@@ -6166,6 +6230,14 @@
     {
       "source": "src/lib/comercial.functions.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-capi.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-capi.server.ts",
+      "target": "node:crypto"
     },
     {
       "source": "src/lib/plan.functions.ts",
@@ -8608,6 +8680,30 @@
       "target": "@/lib/i18n/context"
     },
     {
+      "source": "src/components/crm/lead-ad-referral-card.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/components/crm/lead-ad-referral-card.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/components/crm/lead-ad-referral-card.tsx",
+      "target": "@/lib/meta-capi.functions"
+    },
+    {
+      "source": "src/components/crm/lead-ad-referral-card.tsx",
+      "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/components/crm/lead-ad-referral-card.tsx",
+      "target": "sonner"
+    },
+    {
+      "source": "src/components/crm/lead-ad-referral-card.tsx",
+      "target": "lucide-react"
+    },
+    {
       "source": "src/components/crm/lead-drawer.tsx",
       "target": "react"
     },
@@ -8722,6 +8818,10 @@
     {
       "source": "src/components/crm/lead-drawer.tsx",
       "target": "@/components/crm/lead-ai-analyzer-dialog"
+    },
+    {
+      "source": "src/components/crm/lead-drawer.tsx",
+      "target": "@/components/crm/lead-ad-referral-card"
     },
     {
       "source": "src/components/crm/lead-drawer.tsx",
@@ -11065,6 +11165,10 @@
     },
     {
       "source": "src/components/config/integracoes-tab.tsx",
+      "target": "./meta-capi-card"
+    },
+    {
+      "source": "src/components/config/integracoes-tab.tsx",
       "target": "react"
     },
     {
@@ -11210,6 +11314,46 @@
     {
       "source": "src/components/config/formularios-tab.tsx",
       "target": "@/components/config/form-builder-dialog"
+    },
+    {
+      "source": "src/components/config/meta-capi-card.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/components/config/meta-capi-card.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/components/config/meta-capi-card.tsx",
+      "target": "@/lib/meta-capi.functions"
+    },
+    {
+      "source": "src/components/config/meta-capi-card.tsx",
+      "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/components/config/meta-capi-card.tsx",
+      "target": "@/components/ui/input"
+    },
+    {
+      "source": "src/components/config/meta-capi-card.tsx",
+      "target": "@/components/ui/label"
+    },
+    {
+      "source": "src/components/config/meta-capi-card.tsx",
+      "target": "@/components/ui/switch"
+    },
+    {
+      "source": "src/components/config/meta-capi-card.tsx",
+      "target": "@/components/ui/card"
+    },
+    {
+      "source": "src/components/config/meta-capi-card.tsx",
+      "target": "sonner"
+    },
+    {
+      "source": "src/components/config/meta-capi-card.tsx",
+      "target": "lucide-react"
     },
     {
       "source": "src/components/config/integracao-guias.tsx",
@@ -13162,6 +13306,14 @@
     {
       "source": "src/lib/messaging/ingest.server.ts",
       "target": "@/lib/crm-engine.server"
+    },
+    {
+      "source": "src/lib/messaging/ingest.server.ts",
+      "target": "@/lib/tracking-utils"
+    },
+    {
+      "source": "src/lib/messaging/ingest.server.ts",
+      "target": "@/lib/meta-capi.server"
     },
     {
       "source": "src/lib/messaging/ingest.server.ts",

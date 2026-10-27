@@ -1,6 +1,6 @@
 # Design system
 
-Generated: 2026-10-26T21:25:02.775677+00:00
+Generated: 2026-10-27T03:36:05.555210+00:00
 
 ## Tokens
 - --radius-sm: calc(var(--radius) - 4px) (src/styles.css)
@@ -319,6 +319,7 @@ Generated: 2026-10-26T21:25:02.775677+00:00
 - src/components/config/integracao-guias.tsx
 - src/components/config/integracoes-tab.tsx
 - src/components/config/logs-tab.tsx
+- src/components/config/meta-capi-card.tsx
 - src/components/config/metas-panel.tsx
 - src/components/config/tags-tab.tsx
 - src/components/config/templates-tab.tsx
@@ -326,6 +327,7 @@ Generated: 2026-10-26T21:25:02.775677+00:00
 - src/components/content/meta-content-history.tsx
 - src/components/content/meta-social-intelligence.tsx
 - src/components/crm/crm-copilot-sheet.tsx
+- src/components/crm/lead-ad-referral-card.tsx
 - src/components/crm/lead-ai-analyzer-dialog.tsx
 - src/components/crm/lead-drawer.tsx
 - src/components/crm/olist-pedidos-tab.tsx
