@@ -3,6 +3,7 @@ import { HelpTip } from "@/components/help-tip";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { toast } from "sonner";
 import {
   Loader2, Power, QrCode, Trash2, Pause, Play,
+  Activity, Smartphone,
   Plus, ChevronDown, ChevronRight, Search, WifiOff,
   Plug,
 } from "lucide-react";
@@ -30,6 +32,7 @@ import { MetaOAuthHandler } from "@/components/conexao/meta-oauth-handler";
 import { listStorePlugins } from "@/lib/plugin-store.functions";
 import { TelegramConnectDialog } from "@/components/conexao/telegram-connect-dialog";
 import { MetaConnectDialog } from "@/components/conexao/meta-connect-dialog";
+import { MetaCapiCard } from "@/components/config/meta-capi-card";
 
 export const Route = createFileRoute("/app/conexao")({
   validateSearch: (search: Record<string, unknown>): { tab?: string } => ({
@@ -89,6 +92,13 @@ function ConexoesPage() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const routeSearch = Route.useSearch();
+  const [activeTab, setActiveTab] = useState<string>(routeSearch?.tab === "tracking" ? "tracking" : "canais");
+
+  useEffect(() => {
+    if (routeSearch?.tab === "tracking") {
+      setActiveTab("tracking");
+    }
+  }, [routeSearch?.tab]);
 
   useEffect(() => {
     void refresh();
@@ -265,6 +275,16 @@ function ConexoesPage() {
 
   const channels: Channel[] = [
     {
+      key: "meta_tracking",
+      title: "Meta Pixel & Conversions API (CAPI)",
+      desc: "Rastreo de Anúncios · Configuração do Pixel, Dataset ID e conversões automáticas para Meta Ads",
+      badge: "Pixel & CAPI",
+      icon: <Activity className="size-6 text-blue-500" />,
+      match: () => false,
+      onIntegrate: () => setActiveTab("tracking"),
+      multi: false,
+    },
+    {
       key: "dapi",
       title: "WhatsApp (QR Code / Pareamento)",
       desc: "Não Oficial · Conecte seu celular físico em segundos com QR Code",
@@ -362,6 +382,19 @@ function ConexoesPage() {
           </div>
         </div>
 
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="bg-muted/60 p-1 rounded-lg">
+            <TabsTrigger value="canais" className="gap-2 text-xs sm:text-sm">
+              <Smartphone className="size-4" />
+              {t("connection.channels_tab", undefined, "Canais de Atendimento")}
+            </TabsTrigger>
+            <TabsTrigger value="tracking" className="gap-2 text-xs sm:text-sm data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400">
+              <Activity className="size-4 text-blue-500" />
+              {t("connection.tracking_tab", undefined, "Tracking (Pixel & Meta CAPI)")}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="canais" className="space-y-4 sm:space-y-6">
         {instances.length > 3 && (
           <div className="relative w-full sm:max-w-sm">
             <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -487,6 +520,12 @@ function ConexoesPage() {
               : "Você atingiu o limite de conexões WhatsApp do seu plano."}
           </p>
         )}
+          </TabsContent>
+
+          <TabsContent value="tracking" className="space-y-4">
+            <MetaCapiCard />
+          </TabsContent>
+        </Tabs>
 
         <MetaOAuthHandler onConnected={() => void refresh()} />
 
