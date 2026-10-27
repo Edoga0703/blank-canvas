@@ -18,24 +18,78 @@ export interface CopilotTurnResult {
  * Constrói o contexto operacional completo do agente da empresa
  * para que o Copilot entenda o negócio, catálogo e regras ativas.
  */
+export async function resolveTargetAgent(
+  supabase: any,
+  companyId: string,
+  agentId?: string | null,
+  tipo?: string,
+) {
+  // 1. Por ID si fue provisto y no vacío
+  if (agentId && typeof agentId === "string" && agentId.trim()) {
+    const { data: byId } = await supabase
+      .from("agent_config")
+      .select("*")
+      .eq("company_id", companyId)
+      .eq("id", agentId.trim())
+      .maybeSingle();
+    if (byId) return byId;
+  }
+
+  // 2. Por tipo
+  const targetTipo = tipo || "qualificacao";
+  const { data: byTipo } = await supabase
+    .from("agent_config")
+    .select("*")
+    .eq("company_id", companyId)
+    .eq("tipo", targetTipo)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (byTipo) return byTipo;
+
+  // 3. Cualquier agente existente de la empresa
+  const { data: anyAgent } = await supabase
+    .from("agent_config")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (anyAgent) return anyAgent;
+
+  // 4. Auto-provisión si no existe ninguno
+  const { data: created, error: createErr } = await supabase
+    .from("agent_config")
+    .insert({
+      company_id: companyId,
+      nome_agente: "PanaBot",
+      tipo: targetTipo,
+      regras_rigidas: "",
+      apresentacao: "¡Hola! ¿En qué puedo ayudarte hoy?",
+    })
+    .select("*")
+    .single();
+
+  if (createErr || !created) {
+    throw new Error("No se pudo encontrar ni crear el agente para esta empresa.");
+  }
+  return created;
+}
+
 export async function getAgentCopilotContext(
   supabase: any,
   companyId: string,
   agentId?: string | null,
   tipo?: string,
 ) {
-  let agentQuery = supabase.from("agent_config").select("*");
-  if (agentId) agentQuery = agentQuery.eq("id", agentId);
-  else agentQuery = agentQuery.eq("company_id", companyId).eq("tipo", tipo || "qualificacao");
-
   const [
-    { data: agentCfg },
+    agentCfg,
     { data: produtos },
     { data: stages },
     { data: suggestions },
     { data: waInstances },
   ] = await Promise.all([
-    agentQuery.order("created_at", { ascending: true }).limit(1).maybeSingle(),
+    resolveTargetAgent(supabase, companyId, agentId, tipo),
     supabase
       .from("produto")
       .select("id, nome, preco, descricao, sku, categoria, ativo, agendavel, tipo")

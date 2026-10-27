@@ -106,22 +106,19 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
     const companyId = await requireAdminCompany(supabase, userId);
     const { action } = data;
 
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { resolveTargetAgent } = await import("./agent-copilot.server");
+    const cfg = await resolveTargetAgent(supabaseAdmin, companyId, data.agentId, data.tipo);
+
     if (action.type === "rule") {
       const ruleText = String(action.payload?.ruleText || "").trim();
       if (!ruleText) throw new Error("Texto da regra vazio.");
-
-      let query = supabase.from("agent_config").select("id, regras_rigidas").eq("company_id", companyId);
-      if (data.agentId) query = query.eq("id", data.agentId);
-      else query = query.eq("tipo", data.tipo);
-
-      const { data: cfg, error: cfgErr } = await query.order("created_at", { ascending: true }).limit(1).maybeSingle();
-      if (cfgErr || !cfg) throw new Error("Agente não encontrado.");
 
       const current = (cfg.regras_rigidas || "").trim();
       const formatted = ruleText.startsWith("-") || /^\d+\./.test(ruleText) ? ruleText : `- ${ruleText}`;
       const updated = current ? `${current}\n${formatted}` : formatted;
 
-      const { error: upErr } = await supabase
+      const { error: upErr } = await supabaseAdmin
         .from("agent_config")
         .update({ regras_rigidas: updated, updated_at: new Date().toISOString() })
         .eq("id", cfg.id);
@@ -129,7 +126,7 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
       if (upErr) throw new Error(`Falha ao salvar regra: ${upErr.message}`);
 
       // Registrar auditoria
-      await supabase.from("audit_log").insert({
+      await supabaseAdmin.from("audit_log").insert({
         company_id: companyId,
         user_id: userId,
         acao: "copilot_rule_applied",
@@ -193,14 +190,13 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
       if (Object.keys(safeUpdates).length === 0) {
         throw new Error("Nenhum campo de configuração permitido para atualizar.");
       }
-      let query = supabase.from("agent_config").update({
-        ...safeUpdates,
-        updated_at: new Date().toISOString(),
-      }).eq("company_id", companyId);
-      if (data.agentId) query = query.eq("id", data.agentId);
-      else query = query.eq("tipo", data.tipo);
-
-      const { error: confErr } = await query;
+      const { error: confErr } = await supabaseAdmin
+        .from("agent_config")
+        .update({
+          ...safeUpdates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", cfg.id);
       if (confErr) throw new Error(`Falha ao atualizar configurações: ${confErr.message}`);
 
       return { ok: true, message: "Configurações do agente atualizadas com sucesso!" };
@@ -222,11 +218,9 @@ export const auditAgentRules = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const companyId = await requireAdminCompany(supabase, userId);
 
-    let query = supabase.from("agent_config").select("id, nome_agente, regras_rigidas, sobre_empresa, tamanho_resposta, segundos_buffer");
-    if (data.agentId) query = query.eq("id", data.agentId);
-    else query = query.eq("company_id", companyId).eq("tipo", data.tipo);
-
-    const { data: cfg } = await query.order("created_at", { ascending: true }).limit(1).maybeSingle();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { resolveTargetAgent } = await import("./agent-copilot.server");
+    const cfg = await resolveTargetAgent(supabaseAdmin, companyId, data.agentId, data.tipo);
     if (!cfg || !cfg.regras_rigidas?.trim()) {
       return {
         has_conflicts: false,

@@ -2791,9 +2791,9 @@ function AgentePage() {
       <AgentCopilotSheet
         open={copilotOpen}
         onOpenChange={setCopilotOpen}
-        agentId={activeAgentId}
+        agentId={activeAgentId || cfg?.id || null}
         agentName={cfg?.nome_agente || "Agente"}
-        tipo={tipo}
+        tipo={tipo || cfg?.tipo || "qualificacao"}
         initialPrompt={copilotInitialPrompt}
         onRuleApplied={async () => {
           await loadAgents(activeAgentId || undefined);
