@@ -1,6 +1,6 @@
 # Design system
 
-Generated: 2026-10-27T20:56:52.530275+00:00
+Generated: 2026-10-27T21:25:56.453080+00:00
 
 ## Tokens
 - --radius-sm: calc(var(--radius) - 4px) (src/styles.css)
@@ -290,6 +290,7 @@ Generated: 2026-10-27T20:56:52.530275+00:00
 - src/components/chat/conversation-media-panel.tsx
 - src/components/chat/drive-panel.tsx
 - src/components/chat/encaminhar-dialog.tsx
+- src/components/chat/formatted-message-text.tsx
 - src/components/chat/forward-message-dialog.tsx
 - src/components/chat/grupo-details-panel.tsx
 - src/components/chat/media-lightbox.tsx

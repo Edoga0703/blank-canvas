@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-27T20:56:52.530275+00:00",
+  "generated_at": "2026-10-27T21:25:56.453080+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -979,7 +979,7 @@
     },
     {
       "path": "src/lib/media-understanding.server.ts",
-      "bytes": 6935
+      "bytes": 7686
     },
     {
       "path": "src/lib/agent-copilot.functions.ts",
@@ -1763,7 +1763,7 @@
     },
     {
       "path": "src/components/crm/lead-drawer.tsx",
-      "bytes": 79898
+      "bytes": 79959
     },
     {
       "path": "src/components/crm/crm-copilot-sheet.tsx",
@@ -1872,6 +1872,10 @@
     {
       "path": "src/components/chat/forward-message-dialog.tsx",
       "bytes": 5963
+    },
+    {
+      "path": "src/components/chat/formatted-message-text.tsx",
+      "bytes": 18312
     },
     {
       "path": "src/components/chat/send-contact-dialog.tsx",
@@ -2579,7 +2583,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 195132
+      "bytes": 195204
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -8793,6 +8797,10 @@
     },
     {
       "source": "src/components/crm/lead-drawer.tsx",
+      "target": "@/components/chat/formatted-message-text"
+    },
+    {
+      "source": "src/components/crm/lead-drawer.tsx",
       "target": "@/integrations/supabase/client"
     },
     {
@@ -9634,6 +9642,18 @@
     {
       "source": "src/components/chat/forward-message-dialog.tsx",
       "target": "@/lib/forward.functions"
+    },
+    {
+      "source": "src/components/chat/formatted-message-text.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/components/chat/formatted-message-text.tsx",
+      "target": "lucide-react"
+    },
+    {
+      "source": "src/components/chat/formatted-message-text.tsx",
+      "target": "@/lib/utils"
     },
     {
       "source": "src/components/chat/send-contact-dialog.tsx",
@@ -13654,6 +13674,10 @@
     {
       "source": "src/routes/app/conversas.tsx",
       "target": "@/components/chat/ai-assist-button"
+    },
+    {
+      "source": "src/routes/app/conversas.tsx",
+      "target": "@/components/chat/formatted-message-text"
     },
     {
       "source": "src/routes/app/conversas.tsx",
