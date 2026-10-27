@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-27T19:01:40.139351+00:00",
+  "generated_at": "2026-10-27T20:12:10.132300+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -843,7 +843,7 @@
     },
     {
       "path": "src/lib/inbound-automation.server.ts",
-      "bytes": 4344
+      "bytes": 4434
     },
     {
       "path": "src/lib/quick-replies.functions.ts",
@@ -899,7 +899,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.functions.ts",
-      "bytes": 3279
+      "bytes": 3762
     },
     {
       "path": "src/lib/meta-content.functions.ts",
@@ -963,7 +963,7 @@
     },
     {
       "path": "src/lib/crm-copilot.server.ts",
-      "bytes": 18436
+      "bytes": 18171
     },
     {
       "path": "src/lib/agendamentos-dispatch.server.ts",
@@ -995,7 +995,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.server.ts",
-      "bytes": 15809
+      "bytes": 20090
     },
     {
       "path": "src/lib/wablast.server.ts",
@@ -1039,7 +1039,7 @@
     },
     {
       "path": "src/lib/lead-intake.server.ts",
-      "bytes": 7679
+      "bytes": 7853
     },
     {
       "path": "src/lib/whatsapp-logs.functions.ts",
@@ -1059,7 +1059,7 @@
     },
     {
       "path": "src/lib/meta-capi.server.ts",
-      "bytes": 22300
+      "bytes": 23389
     },
     {
       "path": "src/lib/ai-prompt.ts",
@@ -1155,7 +1155,7 @@
     },
     {
       "path": "src/lib/crm-copilot.functions.ts",
-      "bytes": 22639
+      "bytes": 22735
     },
     {
       "path": "src/lib/forward.functions.ts",
@@ -1175,7 +1175,7 @@
     },
     {
       "path": "src/lib/crm-lead-context.server.ts",
-      "bytes": 17203
+      "bytes": 17274
     },
     {
       "path": "src/lib/produtos.functions.ts",
@@ -1215,7 +1215,7 @@
     },
     {
       "path": "src/lib/evolution.functions.ts",
-      "bytes": 40910
+      "bytes": 42340
     },
     {
       "path": "src/lib/integrations.functions.ts",
@@ -2439,7 +2439,7 @@
     },
     {
       "path": "src/lib/messaging/ingest.server.ts",
-      "bytes": 25836
+      "bytes": 26586
     },
     {
       "path": "src/lib/messaging/media-archive.server.ts",
@@ -2683,7 +2683,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 155197
+      "bytes": 155708
     },
     {
       "path": "src/routes/app/treinamentos.$courseId.tsx",
@@ -2807,7 +2807,7 @@
     },
     {
       "path": "src/routes/api/public/meta-leads-webhook.ts",
-      "bytes": 8599
+      "bytes": 8784
     },
     {
       "path": "src/routes/api/public/google-callback.ts",
@@ -2855,7 +2855,7 @@
     },
     {
       "path": "src/routes/api/public/lead-capture.ts",
-      "bytes": 8484
+      "bytes": 8681
     },
     {
       "path": "src/routes/api/public/uazapi-webhook.ts",
@@ -2883,7 +2883,7 @@
     },
     {
       "path": "src/routes/api/public/hooks/process-kanban-reguas.ts",
-      "bytes": 1091
+      "bytes": 1273
     },
     {
       "path": "src/routes/api/public/hooks/meta-stories.ts",
@@ -2911,7 +2911,7 @@
     },
     {
       "path": "src/routes/api/public/hooks/$token.ts",
-      "bytes": 7474
+      "bytes": 7660
     },
     {
       "path": "src/routes/api/public/hooks/agendamentos-dispatch.ts",
@@ -5400,6 +5400,10 @@
       "target": "./kanban-engine.server"
     },
     {
+      "source": "src/lib/crm-lead-analyzer.functions.ts",
+      "target": "./crm-lead-analyzer.server"
+    },
+    {
       "source": "src/lib/meta-content.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -6180,6 +6184,10 @@
       "target": "./kanban-engine.server"
     },
     {
+      "source": "src/lib/lead-intake.server.ts",
+      "target": "@/lib/crm-lead-analyzer.server"
+    },
+    {
       "source": "src/lib/whatsapp-logs.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -6873,6 +6881,10 @@
     },
     {
       "source": "src/lib/evolution.functions.ts",
+      "target": "./crm-lead-analyzer.server"
+    },
+    {
+      "source": "src/lib/evolution.functions.ts",
       "target": "./billing/access.server"
     },
     {
@@ -6901,6 +6913,10 @@
     },
     {
       "source": "src/lib/evolution.functions.ts",
+      "target": "./crm-lead-analyzer.server"
+    },
+    {
+      "source": "src/lib/evolution.functions.ts",
       "target": "./billing/access.server"
     },
     {
@@ -6922,6 +6938,10 @@
     {
       "source": "src/lib/evolution.functions.ts",
       "target": "./outbound-queue.server"
+    },
+    {
+      "source": "src/lib/evolution.functions.ts",
+      "target": "./crm-lead-analyzer.server"
     },
     {
       "source": "src/lib/evolution.functions.ts",
@@ -13333,6 +13353,10 @@
     },
     {
       "source": "src/lib/messaging/ingest.server.ts",
+      "target": "@/lib/crm-lead-analyzer.server"
+    },
+    {
+      "source": "src/lib/messaging/ingest.server.ts",
       "target": "@/lib/messaging/media-archive.server"
     },
     {
@@ -16528,6 +16552,10 @@
       "target": "@/lib/kanban-engine.server"
     },
     {
+      "source": "src/routes/api/public/meta-leads-webhook.ts",
+      "target": "@/lib/crm-lead-analyzer.server"
+    },
+    {
       "source": "src/routes/api/public/google-callback.ts",
       "target": "@tanstack/react-router"
     },
@@ -16704,6 +16732,10 @@
       "target": "@/lib/kanban-engine.server"
     },
     {
+      "source": "src/routes/api/public/lead-capture.ts",
+      "target": "@/lib/crm-lead-analyzer.server"
+    },
+    {
       "source": "src/routes/api/public/uazapi-webhook.ts",
       "target": "@tanstack/react-router"
     },
@@ -16828,6 +16860,10 @@
       "target": "@/lib/kanban-engine.server"
     },
     {
+      "source": "src/routes/api/public/hooks/process-kanban-reguas.ts",
+      "target": "@/lib/crm-lead-analyzer.server"
+    },
+    {
       "source": "src/routes/api/public/hooks/meta-stories.ts",
       "target": "@tanstack/react-router"
     },
@@ -16942,6 +16978,10 @@
     {
       "source": "src/routes/api/public/hooks/$token.ts",
       "target": "@/lib/webhooks.server"
+    },
+    {
+      "source": "src/routes/api/public/hooks/$token.ts",
+      "target": "@/lib/crm-lead-analyzer.server"
     },
     {
       "source": "src/routes/api/public/hooks/agendamentos-dispatch.ts",
