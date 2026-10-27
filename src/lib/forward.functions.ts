@@ -128,6 +128,21 @@ export const encaminharMensagem = createServerFn({ method: "POST" })
         if (signed?.signedUrl) midiaUrl = signed.signedUrl;
       }
     }
+    if (midiaTipo && (!midiaUrl || midiaUrl.startsWith("/api/public/chat-media"))) {
+      const { data: att } = await (supabaseAdmin as any)
+        .from("message_attachments")
+        .select("storage_key, storage_url, provider_url")
+        .eq("mensagem_id", data.messageId)
+        .eq("company_id", perfil.companyId)
+        .limit(1)
+        .maybeSingle();
+      if (att?.storage_key) {
+        const { createR2DownloadUrl } = await import("@/lib/storage/r2.server");
+        midiaUrl = createR2DownloadUrl(att.storage_key, 3600);
+      } else if (att?.storage_url || att?.provider_url) {
+        midiaUrl = att.storage_url || att.provider_url;
+      }
+    }
     if (midiaTipo && !midiaUrl) throw new Error("A mídia desta mensagem não está mais disponível para encaminhar.");
 
     const texto = (msg as any).texto ?? "";

@@ -477,87 +477,175 @@ export async function dapiSendMedia(
     mime?: string;
     ptt?: boolean;
   },
+  apiKey?: string | null,
 ): Promise<{ id: string; provider: string; raw: any }> {
   const cleanTo = to.replace(/\D/g, "");
 
-  let formattedUrl = media.url;
-  if (formattedUrl && !formattedUrl.startsWith("http://") && !formattedUrl.startsWith("https://") && !formattedUrl.startsWith("data:")) {
-    if (media.type === "audio") formattedUrl = `data:${media.mime || "audio/mp3"};base64,${formattedUrl}`;
-    else if (media.type === "image") formattedUrl = `data:${media.mime || "image/jpeg"};base64,${formattedUrl}`;
-    else if (media.type === "video") formattedUrl = `data:${media.mime || "video/mp4"};base64,${formattedUrl}`;
-    else formattedUrl = `data:${media.mime || "application/octet-stream"};base64,${formattedUrl}`;
+  let formattedUrl = String(media.url || "").trim();
+  const defaultMime =
+    media.mime ||
+    (media.type === "audio"
+      ? "audio/ogg"
+      : media.type === "image"
+        ? "image/jpeg"
+        : media.type === "video"
+          ? "video/mp4"
+          : "application/octet-stream");
+
+  if (
+    formattedUrl &&
+    !formattedUrl.startsWith("http://") &&
+    !formattedUrl.startsWith("https://") &&
+    !formattedUrl.startsWith("data:")
+  ) {
+    formattedUrl = `data:${defaultMime};base64,${formattedUrl}`;
   }
 
-  let primaryEndpoint = "/messages/send/image";
-  let fallbackEndpoint = "/messages/image";
-  const body: Record<string, any> = {
-    sessionId,
-    to: cleanTo,
+  // Si la URL es una URL presignada de Cloudflare R2 (.r2.cloudflarestorage.com),
+  // la descargamos en el servidor y la convertimos a Data URI Base64 para evitar rechazos de D-API
+  if (formattedUrl.startsWith("http") && formattedUrl.includes("r2.cloudflarestorage.com")) {
+    try {
+      const r2Res = await fetch(formattedUrl, { signal: AbortSignal.timeout(15_000) });
+      if (r2Res.ok) {
+        const arrBuf = await r2Res.arrayBuffer();
+        if (arrBuf.byteLength > 0 && arrBuf.byteLength <= 16 * 1024 * 1024) {
+          const b64 = Buffer.from(arrBuf).toString("base64");
+          const detectedMime = (r2Res.headers.get("content-type") || defaultMime).split(";")[0].trim();
+          formattedUrl = `data:${detectedMime};base64,${b64}`;
+        }
+      }
+    } catch (dlErr: any) {
+      console.warn("[dapiSendMedia] No se pudo pre-convertir URL R2 a base64, usando URL directa:", dlErr?.message);
+    }
+  }
+
+  const buildMediaBody = (targetUrl: string) => {
+    const body: Record<string, any> = {
+      sessionId,
+      to: cleanTo,
+    };
+    if (media.type === "image") {
+      body.image = targetUrl;
+      body.imageUrl = targetUrl;
+      body.url = targetUrl;
+      if (media.caption) body.caption = media.caption;
+      if (media.mime) body.mimetype = media.mime;
+    } else if (media.type === "audio") {
+      body.audio = targetUrl;
+      body.audioUrl = targetUrl;
+      body.url = targetUrl;
+      body.ptt = media.ptt ?? true;
+      if (media.mime) body.mimetype = media.mime;
+    } else if (media.type === "video") {
+      body.video = targetUrl;
+      body.videoUrl = targetUrl;
+      body.url = targetUrl;
+      if (media.caption) body.caption = media.caption;
+      if (media.mime) body.mimetype = media.mime;
+    } else {
+      body.document = targetUrl;
+      body.documentUrl = targetUrl;
+      body.url = targetUrl;
+      if (media.fileName) {
+        body.fileName = media.fileName;
+        body.filename = media.fileName;
+      }
+      if (media.mime) body.mimetype = media.mime;
+      if (media.caption) body.caption = media.caption;
+    }
+    return body;
   };
 
-  if (media.type === "image") {
-    primaryEndpoint = "/messages/send/image";
-    fallbackEndpoint = "/messages/image";
-    body.image = formattedUrl;
-    body.imageUrl = formattedUrl;
-    if (media.caption) body.caption = media.caption;
-  } else if (media.type === "audio") {
-    primaryEndpoint = "/messages/send/audio";
-    fallbackEndpoint = "/messages/audio";
-    body.audio = formattedUrl;
-    body.audioUrl = formattedUrl;
-    body.ptt = media.ptt ?? true;
-  } else if (media.type === "video") {
-    primaryEndpoint = "/messages/send/video";
-    fallbackEndpoint = "/messages/video";
-    body.video = formattedUrl;
-    body.videoUrl = formattedUrl;
-    if (media.caption) body.caption = media.caption;
-  } else {
-    primaryEndpoint = "/messages/send/document";
-    fallbackEndpoint = "/messages/document";
-    body.document = formattedUrl;
-    body.documentUrl = formattedUrl;
-    if (media.fileName) {
-      body.fileName = media.fileName;
-      body.filename = media.fileName;
-    }
-    if (media.mime) body.mimetype = media.mime;
-    if (media.caption) body.caption = media.caption;
-  }
+  const primaryEndpoint =
+    media.type === "image"
+      ? "/messages/send/image"
+      : media.type === "audio"
+        ? "/messages/send/audio"
+        : media.type === "video"
+          ? "/messages/send/video"
+          : "/messages/send/document";
 
-  const res = await dapiFetch<any>(primaryEndpoint, {
-    method: "POST",
-    body: JSON.stringify(body),
-  }, 30_000, apiKey).catch(() => {
-    return dapiFetch<any>(fallbackEndpoint, {
-      method: "POST",
-      body: JSON.stringify(body),
-    }, 30_000, apiKey);
-  });
+  const fallbackEndpoint =
+    media.type === "image"
+      ? "/messages/image"
+      : media.type === "audio"
+        ? "/messages/audio"
+        : media.type === "video"
+          ? "/messages/video"
+          : "/messages/document";
+
+  const body = buildMediaBody(formattedUrl);
+
+  let res: any;
+  try {
+    res = await dapiFetch<any>(
+      primaryEndpoint,
+      { method: "POST", body: JSON.stringify(body) },
+      35_000,
+      apiKey,
+    ).catch(() =>
+      dapiFetch<any>(
+        fallbackEndpoint,
+        { method: "POST", body: JSON.stringify(body) },
+        35_000,
+        apiKey,
+      ),
+    );
+  } catch (sendErr: any) {
+    // Último fallback: si era una URL HTTP pública y D-API falló al descargarla, convertir a Base64 en servidor y reintentar
+    if (formattedUrl.startsWith("http")) {
+      const dlRes = await fetch(formattedUrl, { signal: AbortSignal.timeout(15_000) }).catch(() => null);
+      if (dlRes && dlRes.ok) {
+        const buf = Buffer.from(await dlRes.arrayBuffer());
+        const b64Url = `data:${defaultMime.split(";")[0]};base64,${buf.toString("base64")}`;
+        const retryBody = buildMediaBody(b64Url);
+        res = await dapiFetch<any>(
+          primaryEndpoint,
+          { method: "POST", body: JSON.stringify(retryBody) },
+          35_000,
+          apiKey,
+        ).catch(() =>
+          dapiFetch<any>(
+            fallbackEndpoint,
+            { method: "POST", body: JSON.stringify(retryBody) },
+            35_000,
+            apiKey,
+          ),
+        );
+      } else {
+        throw sendErr;
+      }
+    } else {
+      throw sendErr;
+    }
+  }
 
   const id = res?.id || res?.messageId || res?.data?.id || `dapi_${Date.now()}`;
   return { id, provider: "dapi", raw: res };
 }
 
-/**
- * Envío directo de audio (PTT voice note).
- */
 export async function dapiSendAudio(
   sessionId: string,
   to: string,
   audioBase64OrUrl: string,
   ptt?: boolean,
+  apiKey?: string | null,
 ): Promise<{ id: string; provider: string; raw: any }> {
-  // WhatsApp mobile exige OGG Opus para nota de voz nativa (PTT).
-  // Se for MP3, ptt=false permite que o reprodutor nativo do celular o abra perfeitamente.
-  const isOgg = audioBase64OrUrl.includes("audio/ogg") || audioBase64OrUrl.includes("codecs=opus") || audioBase64OrUrl.endsWith(".ogg");
+  const isOgg =
+    audioBase64OrUrl.includes("audio/ogg") ||
+    audioBase64OrUrl.includes("codecs=opus") ||
+    audioBase64OrUrl.endsWith(".ogg");
   const usePtt = ptt !== undefined ? ptt : isOgg;
-  return dapiSendMedia(sessionId, to, {
-    url: audioBase64OrUrl,
-    type: "audio",
-    ptt: usePtt,
-  });
+  return dapiSendMedia(
+    sessionId,
+    to,
+    {
+      url: audioBase64OrUrl,
+      type: "audio",
+      ptt: usePtt,
+    },
+    apiKey,
+  );
 }
 
 /**

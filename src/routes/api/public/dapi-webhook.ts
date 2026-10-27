@@ -10,7 +10,7 @@ import { transcribeIncomingAudio, describeIncomingFile } from "@/lib/media-under
  */
 function parseDapiParticipant(
   participant: any,
-  fallbackAlt?: any,
+  rawData?: any,
 ): { jid: string; phone: string; name: string | null } {
   const extractCleanPhone = (val: any): string => {
     if (!val || typeof val !== "string") return "";
@@ -19,11 +19,29 @@ function parseDapiParticipant(
     return trimmed.split("@")[0].split(":")[0].replace(/\D/g, "");
   };
 
-  if (!participant && !fallbackAlt) return { jid: "", phone: "", name: null };
+  const extractLidDigits = (val: any): string => {
+    if (!val || typeof val !== "string") return "";
+    const trimmed = val.trim();
+    if (!trimmed.endsWith("@lid")) return "";
+    return trimmed.split("@")[0].split(":")[0].replace(/\D/g, "");
+  };
+
+  const altPhone =
+    extractCleanPhone(rawData?.sender_pn) ||
+    extractCleanPhone(rawData?.senderPn) ||
+    extractCleanPhone(rawData?.participantPn) ||
+    extractCleanPhone(rawData?.key?.senderPn) ||
+    extractCleanPhone(rawData?.key?.participantPn) ||
+    extractCleanPhone(rawData?.remoteJidAlt) ||
+    extractCleanPhone(rawData?.chat?.phone) ||
+    extractCleanPhone(rawData?.phone) ||
+    extractCleanPhone(rawData?.number);
+
+  if (!participant && !altPhone) return { jid: "", phone: "", name: null };
 
   if (typeof participant === "string") {
     const jid = participant.trim();
-    const phone = extractCleanPhone(jid) || extractCleanPhone(fallbackAlt);
+    const phone = extractCleanPhone(jid) || altPhone || extractLidDigits(jid);
     return { jid, phone, name: null };
   }
 
@@ -37,12 +55,41 @@ function parseDapiParticipant(
       extractCleanPhone(participant.phone) ||
       extractCleanPhone(participant.number) ||
       extractCleanPhone(participant.sender_pn) ||
-      extractCleanPhone(fallbackAlt) ||
-      extractCleanPhone(jid);
+      extractCleanPhone(participant.senderPn) ||
+      extractCleanPhone(jid) ||
+      altPhone ||
+      extractLidDigits(jid);
     return { jid, phone, name };
   }
 
-  return { jid: "", phone: "", name: null };
+  return { jid: "", phone: altPhone, name: null };
+}
+
+function resolveDapiMediaType(data: any): "text" | "image" | "audio" | "video" | "document" | "sticker" {
+  const raw = String(data?.type || data?.mediaType || "").toLowerCase().trim();
+  if (raw === "image" || raw === "photo") return "image";
+  if (raw === "audio" || raw === "ptt" || raw === "voice" || raw === "myaudio") return "audio";
+  if (raw === "video" || raw === "gif") return "video";
+  if (raw === "document" || raw === "file") return "document";
+  if (raw === "sticker") return "sticker";
+
+  const m = data?.message;
+  if (m && typeof m === "object") {
+    if (m.imageMessage) return "image";
+    if (m.audioMessage || m.pttMessage) return "audio";
+    if (m.videoMessage) return "video";
+    if (m.documentMessage || m.documentWithCaptionMessage) return "document";
+    if (m.stickerMessage) return "sticker";
+  }
+  if (data?.media_url || data?.media_data?.url || data?.media_data?.direct_path) {
+    const mime = String(data?.media_data?.mimetype || data?.mimetype || "").toLowerCase();
+    if (mime.startsWith("image/webp")) return "sticker";
+    if (mime.startsWith("image/")) return "image";
+    if (mime.startsWith("audio/")) return "audio";
+    if (mime.startsWith("video/")) return "video";
+    return "document";
+  }
+  return "text";
 }
 
 async function isAutomatedOrExistingEcho(params: {
@@ -52,59 +99,52 @@ async function isAutomatedOrExistingEcho(params: {
   safeText: string;
 }): Promise<boolean> {
   const { companyId, phone, messageId, safeText } = params;
-  const recentCutoff = new Date(Date.now() - 2 * 60_000).toISOString();
-  const veryRecentCutoff = new Date(Date.now() - 20_000).toISOString();
+  const recentCutoff = new Date(Date.now() - 90_000).toISOString();
+  const veryRecentCutoff = new Date(Date.now() - 12_000).toISOString();
 
   // 1. Por ID exacto de mensaje en WhatsApp
-  const { data: existingById } = await supabaseAdmin
-    .from("mensagens")
-    .select("id, autor")
-    .eq("company_id", companyId)
-    .eq("whatsapp_message_id", messageId)
-    .maybeSingle();
-  if (existingById) return true;
+  if (messageId && !messageId.startsWith("dapi_")) {
+    const { data: existingById } = await supabaseAdmin
+      .from("mensagens")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("whatsapp_message_id", messageId)
+      .limit(1)
+      .maybeSingle();
+    if (existingById) return true;
+  }
 
-  // 2. Por texto idéntico enviado en los últimos 2 minutos
+  // 2. Por texto idéntico enviado desde el CRM/IA en los últimos 90 segundos (consulta parametrizada segura)
   if (safeText) {
     const { data: existingByText } = await supabaseAdmin
       .from("mensagens")
-      .select("id, autor")
+      .select("id")
       .eq("company_id", companyId)
       .eq("numero", phone)
       .eq("direcao", "saida")
+      .eq("texto", safeText)
       .gte("created_at", recentCutoff)
-      .or(`texto.eq."${safeText}"`)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
     if (existingByText) return true;
   }
 
-  // 3. Por actividad de IA o automatización en los últimos 20 segundos (ej. audio TTS o imagen sin texto idéntico)
-  const [{ data: recentAiMsg }, { data: activeAiProc }] = await Promise.all([
-    supabaseAdmin
-      .from("mensagens")
+  // 3. Solo si la IA está procesando EN ESTE INSTANTE (pending/processing en los últimos 12s) y no hay texto
+  if (!safeText) {
+    const { data: activeAiProc } = await (supabaseAdmin as any)
+      .from("ai_message_processing")
       .select("id")
       .eq("company_id", companyId)
       .eq("numero", phone)
-      .eq("direcao", "saida")
-      .in("autor", ["ia", "automacao"])
       .gte("created_at", veryRecentCutoff)
+      .in("status", ["pending", "processing"])
       .limit(1)
-      .maybeSingle(),
-    (supabaseAdmin as any)
-      .from("ai_message_processing")
-      .select("id, status")
-      .eq("company_id", companyId)
-      .eq("numero", phone)
-      .gte("created_at", recentCutoff)
-      .in("status", ["pending", "processing", "completed"])
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
+      .maybeSingle();
+    if (activeAiProc) return true;
+  }
 
-  return Boolean(recentAiMsg || activeAiProc);
+  return false;
 }
 
 function extractDapiText(data: any): string {
@@ -394,8 +434,8 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
           // 3. Manejo de mensajes (messages.received, messages.sent)
           if (eventName === "messages.received" || eventName === "messages.upsert" || eventName === "messages.sent") {
             const fromMe = Boolean(data.fromMe ?? data.key?.fromMe) || eventName === "messages.sent";
-            const senderPart = parseDapiParticipant(data.from || data.sender || data.key?.remoteJid || data.remoteJid);
-            const recipientPart = parseDapiParticipant(data.to || data.recipient_id || data.recipient);
+            const senderPart = parseDapiParticipant(data.from || data.sender || data.key?.remoteJid || data.remoteJid, data);
+            const recipientPart = parseDapiParticipant(data.to || data.recipient_id || data.recipient, data);
 
             const isGroup = Boolean(
               data.is_group ||
@@ -434,13 +474,11 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
             // Manejo de eco y mensajes salientes (fromMe === true / messages.sent)
             if (fromMe) {
               const text = extractDapiText(data);
-              const safeText = text.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-
               let knownEcho = await isAutomatedOrExistingEcho({
                 companyId: inst.company_id,
                 phone,
                 messageId,
-                safeText,
+                safeText: text,
               });
 
               if (knownEcho) {
@@ -462,7 +500,7 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
 
               // Mensaje saliente nuevo (enviado desde celular físico, API o script externo):
               // Procesar multimedia si está presente
-              const outDataType = String(data.type || "text").toLowerCase();
+              const outDataType = resolveDapiMediaType(data);
               let mediaUrl: string | null = data.media_url || data.media_data?.early_media_url || null;
               let mimeType: string | null = data.media_data?.mimetype || data.mimetype || (outDataType === "sticker" ? "image/webp" : null);
 
@@ -527,7 +565,7 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
             }
 
             // Mensaje entrante del cliente (fromMe === false)
-            const dataType = String(data.type || "text").toLowerCase();
+            const dataType = resolveDapiMediaType(data);
             let mediaUrl: string | null = data.media_url || null;
             let mimeType: string | null = data.media_data?.mimetype || data.mimetype || (dataType === "sticker" ? "image/webp" : null);
             let text = extractDapiText(data);
@@ -576,6 +614,7 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
               data: {
                 ...data,
                 id: messageId,
+                type: dataType,
                 text,
                 message: text,
                 media_url: mediaUrl,

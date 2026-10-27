@@ -22,21 +22,82 @@ function sent(messageId: string, raw?: unknown): SendResult {
   };
 }
 
-function parseParticipant(participant: any): { jid: string; phone: string; name: string | null } {
-  if (!participant) return { jid: "", phone: "", name: null };
+function parseParticipant(participant: any, rawData?: any): { jid: string; phone: string; name: string | null } {
+  const extractCleanPhone = (val: any): string => {
+    if (!val || typeof val !== "string") return "";
+    const trimmed = val.trim();
+    if (trimmed.endsWith("@lid") || trimmed.endsWith("@g.us")) return "";
+    return trimmed.split("@")[0].split(":")[0].replace(/\D/g, "");
+  };
+
+  const extractLidDigits = (val: any): string => {
+    if (!val || typeof val !== "string") return "";
+    const trimmed = val.trim();
+    if (!trimmed.endsWith("@lid")) return "";
+    return trimmed.split("@")[0].split(":")[0].replace(/\D/g, "");
+  };
+
+  const altPhone =
+    extractCleanPhone(rawData?.sender_pn) ||
+    extractCleanPhone(rawData?.senderPn) ||
+    extractCleanPhone(rawData?.participantPn) ||
+    extractCleanPhone(rawData?.key?.senderPn) ||
+    extractCleanPhone(rawData?.key?.participantPn) ||
+    extractCleanPhone(rawData?.remoteJidAlt) ||
+    extractCleanPhone(rawData?.chat?.phone) ||
+    extractCleanPhone(rawData?.phone) ||
+    extractCleanPhone(rawData?.number);
+
+  if (!participant && !altPhone) return { jid: "", phone: "", name: null };
+
   if (typeof participant === "string") {
     const jid = participant.trim();
-    const phone = jid.split("@")[0].replace(/\D/g, "");
+    const phone = extractCleanPhone(jid) || altPhone || extractLidDigits(jid);
     return { jid, phone, name: null };
   }
-  if (typeof participant === "object") {
+
+  if (typeof participant === "object" && participant !== null) {
     const jid = String(participant.jid || participant.id || participant.phone || participant.number || participant.remoteJid || "").trim();
     const rawName = participant.name || participant.pushName || participant.notify || null;
     const name = rawName ? String(rawName).trim() : null;
-    const phone = (participant.phone || participant.number || jid.split("@")[0] || "").replace(/\D/g, "");
+    const phone =
+      extractCleanPhone(participant.phone) ||
+      extractCleanPhone(participant.number) ||
+      extractCleanPhone(participant.sender_pn) ||
+      extractCleanPhone(participant.senderPn) ||
+      extractCleanPhone(jid) ||
+      altPhone ||
+      extractLidDigits(jid);
     return { jid, phone, name };
   }
-  return { jid: "", phone: "", name: null };
+  return { jid: "", phone: altPhone, name: null };
+}
+
+function resolveDapiMediaType(data: any): "text" | "image" | "audio" | "video" | "document" | "sticker" {
+  const raw = String(data?.type || data?.mediaType || "").toLowerCase().trim();
+  if (raw === "image" || raw === "photo") return "image";
+  if (raw === "audio" || raw === "ptt" || raw === "voice" || raw === "myaudio") return "audio";
+  if (raw === "video" || raw === "gif") return "video";
+  if (raw === "document" || raw === "file") return "document";
+  if (raw === "sticker") return "sticker";
+
+  const m = data?.message;
+  if (m && typeof m === "object") {
+    if (m.imageMessage) return "image";
+    if (m.audioMessage || m.pttMessage) return "audio";
+    if (m.videoMessage) return "video";
+    if (m.documentMessage || m.documentWithCaptionMessage) return "document";
+    if (m.stickerMessage) return "sticker";
+  }
+  if (data?.media_url || data?.media_data?.url || data?.media_data?.direct_path) {
+    const mime = String(data?.media_data?.mimetype || data?.mimetype || "").toLowerCase();
+    if (mime.startsWith("image/webp")) return "sticker";
+    if (mime.startsWith("image/")) return "image";
+    if (mime.startsWith("audio/")) return "audio";
+    if (mime.startsWith("video/")) return "video";
+    return "document";
+  }
+  return "text";
 }
 
 function extractText(data: any): string {
@@ -129,7 +190,7 @@ export const dapiProvider: MessagingProvider = {
         else if (rawStatus === "failed" || rawStatus === "error") status = "failed";
       }
 
-      const target = parseParticipant(data.to || data.from || data.recipient);
+      const target = parseParticipant(data.to || data.from || data.recipient, data);
 
       return [
         {
@@ -148,8 +209,8 @@ export const dapiProvider: MessagingProvider = {
     // Eventos de mensajes entrantes y salientes
     if (eventName === "messages.received" || eventName === "messages.upsert" || eventName === "messages.sent") {
       const fromMe = Boolean(data.fromMe ?? data.key?.fromMe) || eventName === "messages.sent";
-      const senderPart = parseParticipant(data.from || data.sender || data.key?.remoteJid || data.remoteJid);
-      const recipientPart = parseParticipant(data.to || data.recipient_id || data.recipient);
+      const senderPart = parseParticipant(data.from || data.sender || data.key?.remoteJid || data.remoteJid, data);
+      const recipientPart = parseParticipant(data.to || data.recipient_id || data.recipient, data);
 
       const isGroup = Boolean(
         data.is_group ||
@@ -175,7 +236,7 @@ export const dapiProvider: MessagingProvider = {
 
       let kind: any = "text";
       const attachments: any[] = [];
-      const dataType = String(data.type || "text").toLowerCase();
+      const dataType = resolveDapiMediaType(data);
 
       if (["image", "audio", "video", "document", "sticker"].includes(dataType)) {
         const attachmentKind = dataType === "sticker" ? "sticker" : dataType;

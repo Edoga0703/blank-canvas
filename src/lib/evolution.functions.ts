@@ -655,6 +655,20 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
       if (attachmentError) throw new Error(`No se pudo registrar el archivo enviado: ${attachmentError.message}`);
     }
 
+    if (inserted?.id) {
+      try {
+        const { generateMediaToken } = await import("@/routes/api/public/chat-media");
+        const { sig, exp } = generateMediaToken(inserted.id);
+        const proxiedUrl = `/api/public/chat-media?id=${inserted.id}&sig=${sig}&exp=${exp}`;
+        await (sbAdmin as any)
+          .from("mensagens")
+          .update({ midia_url: proxiedUrl })
+          .eq("id", inserted.id);
+      } catch (err) {
+        console.warn("[sendWhatsappMedia] Error generating proxied media URL:", err);
+      }
+    }
+
     if (!permanentFailure && (sendError || !waId)) {
       const { enqueueOutbound } = await import("./outbound-queue.server");
       await enqueueOutbound({
@@ -753,6 +767,20 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
         mime_type: data.mimetype || "audio/ogg",
       }, { onConflict: "mensagem_id,attachment_key" });
       if (attachmentError) throw new Error(`No se pudo registrar el audio enviado: ${attachmentError.message}`);
+    }
+
+    if (inserted?.id) {
+      try {
+        const { generateMediaToken } = await import("@/routes/api/public/chat-media");
+        const { sig, exp } = generateMediaToken(inserted.id);
+        const proxiedUrl = `/api/public/chat-media?id=${inserted.id}&sig=${sig}&exp=${exp}`;
+        await (sbAdmin as any)
+          .from("mensagens")
+          .update({ midia_url: proxiedUrl })
+          .eq("id", inserted.id);
+      } catch (err) {
+        console.warn("[sendWhatsappAudio] Error generating proxied media URL:", err);
+      }
     }
 
     if (!permanentFailure && (sendError || !waId)) {

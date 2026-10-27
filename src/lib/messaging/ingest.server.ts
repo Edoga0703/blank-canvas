@@ -112,6 +112,18 @@ async function persistMessage(
   event: IncomingMessageEvent,
   connection: Awaited<ReturnType<typeof resolveConnection>>,
 ) {
+  if (event.phone && !event.phone.includes("@g.us")) {
+    try {
+      const { resolveThreadNumero } = await import("@/lib/phone-thread.server");
+      const canonicalPhone = await resolveThreadNumero(supabaseAdmin, connection.company_id, event.phone);
+      if (canonicalPhone) {
+        event = { ...event, phone: canonicalPhone };
+      }
+    } catch {
+      // fallback al event.phone original
+    }
+  }
+
   let replyToUuid: string | null = null;
   if (event.replyToExternalMessageId) {
     const { data: quotedRow } = await (supabaseAdmin as any)
@@ -213,6 +225,23 @@ async function persistMessage(
       .upsert(rows, { onConflict: "mensagem_id,attachment_key" });
     if (attachmentError) {
       throw new Error(`No se pudieron guardar los adjuntos: ${attachmentError.message}`);
+    }
+  }
+
+  if (event.attachments.length && !safeMidiaUrl) {
+    try {
+      const { generateMediaToken } = await import("@/routes/api/public/chat-media");
+      const { sig, exp } = generateMediaToken(message.id);
+      const proxiedUrl = `/api/public/chat-media?id=${message.id}&sig=${sig}&exp=${exp}`;
+      await (supabaseAdmin as any)
+        .from("mensagens")
+        .update({
+          midia_url: proxiedUrl,
+          midia_tipo: firstAtt?.kind ?? "document",
+        })
+        .eq("id", message.id);
+    } catch {
+      // best-effort
     }
   }
 

@@ -565,12 +565,13 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
               }
 
               // 5. Automação / Atendimento IA
-              if (text) {
+              const effectiveText = text || (mediaType ? `[${mediaType.toUpperCase()}]` : "");
+              if (effectiveText) {
                 const { processInboundAutomation } = await import("@/lib/inbound-automation.server");
                 await processInboundAutomation(supabaseAdmin, {
                   companyId: inst.company_id,
                   numero: senderId,
-                  texto: text,
+                  texto: effectiveText,
                   inboundMessageId: stableMessageId,
                   stageId: currentCard?.stage_id,
                   isAudioMessage: mediaType === "audio",

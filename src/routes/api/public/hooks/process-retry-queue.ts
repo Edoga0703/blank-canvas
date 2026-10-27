@@ -159,7 +159,7 @@ async function enqueueStalePendingAcceptedMessages(admin: any) {
       status: "pendente",
       tentativas: 0,
       max_tentativas: 5,
-      proximo_retry_em: new Date().toISOString(),
+      proxima_em: new Date().toISOString(),
       ultimo_erro: "Mensagem aceita sem confirmação de entrega após 2 minutos; reenfileirada automaticamente.",
     });
     if (!error) enqueued++;
@@ -183,8 +183,8 @@ export const Route = createFileRoute("/api/public/hooks/process-retry-queue")({
             .from("outbound_queue")
             .select("*")
             .in("status", ["pendente", "processando"])
-            .lte("proximo_retry_em", nowIso)
-            .order("proximo_retry_em", { ascending: true })
+            .lte("proxima_em", nowIso)
+            .order("proxima_em", { ascending: true })
             .limit(BATCH);
 
           let sent = 0, failed = 0, requeued = 0;
@@ -218,7 +218,7 @@ export const Route = createFileRoute("/api/public/hooks/process-retry-queue")({
                 requeued++;
                 const next = new Date(Date.now() + nextDelayMs(novasTentativas)).toISOString();
                 await admin.from("outbound_queue").update({
-                  status: "pendente", tentativas: novasTentativas, proximo_retry_em: next,
+                  status: "pendente", tentativas: novasTentativas, proxima_em: next,
                   ultimo_erro: res.erro ?? "Erro transitório", updated_at: new Date().toISOString(),
                 }).eq("id", item.id);
               }

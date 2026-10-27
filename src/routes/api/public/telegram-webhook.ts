@@ -92,20 +92,12 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
             },
           };
 
-          const publicOrigin = (
-            process.env["PUBLIC_APP_URL"] ||
-            process.env["APP_URL"] ||
-            "https://metrixcrm.com.br"
-          ).replace(/\/+$/, "");
-
-          await fetch(
-            `${publicOrigin}/api/public/whatsapp-webhook?t=${encodeURIComponent(inst.webhook_token)}`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json", "x-webhook-token": inst.webhook_token },
-              body: JSON.stringify(normalized),
-            },
-          ).catch((e) => console.warn("[telegram-webhook] forward failed", e?.message));
+          try {
+            const { handleUazapiWebhookInternal } = await import("@/lib/uazapi-webhook.server");
+            await handleUazapiWebhookInternal(inst, normalized);
+          } catch (e: any) {
+            console.warn("[telegram-webhook] handleUazapiWebhookInternal failed", e?.message);
+          }
 
           // Marca o canal do lead e salva o nome do perfil.
           try {

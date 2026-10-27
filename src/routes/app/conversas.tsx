@@ -793,7 +793,16 @@ function ConversasPage() {
     // Histórico COMPLETO da conta (sem corte por dias/quantidade) entra depois,
     // sem bloquear a primeira pintura.
     const m = await fetchAllMensagens(cid);
-    if (m?.length) setMsgs(m as Msg[]);
+    if (m?.length) {
+      setMsgs((prev) => {
+        const byId = new Map<string, Msg>();
+        for (const item of prev) byId.set(item.id, item);
+        for (const item of m as Msg[]) {
+          if (!byId.has(item.id)) byId.set(item.id, item);
+        }
+        return Array.from(byId.values()).sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+      });
+    }
 
   }
 
@@ -814,7 +823,7 @@ function ConversasPage() {
   async function refreshRecent(cid: string) {
     const [{ data }, { data: cds }] = await Promise.all([
       supabase
-        .from("mensagens").select("id,numero,contato_nome,direcao,autor,texto,created_at,user_id,midia_url,midia_tipo,midia_mime,midia_nome,reacao,editado_em,deletado_em,whatsapp_message_id,reply_to_id,status_envio,provider").eq("company_id", cid)
+        .from("mensagens").select(MSG_COLS).eq("company_id", cid)
         .order("created_at", { ascending: false })
         .limit(100),
       supabase.from("crm_cards").select("id,numero,nome,foto_url,owner_id,stage_id,canal_chat,department_id,transfer_para_user_id,transfer_de_user_id,transfer_status").eq("company_id", cid).order("ultima_em", { ascending: false, nullsFirst: false }).limit(400),
@@ -948,9 +957,13 @@ function ConversasPage() {
   }, [msgs, search, filter, sectorFilter, agentFilter, channelFilter, mySectorIds, unread, cards, pauses, stages, userId, ctx, grupos, operationalMode]);
 
 
-  const thread = useMemo(() =>
-    [...msgs].filter((m) => m.numero === active).sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at)),
-    [msgs, active]);
+  const thread = useMemo(() => {
+    if (!active) return [];
+    const activeComp = isGrupo(active) ? active : numeroComparable(active);
+    return [...msgs]
+      .filter((m) => m.numero === active || (!isGrupo(m.numero) && activeComp && numeroComparable(m.numero) === activeComp))
+      .sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
+  }, [msgs, active]);
 
   const activeGroup = active ? grupos.find((g) => g.jid === active) : undefined;
   const activeConv = conversations.find((c) => c.numero === active) ?? (active ? { numero: active, nome: activeGroup?.nome ?? cards[active]?.nome ?? null, last: thread[thread.length - 1] } : null);
@@ -3139,10 +3152,13 @@ function Composer({
   async function handleFile(file: File, caption?: string) {
     if (!active) return;
     setBusy(true);
+    const isImg = file.type.startsWith("image/");
+    const isVid = file.type.startsWith("video/");
+    const mediatype: "image" | "video" | "document" = isImg ? "image" : isVid ? "video" : "document";
+    const localUrl = URL.createObjectURL(file);
+    const tmpId = onLocalMedia?.(localUrl, mediatype, file.type) ?? null;
+
     try {
-      const isImg = file.type.startsWith("image/");
-      const isVid = file.type.startsWith("video/");
-      const mediatype: "image" | "video" | "document" = isImg ? "image" : isVid ? "video" : "document";
       const payload: Blob = isImg ? await compressImage(file) : file;
       const extMime: Record<string, string> = {
         pfx: "application/x-pkcs12", p12: "application/x-pkcs12", cer: "application/pkix-cert",
@@ -3170,7 +3186,9 @@ function Composer({
         },
       });
       if (caption === undefined) setText("");
+      if (tmpId) setTimeout(() => onLocalMediaFail?.(tmpId), 500);
     } catch (e: any) {
+      if (tmpId) onLocalMediaFail?.(tmpId);
       toast.error(e?.message ?? "Falha ao enviar mídia");
     } finally {
       setBusy(false);
