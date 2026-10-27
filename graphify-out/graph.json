@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-27T05:14:58.206359+00:00",
+  "generated_at": "2026-10-27T05:58:34.065307+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -619,7 +619,7 @@
     },
     {
       "path": "src/lib/crm-engine.server.ts",
-      "bytes": 19556
+      "bytes": 19573
     },
     {
       "path": "src/lib/knowledge-extract.server.ts",
@@ -679,7 +679,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 44778
+      "bytes": 44746
     },
     {
       "path": "src/lib/tracking.functions.ts",
@@ -843,7 +843,7 @@
     },
     {
       "path": "src/lib/inbound-automation.server.ts",
-      "bytes": 4376
+      "bytes": 4344
     },
     {
       "path": "src/lib/quick-replies.functions.ts",
@@ -995,7 +995,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.server.ts",
-      "bytes": 15757
+      "bytes": 15809
     },
     {
       "path": "src/lib/wablast.server.ts",
@@ -1247,7 +1247,7 @@
     },
     {
       "path": "src/lib/kanban-engine.server.ts",
-      "bytes": 15157
+      "bytes": 15125
     },
     {
       "path": "src/lib/lead-coach.functions.ts",
