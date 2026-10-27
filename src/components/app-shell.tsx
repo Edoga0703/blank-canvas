@@ -437,11 +437,16 @@ export function AppShell({
           <div className="mt-3 grid grid-cols-3 gap-2.5">
             {moreItems.map((it) => {
               const Icon = it.icon;
-              const active = activePath.startsWith(it.to);
+              const isTrackingItem = it.search?.tab === "tracking";
+              const currentSearchTab = (loc.search as any)?.tab;
+              const active = isTrackingItem
+                ? activePath === it.to && currentSearchTab === "tracking"
+                : activePath.startsWith(it.to);
               return (
                 <Link
-                  key={it.to}
+                  key={it.to + (it.search?.tab ? "?tab=" + it.search.tab : "")}
                   to={it.to}
+                  search={it.search}
                   preload="intent"
                   onClick={() => {
                     startModuleNavigation(it.to);
@@ -471,6 +476,7 @@ export function AppShell({
 function Sidebar({
   activePath, company, isSuperAdmin, isAdmin, isPartner, primary, companyName, companyLogo, signOut, collapsed, onToggleCollapsed, unreadConversations, onNavigateStart, userName, userEmail, userAvatar, userId,
 }: any) {
+  const loc = useLocation();
   const { t } = useLanguage();
   const flags = useFeatureFlags();
   const { muted: soundsMuted, toggle: toggleSounds } = useSoundsMuted();
