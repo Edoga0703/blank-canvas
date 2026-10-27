@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-27T21:43:27.535372+00:00",
+  "generated_at": "2026-10-27T21:50:38.582450+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -679,7 +679,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 45706
+      "bytes": 44746
     },
     {
       "path": "src/lib/tracking.functions.ts",
@@ -1200,10 +1200,6 @@
     {
       "path": "src/lib/master-training.functions.ts",
       "bytes": 4847
-    },
-    {
-      "path": "src/lib/usdt-rate.server.ts",
-      "bytes": 4515
     },
     {
       "path": "src/lib/comercial-range.ts",
@@ -4318,10 +4314,6 @@
     {
       "source": "src/lib/ai-engine.server.ts",
       "target": "@/lib/olist-ai.server"
-    },
-    {
-      "source": "src/lib/ai-engine.server.ts",
-      "target": "@/lib/usdt-rate.server"
     },
     {
       "source": "src/lib/ai-engine.server.ts",
