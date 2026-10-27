@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-27T03:36:05.555210+00:00",
+  "generated_at": "2026-10-27T04:49:29.657212+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -751,7 +751,7 @@
     },
     {
       "path": "src/lib/meta-capi.functions.ts",
-      "bytes": 5005
+      "bytes": 6114
     },
     {
       "path": "src/lib/uazapi-test.functions.ts",
@@ -947,7 +947,7 @@
     },
     {
       "path": "src/lib/agenda.functions.ts",
-      "bytes": 43035
+      "bytes": 43028
     },
     {
       "path": "src/lib/session-middleware.ts",
@@ -1047,7 +1047,7 @@
     },
     {
       "path": "src/lib/comercial.functions.ts",
-      "bytes": 10487
+      "bytes": 11265
     },
     {
       "path": "src/lib/meta.server.ts",
@@ -1059,7 +1059,7 @@
     },
     {
       "path": "src/lib/meta-capi.server.ts",
-      "bytes": 19789
+      "bytes": 22300
     },
     {
       "path": "src/lib/ai-prompt.ts",
@@ -1255,7 +1255,7 @@
     },
     {
       "path": "src/lib/atendimento-relatorios.functions.ts",
-      "bytes": 13710
+      "bytes": 13703
     },
     {
       "path": "src/lib/dashboard.functions.ts",
@@ -1759,7 +1759,7 @@
     },
     {
       "path": "src/components/crm/lead-ad-referral-card.tsx",
-      "bytes": 9124
+      "bytes": 9596
     },
     {
       "path": "src/components/crm/lead-drawer.tsx",
@@ -2171,7 +2171,7 @@
     },
     {
       "path": "src/components/config/integracoes-tab.tsx",
-      "bytes": 14207
+      "bytes": 14483
     },
     {
       "path": "src/components/config/avatar-upload-dialog.tsx",
@@ -2187,7 +2187,7 @@
     },
     {
       "path": "src/components/config/meta-capi-card.tsx",
-      "bytes": 16198
+      "bytes": 16512
     },
     {
       "path": "src/components/config/integracao-guias.tsx",
@@ -2439,7 +2439,7 @@
     },
     {
       "path": "src/lib/messaging/ingest.server.ts",
-      "bytes": 25368
+      "bytes": 25836
     },
     {
       "path": "src/lib/messaging/media-archive.server.ts",
@@ -2683,7 +2683,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 151941
+      "bytes": 152033
     },
     {
       "path": "src/routes/app/treinamentos.$courseId.tsx",
@@ -4633,23 +4633,27 @@
     },
     {
       "source": "src/lib/meta-capi.functions.ts",
+      "target": "./meta-capi.server"
+    },
+    {
+      "source": "src/lib/meta-capi.functions.ts",
+      "target": "./meta-capi.server"
+    },
+    {
+      "source": "src/lib/meta-capi.functions.ts",
+      "target": "./meta-capi.server"
+    },
+    {
+      "source": "src/lib/meta-capi.functions.ts",
+      "target": "./meta-capi.server"
+    },
+    {
+      "source": "src/lib/meta-capi.functions.ts",
       "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/meta-capi.functions.ts",
-      "target": "./meta-capi.server"
-    },
-    {
-      "source": "src/lib/meta-capi.functions.ts",
-      "target": "./meta-capi.server"
-    },
-    {
-      "source": "src/lib/meta-capi.functions.ts",
-      "target": "./meta-capi.server"
-    },
-    {
-      "source": "src/lib/meta-capi.functions.ts",
-      "target": "./meta-capi.server"
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/meta-capi.functions.ts",
@@ -6226,6 +6230,10 @@
     {
       "source": "src/lib/comercial.functions.ts",
       "target": "@/lib/integracoes/runtime.server"
+    },
+    {
+      "source": "src/lib/comercial.functions.ts",
+      "target": "@/lib/meta-capi.server"
     },
     {
       "source": "src/lib/comercial.functions.ts",
@@ -13310,6 +13318,10 @@
     {
       "source": "src/lib/messaging/ingest.server.ts",
       "target": "@/lib/tracking-utils"
+    },
+    {
+      "source": "src/lib/messaging/ingest.server.ts",
+      "target": "@/lib/meta-capi.server"
     },
     {
       "source": "src/lib/messaging/ingest.server.ts",
