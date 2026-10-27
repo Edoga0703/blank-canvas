@@ -526,21 +526,6 @@ export async function processAiResponse(
     }
     console.log(`[ai-engine] Found instance: ${inst.instance_name} (${inst.provider})`);
 
-    // Cotización USDT y mercado en tiempo real para consultas de tasas, pagos y bolívares
-    let usdtRateSnippet = "";
-    try {
-      const isRateRelevant = /\b(tasa|precio|precios|bolivares|bolívares|bs|ves|dolar|dólar|usdt|binance|pagomovil|pago m[oó]vil|zelle|cambio|cuanto ser[ií]a|cuanto es|cuanto cuesta)\b/i.test(effectiveIncomingText) || Boolean(cfg.formas_pagamento?.toLowerCase().includes("pago móvil") || cfg.formas_pagamento?.toLowerCase().includes("usdt") || (cfg as any).regras_rigidas?.toLowerCase().includes("usdt"));
-      if (isRateRelevant) {
-        const { getLiveUsdtRates, buildUsdtRatePromptSnippet } = await import("@/lib/usdt-rate.server");
-        const rates = await getLiveUsdtRates();
-        if (rates) {
-          usdtRateSnippet = buildUsdtRatePromptSnippet(rates);
-        }
-      }
-    } catch (e: any) {
-      console.warn("[ai-engine] No se pudo obtener tasa USDT en vivo:", e?.message);
-    }
-
     const system = buildSystemPrompt(cfg as any, {
       responderEmPartes: cfg.responder_em_partes ?? true,
       stages: stages as any,
@@ -551,7 +536,7 @@ export async function processAiResponse(
       canal: inst.provider === "meta_instagram" ? "Instagram Direct" : inst.provider === "meta_messenger" ? "Messenger" : inst.provider === "telegram" ? "Telegram" : "WhatsApp",
       olistCatalogo,
       olistPedido: olistPedidoAtivo,
-    }) + usdtRateSnippet;
+    });
 
 
     // 6. Chamar a IA com o provedor configurado
