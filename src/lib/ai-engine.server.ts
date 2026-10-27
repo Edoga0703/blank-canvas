@@ -539,10 +539,29 @@ export async function processAiResponse(
     });
 
 
+    // Inyección dinámica externa de cliente (ej. SMP / Cerebro / API de gestión) si está activa
+    let dynamicCustomerPrompt = "";
+    const customerLookupConfig = (cfg as any)?.knowledge_files?.integrations?.customerLookup;
+    if (customerLookupConfig?.enabled && customerLookupConfig?.url) {
+      try {
+        const { queryCustomerLookup } = await import("./customer-lookup.server");
+        dynamicCustomerPrompt = await queryCustomerLookup(customerLookupConfig, number);
+        if (dynamicCustomerPrompt) {
+          console.log(`[ai-engine] Customer lookup injected for contact ${number}`);
+        }
+      } catch (lookupErr) {
+        console.warn("[ai-engine] Customer lookup error:", lookupErr);
+      }
+    }
+
+    const fullSystemPrompt = dynamicCustomerPrompt
+      ? `${system}\n\n${dynamicCustomerPrompt}`
+      : system;
+
     // 6. Chamar a IA com o provedor configurado
     const response = await lovableAiChat(
       [
-        { role: "system", content: system },
+        { role: "system", content: fullSystemPrompt },
         ...history,
         { role: "user", content: effectiveIncomingText }
       ],

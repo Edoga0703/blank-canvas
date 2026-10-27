@@ -18,6 +18,7 @@ import {
   askAgentCopilot,
   executeCopilotAction,
   auditAgentRules,
+  testWebhookInSandbox,
   type CopilotChatMessage,
 } from "@/lib/agent-copilot.functions";
 import type { CopilotActionProposal } from "@/lib/agent-copilot.server";
@@ -34,6 +35,11 @@ import {
   ShoppingBag,
   Sliders,
   ShieldAlert,
+  Terminal,
+  Database,
+  Play,
+  Globe,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +67,7 @@ export function AgentCopilotSheet({
   const askCopilot = useServerFn(askAgentCopilot);
   const execAction = useServerFn(executeCopilotAction);
   const runAudit = useServerFn(auditAgentRules);
+  const runSandbox = useServerFn(testWebhookInSandbox);
 
   const [messages, setMessages] = useState<CopilotChatMessage[]>([
     {
@@ -71,7 +78,7 @@ Puedo ayudarte a:
 1. **Analizar dudas de chats reales** (WhatsApp, Instagram, etc.) y redactar reglas exactas.
 2. **Cargar o actualizar tu catálogo** simplemente pegando una lista de precios o texto desordenado.
 3. **Auditar tus reglas rígidas** para detectar contradicciones o ambigüedades.
-4. **Optimizar el buffer de mensajes** y el tono de atención.
+4. **Probar y conectar APIs externas / Webhooks en el Sandbox** para obtener datos de clientes en vivo (vencimientos, cuentas activas, etc.).
 
 ¿Qué te gustaría configurar o entrenar hoy?`,
     },
@@ -80,6 +87,8 @@ Puedo ayudarte a:
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [executingIdx, setExecutingIdx] = useState<string | null>(null);
+  const [testingKey, setTestingKey] = useState<string | null>(null);
+  const [sandboxResults, setSandboxResults] = useState<Record<string, any>>({});
   const [auditing, setAuditing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -131,6 +140,30 @@ Puedo ayudarte a:
     }
   }
 
+  async function handleTestWebhook(actionKey: string, payload: any) {
+    setTestingKey(actionKey);
+    try {
+      const res = await runSandbox({
+        data: {
+          url: payload?.url,
+          method: payload?.method || "POST",
+          headers: payload?.headers,
+          body: payload?.body,
+        },
+      });
+      setSandboxResults((prev) => ({ ...prev, [actionKey]: res }));
+      if (res.ok) {
+        toast.success(`Prueba exitosa en Sandbox: HTTP ${res.status} (${res.latencyMs}ms)`);
+      } else {
+        toast.error(`Prueba en Sandbox: HTTP ${res.status} - ${res.error || res.statusText}`);
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Error al ejecutar prueba en el sandbox.");
+    } finally {
+      setTestingKey(null);
+    }
+  }
+
   async function handleExecuteAction(msgIndex: number, propIndex: number, proposal: CopilotActionProposal) {
     const actionKey = `${msgIndex}-${propIndex}`;
     setExecutingIdx(actionKey);
@@ -155,8 +188,12 @@ Puedo ayudarte a:
         return copy;
       });
 
-      if ((proposal.type === "rule" || proposal.type === "config") && onRuleApplied) onRuleApplied();
-      if (proposal.type === "catalog" && onCatalogUpdated) onCatalogUpdated();
+      if ((proposal.type === "rule" || proposal.type === "config" || proposal.type === "webhook") && onRuleApplied) {
+        onRuleApplied();
+      }
+      if (proposal.type === "catalog" && onCatalogUpdated) {
+        onCatalogUpdated();
+      }
     } catch (e: any) {
       toast.error(e.message || "Error al aplicar la acción.");
     } finally {
@@ -262,6 +299,8 @@ Puedo ayudarte a:
                     {msg.proposals.map((prop, pIdx) => {
                       const isApplying = executingIdx === `${mIdx}-${pIdx}`;
                       const isApplied = prop.status === "applied";
+                      const isTesting = testingKey === `${mIdx}-${pIdx}`;
+                      const testResult = sandboxResults[`${mIdx}-${pIdx}`];
 
                       return (
                         <div
@@ -273,6 +312,8 @@ Puedo ayudarte a:
                               {prop.type === "rule" && <Zap className="h-3.5 w-3.5" />}
                               {prop.type === "catalog" && <ShoppingBag className="h-3.5 w-3.5" />}
                               {prop.type === "config" && <Sliders className="h-3.5 w-3.5" />}
+                              {prop.type === "test_webhook" && <Terminal className="h-3.5 w-3.5 text-blue-500" />}
+                              {prop.type === "webhook" && <Database className="h-3.5 w-3.5 text-emerald-500" />}
                               <span>{prop.title}</span>
                             </div>
                             <Badge
@@ -281,10 +322,16 @@ Puedo ayudarte a:
                                 "text-[10px] font-mono",
                                 isApplied
                                   ? "bg-green-500/10 text-green-600 border-green-500/30"
-                                  : "bg-amber-500/10 text-amber-600 border-amber-500/30"
+                                  : prop.type === "test_webhook"
+                                    ? "bg-blue-500/10 text-blue-600 border-blue-500/30"
+                                    : "bg-amber-500/10 text-amber-600 border-amber-500/30"
                               )}
                             >
-                              {isApplied ? "Aplicado" : "Pendiente"}
+                              {isApplied
+                                ? "Aplicado"
+                                : prop.type === "test_webhook"
+                                  ? "Sandbox"
+                                  : "Pendiente"}
                             </Badge>
                           </div>
 
@@ -294,12 +341,14 @@ Puedo ayudarte a:
                             </p>
                           )}
 
+                          {/* Rule proposal payload */}
                           {prop.type === "rule" && prop.payload?.ruleText && (
                             <div className="rounded-md bg-background/80 p-2 font-mono text-[11px] border border-border/60">
                               {prop.payload.ruleText}
                             </div>
                           )}
 
+                          {/* Catalog proposal payload */}
                           {prop.type === "catalog" && Array.isArray(prop.payload?.items) && (
                             <div className="space-y-1 rounded-md bg-background/80 p-2 border border-border/60">
                               {prop.payload.items.map((it: any, iIdx: number) => (
@@ -311,24 +360,133 @@ Puedo ayudarte a:
                             </div>
                           )}
 
-                          {!isApplied ? (
-                            <Button
-                              size="sm"
-                              className="w-full h-7 text-xs gap-1.5 bg-violet-600 hover:bg-violet-700 text-white shadow-xs"
-                              onClick={() => handleExecuteAction(mIdx, pIdx, prop)}
-                              disabled={isApplying}
-                            >
-                              {isApplying ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Plus className="h-3.5 w-3.5" />
+                          {/* Sandbox Test Webhook card */}
+                          {prop.type === "test_webhook" && (
+                            <div className="space-y-2">
+                              <div className="rounded-md bg-background/80 p-2.5 font-mono text-[11px] border border-border/60 space-y-1">
+                                <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                                  <Badge variant="secondary" className="text-[10px] uppercase font-mono px-1.5 py-0">
+                                    {prop.payload?.method || "POST"}
+                                  </Badge>
+                                  <span className="truncate">{prop.payload?.url}</span>
+                                </div>
+                                {prop.payload?.body && (
+                                  <div className="text-[10px] text-muted-foreground pt-1 border-t border-border/40">
+                                    <span className="text-foreground/70 font-semibold">Body:</span> {JSON.stringify(prop.payload.body)}
+                                  </div>
+                                )}
+                              </div>
+
+                              {testResult && (
+                                <div
+                                  className={cn(
+                                    "rounded-md p-2.5 text-[11px] font-mono border space-y-1.5",
+                                    testResult.ok
+                                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-950 dark:text-emerald-200"
+                                      : "bg-destructive/10 border-destructive/30 text-destructive dark:text-red-300"
+                                  )}
+                                >
+                                  <div className="flex items-center justify-between font-semibold">
+                                    <span>
+                                      {testResult.ok ? `🟢 HTTP ${testResult.status} OK` : `🔴 HTTP ${testResult.status}`}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {testResult.latencyMs}ms
+                                    </span>
+                                  </div>
+
+                                  {testResult.responseSample && (
+                                    <pre className="max-h-36 overflow-y-auto text-[10px] p-2 bg-background/90 rounded border border-border/40 text-foreground whitespace-pre-wrap">
+                                      {typeof testResult.responseSample === "object"
+                                        ? JSON.stringify(testResult.responseSample, null, 2)
+                                        : String(testResult.responseSample)}
+                                    </pre>
+                                  )}
+
+                                  {testResult.error && (
+                                    <p className="text-[10px] text-destructive">
+                                      {testResult.error}
+                                    </p>
+                                  )}
+                                </div>
                               )}
-                              {isApplying ? "Aplicando..." : "Aprobar y Guardar"}
-                            </Button>
-                          ) : (
-                            <div className="flex items-center justify-center gap-1 text-[11px] text-green-600 font-medium py-1">
-                              <CheckCircle2 className="h-3.5 w-3.5" /> Guardado en el Agente
+
+                              <Button
+                                size="sm"
+                                className="w-full h-7 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+                                onClick={() => handleTestWebhook(`${mIdx}-${pIdx}`, prop.payload)}
+                                disabled={isTesting}
+                              >
+                                {isTesting ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Play className="h-3.5 w-3.5" />
+                                )}
+                                {isTesting ? "Probando en Sandbox..." : "🧪 Probar en Sandbox"}
+                              </Button>
                             </div>
+                          )}
+
+                          {/* Final Webhook Connection card */}
+                          {prop.type === "webhook" && (
+                            <div className="space-y-2">
+                              <div className="rounded-md bg-background/80 p-2.5 font-mono text-[11px] border border-border/60 space-y-1">
+                                <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                                  <Badge variant="secondary" className="text-[10px] uppercase font-mono px-1.5 py-0">
+                                    {prop.payload?.method || "POST"}
+                                  </Badge>
+                                  <span className="truncate">{prop.payload?.url}</span>
+                                </div>
+                                {prop.payload?.ruleText && (
+                                  <div className="text-[10px] text-muted-foreground pt-1 border-t border-border/40">
+                                    <span className="text-foreground/70 font-semibold">Directiva:</span> {prop.payload.ruleText}
+                                  </div>
+                                )}
+                              </div>
+
+                              {!isApplied ? (
+                                <Button
+                                  size="sm"
+                                  className="w-full h-7 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                                  onClick={() => handleExecuteAction(mIdx, pIdx, prop)}
+                                  disabled={isApplying}
+                                >
+                                  {isApplying ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Plus className="h-3.5 w-3.5" />
+                                  )}
+                                  {isApplying ? "Conectando..." : "🔗 Aprobar y Conectar Integración"}
+                                </Button>
+                              ) : (
+                                <div className="flex items-center justify-center gap-1 text-[11px] text-emerald-600 font-medium py-1">
+                                  <CheckCircle2 className="h-3.5 w-3.5" /> Integración Conectada al Agente
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Default Action for rule, catalog, config */}
+                          {prop.type !== "test_webhook" && prop.type !== "webhook" && (
+                            !isApplied ? (
+                              <Button
+                                size="sm"
+                                className="w-full h-7 text-xs gap-1.5 bg-violet-600 hover:bg-violet-700 text-white shadow-xs"
+                                onClick={() => handleExecuteAction(mIdx, pIdx, prop)}
+                                disabled={isApplying}
+                              >
+                                {isApplying ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Plus className="h-3.5 w-3.5" />
+                                )}
+                                {isApplying ? "Aplicando..." : "Aprobar y Guardar"}
+                              </Button>
+                            ) : (
+                              <div className="flex items-center justify-center gap-1 text-[11px] text-green-600 font-medium py-1">
+                                <CheckCircle2 className="h-3.5 w-3.5" /> Guardado en el Agente
+                              </div>
+                            )
                           )}
                         </div>
                       );
@@ -375,6 +533,14 @@ Puedo ayudarte a:
             variant="ghost"
             size="sm"
             className="h-6 text-[11px] px-2 rounded-full border border-border/60 hover:border-violet-500/50 hover:bg-violet-500/10 text-muted-foreground hover:text-foreground shrink-0"
+            onClick={() => handleSend("Quiero integrar un webhook externo o API de clientes (para saber vencimientos y cuentas). ¿Cómo lo probamos en el sandbox?")}
+          >
+            🔌 Integrar API / Webhook
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-[11px] px-2 rounded-full border border-border/60 hover:border-violet-500/50 hover:bg-violet-500/10 text-muted-foreground hover:text-foreground shrink-0"
             onClick={() => handleSend("Audita mis reglas rígidas actuales y dime si hay contradicciones o ambigüedades.")}
           >
             🛡️ Auditar reglas
@@ -387,7 +553,7 @@ Puedo ayudarte a:
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Pregúntale algo al Copilot o pega tu catálogo/regla..."
+              placeholder="Pregúntale algo al Copilot, pega tu catálogo o datos de webhook..."
               className="min-h-[44px] max-h-32 text-xs resize-none"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {

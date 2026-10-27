@@ -85,6 +85,25 @@ export const askAgentCopilot = createServerFn({ method: "POST" })
   });
 
 /**
+ * Ejecuta una prueba segura de webhook en el Sandbox
+ */
+export const testWebhookInSandbox = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: {
+    url: string;
+    method?: "GET" | "POST" | "PUT";
+    headers?: Record<string, string>;
+    body?: any;
+  }) => {
+    if (!d?.url) throw new Error("URL é obrigatória para o teste de sandbox.");
+    return d;
+  })
+  .handler(async ({ data }) => {
+    const { testExternalWebhook } = await import("./agent-sandbox.server");
+    return await testExternalWebhook(data);
+  });
+
+/**
  * Executa uma ação proposta pelo Copilot após aprovação do usuário
  */
 export const executeCopilotAction = createServerFn({ method: "POST" })
@@ -200,6 +219,64 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
       if (confErr) throw new Error(`Falha ao atualizar configurações: ${confErr.message}`);
 
       return { ok: true, message: "Configurações do agente atualizadas com sucesso!" };
+    }
+
+    if (action.type === "webhook") {
+      const integrationKey = String(action.payload?.integration || "customerLookup").trim();
+      const url = String(action.payload?.url || "").trim();
+      if (!url) throw new Error("URL de la integración vacía.");
+
+      const currentKnowledge = (cfg.knowledge_files && typeof cfg.knowledge_files === "object")
+        ? { ...cfg.knowledge_files }
+        : {};
+
+      const currentIntegrations = currentKnowledge.integrations || {};
+      currentIntegrations[integrationKey] = {
+        enabled: true,
+        name: action.payload?.name || "Sistema Externo",
+        url,
+        method: action.payload?.method || "POST",
+        headers: action.payload?.headers || {},
+        updated_at: new Date().toISOString(),
+      };
+      currentKnowledge.integrations = currentIntegrations;
+
+      let updatedRegras = cfg.regras_rigidas || "";
+      const ruleText = String(action.payload?.ruleText || "").trim();
+      if (ruleText) {
+        const formatted = ruleText.startsWith("-") || /^\d+\./.test(ruleText) ? ruleText : `- ${ruleText}`;
+        if (!updatedRegras.includes(ruleText)) {
+          updatedRegras = updatedRegras ? `${updatedRegras}\n${formatted}` : formatted;
+        }
+      }
+
+      const { error: upErr } = await supabaseAdmin
+        .from("agent_config")
+        .update({
+          knowledge_files: currentKnowledge,
+          regras_rigidas: updatedRegras,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", cfg.id);
+
+      if (upErr) throw new Error(`Falha ao salvar integração webhook: ${upErr.message}`);
+
+      await supabaseAdmin.from("audit_log").insert({
+        company_id: companyId,
+        user_id: userId,
+        acao: "copilot_webhook_integrated",
+        detalhes: {
+          integration: integrationKey,
+          url,
+          agent_id: cfg.id,
+          applied_at: new Date().toISOString(),
+        },
+      });
+
+      return {
+        ok: true,
+        message: `¡Integración "${action.payload?.name || integrationKey}" conectada exitosamente al agente!`,
+      };
     }
 
     throw new Error(`Tipo de ação desconhecido: ${action.type}`);

@@ -2,7 +2,7 @@ import { lovableAiChat, type ChatMsg } from "@/lib/lovable-ai.server";
 import { buildSystemPrompt, parseAiOutput, type AgentConfig } from "@/lib/ai-prompt";
 
 export interface CopilotActionProposal {
-  type: "catalog" | "rule" | "config" | "simulation" | "audit";
+  type: "catalog" | "rule" | "config" | "simulation" | "audit" | "test_webhook" | "webhook";
   title: string;
   description: string;
   status: "pending" | "applied" | "rejected";
@@ -160,6 +160,13 @@ export function buildCopilotSystemPrompt(context: {
     ? suggestions.map((s, idx) => `[Sugerencia #${idx + 1} ID: ${s.id}] Mensaje cliente: "${s.inbound_text}" | Duda: "${s.duda}" | Regla propuesta: "${s.regra_sugerida}"`).join("\n")
     : "No hay dudas o sugerencias pendientes.";
 
+  const integrations = agent.knowledge_files?.integrations || {};
+  const activeIntegrationsSummary = Object.keys(integrations).length > 0
+    ? Object.entries(integrations)
+        .map(([k, v]: [string, any]) => `- [${v?.name || k}] URL: ${v?.url} (${v?.enabled ? "Activa" : "Desactivada"}) [Método: ${v?.method || "POST"}]`)
+        .join("\n")
+    : "Sin integraciones externas configuradas.";
+
   return `Eres el "AI Studio Copilot", el Consultor Senior de Inteligencia Artificial y Arquitecto de Agentes NATIVO dentro del CRM Capiconversa.
 
 CONTEXTO DE TU ENTORNO:
@@ -195,14 +202,36 @@ ESTADO ACTUAL DEL AGENTE:
 - Reglas Rígidas Actuales:
 ${agent.regras_rigidas ? agent.regras_rigidas : "(Sin reglas rígidas configuradas)"}
 
+INTEGRACIONES EXTERNAS / WEBHOOKS ACTIVOS:
+${activeIntegrationsSummary}
+
 CATÁLOGO ACTUAL (${produtos.length} productos):
 ${catalogSummary}
 
 DUDAS Y SUGERENCIAS PENDIENTES DE CHATS REALES (${suggestions.length}):
 ${pendingSuggestionsSummary}
 
+CURIOSIDAD PROACTIVA Y PREGUNTAS DE DESCUBRIMIENTO:
+- NO seas un bot pasivo que inventa reglas ciegas o estáticas ante peticiones de datos dinámicos.
+- Si el administrador te menciona:
+  * Consultar si un cliente es nuevo o ya registrado en un sistema de gestión externo.
+  * Obtener fechas de vencimiento de cuentas, pantallas, perfiles o suscripciones (Netflix, Max, streaming, membresías).
+  * Consultar saldo, cuentas asignadas o PINs de clientes.
+  * Consultar tasas de cambio en línea (USDT, BCV) o precios en tiempo real.
+  * Enviar datos hacia sistemas externos vía Webhook o API (Cerebro, n8n, Supabase, CRM externo).
+- DEBES ACTIVAR TU CURIOSIDAD PROACTIVA Y PREGUNTAR ANTES DE IMPLEMENTAR:
+  1. Pregunta cuál es la URL o endpoint del webhook/API a consultar o enviar.
+  2. Pregunta el método HTTP (POST o GET) y si requiere token de autorización (Bearer Token, API Key, headers).
+  3. Pregunta qué datos debe enviar (ej: número de teléfono del cliente) y qué formato devuelve (JSON).
+  4. Explica que la plataforma cuenta con un SANDBOX SEGURO DE PRUEBAS para verificar la respuesta real de la API antes de integrarla al agente de atención.
+
+FLUJO ESTRICTO PARA WEBHOOKS Y APIS EXTERNAS:
+1. PASO 1 (Descubrimiento): Haz las preguntas necesarias para obtener la URL, token y formato.
+2. PASO 2 (Prueba en Sandbox): En cuanto tengas los datos técnicos (o si el usuario te pide probar con un endpoint), genera la acción 'test_webhook' para que el usuario pueda probarla con 1 clic en el sandbox seguro y ver la latencia y respuesta JSON real.
+3. PASO 3 (Conexión Definitiva): NUNCA configures una integración fija sin antes haber propuesto la prueba en sandbox o sin la confirmación del administrador. Una vez probado, genera la acción 'webhook' para guardarla en el agente y agregar la directiva en las reglas rígidas.
+
 FORMATO DE RESPUESTA:
-Habla de forma natural, consultiva y empática en español. Cuando recomiendes crear/modificar productos, reglas o configuraciones, añade al final de tu mensaje un bloque JSON especial con las acciones propuestas:
+Habla de forma natural, consultiva y empática en español. Cuando recomiendes crear/modificar productos, reglas, configuraciones o pruebas de webhook, añade al final de tu mensaje un bloque JSON especial con las acciones propuestas:
 
 \`\`\`json_actions
 [
@@ -240,6 +269,37 @@ Habla de forma natural, consultiva y empática en español. Cuando recomiendes c
         "segundos_buffer": 5,
         "tamanho_resposta": "curtas"
       }
+    }
+  },
+  {
+    "type": "test_webhook",
+    "title": "Probar API Externa en Sandbox",
+    "description": "Ejecuta una petición de prueba segura en el sandbox con timeout controlado",
+    "payload": {
+      "url": "https://api.ejemplo.com/v1/customer-lookup",
+      "method": "POST",
+      "headers": {
+        "Authorization": "Bearer token_aqui",
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "phone": "584120000000"
+      }
+    }
+  },
+  {
+    "type": "webhook",
+    "title": "Conectar Integración de Clientes al Agente",
+    "description": "Habilita la consulta dinámica de vencimientos y cuentas para cada cliente",
+    "payload": {
+      "integration": "customerLookup",
+      "name": "SMP / Cerebro",
+      "url": "https://api.ejemplo.com/v1/customer-lookup",
+      "method": "POST",
+      "headers": {
+        "Authorization": "Bearer token_aqui"
+      },
+      "ruleText": "- Al atender al cliente, consulta sus servicios activos y vencimientos reales antes de dar información."
     }
   }
 ]
@@ -282,7 +342,7 @@ export function parseCopilotOutput(rawText: string): CopilotTurnResult {
       } catch {
         // 2. Fallback resiliente: extrai blocos individuais de ação se o JSON geral estiver truncado
         parsed = [];
-        const itemRegex = /{\s*"type"\s*:\s*"(?:catalog|rule|config|simulation|audit)"[\s\S]*?}(?=\s*,\s*{|\s*\]|\s*$)/g;
+        const itemRegex = /{\s*"type"\s*:\s*"(?:catalog|rule|config|simulation|audit|test_webhook|webhook)"[\s\S]*?}(?=\s*,\s*{|\s*\]|\s*$)/g;
         let m: RegExpExecArray | null;
         while ((m = itemRegex.exec(rawJson)) !== null) {
           try {
