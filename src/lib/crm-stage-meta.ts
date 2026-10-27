@@ -4,6 +4,7 @@ export interface StageAiMeta {
   criterio_ia: string;
   bloqueada_para_ia: boolean;
   mensagem_prompt: string;
+  meta_conversion_event?: string;
 }
 
 export interface LeadAnalysisResult {
@@ -41,31 +42,34 @@ REGLAS DE AUDITORÍA:
 `.trim();
 
 /**
- * Extrae de forma segura criterio_ia, bloqueada_para_ia y el prompt limpio de la régua,
+ * Extrae de forma segura criterio_ia, bloqueada_para_ia, meta_conversion_event y el prompt limpio de la régua,
  * priorizando las columnas nativas de crm_stage y manteniendo retrocompatibilidad
  * con etapas que hayan guardado JSON serializado(s) dentro de mensagem_prompt.
  */
 export function resolveStageAiMeta(stage: {
   criterio_ia?: string | null;
   bloqueada_para_ia?: boolean | null;
+  meta_conversion_event?: string | null;
   mensagem_prompt?: string | null;
 } | null | undefined): StageAiMeta {
   if (!stage) {
-    return { criterio_ia: "", bloqueada_para_ia: false, mensagem_prompt: "" };
+    return { criterio_ia: "", bloqueada_para_ia: false, mensagem_prompt: "", meta_conversion_event: "" };
   }
 
   let rawPrompt = String(stage.mensagem_prompt ?? "").trim();
   let legacyCriterio = "";
   let legacyBloqueada = false;
+  let legacyMetaEvent = "";
 
   // Desempacar recursivamente hasta 5 niveles por si hubo doble serialización previa
   for (let depth = 0; depth < 5; depth++) {
     if (rawPrompt.startsWith("{") && rawPrompt.endsWith("}")) {
       try {
         const parsed = JSON.parse(rawPrompt);
-        if (typeof parsed === "object" && parsed !== null && ("criterio_ia" in parsed || "bloqueada_para_ia" in parsed || "mensagem_prompt" in parsed)) {
+        if (typeof parsed === "object" && parsed !== null && ("criterio_ia" in parsed || "bloqueada_para_ia" in parsed || "mensagem_prompt" in parsed || "meta_conversion_event" in parsed)) {
           if (parsed.criterio_ia && !legacyCriterio) legacyCriterio = String(parsed.criterio_ia);
           if (typeof parsed.bloqueada_para_ia === "boolean") legacyBloqueada = legacyBloqueada || parsed.bloqueada_para_ia;
+          if (parsed.meta_conversion_event && !legacyMetaEvent) legacyMetaEvent = String(parsed.meta_conversion_event);
           rawPrompt = String(parsed.mensagem_prompt ?? "").trim();
           continue;
         }
@@ -78,12 +82,42 @@ export function resolveStageAiMeta(stage: {
 
   const hasNativeCriterio = typeof stage.criterio_ia === "string" && stage.criterio_ia.trim().length > 0;
   const hasNativeBloqueada = typeof stage.bloqueada_para_ia === "boolean";
+  const hasNativeMetaEvent = typeof (stage as any).meta_conversion_event === "string" && (stage as any).meta_conversion_event.trim().length > 0;
 
   return {
     criterio_ia: hasNativeCriterio ? stage.criterio_ia!.trim() : legacyCriterio,
     bloqueada_para_ia: hasNativeBloqueada ? Boolean(stage.bloqueada_para_ia || legacyBloqueada) : legacyBloqueada,
+    meta_conversion_event: hasNativeMetaEvent ? (stage as any).meta_conversion_event!.trim() : legacyMetaEvent,
     mensagem_prompt: rawPrompt,
   };
+}
+
+/**
+ * Empaqueta de forma retrocompatible criterio_ia, bloqueada_para_ia y meta_conversion_event
+ * dentro del campo mensagem_prompt si no se cuenta con columnas nativas.
+ */
+export function packStageAiMeta(meta: {
+  criterio_ia?: string | null;
+  bloqueada_para_ia?: boolean | null;
+  meta_conversion_event?: string | null;
+  mensagem_prompt?: string | null;
+}): string {
+  const criterio = (meta.criterio_ia || "").trim();
+  const bloqueada = !!meta.bloqueada_para_ia;
+  const metaEvent = (meta.meta_conversion_event || "").trim();
+  const prompt = (meta.mensagem_prompt || "").trim();
+
+  // Si no hay metadatos especiales, devolver el prompt tal cual
+  if (!criterio && !bloqueada && !metaEvent) {
+    return prompt;
+  }
+
+  return JSON.stringify({
+    criterio_ia: criterio || undefined,
+    bloqueada_para_ia: bloqueada ? true : undefined,
+    meta_conversion_event: metaEvent || undefined,
+    mensagem_prompt: prompt || undefined,
+  });
 }
 
 /**

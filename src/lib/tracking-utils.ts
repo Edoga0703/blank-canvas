@@ -51,16 +51,40 @@ export function extractTrackingFromText(text: string | null | undefined): Tracki
   return out;
 }
 
-/** Extrai ctwa_clid do payload da Evolution/Uazapi (Click-to-WhatsApp Meta Ads). */
+/** Extrae el código de protocolo de un link rastreable (ej. "[Ref: #A1B2C]" o "#A1B2C") */
+export function extractTrackingProtocolCode(text: string | null | undefined): string | null {
+  if (!text) return null;
+  const m = text.match(/(?:ref|protocolo|cod|id)?[:\s#-]*#([A-Z0-9]{5,8})\b/i);
+  return m ? m[1].toUpperCase() : null;
+}
+
+/** Extrai ctwa_clid do payload da D-API (Oficial / QR) ou Meta Cloud API (Click-to-WhatsApp Meta Ads). */
 export function extractCtwaFromPayload(payload: any): string | null {
   try {
-    const msg = payload?.data?.message ?? payload?.message ?? payload?.data ?? {};
-    const ctx = msg?.contextInfo ?? msg?.extendedTextMessage?.contextInfo ?? msg?.imageMessage?.contextInfo;
+    const data = payload?.data ?? payload ?? {};
+    const msg = data?.message ?? data?.messages?.[0] ?? data ?? {};
+    const ctx =
+      msg?.contextInfo ??
+      msg?.extendedTextMessage?.contextInfo ??
+      msg?.imageMessage?.contextInfo ??
+      msg?.videoMessage?.contextInfo ??
+      data?.contextInfo;
+    const referral =
+      data?.referral ??
+      msg?.referral ??
+      payload?.referral ??
+      payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.referral;
+
     return (
+      referral?.ctwa_clid ||
+      referral?.ctwaClid ||
       ctx?.externalAdReply?.ctwaClid ||
       ctx?.ctwaClid ||
+      data?.ctwa_clid ||
+      data?.ctwaClid ||
       msg?.ctwaClid ||
-      payload?.data?.ctwaClid ||
+      deepFind(payload, "ctwaClid") ||
+      deepFind(payload, "ctwa_clid") ||
       null
     );
   } catch { return null; }
@@ -71,6 +95,7 @@ export type AdContext = {
   sourceId: string | null;
   title: string | null;
   body: string | null;
+  thumbnailUrl: string | null;
   ctwaClid: string | null;
 };
 
@@ -86,21 +111,24 @@ function deepFind(obj: any, key: string, depth = 0): any {
 
 /**
  * Contexto do anúncio de campanhas Click-to-WhatsApp (Meta).
- * A primeira mensagem do lead traz `externalAdReply` com o link e o título do anúncio.
+ * Suporta tanto D-API QR (externalAdReply) quanto D-API Oficial / Meta Cloud API (referral).
  */
 export function extractAdContext(payload: any): AdContext | null {
-  const ad = deepFind(payload, "externalAdReply");
-  const ctwaClid = extractCtwaFromPayload(payload) || deepFind(payload, "ctwaClid") || null;
+  const ad = deepFind(payload, "externalAdReply") || deepFind(payload, "referral");
+  const ctwaClid = extractCtwaFromPayload(payload);
   if (!ad && !ctwaClid) return null;
+
   const clean = (v: any) => {
     const s = String(v ?? "").trim();
     return s ? s.slice(0, 500) : null;
   };
+
   return {
     sourceUrl: clean(ad?.sourceUrl || ad?.source_url || ad?.sourceURL),
-    sourceId: clean(ad?.sourceId || ad?.source_id),
-    title: clean(ad?.title),
+    sourceId: clean(ad?.sourceId || ad?.source_id || ad?.ad_id),
+    title: clean(ad?.title || ad?.headline),
     body: clean(ad?.body),
+    thumbnailUrl: clean(ad?.thumbnailUrl || ad?.thumbnail_url || ad?.image_url || ad?.media_url),
     ctwaClid: clean(ctwaClid),
   };
 }
@@ -118,9 +146,9 @@ function safeDecode(s: string): string {
 
 export const CANAL_LABEL: Record<CanalEntrada, string> = {
   whatsapp_direto: "WhatsApp",
-  wa_link_utm: "Link com UTM",
-  ads_meta: "Anúncio Meta",
-  ads_google: "Anúncio Google",
+  wa_link_utm: "Link WhatsApp",
+  ads_meta: "Meta Ads",
+  ads_google: "Google Ads",
   formulario: "Formulário",
   organico: "Orgânico",
   instagram: "Instagram",
@@ -134,21 +162,22 @@ export const CANAL_LABEL: Record<CanalEntrada, string> = {
 };
 
 export const CANAL_COLOR: Record<CanalEntrada, string> = {
-  whatsapp_direto: "#25D366",
-  wa_link_utm: "#0B22FE",
-  ads_meta: "#1877F2",
-  ads_google: "#EA4335",
-  formulario: "#8B5CF6",
-  organico: "#8AA89A",
-  instagram: "#E1306C",
-  facebook: "#1877F2",
-  telegram: "#229ED9",
-  site: "#0EA5E9",
-  indicacao: "#F59E0B",
-  telefone: "#64748B",
-  presencial: "#14B8A6",
-  outro: "#94A3B8",
+  whatsapp_direto: "#22c55e",
+  wa_link_utm: "#06b6d4",
+  ads_meta: "#3b82f6",
+  ads_google: "#f59e0b",
+  formulario: "#8b5cf6",
+  organico: "#10b981",
+  instagram: "#ec4899",
+  facebook: "#2563eb",
+  telegram: "#0284c7",
+  site: "#6366f1",
+  indicacao: "#14b8a6",
+  telefone: "#f97316",
+  presencial: "#84cc16",
+  outro: "#64748b",
 };
+
 
 /** Canais disponíveis para cadastro manual de lead. */
 export const CANAIS_MANUAIS: CanalEntrada[] = [

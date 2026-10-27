@@ -444,6 +444,27 @@ export async function moveCardToStage(
       console.warn("[moveCardToStage] webhook ganho/perda", e);
     }
   }
+
+  // Meta Conversions API (CAPI) automático ao mudar de etapa
+  if (cardInfo?.company_id) {
+    try {
+      const { resolveStageAiMeta } = await import("./crm-stage-meta");
+      const meta = resolveStageAiMeta(stage);
+      const metaEvent = (stage as any)?.meta_conversion_event || (meta as any)?.meta_conversion_event || (stage?.tipo === "ganho" ? "Purchase" : null);
+      if (metaEvent) {
+        const { sendMetaConversionForLead } = await import("./meta-capi.server");
+        void sendMetaConversionForLead({
+          companyId: cardInfo.company_id,
+          cardId,
+          eventName: metaEvent,
+          value: cardInfo.valor ? Number(cardInfo.valor) : undefined,
+          dedupKey: `${cardId}_${stageId}_${metaEvent}_${Date.now()}`,
+        }).catch((e) => console.warn("[moveCardToStage.metaCapi] Error:", e?.message));
+      }
+    } catch (e: any) {
+      console.warn("[moveCardToStage.metaCapi] Best-effort error:", e?.message);
+    }
+  }
 }
 
 /**

@@ -30,6 +30,7 @@ import { applyStageMovement } from "@/lib/crm-lead-analyzer.functions";
 import { CrmCopilotSheet } from "@/components/crm/crm-copilot-sheet";
 import { useCapacidadeAtiva } from "@/hooks/use-capacidades";
 import { LeadAiAnalyzerDialog } from "@/components/crm/lead-ai-analyzer-dialog";
+import { LeadAdReferralCard } from "@/components/crm/lead-ad-referral-card";
 
 
 export interface LeadCard {
@@ -620,6 +621,9 @@ export function LeadDetailsPanel({
               />
             </div>
           </div>
+
+          {/* Rastreamento e Atribuição Meta Ads / Conversions API */}
+          <LeadAdReferralCard card={local} onConversionSent={onChanged} />
 
           {/* Sevcon: esconde a seção de respostas do formulário no detalhe do lead */}
           {!operationalMode && (

@@ -276,6 +276,130 @@ async function persistMessage(
         "whatsapp",
       );
 
+      // Captura y asociación de Anuncios Meta Ads (CTWA), UTMs y Sesiones de Clic
+      if (currentCard) {
+        try {
+          const {
+            extractTrackingFromText,
+            extractAdContext,
+            extractTrackingProtocolCode,
+            deriveCanal,
+          } = await import("@/lib/tracking-utils");
+
+          const t = extractTrackingFromText(event.text);
+          const adCtx = extractAdContext(event.raw);
+          const protocolCode = extractTrackingProtocolCode(event.text);
+          const patch: Record<string, any> = {};
+
+          const setIfEmpty = (col: string, val: string | null | undefined) => {
+            if (val && !(currentCard as any)[col]) patch[col] = String(val).slice(0, 500);
+          };
+
+          // 1. Código de protocolo (#ABC12) de Link Rastreable
+          if (protocolCode) {
+            try {
+              const { data: clickSession } = await (supabaseAdmin as any)
+                .from("lead_click_session")
+                .select("*")
+                .eq("company_id", connection.company_id)
+                .eq("code", protocolCode)
+                .maybeSingle();
+
+              if (clickSession) {
+                setIfEmpty("fbclid", clickSession.fbclid);
+                setIfEmpty("gclid", clickSession.gclid);
+                setIfEmpty("utm_source", clickSession.utm_source);
+                setIfEmpty("utm_medium", clickSession.utm_medium);
+                setIfEmpty("utm_campaign", clickSession.utm_campaign);
+                setIfEmpty("utm_term", clickSession.utm_term);
+                setIfEmpty("utm_content", clickSession.utm_content);
+                setIfEmpty("referrer", clickSession.referrer);
+                setIfEmpty("first_page", clickSession.first_page);
+
+                const prevExtras =
+                  currentCard.campos_extras && typeof currentCard.campos_extras === "object"
+                    ? currentCard.campos_extras
+                    : {};
+                patch.campos_extras = {
+                  ...prevExtras,
+                  browser_tracking: {
+                    fbc: clickSession.fbc,
+                    fbp: clickSession.fbp,
+                    client_ip: clickSession.client_ip,
+                    client_user_agent: clickSession.client_user_agent,
+                    captured_at: clickSession.created_at,
+                  },
+                };
+              }
+            } catch {
+              // lead_click_session fallback
+            }
+          }
+
+          // 2. UTMs y Click IDs en texto
+          setIfEmpty("utm_source", t.utm_source);
+          setIfEmpty("utm_medium", t.utm_medium);
+          setIfEmpty("utm_campaign", t.utm_campaign);
+          setIfEmpty("utm_term", t.utm_term);
+          setIfEmpty("utm_content", t.utm_content);
+          setIfEmpty("gclid", t.gclid);
+          setIfEmpty("fbclid", t.fbclid);
+
+          // 3. Contexto de Anuncio Click-to-WhatsApp (Meta Ads)
+          if (adCtx) {
+            if (adCtx.ctwaClid) patch.ctwa_clid = adCtx.ctwaClid;
+            else setIfEmpty("ctwa_clid", t.ctwa_clid);
+
+            setIfEmpty("referrer", adCtx.sourceUrl);
+            setIfEmpty("origem", adCtx.title || (adCtx.sourceId ? `Anúncio ${adCtx.sourceId}` : null));
+            setIfEmpty("utm_campaign", adCtx.sourceId);
+
+            const prevExtras =
+              patch.campos_extras ||
+              (currentCard.campos_extras && typeof currentCard.campos_extras === "object"
+                ? currentCard.campos_extras
+                : {});
+            patch.campos_extras = {
+              ...prevExtras,
+              ad_referral: {
+                source_id: adCtx.sourceId,
+                source_url: adCtx.sourceUrl,
+                headline: adCtx.title,
+                body: adCtx.body,
+                thumbnail_url: adCtx.thumbnailUrl,
+                ctwa_clid: adCtx.ctwaClid,
+                captured_at: new Date().toISOString(),
+              },
+            };
+          } else {
+            setIfEmpty("ctwa_clid", t.ctwa_clid);
+          }
+
+          const hasCtwa = Boolean(adCtx?.ctwaClid || adCtx?.sourceUrl || patch.ctwa_clid || patch.fbclid);
+          const canal = deriveCanal(t, hasCtwa);
+          const canalAtual = (currentCard as any).canal_entrada;
+          if (canal !== "whatsapp_direto" && (!canalAtual || canalAtual === "whatsapp_direto" || canalAtual === "whatsapp")) {
+            patch.canal_entrada = canal;
+          }
+
+          if (Object.keys(patch).length > 0) {
+            await (supabaseAdmin as any).from("crm_cards").update(patch).eq("id", currentCard.id);
+            Object.assign(currentCard, patch);
+          }
+
+          // Resolver en segundo plano nombres reales de Meta Ads si hay sourceId
+          if (adCtx?.sourceId) {
+            void import("@/lib/meta-capi.server")
+              .then(({ enrichCardWithMetaAdDetails }) =>
+                enrichCardWithMetaAdDetails(connection.company_id, currentCard.id, adCtx.sourceId!),
+              )
+              .catch(() => null);
+          }
+        } catch (trackErr: any) {
+          console.warn("[ingest.tracking] Error al extraer rastreo de anuncio:", trackErr?.message);
+        }
+      }
+
       if (currentCard && !currentCard.owner_id) {
         const { data: stageConfig } = await (supabaseAdmin as any)
           .from("crm_stage")

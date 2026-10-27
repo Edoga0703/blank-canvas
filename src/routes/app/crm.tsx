@@ -38,7 +38,7 @@ import { CANAL_LABEL, CANAL_COLOR, CANAIS_MANUAIS, type CanalEntrada } from "@/l
 import { QuickScheduleDialog } from "@/components/agenda/quick-schedule-dialog";
 import { EncaminharDialog } from "@/components/chat/encaminhar-dialog";
 import { useFeatureEnabled } from "@/hooks/use-feature-flags";
-import { resolveStageAiMeta, DEFAULT_CRM_MASTER_PROMPT } from "@/lib/crm-stage-meta";
+import { resolveStageAiMeta, packStageAiMeta, DEFAULT_CRM_MASTER_PROMPT } from "@/lib/crm-stage-meta";
 import { applyStageMovement } from "@/lib/crm-lead-analyzer.functions";
 import { CrmCopilotSheet } from "@/components/crm/crm-copilot-sheet";
 import { useLanguage, translateDefaultStageName, translateDefaultPipelineName } from "@/lib/i18n/context";

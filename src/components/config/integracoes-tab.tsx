@@ -1,3 +1,4 @@
+import { MetaCapiCard } from "./meta-capi-card";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { listApiTokens, createApiToken, revokeApiToken } from "@/lib/integrations.functions";
@@ -182,7 +183,7 @@ export function IntegracoesTab() {
 
               <TabsTrigger value="script">Script</TabsTrigger>
               <TabsTrigger value="form">Formulário</TabsTrigger>
-              <TabsTrigger value="meta">Meta Ads</TabsTrigger>
+              <TabsTrigger value="meta">Meta Ads & CAPI</TabsTrigger>
               <TabsTrigger value="curl">API (cURL)</TabsTrigger>
               <TabsTrigger value="wa">Link WhatsApp</TabsTrigger>
 
