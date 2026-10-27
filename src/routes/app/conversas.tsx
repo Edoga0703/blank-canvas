@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { SendContactDialog } from "@/components/chat/send-contact-dialog";
 import { AiAssistButton } from "@/components/chat/ai-assist-button";
+import { FormattedMessageText } from "@/components/chat/formatted-message-text";
 
 
 import { 
@@ -2736,9 +2737,9 @@ function Bubble({ m, quotedSnippet, companyId, onReply, agentTraits, agentAvatar
               parseLocationText(m.texto)
                 ? <ChatLocation loc={parseLocationText(m.texto)!} outbound={isOut} />
                 : (
-                  <div className="whitespace-pre-wrap break-words">
-                    {m.texto === "[ÁUDIO]" ? null : m.texto}
-                  </div>
+                  m.texto === "[ÁUDIO]" ? null : (
+                    <FormattedMessageText text={m.texto} isOut={isOut} />
+                  )
                 )
             )
           )}

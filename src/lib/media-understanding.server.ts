@@ -94,8 +94,8 @@ export async function describeIncomingFile(
   const dataUrl = `data:${finalMime};base64,${toBase64(file.bytes)}`;
 
   const instrucao = tipo === "document"
-    ? "Resuma objetivamente o conteúdo deste documento enviado pelo cliente, destacando dados relevantes para atendimento comercial."
-    : "Descreva objetivamente o que aparece nesta mídia enviada pelo cliente, incluindo textos visíveis, produtos, valores e detalhes úteis para o atendimento.";
+    ? "Analiza este documento enviado por el cliente. Si es un comprobante de pago, factura, presupuesto o contrato, extrae de manera estructurada con subtítulos, viñetas y negritas: Tipo de documento, Estatus, Montos y monedas, Número de referencia/factura, Bancos o entidades emisora y receptora, Fecha/hora y Partes involucradas. Responde en el mismo idioma del documento (español por defecto) con formato limpio, espaciado y profesional."
+    : "Analiza y describe de forma estructurada esta imagen enviada por el cliente. Si es un comprobante de pago (ej. Pago Móvil, Transferencia bancaria, Zelle), factura o recibo, extrae detalladamente con subtítulos, viñetas y negritas: Estatus de la transacción, Monto y moneda, Banco emisor y receptor, Número de referencia, Fecha y hora, y Datos de las partes (teléfono, cédula o beneficiario). Si es un producto o foto general, describe lo que aparece con textos y detalles útiles. Responde en el mismo idioma del contenido (español por defecto) con formato limpio, ordenado y espaciado.";
 
   const content: any[] = [{ type: "text", text: caption ? `${instrucao}\nLegenda do cliente: ${caption}` : instrucao }];
   if (tipo === "image") {

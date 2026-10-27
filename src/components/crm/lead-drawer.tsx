@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { AvatarViewer } from "@/components/ui/avatar-viewer";
+import { FormattedMessageText } from "@/components/chat/formatted-message-text";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Save, Trash2, Send, X as XIcon, Plus, Copy, Route as RouteIcon, Sparkles, Loader2, DollarSign, Filter, ChevronDown, ChevronUp, User, Mail, Building2, MapPin, Phone, UserCheck, Share2, Tag as TagIcon, Pencil, CreditCard, Target, Users, Star, Check, Package } from "lucide-react";
@@ -996,7 +997,7 @@ function ConversaTab({ numero, companyId, cardId }: { numero: string; companyId:
                     <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm space-y-1 ${saida ? "bg-[var(--brand)]/15 text-foreground" : "bg-[var(--panel-2)]"}`}>
                       <div className="text-[10px] uppercase opacity-60">{autorLabel(m)}</div>
                       <MediaBubble m={m} />
-                      {m.texto && <div className="whitespace-pre-wrap break-words">{linkify(m.texto)}</div>}
+                      {m.texto && <FormattedMessageText text={m.texto} isOut={saida} />}
                       <div className="text-[10px] opacity-60 text-right tabular-nums">
                         {formatTime(m.created_at, { hour: "2-digit", minute: "2-digit" })}
                         {saida && m.status_envio && m.status_envio !== "enviado" ? ` • ${m.status_envio}` : ""}

@@ -167,7 +167,7 @@ async function anthropicChat(key: string, model: string, messages: ChatMsg[]): P
       "anthropic-version": "2023-06-01",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ model, max_tokens: 1024, system, messages: conv }),
+    body: JSON.stringify({ model, max_tokens: 4096, system, messages: conv }),
   });
   if (!res.ok) {
     const t = await res.text();
