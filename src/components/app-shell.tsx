@@ -8,7 +8,8 @@ import {
   Inbox, Users, BarChart3, Settings, Contact, Megaphone, Webhook, Wallet,
   ChevronsLeft, ChevronsRight, Zap, ChevronDown, CalendarClock, Zap as Bolt, Bell, Volume2, VolumeX,
   PanelLeft, User as UserIcon, Package, Puzzle, MoreHorizontal, Workflow, TrendingUp, FileText,
-  GraduationCap, CreditCard, Radar, Share2, Images
+  GraduationCap, CreditCard, Radar, Share2, Images,
+  Activity
 } from "lucide-react";
 import { AgentAvatar } from "@/components/agente/agent-avatar";
 
@@ -69,6 +70,7 @@ const PATH_TO_NAV_KEY: Record<string, string> = {
 
 type NavItem = {
   to?: string;
+  search?: Record<string, any>;
   label: string;
   icon: any;
   adminOnly?: boolean;
@@ -107,6 +109,7 @@ const sections: { label: string; items: (NavItem & { flag?: string })[] }[] = [
     items: [
       { to: "/app/usuarios", label: "Usuários", icon: Users, flag: "module.usuarios" },
       { to: "/app/conexao", label: "Conexão", icon: Smartphone, flag: "module.conexao" },
+      { to: "/app/conexao", search: { tab: "tracking" }, label: "Tracking", icon: Activity, tag: "Meta", flag: "module.conexao" },
       { to: "/app/plugins", label: "Plugins", icon: Puzzle, flag: "module.plugins" },
       { to: "/app/configuracoes", label: "Configurações", icon: Settings, flag: "module.configuracoes" },
       { to: "/app/relatorios", label: "Relatórios", icon: BarChart3 },
@@ -527,11 +530,20 @@ function Sidebar({
             {i > 0 && <div className="h-px bg-border mx-2 mb-3" />}
              {!collapsed && <div className="px-3 pb-2 text-[10px] font-bold uppercase text-muted-foreground">{sec.label === "Atendimento" ? t("nav.attendance", undefined, "Atendimento") : sec.label === "Gestão" ? t("nav.management", undefined, "Gestão") : sec.label}</div>}
             <div className="flex flex-col gap-[3px]">
-              {sec.items.filter((i: any) => (!i.adminOnly || isAdmin) && (!i.superOnly || isSuperAdmin) && isFeatureVisible(i.flag) && isCapacidadeVisible(i.capacidade)).map((item: any) => (
-                item.children
-                  ? <NavGroup key={item.label} item={item} activePath={activePath} primary={primary} collapsed={collapsed} isAdmin={isAdmin} onNavigateStart={onNavigateStart} />
-                  : <NavLink key={item.to} item={item} active={activePath.startsWith(item.to!)} primary={primary} collapsed={collapsed} badgeCount={item.to === "/app/conversas" ? unreadConversations : 0} onNavigateStart={onNavigateStart} />
-              ))}
+              {sec.items.filter((i: any) => (!i.adminOnly || isAdmin) && (!i.superOnly || isSuperAdmin) && isFeatureVisible(i.flag) && isCapacidadeVisible(i.capacidade)).map((item: any) => {
+                const itemKey = (item.to || "") + (item.search?.tab ? "?tab=" + item.search.tab : "") + item.label;
+                const isTrackingItem = item.search?.tab === "tracking";
+                const isConexaoItem = item.to === "/app/conexao" && !isTrackingItem;
+                const currentSearchTab = (loc.search as any)?.tab;
+                const isAct = isTrackingItem
+                  ? activePath === item.to && currentSearchTab === "tracking"
+                  : isConexaoItem
+                  ? activePath === item.to && currentSearchTab !== "tracking"
+                  : activePath.startsWith(item.to!);
+                return item.children
+                  ? <NavGroup key={itemKey} item={item} activePath={activePath} primary={primary} collapsed={collapsed} isAdmin={isAdmin} onNavigateStart={onNavigateStart} />
+                  : <NavLink key={itemKey} item={item} active={isAct} primary={primary} collapsed={collapsed} badgeCount={item.to === "/app/conversas" ? unreadConversations : 0} onNavigateStart={onNavigateStart} />;
+              })}
             </div>
           </div>
         ))}
@@ -629,11 +641,12 @@ function Sidebar({
 function NavLink({ item, active, primary, collapsed, badgeCount, onNavigateStart }: { item: NavItem; active: boolean; primary: string; collapsed?: boolean; badgeCount?: number; onNavigateStart?: (to?: string) => void }) {
   const Icon = item.icon;
   const { t } = useLanguage();
-  const navKey = item.to ? PATH_TO_NAV_KEY[item.to] : undefined;
+  const navKey = item.search?.tab === "tracking" ? "nav.tracking" : item.to ? PATH_TO_NAV_KEY[item.to] : undefined;
   const displayLabel = navKey ? t(navKey, undefined, item.label) : item.label;
   return (
     <Link
       to={item.to}
+      search={item.search}
       preload="intent"
       onPointerDown={() => onNavigateStart?.(item.to)}
       onClick={(event) => {
