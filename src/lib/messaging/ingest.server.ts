@@ -445,6 +445,26 @@ async function persistMessage(
     } catch (automationError) {
       console.error("[ingest.automation] Error al ejecutar automatización de CRM/IA:", automationError);
     }
+  } else if (event.direction === "outgoing") {
+    try {
+      await (supabaseAdmin as any)
+        .from("crm_cards")
+        .update({
+          ultima_mensagem: (event.text || "[Mensaje enviado]").slice(0, 240),
+          ultima_em: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("company_id", connection.company_id)
+        .eq("numero", event.phone);
+
+      void import("@/lib/crm-lead-analyzer.server")
+        .then(({ checkAndAnalyzeLeadCooldown }) =>
+          checkAndAnalyzeLeadCooldown(connection.company_id, event.phone),
+        )
+        .catch(() => null);
+    } catch (outErr: any) {
+      console.warn("[ingest.outgoing] Error actualizando card/análisis:", outErr?.message);
+    }
   }
 }
 

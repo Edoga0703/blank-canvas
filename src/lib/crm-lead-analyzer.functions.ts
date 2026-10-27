@@ -83,3 +83,13 @@ export const applyStageMovement = createServerFn({ method: "POST" })
       ownerId: extra.owner_id ?? card.owner_id ?? null,
     };
   });
+
+
+export const syncPendingLeadsAnalysis = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d?: { limit?: number }) => ({ limit: d?.limit ?? 6 }))
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
+    const { analyzePendingCompanyLeads } = await import("./crm-lead-analyzer.server");
+    return await analyzePendingCompanyLeads(companyId, data?.limit ?? 6);
+  });

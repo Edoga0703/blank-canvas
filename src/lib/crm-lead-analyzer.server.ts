@@ -15,14 +15,16 @@ import {
 
 export { resolveStageAiMeta, DEFAULT_CRM_MASTER_PROMPT, type StageAiMeta, type LeadAnalysisResult };
 
-// Helpers retrocompatibles
 export const parseStageAiMeta = (rawPrompt: string | null | undefined) =>
   resolveStageAiMeta({ mensagem_prompt: rawPrompt });
 export const formatStageAiMeta = (meta: Partial<StageAiMeta>) =>
   String(meta.mensagem_prompt ?? "").trim();
 
-// Re-exportar server functions para compatibilidad con código existente
 export { analyzeLeadNow, applyStageMovement } from "./crm-lead-analyzer.functions";
+
+// Mapa en memoria para encolar re-análisis cuando llegan mensajes dentro de la ventana de cooldown
+const pendingCooldownTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const runningLeadLocks = new Set<string>();
 
 export async function analyzeLeadInternal(
   companyId: string,
@@ -37,7 +39,7 @@ export async function analyzeLeadInternal(
 }> {
   const { data: card, error: cardError } = await supabaseAdmin
     .from("crm_cards")
-    .select("id, company_id, pipeline_id, stage_id, owner_id, numero, nome, valor, campos_extras, canal_chat, tags, observacao, origem, canal_entrada, stage_entrou_em, email, empresa, cpf_cnpj, item_id, item_nome, item_tipo, proxima_acao, status, primeiro_contato_em, perdido_em, reativado_em")
+    .select("*")
     .eq("id", cardId)
     .eq("company_id", companyId)
     .maybeSingle();
@@ -55,15 +57,6 @@ export async function analyzeLeadInternal(
     .limit(100);
 
   const orderedMessages = (messages || []).slice().reverse();
-  if (orderedMessages.length === 0) {
-    return {
-      ok: false,
-      result: null,
-      currentStage: null,
-      suggestedStageBlocked: false,
-      error: "No hay mensajes registrados en esta conversación para analizar.",
-    };
-  }
 
   let pipelineId = card.pipeline_id;
   if (!pipelineId && card.stage_id) {
@@ -89,14 +82,14 @@ export async function analyzeLeadInternal(
     pipelineId
       ? supabaseAdmin
           .from("crm_pipeline")
-          .select("id, nome, agent_id, tipo")
+          .select("*")
           .eq("id", pipelineId)
           .maybeSingle()
       : Promise.resolve({ data: null }),
     pipelineId
       ? supabaseAdmin
           .from("crm_stage")
-          .select("id, nome, cor, tipo, ordem, mensagem_prompt, agent_id, modo_atendimento, pipeline_id")
+          .select("*")
           .eq("pipeline_id", pipelineId)
           .order("ordem", { ascending: true })
       : Promise.resolve({ data: [] }),
@@ -107,7 +100,7 @@ export async function analyzeLeadInternal(
   if (finalStages.length === 0) {
     const { data: anyStages } = await supabaseAdmin
       .from("crm_stage")
-      .select("id, nome, cor, tipo, ordem, mensagem_prompt, agent_id, modo_atendimento, pipeline_id")
+      .select("*")
       .eq("company_id", companyId)
       .order("ordem", { ascending: true });
     finalStages = anyStages || [];
@@ -137,6 +130,26 @@ export async function analyzeLeadInternal(
 
   const currentStage = stages.find((s) => s.id === card.stage_id) || null;
 
+  // Si aún no hay filas en `mensagens`, verificar si el lead tiene contexto de formulario, notas, citas o mensaje inicial
+  const hasAlternativeContext = Boolean(
+    card.ultima_mensagem ||
+      card.observacao ||
+      (Array.isArray(card.campos_extras?.respostas) && card.campos_extras.respostas.length > 0) ||
+      (comprehensiveLeadCtx?.formSubmissions && comprehensiveLeadCtx.formSubmissions.length > 0) ||
+      (comprehensiveLeadCtx?.notas && comprehensiveLeadCtx.notas.length > 0) ||
+      (comprehensiveLeadCtx?.agendamentos && comprehensiveLeadCtx.agendamentos.length > 0),
+  );
+
+  if (orderedMessages.length === 0 && !hasAlternativeContext) {
+    return {
+      ok: false,
+      result: null,
+      currentStage: currentStage ? { id: currentStage.id, nome: currentStage.nome } : null,
+      suggestedStageBlocked: false,
+      error: "No hay mensajes ni datos de formulario registrados para analizar.",
+    };
+  }
+
   // Resolver el agente del embudo o el predeterminado de la empresa para idioma y proveedor IA
   let agentQuery = supabaseAdmin
     .from("agent_config")
@@ -155,14 +168,17 @@ export async function analyzeLeadInternal(
   const langLabel = langCode.startsWith("pt") ? "Português" : langCode.startsWith("en") ? "English" : "Español";
   const localeForDates = langCode.startsWith("pt") ? "pt-BR" : langCode.startsWith("en") ? "en-US" : "es-ES";
 
-  const formattedTranscript = orderedMessages
-    .map((m: any) => {
-      const fecha = m.created_at ? new Date(m.created_at).toLocaleString(localeForDates) : "";
-      const emisor = m.direcao === "entrada" ? `Cliente (${card.nome || card.numero})` : `Asesor / Sistema`;
-      const contenido = m.texto || (m.midia_tipo ? `[Archivo adjunto: ${m.midia_tipo}]` : "[Mensaje sin texto]");
-      return `[${fecha}] ${emisor}: ${contenido}`;
-    })
-    .join("\n");
+  const formattedTranscript =
+    orderedMessages.length > 0
+      ? orderedMessages
+          .map((m: any) => {
+            const fecha = m.created_at ? new Date(m.created_at).toLocaleString(localeForDates) : "";
+            const emisor = m.direcao === "entrada" ? `Cliente (${card.nome || card.numero})` : `Asesor / Sistema (${m.autor || "empresa"})`;
+            const contenido = m.texto || (m.midia_tipo ? `[Archivo adjunto: ${m.midia_tipo}]` : "[Mensaje sin texto]");
+            return `[${fecha}] ${emisor}: ${contenido}`;
+          })
+          .join("\n")
+      : `[Captura de Lead (${card.canal_entrada || card.origem || "CRM"})]: ${card.ultima_mensagem || "Lead registrado en el embudo"}`;
 
   const stagesPromptBlock = stages
     .map((s, idx) => {
@@ -172,7 +188,11 @@ export async function analyzeLeadInternal(
     })
     .join("\n\n");
 
-  const masterPrompt = pipeline?.crm_master_prompt && String(pipeline.crm_master_prompt).trim().length > 0 ? String(pipeline.crm_master_prompt).trim() : DEFAULT_CRM_MASTER_PROMPT;
+  const rawPipePrompt = (pipeline as any)?.crm_master_prompt;
+  const masterPrompt =
+    rawPipePrompt && String(rawPipePrompt).trim().length > 0
+      ? String(rawPipePrompt).trim()
+      : DEFAULT_CRM_MASTER_PROMPT;
 
   const formattedComprehensiveContext = comprehensiveLeadCtx
     ? formatComprehensiveContextForPrompt(comprehensiveLeadCtx, localeForDates)
@@ -191,10 +211,10 @@ INFORMACIÓN COMERCIAL INTEGRAL DEL LEAD, CATÁLOGO Y OPERACIONES:
 ${formattedComprehensiveContext}
 
 IDIOMA DE RESPUESTA OBLIGATORIO:
-Emite los campos de texto ("resumo", "justificativa", "sugestao_treinamento", "alerta_sla", "produto_sugerido") estrictamente en ${langLabel}.
+Emite los campos de texto ("resumo", "justificativa", "sugestao_treinamento", "alerta_sla", "produto_sugerido", "proxima_acao_sugerida") estrictamente en ${langLabel}.
 
 INSTRUCCIONES DE SALIDA:
-Analiza la conversación que se adjunta cruzándola con la ficha del lead, catálogo, notas del equipo, citas y ventas previas.
+Analiza la conversación y todos los datos del lead (ficha, catálogo, notas del equipo, citas, formularios y ventas previas).
 Responde OBLIGATORIAMENTE con un único bloque JSON válido con el siguiente formato:
 {
   "resumo": "Resumen ejecutivo en 2 oraciones del estado de la negociación",
@@ -215,7 +235,7 @@ Responde OBLIGATORIAMENTE con un único bloque JSON válido con el siguiente for
     { role: "system", content: systemPrompt },
     {
       role: "user",
-      content: `A continuación tienes la transcripción de los últimos ${orderedMessages.length} mensajes con el cliente:\n\n${formattedTranscript}\n\nEmite tu diagnóstico y clasificación en formato JSON:`,
+      content: `A continuación tienes el registro de interacción del cliente:\n\n${formattedTranscript}\n\nEmite tu diagnóstico y clasificación en formato JSON:`,
     },
   ];
 
@@ -274,7 +294,6 @@ Responde OBLIGATORIAMENTE con un único bloque JSON válido con el siguiente for
   const suggestedStageBlocked = Boolean(targetStage.bloqueada_para_ia);
   const nowIso = new Date().toISOString();
 
-  // Releer campos_extras frescos antes de actualizar para no pisar respostas/personalizados
   try {
     const { data: freshCard } = await supabaseAdmin
       .from("crm_cards")
@@ -295,17 +314,16 @@ Responde OBLIGATORIAMENTE con un único bloque JSON válido con el siguiente for
       updated_at: nowIso,
     };
 
-    // Auto-actualizar valor monetario si el lead no tenía valor y la IA identificó el precio del catálogo
     if (parsedResult.valor_sugerido && typeof parsedResult.valor_sugerido === "number" && (!freshCard?.valor || Number(freshCard.valor) === 0)) {
       updates.valor = parsedResult.valor_sugerido;
     }
 
-    // Auto-actualizar producto consultado si el lead no lo tenía fijado
-    if (parsedResult.produto_sugerido && typeof parsedResult.produto_sugerido === "string" && !freshCard?.item_nome) {
+    if (parsedResult.produto_sugerida && typeof (parsedResult as any).produto_sugerida === "string" && !freshCard?.item_nome) {
+      updates.item_nome = (parsedResult as any).produto_sugerida;
+    } else if (parsedResult.produto_sugerido && typeof parsedResult.produto_sugerido === "string" && !freshCard?.item_nome) {
       updates.item_nome = parsedResult.produto_sugerido;
     }
 
-    // Auto-actualizar próxima acción comercial sugerida por la IA
     if (parsedResult.proxima_acao_sugerida && typeof parsedResult.proxima_acao_sugerida === "string") {
       updates.proxima_acao = parsedResult.proxima_acao_sugerida.trim().slice(0, 240);
     }
@@ -327,32 +345,25 @@ Responde OBLIGATORIAMENTE con un único bloque JSON válido con el siguiente for
   };
 }
 
-export async function checkAndAnalyzeLeadCooldown(
-  companyId: string,
-  numero: string,
-): Promise<{ triggered: boolean; reason?: string }> {
+/**
+ * Ejecuta el análisis de un lead e impacta el movimiento automático si corresponde.
+ */
+async function executeAutoLeadAnalysisAndMove(companyId: string, cardId: string): Promise<{ triggered: boolean; reason?: string }> {
+  const lockKey = `${companyId}:${cardId}`;
+  if (runningLeadLocks.has(lockKey)) {
+    return { triggered: false, reason: "already_running" };
+  }
+  runningLeadLocks.add(lockKey);
+
   try {
     const { data: card } = await supabaseAdmin
       .from("crm_cards")
-      .select("id, stage_id, owner_id, campos_extras, updated_at")
+      .select("id, stage_id, owner_id")
+      .eq("id", cardId)
       .eq("company_id", companyId)
-      .eq("numero", numero)
-      .order("updated_at", { ascending: false })
-      .limit(1)
       .maybeSingle();
 
     if (!card) return { triggered: false, reason: "card_not_found" };
-
-    const extras = (card.campos_extras as Record<string, any>) || {};
-    const rawLast = extras.ultimo_analise_ia_em;
-    const ultimoAnalise = rawLast ? new Date(rawLast).getTime() : 0;
-    const now = Date.now();
-    const cooldownMs = 45 * 1000; // 45 segundos para reevaluar dinámicamente según avance la conversación
-
-    if (ultimoAnalise && now - ultimoAnalise < cooldownMs) {
-      const restantesSec = Math.round((cooldownMs - (now - ultimoAnalise)) / 1000);
-      return { triggered: false, reason: `cooldown_active_${restantesSec}s_left` };
-    }
 
     const analysis = await analyzeLeadInternal(companyId, card.id);
     if (analysis.ok && analysis.result && analysis.result.etapa_sugerida_id !== card.stage_id) {
@@ -382,7 +393,6 @@ export async function checkAndAnalyzeLeadCooldown(
           // best-effort
         }
       } else {
-        // Etapa bloqueada para IA: registrar aviso en historial para que el equipo humano lo vea
         try {
           await supabaseAdmin.from("lead_evento").insert({
             company_id: companyId,
@@ -397,8 +407,118 @@ export async function checkAndAnalyzeLeadCooldown(
     }
 
     return { triggered: true };
+  } finally {
+    runningLeadLocks.delete(lockKey);
+  }
+}
+
+export async function checkAndAnalyzeLeadCooldown(
+  companyId: string,
+  numero: string,
+): Promise<{ triggered: boolean; scheduled?: boolean; reason?: string }> {
+  try {
+    const cleanNum = String(numero || "").replace(/\D/g, "");
+    const { data: card } = await supabaseAdmin
+      .from("crm_cards")
+      .select("id, stage_id, owner_id, campos_extras, updated_at")
+      .eq("company_id", companyId)
+      .in("numero", cleanNum && cleanNum !== numero ? [numero, cleanNum] : [numero])
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!card) return { triggered: false, reason: "card_not_found" };
+
+    const extras = (card.campos_extras as Record<string, any>) || {};
+    const rawLast = (card as any).ultimo_analise_ia_em || extras.ultimo_analise_ia_em;
+    const ultimoAnalise = rawLast ? new Date(rawLast).getTime() : 0;
+    const now = Date.now();
+    const cooldownMs = 25 * 1000; // 25 segundos entre análisis del mismo lead
+
+    const timerKey = `${companyId}:${card.id}`;
+
+    if (ultimoAnalise && now - ultimoAnalise < cooldownMs) {
+      const remainingMs = Math.max(2000, cooldownMs - (now - ultimoAnalise) + 500);
+      // Encolar ejecución diferida para que el último mensaje de una ráfaga NUNCA se pierda
+      if (!pendingCooldownTimers.has(timerKey)) {
+        const timer = setTimeout(() => {
+          pendingCooldownTimers.delete(timerKey);
+          void executeAutoLeadAnalysisAndMove(companyId, card.id).catch((e) =>
+            console.warn("[crm-lead-analyzer] deferred analysis error:", e?.message),
+          );
+        }, remainingMs);
+        pendingCooldownTimers.set(timerKey, timer);
+      }
+      return {
+        triggered: false,
+        scheduled: true,
+        reason: `cooldown_scheduled_in_${Math.round(remainingMs / 1000)}s`,
+      };
+    }
+
+    // Si había un timer pendiente, limpiarlo porque vamos a ejecutar ahora mismo
+    const existingTimer = pendingCooldownTimers.get(timerKey);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      pendingCooldownTimers.delete(timerKey);
+    }
+
+    return await executeAutoLeadAnalysisAndMove(companyId, card.id);
   } catch (err: any) {
     console.warn("[crm-lead-analyzer] checkAndAnalyzeLeadCooldown failed:", err?.message);
     return { triggered: false, reason: err?.message };
+  }
+}
+
+/**
+ * Barrido automático de leads pendientes de análisis o con actividad nueva posterior al último análisis.
+ * Se ejecuta al abrir el Kanban y en el cron del servidor para garantizar que el 100% de los leads estén analizados.
+ */
+export async function analyzePendingCompanyLeads(
+  companyId?: string | null,
+  limit: number = 8,
+): Promise<{ scanned: number; analyzed: number }> {
+  try {
+    let query = supabaseAdmin
+      .from("crm_cards")
+      .select("id, company_id, numero, ultima_em, campos_extras")
+      .or("tipo_contato.is.null,tipo_contato.neq.interno")
+      .order("ultima_em", { ascending: false })
+      .limit(120);
+
+    if (companyId) {
+      query = query.eq("company_id", companyId);
+    }
+
+    const { data: cards } = await query;
+    if (!cards || cards.length === 0) return { scanned: 0, analyzed: 0 };
+
+    const candidates = cards.filter((c: any) => {
+      const extras = c.campos_extras && typeof c.campos_extras === "object" ? c.campos_extras : {};
+      const lastAnaliseStr = (c as any).ultimo_analise_ia_em || extras.ultimo_analise_ia_em;
+      const hasDiag = Boolean(extras.ultimo_diagnostico_ia);
+      if (!hasDiag || !lastAnaliseStr) return true;
+      const lastAnaliseMs = new Date(lastAnaliseStr).getTime();
+      const ultimaEmMs = c.ultima_em ? new Date(c.ultima_em).getTime() : 0;
+      // Si hubo actividad más de 30 segundos después del último análisis, re-analizar
+      return ultimaEmMs > lastAnaliseMs + 30_000;
+    });
+
+    const batch = candidates.slice(0, Math.max(1, Math.min(limit, 20)));
+    let analyzedCount = 0;
+
+    for (const item of batch) {
+      try {
+        const res = await executeAutoLeadAnalysisAndMove(item.company_id, item.id);
+        if (res.triggered) analyzedCount++;
+      } catch (e: any) {
+        console.warn("[analyzePendingCompanyLeads] item error:", e?.message);
+      }
+    }
+
+    return { scanned: candidates.length, analyzed: analyzedCount };
+  } catch (err: any) {
+    console.warn("[analyzePendingCompanyLeads] failed:", err?.message);
+    return { scanned: 0, analyzed: 0 };
   }
 }

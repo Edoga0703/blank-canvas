@@ -246,6 +246,10 @@ async function processLead(leadId: string, pageId: string, formId?: string) {
       console.warn("[meta-leads-webhook] Erro ao disparar régua:", e);
     }
 
+    void import("@/lib/crm-lead-analyzer.server")
+      .then(({ checkAndAnalyzeLeadCooldown }) => checkAndAnalyzeLeadCooldown(inst.company_id, cleanNumero))
+      .catch(() => null);
+
   } catch (err) {
     console.error("[meta-leads-webhook] Erro fatal no processamento do lead:", err);
   }

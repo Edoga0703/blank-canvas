@@ -163,6 +163,10 @@ export const Route = createFileRoute("/api/public/hooks/$token")({
             console.warn("[inbound-hook.pos]", e?.message);
           }
 
+          void import("@/lib/crm-lead-analyzer.server")
+            .then(({ checkAndAnalyzeLeadCooldown }) => checkAndAnalyzeLeadCooldown(cid, numero))
+            .catch(() => null);
+
           return cors(Response.json({ ok: true, card_id: inserted.id, created: true }));
         } catch (e: any) {
           return cors(new Response(e?.message ?? "erro", { status: 400 }));

@@ -12,7 +12,7 @@ import {
 } from "./crm-copilot.server";
 import { lovableAiChat, type ChatMsg } from "./lovable-ai.server";
 import { moveCardToStage, pickLeadOwner } from "./crm-engine.server";
-import { extractCleanStageName, resolveStageAiMeta } from "./crm-stage-meta";
+import { extractCleanStageName, resolveStageAiMeta, packStageAiMeta } from "./crm-stage-meta";
 
 export interface CrmCopilotChatMessage {
   role: "user" | "assistant";
@@ -103,10 +103,11 @@ export async function executeCrmCopilotActionInternal(
 
     const currentMeta = resolveStageAiMeta(stage);
 
-    const packedPrompt = JSON.stringify({
+    const packedPrompt = packStageAiMeta({
       criterio_ia: criterioIa || "",
       bloqueada_para_ia: bloqueadaParaIa,
       mensagem_prompt: currentMeta.mensagem_prompt || "",
+      meta_conversion_event: currentMeta.meta_conversion_event || undefined,
     });
 
     const { error: upErr } = await adminSupabase
@@ -223,7 +224,7 @@ export async function executeCrmCopilotActionInternal(
 
     const nextOrder = (stagesCount?.[0]?.ordem ?? 0) + 1;
 
-    const packedPrompt = JSON.stringify({
+    const packedPrompt = packStageAiMeta({
       criterio_ia: criterioIa || "",
       bloqueada_para_ia: bloqueadaParaIa,
       mensagem_prompt: "",

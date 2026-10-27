@@ -242,5 +242,9 @@ export async function intakeLead(admin: any, input: IntakeInput) {
     }
   }
 
+  void import("@/lib/crm-lead-analyzer.server")
+    .then(({ checkAndAnalyzeLeadCooldown }) => checkAndAnalyzeLeadCooldown(input.companyId, numero))
+    .catch(() => null);
+
   return { cardId: inserted.id as string, created: true, numero };
 }

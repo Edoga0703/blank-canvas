@@ -19,7 +19,9 @@ export type MetaMessagingEventName = (typeof META_BUSINESS_MESSAGING_EVENTS)[num
 
 export interface MetaCapiConfig {
   ativo: boolean;
-  modo_conexao: "waba_official" | "pixel_tradicional";
+  modo_conexao: "hibrido" | "waba_official" | "pixel_tradicional";
+  moeda_padrao?: string;
+  enviar_somente_com_clique?: boolean;
   access_token: string | null;
   waba_id: string | null;
   page_id: string | null;
@@ -152,9 +154,12 @@ export async function getMetaCapiConfig(companyId: string): Promise<MetaCapiConf
  */
 export async function saveMetaCapiConfig(companyId: string, cfg: Partial<MetaCapiConfig>): Promise<MetaCapiConfig> {
   const current = await getMetaCapiConfig(companyId);
+  const resolvedCurrency = cfg.currency || (cfg as any).moeda_padrao || current.currency || "BRL";
   const updated: MetaCapiConfig = {
     ...current,
     ...cfg,
+    currency: resolvedCurrency,
+    moeda_padrao: resolvedCurrency,
   };
 
   // 1. Intentar guardar en meta_capi_config
@@ -191,10 +196,12 @@ export async function saveMetaCapiConfig(companyId: string, cfg: Partial<MetaCap
       instagram_account_id: updated.instagram_account_id,
       dataset_id: updated.dataset_id,
       currency: updated.currency,
+      moeda_padrao: updated.currency,
       test_event_code: updated.test_event_code,
       enable_sha256_fallback: updated.enable_sha256_fallback,
       auto_send_on_sale: updated.auto_send_on_sale,
       auto_send_on_appointment: updated.auto_send_on_appointment,
+      enviar_somente_com_clique: Boolean(updated.enviar_somente_com_clique),
     };
 
     const { data: existingChave } = await (supabaseAdmin as any)
@@ -323,6 +330,8 @@ export interface SendConversionInput {
   currency?: string | null;
   customData?: Record<string, any>;
   dedupKey?: string;
+  testEventCodeOverride?: string | null;
+  forceSend?: boolean;
 }
 
 export interface SendConversionResult {
@@ -355,6 +364,26 @@ export async function sendMetaConversionForLead(input: SendConversionInput): Pro
 
   if (cardErr || !card) {
     return { ok: false, status: "failed", error: "Lead no encontrado en la empresa." };
+  }
+
+  if (cfg.enviar_somente_com_clique && !input.forceSend) {
+    const hasClickAttribution = Boolean(
+      card.ctwa_clid ||
+        card.fbclid ||
+        card.gclid ||
+        card.meta_lead_id ||
+        card.utm_source ||
+        card.utm_campaign ||
+        card.campos_extras?.ad_referral ||
+        card.campos_extras?.browser_tracking?.fbc,
+    );
+    if (!hasClickAttribution) {
+      return {
+        ok: false,
+        status: "skipped",
+        error: "Lead orgánico omitido por configuración (enviar_somente_com_clique).",
+      };
+    }
   }
 
   // Deduplicación estricta
@@ -490,8 +519,9 @@ export async function sendMetaConversionForLead(input: SendConversionInput): Pro
     access_token: cfg.access_token,
   };
 
-  if (cfg.test_event_code?.trim()) {
-    requestBody.test_event_code = cfg.test_event_code.trim();
+  const activeTestCode = input.testEventCodeOverride !== undefined ? input.testEventCodeOverride : cfg.test_event_code;
+  if (activeTestCode?.trim()) {
+    requestBody.test_event_code = activeTestCode.trim();
   }
 
   let resultStatus: "sent" | "failed" = "failed";

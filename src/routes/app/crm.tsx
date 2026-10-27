@@ -39,7 +39,7 @@ import { QuickScheduleDialog } from "@/components/agenda/quick-schedule-dialog";
 import { EncaminharDialog } from "@/components/chat/encaminhar-dialog";
 import { useFeatureEnabled } from "@/hooks/use-feature-flags";
 import { resolveStageAiMeta, packStageAiMeta, DEFAULT_CRM_MASTER_PROMPT } from "@/lib/crm-stage-meta";
-import { applyStageMovement } from "@/lib/crm-lead-analyzer.functions";
+import { applyStageMovement, syncPendingLeadsAnalysis } from "@/lib/crm-lead-analyzer.functions";
 import { CrmCopilotSheet } from "@/components/crm/crm-copilot-sheet";
 import { useLanguage, translateDefaultStageName, translateDefaultPipelineName } from "@/lib/i18n/context";
 
@@ -138,6 +138,7 @@ function KanbanPage() {
 
   const registerSaleFn = useServerFn(registerSale);
   const moveStageServerFn = useServerFn(applyStageMovement);
+  const syncPendingAnalysisFn = useServerFn(syncPendingLeadsAnalysis);
   const listProdutosFn = useServerFn(listProdutos);
   const listServicosFn = useServerFn(listServicos);
 
@@ -199,6 +200,15 @@ function KanbanPage() {
       agents: (ags ?? []) as AgentOpt[],
       queues: (qs ?? []) as DistQueue[],
     };
+
+    const needsAutoAudit = ((cd ?? []) as any[]).some((c) => {
+      const ex = c.campos_extras || {};
+      if (!ex.ultimo_diagnostico_ia || !ex.ultimo_analise_ia_em) return true;
+      return c.ultima_em && new Date(c.ultima_em).getTime() > new Date(ex.ultimo_analise_ia_em).getTime() + 30_000;
+    });
+    if (needsAutoAudit) {
+      void syncPendingAnalysisFn({ data: { limit: 5 } }).catch(() => null);
+    }
   }
 
   useEffect(() => {

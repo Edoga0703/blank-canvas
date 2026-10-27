@@ -186,6 +186,10 @@ export const Route = createFileRoute("/api/public/lead-capture")({
             console.warn("[lead-capture.regua]", e?.message);
           }
 
+          void import("@/lib/crm-lead-analyzer.server")
+            .then(({ checkAndAnalyzeLeadCooldown }) => checkAndAnalyzeLeadCooldown(tok.company_id, numero))
+            .catch(() => null);
+
           return cors(Response.json({ ok: true, card_id: inserted.id, created: true }));
         } catch (e: any) {
           return cors(new Response(e?.message ?? "erro", { status: 400 }));

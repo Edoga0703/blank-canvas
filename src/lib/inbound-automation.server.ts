@@ -19,6 +19,8 @@ export async function processInboundAutomation(
 ) {
   const { companyId, numero, texto, inboundMessageId } = params;
 
+
+
   // 0) Se a mensagem recebida for áudio, a IA não deve responder ou alucinar.
   // Pausa a IA para este contato e encaminha para atenção humana.
   if ((params.isAudioMessage && (!texto || texto === "[ÁUDIO]")) || texto === "[ÁUDIO]") {
@@ -37,6 +39,7 @@ export async function processInboundAutomation(
     } catch (e: any) {
       console.warn("[inbound] erro ao pausar contato para áudio:", e?.message);
     }
+    void triggerBackgroundLeadAudit();
     return { engine: "none", reason: "audio_inbound_human_attention" };
   }
 
@@ -49,7 +52,10 @@ export async function processInboundAutomation(
   }
 
   const departmentMenu = await processDepartmentMenu(admin, { companyId, numero, texto, inboundMessageId });
-  if (departmentMenu?.handled) return { engine: "department_menu", result: departmentMenu };
+  if (departmentMenu?.handled) {
+    void triggerBackgroundLeadAudit();
+    return { engine: "department_menu", result: departmentMenu };
+  }
 
   // 1) O contato respondeu: aplica as regras "se responder" (mover etapa / parar régua).
   //    Só tem efeito se já houve mensagem nossa na etapa atual.

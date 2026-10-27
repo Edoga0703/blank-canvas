@@ -12,7 +12,9 @@ export const Route = createFileRoute("/api/public/hooks/process-kanban-reguas")(
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const { processKanbanReguas } = await import("@/lib/kanban-engine.server");
           const r = await processKanbanReguas(supabaseAdmin);
-          return new Response(JSON.stringify({ ok: true, ...r }), {
+          const { analyzePendingCompanyLeads } = await import("@/lib/crm-lead-analyzer.server");
+          const auditBatch = await analyzePendingCompanyLeads(null, 10);
+          return new Response(JSON.stringify({ ok: true, ...r, auditBatch }), {
             headers: { "Content-Type": "application/json" },
           });
         } catch (e: any) {

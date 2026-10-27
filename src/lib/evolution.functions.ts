@@ -538,6 +538,18 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
       finalError = "Falha ao enviar: App em Modo de Desenvolvimento. No Instagram, você só pode enviar mensagens para contas configuradas como 'Testadores' no Painel da Meta até que o App seja aprovado e receba Acesso Avançado.";
     }
 
+    void (async () => {
+      try {
+        await (sbAdmin as any)
+          .from("crm_cards")
+          .update({ ultima_em: new Date().toISOString(), updated_at: new Date().toISOString() })
+          .eq("company_id", companyId)
+          .eq("numero", data.numero);
+        const { checkAndAnalyzeLeadCooldown } = await import("./crm-lead-analyzer.server");
+        await checkAndAnalyzeLeadCooldown(companyId, data.numero);
+      } catch { /* best-effort */ }
+    })();
+
     return { ok: !sendError, queued: !!sendError && !permanentFailure, error: finalError };
   });
 
@@ -660,6 +672,19 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
       { company_id: companyId, user_id: userId, numero: data.numero, pausado: true, pausado_por: "humano", pausado_em: new Date().toISOString() } as any,
       { onConflict: "company_id,numero" },
     );
+
+    void (async () => {
+      try {
+        await (sbAdmin as any)
+          .from("crm_cards")
+          .update({ ultima_em: new Date().toISOString(), updated_at: new Date().toISOString() })
+          .eq("company_id", companyId)
+          .eq("numero", data.numero);
+        const { checkAndAnalyzeLeadCooldown } = await import("./crm-lead-analyzer.server");
+        await checkAndAnalyzeLeadCooldown(companyId, data.numero);
+      } catch { /* best-effort */ }
+    })();
+
     return { ok: !sendError, queued: !!sendError && !permanentFailure, error: sendError };
   });
 
@@ -743,6 +768,19 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
       { company_id: companyId, user_id: userId, numero: data.numero, pausado: true, pausado_por: "humano", pausado_em: new Date().toISOString() } as any,
       { onConflict: "company_id,numero" },
     );
+
+    void (async () => {
+      try {
+        await (sbAdmin as any)
+          .from("crm_cards")
+          .update({ ultima_em: new Date().toISOString(), updated_at: new Date().toISOString() })
+          .eq("company_id", companyId)
+          .eq("numero", data.numero);
+        const { checkAndAnalyzeLeadCooldown } = await import("./crm-lead-analyzer.server");
+        await checkAndAnalyzeLeadCooldown(companyId, data.numero);
+      } catch { /* best-effort */ }
+    })();
+
     return { ok: !sendError, queued: !!sendError && !permanentFailure, error: sendError };
   });
 

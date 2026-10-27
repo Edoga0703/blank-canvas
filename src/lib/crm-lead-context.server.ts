@@ -237,12 +237,13 @@ export async function gatherLeadComprehensiveContext(
           .limit(1)
       : Promise.resolve({ data: [] }),
 
-    // 12. Asesor asignado
+    // 12. Asesor asignado (en Supabase la clave de profiles es user_id)
     card.owner_id
       ? client
           .from("profiles")
           .select("nome, email")
-          .eq("id", card.owner_id)
+          .eq("user_id", card.owner_id)
+          .limit(1)
           .maybeSingle()
       : Promise.resolve({ data: null }),
 
