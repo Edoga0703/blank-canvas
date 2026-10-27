@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-27T21:25:56.453080+00:00",
+  "generated_at": "2026-10-27T21:43:27.535372+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -679,7 +679,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 44746
+      "bytes": 45706
     },
     {
       "path": "src/lib/tracking.functions.ts",
@@ -767,7 +767,7 @@
     },
     {
       "path": "src/lib/agent-copilot.server.ts",
-      "bytes": 9935
+      "bytes": 11232
     },
     {
       "path": "src/lib/company-cache.ts",
@@ -983,7 +983,7 @@
     },
     {
       "path": "src/lib/agent-copilot.functions.ts",
-      "bytes": 9956
+      "bytes": 9579
     },
     {
       "path": "src/lib/sheets.functions.ts",
@@ -1200,6 +1200,10 @@
     {
       "path": "src/lib/master-training.functions.ts",
       "bytes": 4847
+    },
+    {
+      "path": "src/lib/usdt-rate.server.ts",
+      "bytes": 4515
     },
     {
       "path": "src/lib/comercial-range.ts",
@@ -2679,7 +2683,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 148908
+      "bytes": 148958
     },
     {
       "path": "src/routes/app/dashboard.tsx",
@@ -4317,6 +4321,10 @@
     },
     {
       "source": "src/lib/ai-engine.server.ts",
+      "target": "@/lib/usdt-rate.server"
+    },
+    {
+      "source": "src/lib/ai-engine.server.ts",
       "target": "@/lib/evolution-helpers"
     },
     {
@@ -5898,6 +5906,22 @@
     {
       "source": "src/lib/agent-copilot.functions.ts",
       "target": "./lovable-ai.server"
+    },
+    {
+      "source": "src/lib/agent-copilot.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/agent-copilot.functions.ts",
+      "target": "./agent-copilot.server"
+    },
+    {
+      "source": "src/lib/agent-copilot.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/agent-copilot.functions.ts",
+      "target": "./agent-copilot.server"
     },
     {
       "source": "src/lib/sheets.functions.ts",
