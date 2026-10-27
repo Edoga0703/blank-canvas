@@ -792,7 +792,7 @@ function AgentePage() {
         uploadedAt: new Date().toISOString()
       };
 
-      const currentFiles = cfg?.knowledge_files || [];
+      const currentFiles = Array.isArray(cfg?.knowledge_files) ? cfg.knowledge_files : [];
       const nextFiles = [...currentFiles, newFile];
 
       await saveKnowledgeFiles({ data: { agentId: activeAgentId, files: nextFiles } });
@@ -830,7 +830,7 @@ function AgentePage() {
 
       if (storageError) throw storageError;
 
-      const nextFiles = (cfg?.knowledge_files || []).filter((f: any) => f.path !== filePath);
+      const nextFiles = (Array.isArray(cfg?.knowledge_files) ? cfg.knowledge_files : []).filter((f: any) => f.path !== filePath);
       await saveKnowledgeFiles({ data: { agentId: activeAgentId, files: nextFiles } });
       setCfg((prev: any) => ({ ...prev, knowledge_files: nextFiles }));
       toast.success("Arquivo removido.");
@@ -1339,7 +1339,7 @@ function AgentePage() {
                           <FileText className="size-4 text-blue-600" />
                         </div>
                         <span className="text-lg font-bold">
-                          {(cfg?.knowledge_files?.length || 0) + (livre?.trim() ? 1 : 0) + (Array.isArray(cfg?.produtos_servicos) ? cfg.produtos_servicos.length : 0)}
+                          {(Array.isArray(cfg?.knowledge_files) ? cfg.knowledge_files.length : 0) + (livre?.trim() ? 1 : 0) + (Array.isArray(cfg?.produtos_servicos) ? cfg.produtos_servicos.length : 0)}
                         </span>
                       </div>
                       <p className="text-[11px] text-muted-foreground uppercase font-semibold">Fontes vinculadas</p>
@@ -1457,10 +1457,10 @@ function AgentePage() {
                   </div>
 
                   <div className="space-y-3">
-                    {cfg?.knowledge_files?.length > 0 && (
+                    {Array.isArray(cfg?.knowledge_files) && cfg.knowledge_files.length > 0 && (
                       <div className="flex items-center justify-between">
                         <p className="text-[11px] text-muted-foreground">
-                          Conhecimento indexado: <strong>{(cfg.knowledge_files as any[]).reduce((a, f) => a + (Number(f?.textChars) || 0), 0).toLocaleString()}</strong> caracteres
+                          Conhecimento indexado: <strong>{(Array.isArray(cfg?.knowledge_files) ? cfg.knowledge_files : []).reduce((a: number, f: any) => a + (Number(f?.textChars) || 0), 0).toLocaleString()}</strong> caracteres
                         </p>
                         <Button
                           variant="ghost"
@@ -1486,7 +1486,7 @@ function AgentePage() {
                         </Button>
                       </div>
                     )}
-                    {cfg?.knowledge_files?.map((file: any) => (
+                    {(Array.isArray(cfg?.knowledge_files) ? cfg.knowledge_files : []).map((file: any) => (
                       <div key={file.path} className="flex items-center justify-between p-3 rounded-xl border border-[var(--border)] bg-white group">
                         <div className="flex items-center gap-3">
                           <div className="size-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
@@ -1561,7 +1561,7 @@ function AgentePage() {
                         </div>
                         <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-[var(--panel-2)]">
                           <span className="text-xs text-muted-foreground">Fontes ativas</span>
-                          <span className="font-bold text-green-600">{(cfg?.knowledge_files?.length || 0) + (livre?.trim() ? 1 : 0)}</span>
+                          <span className="font-bold text-green-600">{(Array.isArray(cfg?.knowledge_files) ? cfg.knowledge_files.length : 0) + (livre?.trim() ? 1 : 0)}</span>
                         </div>
                         <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-[var(--panel-2)]">
                           <span className="text-xs text-muted-foreground">Buffer de resposta</span>

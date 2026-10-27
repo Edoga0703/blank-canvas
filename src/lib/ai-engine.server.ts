@@ -541,7 +541,7 @@ export async function processAiResponse(
 
     // Inyección dinámica externa de cliente (ej. SMP / Cerebro / API de gestión) si está activa
     let dynamicCustomerPrompt = "";
-    const customerLookupConfig = (cfg as any)?.knowledge_files?.integrations?.customerLookup;
+    const customerLookupConfig = (cfg as any)?.canais_ativos?.integrations?.customerLookup || (cfg as any)?.canais_ativos?.customerLookup || (cfg as any)?.knowledge_files?.integrations?.customerLookup;
     if (customerLookupConfig?.enabled && customerLookupConfig?.url) {
       try {
         const { queryCustomerLookup } = await import("./customer-lookup.server");

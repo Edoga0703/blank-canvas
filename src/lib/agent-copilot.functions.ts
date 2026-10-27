@@ -235,11 +235,11 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
           "Authorization": "Bearer smp_live_C2dxoC3OAuC0z4I8vA3UQoQt8Z09YuJa",
         };
 
-      const currentKnowledge = (cfg.knowledge_files && typeof cfg.knowledge_files === "object")
-        ? { ...cfg.knowledge_files }
-        : {};
+      const currentCanais = (cfg.canais_ativos && typeof cfg.canais_ativos === "object")
+        ? { ...cfg.canais_ativos }
+        : { telegram: false, whatsapp: false, instagram: false };
 
-      const currentIntegrations = currentKnowledge.integrations || {};
+      const currentIntegrations = currentCanais.integrations || {};
       currentIntegrations[integrationKey] = {
         enabled: true,
         name: action.title || action.payload?.name || "SMP – Customer Lookup",
@@ -248,7 +248,7 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
         headers,
         updated_at: new Date().toISOString(),
       };
-      currentKnowledge.integrations = currentIntegrations;
+      currentCanais.integrations = currentIntegrations;
 
       let updatedRegras = cfg.regras_rigidas || "";
       const ruleText = String(action.payload?.ruleText || action.payload?.updates?.ruleText || "").trim();
@@ -262,7 +262,7 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
       const { error: upErr } = await supabaseAdmin
         .from("agent_config")
         .update({
-          knowledge_files: currentKnowledge,
+          canais_ativos: currentCanais,
           regras_rigidas: updatedRegras,
           updated_at: new Date().toISOString(),
         })

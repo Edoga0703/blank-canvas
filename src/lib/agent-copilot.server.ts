@@ -160,7 +160,7 @@ export function buildCopilotSystemPrompt(context: {
     ? suggestions.map((s, idx) => `[Sugerencia #${idx + 1} ID: ${s.id}] Mensaje cliente: "${s.inbound_text}" | Duda: "${s.duda}" | Regla propuesta: "${s.regra_sugerida}"`).join("\n")
     : "No hay dudas o sugerencias pendientes.";
 
-  const integrations = agent.knowledge_files?.integrations || {};
+  const integrations = agent.canais_ativos?.integrations || agent.knowledge_files?.integrations || {};
   const activeIntegrationsSummary = Object.keys(integrations).length > 0
     ? Object.entries(integrations)
         .map(([k, v]: [string, any]) => `- [${v?.name || k}] URL: ${v?.url} (${v?.enabled ? "Activa" : "Desactivada"}) [Método: ${v?.method || "POST"}]`)
