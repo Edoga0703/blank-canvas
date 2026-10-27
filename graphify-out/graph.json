@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-27T20:12:10.132300+00:00",
+  "generated_at": "2026-10-27T20:56:52.530275+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -675,7 +675,7 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 26064
+      "bytes": 28302
     },
     {
       "path": "src/lib/ai-engine.server.ts",
@@ -1159,7 +1159,7 @@
     },
     {
       "path": "src/lib/forward.functions.ts",
-      "bytes": 10242
+      "bytes": 10910
     },
     {
       "path": "src/lib/master-overview.server.ts",
@@ -1215,7 +1215,7 @@
     },
     {
       "path": "src/lib/evolution.functions.ts",
-      "bytes": 42340
+      "bytes": 43420
     },
     {
       "path": "src/lib/integrations.functions.ts",
@@ -2439,7 +2439,7 @@
     },
     {
       "path": "src/lib/messaging/ingest.server.ts",
-      "bytes": 26586
+      "bytes": 27543
     },
     {
       "path": "src/lib/messaging/media-archive.server.ts",
@@ -2535,7 +2535,7 @@
     },
     {
       "path": "src/lib/messaging/providers/dapi.server.ts",
-      "bytes": 8258
+      "bytes": 10759
     },
     {
       "path": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
@@ -2579,7 +2579,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 194531
+      "bytes": 195132
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -2831,7 +2831,7 @@
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
-      "bytes": 25820
+      "bytes": 27511
     },
     {
       "path": "src/routes/api/public/wablast-webhook.ts",
@@ -2847,7 +2847,7 @@
     },
     {
       "path": "src/routes/api/public/telegram-webhook.ts",
-      "bytes": 5292
+      "bytes": 4993
     },
     {
       "path": "src/routes/api/public/form-submit.ts",
@@ -2871,7 +2871,7 @@
     },
     {
       "path": "src/routes/api/public/meta-webhook.ts",
-      "bytes": 33239
+      "bytes": 33352
     },
     {
       "path": "src/routes/api/public/v1/$.ts",
@@ -2879,7 +2879,7 @@
     },
     {
       "path": "src/routes/api/public/hooks/process-retry-queue.ts",
-      "bytes": 9575
+      "bytes": 9551
     },
     {
       "path": "src/routes/api/public/hooks/process-kanban-reguas.ts",
@@ -6657,6 +6657,10 @@
     },
     {
       "source": "src/lib/forward.functions.ts",
+      "target": "@/lib/storage/r2.server"
+    },
+    {
+      "source": "src/lib/forward.functions.ts",
       "target": "./evolution-helpers"
     },
     {
@@ -6909,6 +6913,10 @@
     },
     {
       "source": "src/lib/evolution.functions.ts",
+      "target": "@/routes/api/public/chat-media"
+    },
+    {
+      "source": "src/lib/evolution.functions.ts",
       "target": "./outbound-queue.server"
     },
     {
@@ -6934,6 +6942,10 @@
     {
       "source": "src/lib/evolution.functions.ts",
       "target": "node:crypto"
+    },
+    {
+      "source": "src/lib/evolution.functions.ts",
+      "target": "@/routes/api/public/chat-media"
     },
     {
       "source": "src/lib/evolution.functions.ts",
@@ -13333,6 +13345,14 @@
     },
     {
       "source": "src/lib/messaging/ingest.server.ts",
+      "target": "@/lib/phone-thread.server"
+    },
+    {
+      "source": "src/lib/messaging/ingest.server.ts",
+      "target": "@/routes/api/public/chat-media"
+    },
+    {
+      "source": "src/lib/messaging/ingest.server.ts",
       "target": "@/lib/crm-engine.server"
     },
     {
@@ -16678,6 +16698,10 @@
     {
       "source": "src/routes/api/public/telegram-webhook.ts",
       "target": "@/lib/telegram.server"
+    },
+    {
+      "source": "src/routes/api/public/telegram-webhook.ts",
+      "target": "@/lib/uazapi-webhook.server"
     },
     {
       "source": "src/routes/api/public/form-submit.ts",
