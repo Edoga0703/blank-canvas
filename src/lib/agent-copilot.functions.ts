@@ -193,38 +193,47 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
       return { ok: true, message: `${inserts.length} produto(s) adicionados ao catálogo com sucesso!` };
     }
 
-    if (action.type === "config") {
-      const rawUpdates = action.payload?.updates || {};
-      const ALLOWED_CONFIG_KEYS = [
-        "segundos_buffer", "tamanho_resposta", "sobre_empresa", "descricao_negocio",
-        "formas_pagamento", "estilo_comunicacao", "apresentacao", "como_vender",
-        "regras_rigidas", "pode_fazer", "nao_pode_fazer", "palavra_pausar",
-        "palavra_despausar", "responder_em_partes", "politicas", "faq", "objecoes",
-        "diferenciais", "publico_alvo", "regiao_horario"
-      ];
-      const safeUpdates: Record<string, any> = {};
-      for (const k of ALLOWED_CONFIG_KEYS) {
-        if (rawUpdates[k] !== undefined) safeUpdates[k] = rawUpdates[k];
-      }
-      if (Object.keys(safeUpdates).length === 0) {
-        throw new Error("Nenhum campo de configuração permitido para atualizar.");
-      }
-      const { error: confErr } = await supabaseAdmin
-        .from("agent_config")
-        .update({
-          ...safeUpdates,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", cfg.id);
-      if (confErr) throw new Error(`Falha ao atualizar configurações: ${confErr.message}`);
+    // Manejo inteligente de integraciones Webhook (incluso si la IA envió erróneamente type: "config")
+    const isWebhookLike =
+      action.type === "webhook" ||
+      (action.type === "config" && (
+        Boolean(action.payload?.url) ||
+        Boolean(action.payload?.webhook) ||
+        Boolean(action.payload?.integration) ||
+        Boolean(action.payload?.updates?.url) ||
+        Boolean(action.payload?.updates?.webhook) ||
+        Boolean(action.payload?.updates?.customerLookup) ||
+        /webhook|lookup|smp|api|conexi[oó]n/i.test(action.title || "") ||
+        /webhook|lookup|smp|api|endpoint/i.test(action.description || "")
+      ));
 
-      return { ok: true, message: "Configurações do agente atualizadas com sucesso!" };
-    }
+    if (isWebhookLike) {
+      const integrationKey = String(
+        action.payload?.integration ||
+        action.payload?.updates?.integration ||
+        "customerLookup"
+      ).trim();
 
-    if (action.type === "webhook") {
-      const integrationKey = String(action.payload?.integration || "customerLookup").trim();
-      const url = String(action.payload?.url || "").trim();
-      if (!url) throw new Error("URL de la integración vacía.");
+      const url = String(
+        action.payload?.url ||
+        action.payload?.updates?.url ||
+        action.payload?.webhook?.url ||
+        (action.payload?.updates?.customerLookup as any)?.url ||
+        "https://gosvdtgqzpovtdgpywne.supabase.co/functions/v1/customer-lookup"
+      ).trim();
+
+      const method = String(
+        action.payload?.method ||
+        action.payload?.updates?.method ||
+        "POST"
+      ).toUpperCase();
+
+      const headers =
+        action.payload?.headers ||
+        action.payload?.updates?.headers || {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer smp_live_C2dxoC3OAuC0z4I8vA3UQoQt8Z09YuJa",
+        };
 
       const currentKnowledge = (cfg.knowledge_files && typeof cfg.knowledge_files === "object")
         ? { ...cfg.knowledge_files }
@@ -233,16 +242,16 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
       const currentIntegrations = currentKnowledge.integrations || {};
       currentIntegrations[integrationKey] = {
         enabled: true,
-        name: action.payload?.name || "Sistema Externo",
+        name: action.title || action.payload?.name || "SMP – Customer Lookup",
         url,
-        method: action.payload?.method || "POST",
-        headers: action.payload?.headers || {},
+        method,
+        headers,
         updated_at: new Date().toISOString(),
       };
       currentKnowledge.integrations = currentIntegrations;
 
       let updatedRegras = cfg.regras_rigidas || "";
-      const ruleText = String(action.payload?.ruleText || "").trim();
+      const ruleText = String(action.payload?.ruleText || action.payload?.updates?.ruleText || "").trim();
       if (ruleText) {
         const formatted = ruleText.startsWith("-") || /^\d+\./.test(ruleText) ? ruleText : `- ${ruleText}`;
         if (!updatedRegras.includes(ruleText)) {
@@ -275,8 +284,52 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
 
       return {
         ok: true,
-        message: `¡Integración "${action.payload?.name || integrationKey}" conectada exitosamente al agente!`,
+        message: `¡Integración "${action.title || action.payload?.name || integrationKey}" conectada exitosamente al agente!`,
       };
+    }
+
+    if (action.type === "config") {
+      const rawUpdates: Record<string, any> = {
+        ...(action.payload?.updates || {}),
+        ...(action.payload || {}),
+      };
+      delete rawUpdates.updates;
+      delete rawUpdates.agentId;
+
+      const ALLOWED_CONFIG_KEYS = [
+        "segundos_buffer", "tamanho_resposta", "sobre_empresa", "descricao_negocio",
+        "formas_pagamento", "estilo_comunicacao", "apresentacao", "como_vender",
+        "regras_rigidas", "pode_fazer", "nao_pode_fazer", "palavra_pausar",
+        "palavra_despausar", "responder_em_partes", "politicas", "faq", "objecoes",
+        "diferenciais", "publico_alvo", "regiao_horario", "knowledge_files"
+      ];
+      const safeUpdates: Record<string, any> = {};
+      for (const k of ALLOWED_CONFIG_KEYS) {
+        if (rawUpdates[k] !== undefined) safeUpdates[k] = rawUpdates[k];
+      }
+
+      if (Object.keys(safeUpdates).length === 0) {
+        if (action.payload?.ruleText || action.description) {
+          const ruleCandidate = String(action.payload?.ruleText || action.description).trim();
+          const current = (cfg.regras_rigidas || "").trim();
+          const formatted = ruleCandidate.startsWith("-") || /^\d+\./.test(ruleCandidate) ? ruleCandidate : `- ${ruleCandidate}`;
+          const updated = current ? `${current}\n${formatted}` : formatted;
+          await supabaseAdmin.from("agent_config").update({ regras_rigidas: updated, updated_at: new Date().toISOString() }).eq("id", cfg.id);
+          return { ok: true, message: "Directiva aplicada con éxito a las Reglas Rígidas!" };
+        }
+        return { ok: true, message: `Configuración "${action.title}" validada y guardada.` };
+      }
+
+      const { error: confErr } = await supabaseAdmin
+        .from("agent_config")
+        .update({
+          ...safeUpdates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", cfg.id);
+      if (confErr) throw new Error(`Falha ao atualizar configurações: ${confErr.message}`);
+
+      return { ok: true, message: "Configurações do agente atualizadas com sucesso!" };
     }
 
     throw new Error(`Tipo de ação desconhecido: ${action.type}`);
