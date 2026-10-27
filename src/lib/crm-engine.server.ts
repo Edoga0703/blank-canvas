@@ -370,7 +370,7 @@ export async function moveCardToStage(
 ): Promise<void> {
   const { data: stage } = await admin
     .from("crm_stage")
-    .select("id, nome, pipeline_id, tipo, trigger_pipeline_destino")
+    .select("id, nome, pipeline_id, tipo, trigger_pipeline_destino, mensagem_prompt")
     .eq("id", stageId)
     .maybeSingle();
 

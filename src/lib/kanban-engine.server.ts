@@ -46,7 +46,7 @@ async function processKanbanReguaCard(admin: Admin, card: KanbanCardRow): Promis
   const nowIso = new Date().toISOString();
   const { data: stage } = await admin
     .from("crm_stage")
-    .select("id, nome, regua_ativa, delay_valor, delay_unidade, hora_do_dia, mensagem_tipo, mensagem_texto, mensagem_prompt, mensagem_midia_url, mensagem_midia_tipo, mensagem_midia_mime, mensagem_midia_nome, move_se_sem_resposta_dias, move_se_sem_resposta_para, parar_se_humano, modo_atendimento, criterio_ia, bloqueada_para_ia")
+    .select("id, nome, regua_ativa, delay_valor, delay_unidade, hora_do_dia, mensagem_tipo, mensagem_texto, mensagem_prompt, mensagem_midia_url, mensagem_midia_tipo, mensagem_midia_mime, mensagem_midia_nome, move_se_sem_resposta_dias, move_se_sem_resposta_para, parar_se_humano, modo_atendimento")
     .eq("id", card.stage_id)
     .maybeSingle();
   

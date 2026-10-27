@@ -72,7 +72,7 @@ export async function processInboundAutomation(
   const { data: stage } = stageId
     ? await admin
         .from("crm_stage")
-        .select("modo_atendimento, regua_ativa, mensagem_tipo, mensagem_texto, mensagem_prompt, mensagem_midia_url, criterio_ia, bloqueada_para_ia")
+        .select("modo_atendimento, regua_ativa, mensagem_tipo, mensagem_texto, mensagem_prompt, mensagem_midia_url")
         .eq("id", stageId)
         .maybeSingle()
     : { data: null };

@@ -347,11 +347,11 @@ export async function checkAndAnalyzeLeadCooldown(
     const rawLast = extras.ultimo_analise_ia_em;
     const ultimoAnalise = rawLast ? new Date(rawLast).getTime() : 0;
     const now = Date.now();
-    const treintaMinutosMs = 30 * 60 * 1000;
+    const cooldownMs = 45 * 1000; // 45 segundos para reevaluar dinámicamente según avance la conversación
 
-    if (ultimoAnalise && now - ultimoAnalise < treintaMinutosMs) {
-      const restantesMin = Math.round((treintaMinutosMs - (now - ultimoAnalise)) / 60000);
-      return { triggered: false, reason: `cooldown_active_${restantesMin}m_left` };
+    if (ultimoAnalise && now - ultimoAnalise < cooldownMs) {
+      const restantesSec = Math.round((cooldownMs - (now - ultimoAnalise)) / 1000);
+      return { triggered: false, reason: `cooldown_active_${restantesSec}s_left` };
     }
 
     const analysis = await analyzeLeadInternal(companyId, card.id);

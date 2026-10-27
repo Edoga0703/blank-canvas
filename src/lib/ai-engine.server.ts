@@ -957,7 +957,7 @@ export async function processAiResponse(
 
       const { data: targetStageCfg } = await supabaseAdmin
         .from("crm_stage")
-        .select("id, nome, pipeline_id, modo_atendimento, criterio_ia, bloqueada_para_ia, mensagem_prompt")
+        .select("id, nome, pipeline_id, modo_atendimento, mensagem_prompt")
         .eq("id", targetStageId)
         .eq("company_id", companyId)
         .maybeSingle();
