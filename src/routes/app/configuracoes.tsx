@@ -27,6 +27,7 @@ import { AvatarUploadDialog } from "@/components/config/avatar-upload-dialog";
 import { CompanyLogoDialog } from "@/components/config/company-logo-dialog";
 
 import { IntegracoesTab } from "@/components/config/integracoes-tab";
+import { MetaCapiCard } from "@/components/config/meta-capi-card";
 import { FormulariosTab } from "@/components/config/formularios-tab";
 import { useFeatureEnabled } from "@/hooks/use-feature-flags";
 import { LanguageSwitcher } from "@/components/language-switcher";
@@ -337,6 +338,7 @@ function ConfigPage() {
           <StyledTab value="csat" icon={<Star className="size-4" />}>{t("config.satisfaction_tab", undefined, "Satisfação")}</StyledTab>
           <StyledTab value="sugestoes" icon={<Lightbulb className="size-4" />}>{t("config.suggestions_tab", undefined, "Sugestões")}</StyledTab>
           {!isAtendente && <StyledTab value="integracoes" icon={<Webhook className="size-4" />}>{t("config.integrations_tab", undefined, "Integrações")}</StyledTab>}
+          {!isAtendente && <StyledTab value="meta" icon={<Activity className="size-4 text-blue-500" />}>{t("config.meta_tab", undefined, "Meta Ads & Pixel")}</StyledTab>}
           {!isAtendente && formulariosOn && <StyledTab value="formularios" icon={<FileText className="size-4" />}>{t("config.forms_tab", undefined, "Formulários")}</StyledTab>}
           
           {!isAtendente && <StyledTab value="plano" icon={<CreditCard className="size-4" />}>{t("config.plan_tab", undefined, "Plano")}</StyledTab>}
@@ -669,6 +671,7 @@ function ConfigPage() {
         </TabsContent>
         <TabsContent value="sugestoes"><SugestoesCard companyId={companyId} userId={userId} /></TabsContent>
         <TabsContent value="integracoes"><IntegracoesTab /></TabsContent>
+        {!isAtendente && <TabsContent value="meta" className="mt-4 sm:mt-5"><MetaCapiCard /></TabsContent>}
         <TabsContent value="formularios"><FormulariosTab /></TabsContent>
         <TabsContent value="distribuicao"><DistribuicaoTab /></TabsContent>
         <TabsContent value="plano"><PlanoCard company={company} sub={sub} /></TabsContent>
