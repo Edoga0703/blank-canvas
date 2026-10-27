@@ -456,6 +456,19 @@ function KanbanPage() {
         descricao: `Venda registrada: R$ ${valorNum.toFixed(2).replace(".", ",")}`,
       });
 
+      // Disparar reglas de etapa en servidor (CAPI Purchase, pipeline destino, etc.)
+      try {
+        await moveStageServerFn({
+          data: {
+            cardId: pendingSale.cardId,
+            stageId: pendingSale.stageId,
+            reason: "Venta registrada",
+          },
+        });
+      } catch (e) {
+        console.warn("[confirmSale] moveStageServerFn error:", e);
+      }
+
       // CSAT opcional
       try {
         const { data: comp } = await supabase.from("company").select("csat_auto_ganho,csat_ativo").eq("id", companyId).maybeSingle();
@@ -2350,6 +2363,7 @@ function AutomacaoDialog({ companyId, stage, stages, allStages, pipelines, agent
       mensagem_prompt: (form.mensagem_prompt || "").trim() || null,
       criterio_ia: (form.criterio_ia || "").trim() || null,
       bloqueada_para_ia: !!form.bloqueada_para_ia,
+      meta_conversion_event: (form.meta_conversion_event || "").trim() || null,
       mensagem_midia_url: form.mensagem_tipo === "template" ? (form.mensagem_midia_url || null) : null,
       mensagem_midia_tipo: form.mensagem_tipo === "template" ? (form.mensagem_midia_tipo || null) : null,
       mensagem_midia_mime: form.mensagem_tipo === "template" ? (form.mensagem_midia_mime || null) : null,
@@ -2372,7 +2386,23 @@ function AutomacaoDialog({ companyId, stage, stages, allStages, pipelines, agent
       retorno_janela_dias: Number(form.retorno_janela_dias) || 0,
       arquivar_perdidos_dias: Number(form.arquivar_perdidos_dias) || null,
     };
-    const { error } = await supabase.from("crm_stage").update(patch).eq("id", currentStage.id);
+    const packedPrompt = packStageAiMeta({
+      criterio_ia: form.criterio_ia,
+      bloqueada_para_ia: form.bloqueada_para_ia,
+      meta_conversion_event: form.meta_conversion_event,
+      mensagem_prompt: form.mensagem_prompt,
+    });
+    patch.mensagem_prompt = packedPrompt || null;
+    let { error } = await supabase.from("crm_stage").update(patch).eq("id", currentStage.id);
+    if (error && (String(error.message || "").includes("meta_conversion_event") || String(error.message || "").includes("criterio_ia") || error.code === "42703")) {
+      const fallbackPatch = { ...patch };
+      delete fallbackPatch.criterio_ia;
+      delete fallbackPatch.bloqueada_para_ia;
+      delete fallbackPatch.meta_conversion_event;
+      fallbackPatch.mensagem_prompt = packedPrompt || null;
+      const retry = await supabase.from("crm_stage").update(fallbackPatch).eq("id", currentStage.id);
+      error = retry.error;
+    }
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Automação salva");
@@ -2512,6 +2542,30 @@ function AutomacaoDialog({ companyId, stage, stages, allStages, pipelines, agent
                       onCheckedChange={(v) => setForm({ ...form, bloqueada_para_ia: v })}
                     />
                   </div>
+                  </div>
+
+                  <div className="p-3 rounded-lg border border-blue-500/25 bg-blue-50/30 dark:bg-blue-950/20 space-y-1.5">
+                    <Label className="text-xs font-semibold flex items-center gap-1.5">
+                      Evento de Conversión Meta Ads (Conversions API)
+                    </Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Cuando un lead entre a esta etapa (por IA o manualmente), se enviará automáticamente este evento a Meta Events Manager si el lead provino de una campaña o tiene seguimiento activo.
+                    </p>
+                    <select
+                      className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-xs"
+                      value={form.meta_conversion_event || ""}
+                      onChange={(e) => setForm({ ...form, meta_conversion_event: e.target.value })}
+                    >
+                      <option value="">— No disparar evento de Meta en esta etapa —</option>
+                      <option value="LeadSubmitted">LeadSubmitted (Lead Recibido)</option>
+                      <option value="QualifiedLead">QualifiedLead (Lead Calificado)</option>
+                      <option value="ViewContent">ViewContent (Vio Catálogo / Propuesta)</option>
+                      <option value="InitiateCheckout">InitiateCheckout (Inició Negociación / Checkout)</option>
+                      <option value="AppointmentBooked">AppointmentBooked (Cita / Reunión Agendada)</option>
+                      <option value="OrderCreated">OrderCreated (Pedido Generado)</option>
+                      <option value="OrderShipped">OrderShipped (Pedido Enviado)</option>
+                      <option value="Purchase">Purchase (Venta Cerrada / Ganado)</option>
+                    </select>
                 </div>
 
             {form.modo_atendimento === "manual" && (
