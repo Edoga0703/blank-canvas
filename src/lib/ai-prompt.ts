@@ -272,17 +272,30 @@ export function buildStructuredContextBlock(params: StructuredContextParams): st
       nombre: params.contatoNome || card.nome || "Cliente",
       lead_id: card.id || null,
       etapa_crm_actual: card.stage_nome || card.stage_id || "Inicial",
-      etiquetas: Array.isArray(card.tags) ? card.tags : []
+      etiquetas: Array.isArray(card.tags) ? card.tags : [],
+      producto_interes: card.item_nome || card.origem || null,
+      canal_entrada: card.canal_entrada || null,
     },
     tracking_pixel: {
       pixel_id: params.metaCapiConfig?.dataset_id || null,
+      canal_entrada: card.canal_entrada || null,
+      origen_anuncio: card.origem || null,
+      ctwa_clid: card.ctwa_clid || card.campos_extras?.ad_referral?.ctwa_clid || null,
       fbclid: card.fbclid || null,
       fbc: browserTrack.fbc || (card.fbclid ? `fb.1.${Date.now()}.${card.fbclid}` : null),
       fbp: browserTrack.fbp || null,
+      gclid: card.gclid || null,
       utm_source: card.utm_source || null,
       utm_campaign: card.utm_campaign || null,
       utm_medium: card.utm_medium || null,
-      utm_content: card.utm_content || null
+      utm_term: card.utm_term || null,
+      utm_content: card.utm_content || null,
+      anuncio_referral: card.campos_extras?.ad_referral ? {
+        headline: card.campos_extras.ad_referral.headline || null,
+        body: card.campos_extras.ad_referral.body || null,
+        source_id: card.campos_extras.ad_referral.source_id || null,
+        source_url: card.campos_extras.ad_referral.source_url || null,
+      } : null,
     },
     datos_externos: params.externalData || {}
   };

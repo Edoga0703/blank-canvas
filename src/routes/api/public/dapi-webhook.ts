@@ -516,7 +516,8 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
                   fromMe: true,
                   id: messageId,
                   text,
-                  message: text,
+                  message: typeof data.message === "object" && data.message !== null ? data.message : text,
+                  raw_message: data.message,
                   media_url: mediaUrl,
                   mimetype: mimeType,
                 },
@@ -594,8 +595,29 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
               }
             }
 
+            // Preservar y elevar metadatos de anuncio (CTWA / referral / contextInfo)
+            const contextInfo =
+              data.contextInfo ||
+              data.message?.extendedTextMessage?.contextInfo ||
+              data.message?.contextInfo ||
+              data.message?.imageMessage?.contextInfo ||
+              data.message?.videoMessage?.contextInfo ||
+              null;
+
+            const externalAdReply =
+              data.externalAdReply ||
+              contextInfo?.externalAdReply ||
+              data.message?.extendedTextMessage?.contextInfo?.externalAdReply ||
+              null;
+
+            const referral =
+              data.referral ||
+              data.message?.referral ||
+              body.referral ||
+              null;
+
             // Enriquecemos body.data con la URL o dataURI descargada y el texto transcrito/descrito
-            // para que dapiProvider.normalizeEvent() e ingestMessagingEvent() lo persistan y archiven en R2.
+            // SIN destruir el objeto data.message original ni los metadatos de anuncio CTWA.
             const enrichedBody = {
               ...body,
               data: {
@@ -603,7 +625,11 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
                 id: messageId,
                 type: dataType,
                 text,
-                message: text,
+                message: typeof data.message === "object" && data.message !== null ? data.message : text,
+                raw_message: data.message,
+                contextInfo,
+                externalAdReply,
+                referral,
                 media_url: mediaUrl,
                 mimetype: mimeType,
               },

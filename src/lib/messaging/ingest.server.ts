@@ -380,7 +380,8 @@ async function persistMessage(
             else setIfEmpty("ctwa_clid", t.ctwa_clid);
 
             setIfEmpty("referrer", adCtx.sourceUrl);
-            setIfEmpty("origem", adCtx.title || (adCtx.sourceId ? `Anúncio ${adCtx.sourceId}` : null));
+            setIfEmpty("origem", adCtx.title ? `Meta Ads: ${adCtx.title}` : (adCtx.sourceId ? `Meta Ads: Anúncio ${adCtx.sourceId}` : "Meta Ads"));
+            setIfEmpty("utm_source", "meta_ads");
             setIfEmpty("utm_campaign", adCtx.sourceId);
 
             const prevExtras =
@@ -404,7 +405,7 @@ async function persistMessage(
             setIfEmpty("ctwa_clid", t.ctwa_clid);
           }
 
-          const hasCtwa = Boolean(adCtx?.ctwaClid || adCtx?.sourceUrl || patch.ctwa_clid || patch.fbclid);
+          const hasCtwa = Boolean(adCtx?.ctwaClid || adCtx?.sourceUrl || adCtx?.sourceId || patch.ctwa_clid || patch.fbclid);
           const canal = deriveCanal(t, hasCtwa);
           const canalAtual = (currentCard as any).canal_entrada;
           if (canal !== "whatsapp_direto" && (!canalAtual || canalAtual === "whatsapp_direto" || canalAtual === "whatsapp")) {

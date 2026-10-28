@@ -39,22 +39,25 @@ export function emptyTracking(): TrackingFields {
   };
 }
 
-/** Extrai UTMs/clids da primeira mensagem (ex: wa.me/...?text=... com querystring). */
+/** Extrai UTMs/clids da primeira mensagem (ex: wa.me/...?text=... com querystring, ou texto no formato UTM). */
 export function extractTrackingFromText(text: string | null | undefined): TrackingFields {
   const out = emptyTracking();
   if (!text) return out;
   const decoded = safeDecode(text);
   for (const k of KEYS) {
-    const m = decoded.match(new RegExp(`[?&#\\s]${k}=([^\\s&#]+)`, "i"));
+    const m = decoded.match(new RegExp(`(?:^|[?&#\\s:\\[])${k}[=:\\s]+([^\\s&#,\\]]+)`, "i"));
     if (m) (out as any)[k] = safeDecode(m[1]).slice(0, 200);
   }
   return out;
 }
 
-/** Extrae el código de protocolo de un link rastreable (ej. "[Ref: #A1B2C]" o "#A1B2C") */
+/**
+ * Extrae el código de protocolo de un link rastreable.
+ * Soporta variantes como: "[Ref: #A1B2C]", "Ref: A1B2C", "#A1B2C", "Protocolo: A1B2C", "Cod: A1B2C", "ref=A1B2C".
+ */
 export function extractTrackingProtocolCode(text: string | null | undefined): string | null {
   if (!text) return null;
-  const m = text.match(/(?:ref|protocolo|cod|id)?[:\s#-]*#([A-Z0-9]{5,8})\b/i);
+  const m = text.match(/(?:(?:ref|protocolo|c[oó]d(?:igo)?|id)[:\s=#-]*#?|#)([A-Z0-9]{5,8})\b/i);
   return m ? m[1].toUpperCase() : null;
 }
 
@@ -64,29 +67,47 @@ export function extractCtwaFromPayload(payload: any): string | null {
     const data = payload?.data ?? payload ?? {};
     const msg = data?.message ?? data?.messages?.[0] ?? data ?? {};
     const ctx =
+      data?.contextInfo ??
       msg?.contextInfo ??
       msg?.extendedTextMessage?.contextInfo ??
       msg?.imageMessage?.contextInfo ??
-      msg?.videoMessage?.contextInfo ??
-      data?.contextInfo;
+      msg?.videoMessage?.contextInfo;
     const referral =
       data?.referral ??
       msg?.referral ??
       payload?.referral ??
       payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.referral;
 
-    return (
+    const direct =
       referral?.ctwa_clid ||
       referral?.ctwaClid ||
       ctx?.externalAdReply?.ctwaClid ||
+      ctx?.externalAdReply?.ctwa_clid ||
       ctx?.ctwaClid ||
+      ctx?.ctwa_clid ||
       data?.ctwa_clid ||
       data?.ctwaClid ||
       msg?.ctwaClid ||
+      msg?.ctwa_clid ||
       deepFind(payload, "ctwaClid") ||
       deepFind(payload, "ctwa_clid") ||
-      null
-    );
+      null;
+
+    if (direct) return String(direct).trim();
+
+    // Buscar en sourceUrl o source_url si venía como parámetro
+    const sourceUrl =
+      ctx?.externalAdReply?.sourceUrl ||
+      ctx?.externalAdReply?.source_url ||
+      referral?.source_url ||
+      referral?.sourceUrl ||
+      null;
+    if (sourceUrl && typeof sourceUrl === "string") {
+      const match = sourceUrl.match(/[?&](?:ctwa_clid|ctwaclid)=([^&#\s]+)/i);
+      if (match) return safeDecode(match[1]).trim();
+    }
+
+    return null;
   } catch { return null; }
 }
 
@@ -111,10 +132,29 @@ function deepFind(obj: any, key: string, depth = 0): any {
 
 /**
  * Contexto do anúncio de campanhas Click-to-WhatsApp (Meta).
- * Suporta tanto D-API QR (externalAdReply) quanto D-API Oficial / Meta Cloud API (referral).
+ * Suporta tanto D-API QR (externalAdReply) quanto D-API Oficial / Meta Cloud API (referral),
+ * y Meta Webhook de Instagram Direct y Messenger.
  */
 export function extractAdContext(payload: any): AdContext | null {
-  const ad = deepFind(payload, "externalAdReply") || deepFind(payload, "referral");
+  const data = payload?.data ?? payload ?? {};
+  const msg = data?.message ?? data?.messages?.[0] ?? data ?? {};
+  const ctx =
+    data?.contextInfo ??
+    msg?.contextInfo ??
+    msg?.extendedTextMessage?.contextInfo ??
+    msg?.imageMessage?.contextInfo ??
+    msg?.videoMessage?.contextInfo;
+
+  const ad =
+    data?.externalAdReply ||
+    ctx?.externalAdReply ||
+    data?.referral ||
+    msg?.referral ||
+    payload?.referral ||
+    deepFind(payload, "externalAdReply") ||
+    deepFind(payload, "referral") ||
+    deepFind(payload, "ads_context_data");
+
   const ctwaClid = extractCtwaFromPayload(payload);
   if (!ad && !ctwaClid) return null;
 
@@ -123,12 +163,50 @@ export function extractAdContext(payload: any): AdContext | null {
     return s ? s.slice(0, 500) : null;
   };
 
+  const title = clean(
+    ad?.title ||
+    ad?.headline ||
+    ad?.name ||
+    ad?.ads_context_data?.ad_title ||
+    ad?.ad_title
+  );
+
+  const sourceId = clean(
+    ad?.sourceId ||
+    ad?.source_id ||
+    ad?.ad_id ||
+    ad?.campaign_id
+  );
+
+  const sourceUrl = clean(
+    ad?.sourceUrl ||
+    ad?.source_url ||
+    ad?.sourceURL ||
+    ad?.url
+  );
+
+  const body = clean(
+    ad?.body ||
+    ad?.description ||
+    ad?.ads_context_data?.ad_body
+  );
+
+  const thumbnailUrl = clean(
+    ad?.thumbnailUrl ||
+    ad?.thumbnail_url ||
+    ad?.image_url ||
+    ad?.media_url ||
+    ad?.mediaUrl ||
+    ad?.ads_context_data?.photo_url ||
+    ad?.ads_context_data?.video_url
+  );
+
   return {
-    sourceUrl: clean(ad?.sourceUrl || ad?.source_url || ad?.sourceURL),
-    sourceId: clean(ad?.sourceId || ad?.source_id || ad?.ad_id),
-    title: clean(ad?.title || ad?.headline),
-    body: clean(ad?.body),
-    thumbnailUrl: clean(ad?.thumbnailUrl || ad?.thumbnail_url || ad?.image_url || ad?.media_url),
+    sourceUrl,
+    sourceId,
+    title,
+    body,
+    thumbnailUrl,
     ctwaClid: clean(ctwaClid),
   };
 }
@@ -136,7 +214,12 @@ export function extractAdContext(payload: any): AdContext | null {
 export function deriveCanal(t: TrackingFields, hasCtwa: boolean): CanalEntrada {
   if (hasCtwa || t.ctwa_clid) return "ads_meta";
   if (t.gclid) return "ads_google";
-  if (t.utm_source || t.utm_campaign || t.utm_medium) return "wa_link_utm";
+  if (t.utm_source || t.utm_campaign || t.utm_medium) {
+    const s = String(t.utm_source || "").toLowerCase();
+    if (s.includes("facebook") || s.includes("instagram") || s.includes("meta") || s.includes("fb_ads")) return "ads_meta";
+    if (s.includes("google") || s.includes("gads") || s.includes("adwords")) return "ads_google";
+    return "wa_link_utm";
+  }
   return "whatsapp_direto";
 }
 
@@ -177,7 +260,6 @@ export const CANAL_COLOR: Record<CanalEntrada, string> = {
   presencial: "#84cc16",
   outro: "#64748b",
 };
-
 
 /** Canais disponíveis para cadastro manual de lead. */
 export const CANAIS_MANUAIS: CanalEntrada[] = [

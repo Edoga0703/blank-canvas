@@ -304,7 +304,7 @@ export async function processAiResponse(
     // usamos o mais recente. maybeSingle() aqui retornava erro e travava a IA.
     const { data: cardRows } = await (supabaseAdmin as any)
       .from("crm_cards")
-      .select("user_id, owner_id, id, stage_id, pipeline_id, updated_at")
+      .select("user_id, owner_id, id, stage_id, pipeline_id, updated_at, nome, canal_entrada, canal_chat, origem, utm_source, utm_medium, utm_campaign, utm_content, utm_term, gclid, fbclid, ctwa_clid, campos_extras, tags, valor, item_nome")
       .eq("company_id", companyId)
       .eq("numero", number)
       .not("stage_id", "is", null)

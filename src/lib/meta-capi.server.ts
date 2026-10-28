@@ -251,7 +251,40 @@ export async function buildHashedUserDataFromCard(card: any): Promise<Record<str
       out.country = [await sha256("br")];
       const ddd = digits.slice(2, 4);
       if (BR_DDD_TO_UF[ddd]) out.st = [await sha256(BR_DDD_TO_UF[ddd])];
+    } else if (digits.startsWith("58")) {
+      out.country = [await sha256("ve")];
+    } else if (digits.startsWith("57")) {
+      out.country = [await sha256("co")];
+    } else if (digits.startsWith("56")) {
+      out.country = [await sha256("cl")];
+    } else if (digits.startsWith("51")) {
+      out.country = [await sha256("pe")];
+    } else if (digits.startsWith("52")) {
+      out.country = [await sha256("mx")];
+    } else if (digits.startsWith("54")) {
+      out.country = [await sha256("ar")];
+    } else if (digits.startsWith("34")) {
+      out.country = [await sha256("es")];
+    } else if (digits.startsWith("1") && digits.length === 11) {
+      out.country = [await sha256("us")];
+    } else if (digits.startsWith("593")) {
+      out.country = [await sha256("ec")];
+    } else if (digits.startsWith("507")) {
+      out.country = [await sha256("pa")];
+    } else if (digits.startsWith("506")) {
+      out.country = [await sha256("cr")];
+    } else if (digits.startsWith("591")) {
+      out.country = [await sha256("bo")];
+    } else if (digits.startsWith("598")) {
+      out.country = [await sha256("uy")];
+    } else if (digits.startsWith("595")) {
+      out.country = [await sha256("py")];
     }
+  }
+
+  const ctwaClid = card.ctwa_clid || card.campos_extras?.ad_referral?.ctwa_clid;
+  if (ctwaClid) {
+    out.ctwa_clid = String(ctwaClid).trim();
   }
 
   if (card.email && String(card.email).includes("@")) {
@@ -303,7 +336,18 @@ export async function enrichCardWithMetaAdDetails(
     if (!res.ok) return;
 
     const adInfo: any = await res.json().catch(() => null);
-    if (!adInfo || adInfo.error) return;
+    if (!res.ok || !adInfo || adInfo.error) {
+      await (supabaseAdmin as any)
+        .from("crm_cards")
+        .update({
+          utm_source: "meta_ads",
+          canal_entrada: "ads_meta",
+          utm_campaign: sourceAdId,
+        })
+        .eq("id", cardId)
+        .is("canal_entrada", null);
+      return;
+    }
 
     const patch: Record<string, any> = {
       utm_source: "meta_ads",
@@ -478,6 +522,10 @@ export async function sendMetaConversionForLead(input: SendConversionInput): Pro
     actionSource = card.fbclid ? "website" : "system_generated";
     const hashed = await buildHashedUserDataFromCard(card);
     Object.assign(userData, hashed);
+    const resolvedCtwaClid = String(card.ctwa_clid || card.campos_extras?.ad_referral?.ctwa_clid || "").trim();
+    if (resolvedCtwaClid) {
+      userData.ctwa_clid = resolvedCtwaClid;
+    }
   }
 
   // Traducción de nombre de evento si se usa action_source = website

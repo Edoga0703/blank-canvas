@@ -539,15 +539,118 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                 channel,
               );
 
-              // 3. Garantir canal_chat e foto no card
-              const patch: any = { canal_chat: channel, canal_entrada: channel };
+              // 3. Extração e preservação de rastreamento (Meta Ads / UTMs / Link Rastreável)
+              const patch: any = { canal_chat: channel };
               if (profile.name) patch.nome = profile.name;
               if (profile.picture) patch.foto_url = profile.picture;
+
+              const referral = ev?.referral || ev?.message?.referral || ev?.postback?.referral || value?.referral || null;
+              const refString = referral?.ref ? String(referral.ref) : "";
+              const fullTrackingText = [text, refString].filter(Boolean).join(" ");
+
+              const {
+                extractTrackingFromText,
+                extractTrackingProtocolCode,
+              } = await import("@/lib/tracking-utils");
+
+              const t = extractTrackingFromText(fullTrackingText);
+              const protocolCode = extractTrackingProtocolCode(fullTrackingText);
+
+              const isMetaAd = Boolean(referral?.ad_id || referral?.source === "ADS" || t.fbclid);
+              if (isMetaAd) {
+                patch.canal_entrada = "ads_meta";
+                patch.utm_source = "meta_ads";
+                if (referral?.ad_id) {
+                  patch.utm_campaign = String(referral.ad_id);
+                  patch.origem = `Meta Ads (${channel === "instagram" ? "Instagram" : "Messenger"}): Anúncio ${referral.ad_id}`;
+                }
+                const adContextData = referral?.ads_context_data || {};
+                const prevExtras = currentCard?.campos_extras && typeof currentCard.campos_extras === "object" ? currentCard.campos_extras : {};
+                patch.campos_extras = {
+                  ...prevExtras,
+                  ad_referral: {
+                    source_id: referral?.ad_id ? String(referral.ad_id) : null,
+                    headline: adContextData.ad_title || null,
+                    thumbnail_url: adContextData.photo_url || adContextData.video_url || null,
+                    post_id: adContextData.post_id || null,
+                    channel,
+                    captured_at: new Date().toISOString(),
+                  },
+                };
+              } else {
+                patch.canal_entrada = channel;
+              }
+
+              if (t.utm_source) patch.utm_source = t.utm_source;
+              if (t.utm_medium) patch.utm_medium = t.utm_medium;
+              if (t.utm_campaign) patch.utm_campaign = t.utm_campaign;
+              if (t.utm_term) patch.utm_term = t.utm_term;
+              if (t.utm_content) patch.utm_content = t.utm_content;
+              if (t.fbclid) patch.fbclid = t.fbclid;
+              if (t.gclid) patch.gclid = t.gclid;
+
+              if (protocolCode) {
+                try {
+                  const { data: clickSession } = await (supabaseAdmin as any)
+                    .from("lead_click_session")
+                    .select("*")
+                    .eq("company_id", inst.company_id)
+                    .eq("code", protocolCode)
+                    .maybeSingle();
+
+                  if (clickSession) {
+                    if (clickSession.fbclid) patch.fbclid = clickSession.fbclid;
+                    if (clickSession.gclid) patch.gclid = clickSession.gclid;
+                    if (clickSession.utm_source) patch.utm_source = clickSession.utm_source;
+                    if (clickSession.utm_medium) patch.utm_medium = clickSession.utm_medium;
+                    if (clickSession.utm_campaign) patch.utm_campaign = clickSession.utm_campaign;
+                    if (clickSession.utm_term) patch.utm_term = clickSession.utm_term;
+                    if (clickSession.utm_content) patch.utm_content = clickSession.utm_content;
+                    if (clickSession.referrer) patch.referrer = clickSession.referrer;
+                    if (clickSession.first_page) patch.first_page = clickSession.first_page;
+
+                    patch.campos_extras = {
+                      ...(patch.campos_extras || currentCard?.campos_extras || {}),
+                      browser_tracking: {
+                        fbc: clickSession.fbc,
+                        fbp: clickSession.fbp,
+                        client_ip: clickSession.client_ip,
+                        client_user_agent: clickSession.client_user_agent,
+                        captured_at: clickSession.created_at,
+                      },
+                    };
+                  }
+                } catch { /* noop */ }
+              }
+
               await (supabaseAdmin as any)
                 .from("crm_cards")
                 .update(patch)
                 .eq("company_id", inst.company_id)
                 .eq("numero", senderId);
+
+              // Enriquecer con nombres reales de campaña Meta Ads en segundo plano
+              if (referral?.ad_id && currentCard?.id) {
+                void import("@/lib/meta-capi.server")
+                  .then(({ enrichCardWithMetaAdDetails }) =>
+                    enrichCardWithMetaAdDetails(inst.company_id, currentCard.id, String(referral.ad_id)),
+                  )
+                  .catch(() => null);
+              }
+
+              // Disparar evento de conversión LeadSubmitted si provino de anuncio Meta
+              if (isMetaAd && currentCard?.id) {
+                void import("@/lib/meta-capi.server")
+                  .then(({ sendMetaConversionForLead }) =>
+                    sendMetaConversionForLead({
+                      companyId: inst.company_id,
+                      cardId: currentCard.id,
+                      eventName: "LeadSubmitted",
+                      dedupKey: `${currentCard.id}_meta_${channel}_LeadSubmitted`,
+                    }),
+                  )
+                  .catch(() => null);
+              }
 
               // 4. Distribuição automática se modo manual
               if (currentCard) {
