@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-28T17:45:06.430180+00:00",
+  "generated_at": "2026-10-28T20:01:10.958558+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -135,7 +135,7 @@
     },
     {
       "path": "src/routeTree.gen.ts",
-      "bytes": 98975
+      "bytes": 99907
     },
     {
       "path": ".lovable/project.json",
@@ -555,7 +555,7 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 28302
+      "bytes": 28764
     },
     {
       "path": "src/lib/department-menu.functions.ts",
@@ -627,7 +627,7 @@
     },
     {
       "path": "src/lib/uazapi-webhook.server.ts",
-      "bytes": 23175
+      "bytes": 23326
     },
     {
       "path": "src/lib/error-capture.ts",
@@ -647,7 +647,7 @@
     },
     {
       "path": "src/lib/telegram.server.ts",
-      "bytes": 5244
+      "bytes": 6014
     },
     {
       "path": "src/lib/forward.functions.ts",
@@ -691,7 +691,7 @@
     },
     {
       "path": "src/lib/agent-copilot.functions.ts",
-      "bytes": 14411
+      "bytes": 14259
     },
     {
       "path": "src/lib/dashboard.functions.ts",
@@ -731,7 +731,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 50360
+      "bytes": 51072
     },
     {
       "path": "src/lib/templates.functions.ts",
@@ -895,7 +895,7 @@
     },
     {
       "path": "src/lib/customer-lookup.server.ts",
-      "bytes": 6035
+      "bytes": 6262
     },
     {
       "path": "src/lib/br-phone.ts",
@@ -1023,7 +1023,7 @@
     },
     {
       "path": "src/lib/meta-capi.server.ts",
-      "bytes": 25219
+      "bytes": 27223
     },
     {
       "path": "src/lib/provider-monitor.functions.ts",
@@ -1055,7 +1055,7 @@
     },
     {
       "path": "src/lib/message-actions.functions.ts",
-      "bytes": 5991
+      "bytes": 6063
     },
     {
       "path": "src/lib/olist.functions.ts",
@@ -1095,7 +1095,7 @@
     },
     {
       "path": "src/lib/agent-sandbox.server.ts",
-      "bytes": 4996
+      "bytes": 5386
     },
     {
       "path": "src/lib/media-fetch.server.ts",
@@ -1111,7 +1111,7 @@
     },
     {
       "path": "src/lib/contact-card.functions.ts",
-      "bytes": 4717
+      "bytes": 4738
     },
     {
       "path": "src/lib/prospeccao.server.ts",
@@ -1131,7 +1131,7 @@
     },
     {
       "path": "src/lib/meta.server.ts",
-      "bytes": 25584
+      "bytes": 26454
     },
     {
       "path": "src/lib/inbound-automation.server.ts",
@@ -1159,7 +1159,7 @@
     },
     {
       "path": "src/lib/ai-prompt.ts",
-      "bytes": 51721
+      "bytes": 52212
     },
     {
       "path": "src/lib/tenant.ts",
@@ -1211,7 +1211,7 @@
     },
     {
       "path": "src/lib/wa-dispatch.server.ts",
-      "bytes": 11983
+      "bytes": 12934
     },
     {
       "path": "src/lib/google-marketing.server.ts",
@@ -1539,7 +1539,7 @@
     },
     {
       "path": "src/components/chat/formatted-message-text.tsx",
-      "bytes": 18312
+      "bytes": 18728
     },
     {
       "path": "src/components/chat/chat-location.tsx",
@@ -2167,7 +2167,7 @@
     },
     {
       "path": "src/lib/messaging/ingest.server.ts",
-      "bytes": 28072
+      "bytes": 28429
     },
     {
       "path": "src/lib/messaging/contracts.ts",
@@ -2283,7 +2283,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 195204
+      "bytes": 195992
     },
     {
       "path": "src/routes/app/conexao.tsx",
@@ -2491,7 +2491,7 @@
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
-      "bytes": 28269
+      "bytes": 31877
     },
     {
       "path": "src/routes/api/public/telegram-webhook.ts",
@@ -2556,6 +2556,10 @@
     {
       "path": "src/routes/api/public/ai-health.ts",
       "bytes": 1414
+    },
+    {
+      "path": "src/routes/api/public/track-click.ts",
+      "bytes": 6158
     },
     {
       "path": "src/routes/api/public/billing/webhook.ts",
@@ -3414,6 +3418,10 @@
     {
       "source": "src/routeTree.gen.ts",
       "target": "./routes/api/public/telegram-webhook"
+    },
+    {
+      "source": "src/routeTree.gen.ts",
+      "target": "./routes/api/public/track-click"
     },
     {
       "source": "src/routeTree.gen.ts",
@@ -6324,6 +6332,10 @@
       "target": "@/integrations/supabase/client.server"
     },
     {
+      "source": "src/lib/customer-lookup.server.ts",
+      "target": "./agent-sandbox.server"
+    },
+    {
       "source": "src/lib/sentimento.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -7412,6 +7424,10 @@
       "target": "@/integrations/supabase/client.server"
     },
     {
+      "source": "src/lib/meta.server.ts",
+      "target": "@/lib/storage/r2.server"
+    },
+    {
       "source": "src/lib/inbound-automation.server.ts",
       "target": "@/lib/ai-engine.server"
     },
@@ -7665,6 +7681,10 @@
     },
     {
       "source": "src/lib/wa-dispatch.server.ts",
+      "target": "./telegram.server"
+    },
+    {
+      "source": "src/lib/wa-dispatch.server.ts",
       "target": "./dapi.server"
     },
     {
@@ -7685,11 +7705,19 @@
     },
     {
       "source": "src/lib/wa-dispatch.server.ts",
+      "target": "./telegram.server"
+    },
+    {
+      "source": "src/lib/wa-dispatch.server.ts",
       "target": "./dapi.server"
     },
     {
       "source": "src/lib/wa-dispatch.server.ts",
       "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/wa-dispatch.server.ts",
+      "target": "./telegram.server"
     },
     {
       "source": "src/lib/wa-dispatch.server.ts",
@@ -16994,6 +17022,18 @@
     {
       "source": "src/routes/api/public/ai-health.ts",
       "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/api/public/track-click.ts",
+      "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/api/public/track-click.ts",
+      "target": "zod"
+    },
+    {
+      "source": "src/routes/api/public/track-click.ts",
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/routes/api/public/billing/webhook.ts",
