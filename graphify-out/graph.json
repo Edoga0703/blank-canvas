@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-27T22:54:07.576539+00:00",
+  "generated_at": "2026-10-28T05:13:38.652371+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -683,7 +683,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 45710
+      "bytes": 49335
     },
     {
       "path": "src/lib/tracking.functions.ts",
@@ -967,7 +967,7 @@
     },
     {
       "path": "src/lib/agent-sandbox.server.ts",
-      "bytes": 3721
+      "bytes": 4996
     },
     {
       "path": "src/lib/crm-copilot.server.ts",
@@ -1071,7 +1071,7 @@
     },
     {
       "path": "src/lib/ai-prompt.ts",
-      "bytes": 43212
+      "bytes": 51014
     },
     {
       "path": "src/lib/plan.functions.ts",
@@ -4329,6 +4329,22 @@
     },
     {
       "source": "src/lib/ai-engine.server.ts",
+      "target": "./meta-capi.server"
+    },
+    {
+      "source": "src/lib/ai-engine.server.ts",
+      "target": "./ai-prompt"
+    },
+    {
+      "source": "src/lib/ai-engine.server.ts",
+      "target": "./agent-sandbox.server"
+    },
+    {
+      "source": "src/lib/ai-engine.server.ts",
+      "target": "./meta-capi.server"
+    },
+    {
+      "source": "src/lib/ai-engine.server.ts",
       "target": "@/lib/evolution-helpers"
     },
     {
@@ -5822,6 +5838,10 @@
     {
       "source": "src/lib/google-marketing.server.ts",
       "target": "@/lib/google.server"
+    },
+    {
+      "source": "src/lib/agent-sandbox.server.ts",
+      "target": "node:vm"
     },
     {
       "source": "src/lib/crm-copilot.server.ts",
