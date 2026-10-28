@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-28T20:01:10.958558+00:00",
+  "generated_at": "2026-10-28T22:43:19.852279+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -155,7 +155,7 @@
     },
     {
       "path": "supabase/migrations/20261026120000_meta_capi_business_messaging.sql",
-      "bytes": 3593
+      "bytes": 4142
     },
     {
       "path": "supabase/migrations/20261010010000_meta_notifications.sql",
@@ -184,6 +184,10 @@
     {
       "path": "supabase/migrations/20261023100000_dapi_whatsapp_integration.sql",
       "bytes": 649
+    },
+    {
+      "path": "supabase/migrations/20261028190000_enable_rls_meta_capi_tables.sql",
+      "bytes": 552
     },
     {
       "path": "supabase/migrations/20261024170000_crm_lead_analyzer_and_stage_criteria.sql",
@@ -475,7 +479,7 @@
     },
     {
       "path": "src/components/app-shell.tsx",
-      "bytes": 37252
+      "bytes": 37289
     },
     {
       "path": "src/components/mic-dictate-button.tsx",
@@ -499,7 +503,7 @@
     },
     {
       "path": "src/lib/meta-capi.functions.ts",
-      "bytes": 6114
+      "bytes": 8510
     },
     {
       "path": "src/lib/meta.functions.ts",
@@ -555,7 +559,7 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 28764
+      "bytes": 30233
     },
     {
       "path": "src/lib/department-menu.functions.ts",
@@ -603,7 +607,7 @@
     },
     {
       "path": "src/lib/agent-ai.functions.ts",
-      "bytes": 44531
+      "bytes": 44550
     },
     {
       "path": "src/lib/invoices.functions.ts",
@@ -627,7 +631,7 @@
     },
     {
       "path": "src/lib/uazapi-webhook.server.ts",
-      "bytes": 23326
+      "bytes": 23672
     },
     {
       "path": "src/lib/error-capture.ts",
@@ -691,7 +695,7 @@
     },
     {
       "path": "src/lib/agent-copilot.functions.ts",
-      "bytes": 14259
+      "bytes": 14284
     },
     {
       "path": "src/lib/dashboard.functions.ts",
@@ -731,7 +735,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 51072
+      "bytes": 51740
     },
     {
       "path": "src/lib/templates.functions.ts",
@@ -927,7 +931,7 @@
     },
     {
       "path": "src/lib/meta-message-media.server.ts",
-      "bytes": 4259
+      "bytes": 4281
     },
     {
       "path": "src/lib/grupos.functions.ts",
@@ -1023,7 +1027,7 @@
     },
     {
       "path": "src/lib/meta-capi.server.ts",
-      "bytes": 27223
+      "bytes": 29106
     },
     {
       "path": "src/lib/provider-monitor.functions.ts",
@@ -1035,11 +1039,11 @@
     },
     {
       "path": "src/lib/meta-leads.server.ts",
-      "bytes": 4136
+      "bytes": 5310
     },
     {
       "path": "src/lib/meta-sync.server.ts",
-      "bytes": 21291
+      "bytes": 21305
     },
     {
       "path": "src/lib/billing-checkout.functions.ts",
@@ -1095,7 +1099,7 @@
     },
     {
       "path": "src/lib/agent-sandbox.server.ts",
-      "bytes": 5386
+      "bytes": 5538
     },
     {
       "path": "src/lib/media-fetch.server.ts",
@@ -1131,15 +1135,15 @@
     },
     {
       "path": "src/lib/meta.server.ts",
-      "bytes": 26454
+      "bytes": 26512
     },
     {
       "path": "src/lib/inbound-automation.server.ts",
-      "bytes": 4434
+      "bytes": 4436
     },
     {
       "path": "src/lib/transcribe.functions.ts",
-      "bytes": 6768
+      "bytes": 6775
     },
     {
       "path": "src/lib/dashboard-ops.functions.ts",
@@ -1159,7 +1163,7 @@
     },
     {
       "path": "src/lib/ai-prompt.ts",
-      "bytes": 52212
+      "bytes": 52597
     },
     {
       "path": "src/lib/tenant.ts",
@@ -1207,11 +1211,11 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.server.ts",
-      "bytes": 20090
+      "bytes": 19922
     },
     {
       "path": "src/lib/wa-dispatch.server.ts",
-      "bytes": 12934
+      "bytes": 12947
     },
     {
       "path": "src/lib/google-marketing.server.ts",
@@ -1499,7 +1503,7 @@
     },
     {
       "path": "src/components/conexao/nova-conexao-dialog.tsx",
-      "bytes": 16394
+      "bytes": 16420
     },
     {
       "path": "src/components/conexao/meta-connect-dialog.tsx",
@@ -1935,7 +1939,7 @@
     },
     {
       "path": "src/components/config/meta-capi-card.tsx",
-      "bytes": 16512
+      "bytes": 17199
     },
     {
       "path": "src/components/config/equipe-tab.tsx",
@@ -2151,7 +2155,7 @@
     },
     {
       "path": "src/lib/i18n/translations.ts",
-      "bytes": 57669
+      "bytes": 57564
     },
     {
       "path": "src/lib/messaging/lovable-connection.functions.ts",
@@ -2171,7 +2175,7 @@
     },
     {
       "path": "src/lib/messaging/contracts.ts",
-      "bytes": 2636
+      "bytes": 2697
     },
     {
       "path": "src/lib/messaging/media-archive.server.ts",
@@ -2211,7 +2215,7 @@
     },
     {
       "path": "src/lib/messaging/providers/dapi.server.ts",
-      "bytes": 12413
+      "bytes": 12452
     },
     {
       "path": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
@@ -2247,7 +2251,7 @@
     },
     {
       "path": "src/integrations/supabase/types.ts",
-      "bytes": 212649
+      "bytes": 213107
     },
     {
       "path": "src/routes/app/plugins.tsx",
@@ -2283,7 +2287,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 195992
+      "bytes": 196004
     },
     {
       "path": "src/routes/app/conexao.tsx",
@@ -2311,7 +2315,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 156906
+      "bytes": 156914
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -2347,7 +2351,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 149227
+      "bytes": 149271
     },
     {
       "path": "src/routes/app/usuarios.tsx",
@@ -2491,7 +2495,7 @@
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
-      "bytes": 31877
+      "bytes": 31884
     },
     {
       "path": "src/routes/api/public/telegram-webhook.ts",
@@ -2527,7 +2531,7 @@
     },
     {
       "path": "src/routes/api/public/meta-leads-webhook.ts",
-      "bytes": 8784
+      "bytes": 8468
     },
     {
       "path": "src/routes/api/public/google-callback.ts",
@@ -4085,27 +4089,11 @@
     },
     {
       "source": "src/lib/meta-capi.functions.ts",
-      "target": "./meta-capi.server"
-    },
-    {
-      "source": "src/lib/meta-capi.functions.ts",
-      "target": "./meta-capi.server"
-    },
-    {
-      "source": "src/lib/meta-capi.functions.ts",
-      "target": "./meta-capi.server"
-    },
-    {
-      "source": "src/lib/meta-capi.functions.ts",
       "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/meta-capi.functions.ts",
       "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/lib/meta-capi.functions.ts",
-      "target": "./meta-capi.server"
     },
     {
       "source": "src/lib/meta.functions.ts",
@@ -4610,6 +4598,10 @@
     {
       "source": "src/lib/uazapi-webhook.server.ts",
       "target": "@/lib/inbound-automation.server"
+    },
+    {
+      "source": "src/lib/uazapi-webhook.server.ts",
+      "target": "@/lib/crm-lead-analyzer.server"
     },
     {
       "source": "src/lib/admin-broadcast.functions.ts",
@@ -7445,11 +7437,11 @@
     },
     {
       "source": "src/lib/inbound-automation.server.ts",
-      "target": "@/lib/crm-stage-meta"
+      "target": "@/lib/crm-lead-analyzer.server"
     },
     {
       "source": "src/lib/inbound-automation.server.ts",
-      "target": "@/lib/crm-lead-analyzer.server"
+      "target": "@/lib/crm-stage-meta"
     },
     {
       "source": "src/lib/transcribe.functions.ts",
@@ -16882,6 +16874,10 @@
     {
       "source": "src/routes/api/public/meta-leads-webhook.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/routes/api/public/meta-leads-webhook.ts",
+      "target": "@/lib/meta-leads.server"
     },
     {
       "source": "src/routes/api/public/meta-leads-webhook.ts",
