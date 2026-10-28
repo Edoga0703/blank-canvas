@@ -4685,6 +4685,10 @@ export type Database = {
           texto_original: string | null
           user_id: string
           whatsapp_message_id: string | null
+          instance_id: string | null
+          provider: string | null
+          provider_timestamp: string | null
+          raw_payload: Json | null
         }
         Insert: {
           autor: string
@@ -4709,6 +4713,10 @@ export type Database = {
           texto_original?: string | null
           user_id: string
           whatsapp_message_id?: string | null
+          instance_id?: string | null
+          provider?: string | null
+          provider_timestamp?: string | null
+          raw_payload?: Json | null
         }
         Update: {
           autor?: string
@@ -4733,6 +4741,10 @@ export type Database = {
           texto_original?: string | null
           user_id?: string
           whatsapp_message_id?: string | null
+          instance_id?: string | null
+          provider?: string | null
+          provider_timestamp?: string | null
+          raw_payload?: Json | null
         }
         Relationships: [
           {

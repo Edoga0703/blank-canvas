@@ -184,9 +184,9 @@ export const dapiProvider: MessagingProvider = {
     const res = await dapiSendMedia(input.connectionExternalId, input.to, {
       url: input.mediaUrl,
       type: input.kind === "audio" ? "audio" : input.kind === "image" ? "image" : input.kind === "video" ? "video" : "document",
-      caption: input.caption,
-      fileName: input.fileName,
-      mime: input.mimeType,
+      caption: input.caption || undefined,
+      fileName: input.fileName || undefined,
+      mime: input.mimeType || undefined,
       ptt: input.kind === "audio",
     });
     return sent(res.id, res.raw);

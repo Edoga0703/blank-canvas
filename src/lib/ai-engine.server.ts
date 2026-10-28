@@ -517,7 +517,7 @@ export async function processAiResponse(
     ]);
 
     const feedbackHints = (feedbackRows ?? []).map((f: any) => ({
-      rating: f.rating === "up" ? "up" : "down",
+      rating: (f.rating === "up" ? "up" : "down") as "up" | "down",
       texto: f.mensagem_texto || "",
       nota: f.nota || null,
     }));
@@ -653,31 +653,43 @@ export async function processAiResponse(
     if (parsed.pixelTracking?.evento && card?.id) {
       try {
         const { sendMetaConversionForLead } = await import("./meta-capi.server");
-        const rawEvent = String(parsed.pixelTracking.evento).trim();
-        const eventMap: Record<string, string> = {
-          lead: "Lead",
+        const VALID_PIXEL_EVENTS: Record<string, any> = {
+          leadsubmitted: "LeadSubmitted",
+          lead: "LeadSubmitted",
+          contact: "LeadSubmitted",
+          contacto: "LeadSubmitted",
+          qualifiedlead: "QualifiedLead",
           qualified_lead: "QualifiedLead",
-          lead_submitted: "LeadSubmitted",
+          viewcontent: "ViewContent",
+          view_content: "ViewContent",
+          addtocart: "AddToCart",
+          add_to_cart: "AddToCart",
+          initiatecheckout: "InitiateCheckout",
+          initiate_checkout: "InitiateCheckout",
+          appointmentbooked: "AppointmentBooked",
+          appointment_booked: "AppointmentBooked",
+          appointment: "AppointmentBooked",
+          schedule: "AppointmentBooked",
+          agendamiento: "AppointmentBooked",
+          ordercreated: "OrderCreated",
+          order_created: "OrderCreated",
           purchase: "Purchase",
           compra: "Purchase",
-          schedule: "Schedule",
-          appointment: "AppointmentBooked",
-          appointment_booked: "AppointmentBooked",
-          agendamiento: "Schedule",
-          contact: "Contact",
-          contacto: "Contact",
-          view_content: "ViewContent",
-          initiate_checkout: "InitiateCheckout",
         };
-        const validEvent = eventMap[rawEvent.toLowerCase()] || rawEvent;
-        await sendMetaConversionForLead({
-          companyId,
-          cardId: card.id,
-          eventName: validEvent as any,
-          value: parsed.pixelTracking.valor != null ? Number(parsed.pixelTracking.valor) : undefined,
-          currency: parsed.pixelTracking.moneda || undefined,
-        });
-        console.log(`[ai-engine] Meta CAPI Pixel event emitted: ${validEvent} (from ${rawEvent})`);
+        const rawEvt = String(parsed.pixelTracking.evento || "").trim();
+        const mappedEvt = VALID_PIXEL_EVENTS[rawEvt.toLowerCase()] || VALID_PIXEL_EVENTS[rawEvt] || null;
+        if (mappedEvt) {
+          await sendMetaConversionForLead({
+            companyId,
+            cardId: card.id,
+            eventName: mappedEvt,
+            value: parsed.pixelTracking.valor != null ? Number(parsed.pixelTracking.valor) : undefined,
+            currency: parsed.pixelTracking.moneda || undefined,
+          });
+          console.log(`[ai-engine] Meta CAPI Pixel event emitted: ${mappedEvt} (from ${rawEvt})`);
+        } else {
+          console.warn(`[ai-engine] Evento Pixel ignorado por no estar en lista blanca: "${rawEvt}"`);
+        }
       } catch (pixErr: any) {
         console.warn("[ai-engine] Pixel event emit error:", pixErr?.message);
       }
@@ -864,26 +876,27 @@ export async function processAiResponse(
               const cleanB64 = audioB64.includes(",") ? audioB64.split(",")[1] : audioB64;
               const audioBuffer = Buffer.from(cleanB64, "base64");
               const fileName = `tts_${Date.now()}.mp3`;
-              const storageKey = `companies/${companyId}/audio/${fileName}`;
               let audioUrlToSend = `data:audio/mp3;base64,${cleanB64}`;
-              let storedKey = storageKey;
+              let storedKey: string | null = null;
 
               try {
-                const { storeMediaObject, createR2DownloadUrl } = await import("@/lib/storage/r2.server");
-                const storedObj = await storeMediaObject({
-                  companyId,
-                  bytes: audioBuffer,
-                  fileName,
-                  mimeType: "audio/mpeg",
-                  storageKey,
-                });
-                storedKey = storedObj.storageKey;
-                const signedUrl = await createR2DownloadUrl(storedKey, 86400);
-                if (signedUrl) {
-                  audioUrlToSend = signedUrl;
+                const { isR2Configured, storeMediaObject, createR2DownloadUrl } = await import("@/lib/storage/r2.server");
+                if (!isR2Configured || isR2Configured()) {
+                  const storedObj = await storeMediaObject({
+                    companyId,
+                    bytes: audioBuffer,
+                    fileName,
+                    mimeType: "audio/mpeg",
+                  });
+                  storedKey = storedObj.storageKey;
+                  const signedUrl = await createR2DownloadUrl(storedKey, 86400);
+                  if (signedUrl) {
+                    audioUrlToSend = signedUrl;
+                  }
                 }
-              } catch (r2Err) {
-                console.warn("[ai-engine] Falha ao persistir áudio TTS no R2, enviando data URI:", r2Err);
+              } catch (r2Err: any) {
+                storedKey = null;
+                console.warn("[ai-engine] Falha ao persistir áudio TTS no R2, enviando data URI:", r2Err?.message);
               }
 
               const { waSendAudio } = await import("@/lib/wa-dispatch.server");
@@ -906,7 +919,7 @@ export async function processAiResponse(
                 created_at: new Date().toISOString(),
               } as any).select("id").maybeSingle();
 
-              if (insertedMsg?.id) {
+              if (insertedMsg?.id && storedKey) {
                 try {
                   await (supabaseAdmin as any).from("message_attachments").insert({
                     company_id: companyId,

@@ -2500,7 +2500,7 @@ function AgentePage() {
                       className="pr-10 bg-white"
                     />
                     <Button 
-                      onClick={runTest} 
+                      onClick={() => runTest()} 
                       disabled={testing || !testInput.trim()} 
                       size="icon" 
                       className="absolute right-1 top-1 size-8 rounded-lg bg-[var(--brand)] hover:bg-[var(--brand)]/90"
@@ -2929,5 +2929,7 @@ type ChatMsg = {
   role: "user" | "assistant";
   content: string;
   parts?: string[];
+  fonte?: string;
+  regra?: string;
 };
 

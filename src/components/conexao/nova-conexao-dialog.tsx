@@ -103,7 +103,7 @@ export function NovaConexaoDialog({
 
       if (!isDapiOfficialEvent) return;
 
-      void onCreateDapiOfficial({
+      if (onCreateDapiOfficial) void onCreateDapiOfficial({
         displayName: name.trim() || payload.displayName || "WhatsApp Oficial Meta",
         sessionId: String(payload.sessionId || ""),
         wabaId: payload.wabaId ? String(payload.wabaId) : undefined,

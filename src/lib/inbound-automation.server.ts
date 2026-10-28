@@ -19,6 +19,15 @@ export async function processInboundAutomation(
 ) {
   const { companyId, numero, texto, inboundMessageId } = params;
 
+  const triggerBackgroundLeadAudit = async () => {
+    try {
+      const { checkAndAnalyzeLeadCooldown } = await import("@/lib/crm-lead-analyzer.server");
+      await checkAndAnalyzeLeadCooldown(companyId, numero);
+    } catch (e: any) {
+      console.warn("[inbound-automation] checkAndAnalyzeLeadCooldown error:", e?.message);
+    }
+  };
+
 
 
   // 0) Se a mensagem recebida for áudio, a IA não deve responder ou alucinar.
@@ -93,14 +102,7 @@ export async function processInboundAutomation(
       (stage?.mensagem_texto?.trim() || (stage?.mensagem_tipo === "ia_leve" && cleanPrompt) || stage?.mensagem_midia_url?.trim()),
   );
 
-  const triggerBackgroundLeadAudit = async () => {
-    try {
-      const { checkAndAnalyzeLeadCooldown } = await import("@/lib/crm-lead-analyzer.server");
-      await checkAndAnalyzeLeadCooldown(companyId, numero);
-    } catch (e: any) {
-      console.warn("[inbound-automation] checkAndAnalyzeLeadCooldown error:", e?.message);
-    }
-  };
+
 
   if (mode !== "ia") {
     const regua = await processKanbanReguaForNumero(admin, companyId, numero);

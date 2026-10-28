@@ -54,10 +54,50 @@ export async function processMetaLeadRecord(admin: Admin, input: { companyId: st
   return { ok: true, cardId, numero: cleanNumero, created: !existing?.id };
 }
 
+export async function resolveMetaLeadPageCredentials(
+  admin: any,
+  pageId: string,
+): Promise<{ companyId: string; accessToken: string } | null> {
+  const cleanPageId = String(pageId || "").trim();
+  if (!cleanPageId) return null;
+
+  // 1. Buscar primeiro em meta_social_accounts (donde se conectan las Páginas de Facebook/Instagram)
+  const { data: social } = await admin
+    .from("meta_social_accounts")
+    .select("company_id, page_access_token")
+    .eq("page_id", cleanPageId)
+    .in("status", ["connected", "active"])
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (social?.company_id && social?.page_access_token) {
+    return { companyId: social.company_id, accessToken: social.page_access_token };
+  }
+
+  // 2. Fallback a whatsapp_instances (phone_number_id o instance_name)
+  const { data: inst } = await admin
+    .from("whatsapp_instances")
+    .select("company_id, instance_token")
+    .or(`phone_number_id.eq.${cleanPageId},instance_name.eq.${cleanPageId}`)
+    .not("instance_token", "is", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (inst?.company_id && inst?.instance_token) {
+    return { companyId: inst.company_id, accessToken: inst.instance_token };
+  }
+
+  return null;
+}
+
 export async function fetchAndProcessMetaLead(admin: Admin, pageId: string, leadId: string, formId?: string) {
-  const { data: instance } = await admin.from("whatsapp_instances").select("instance_token,company_id").eq("phone_number_id", pageId).like("provider", "meta%").maybeSingle();
-  if (!instance?.instance_token || !instance.company_id) throw new Error(`Token Meta não encontrado para a página ${pageId}`);
+  const creds = await resolveMetaLeadPageCredentials(admin, pageId);
+  if (!creds?.accessToken || !creds.companyId) {
+    throw new Error(`Token Meta não encontrado para a página ${pageId}`);
+  }
   const { metaGraphRequest } = await import("@/lib/meta.server");
-  const leadData = await metaGraphRequest(`/${encodeURIComponent(leadId)}?fields=id,created_time,field_data,ad_id,form_id`, instance.instance_token);
-  return processMetaLeadRecord(admin, { companyId: instance.company_id, leadId, formId, leadData });
+  const leadData = await metaGraphRequest(`/${encodeURIComponent(leadId)}?fields=id,created_time,field_data,ad_id,form_id`, creds.accessToken);
+  return processMetaLeadRecord(admin, { companyId: creds.companyId, leadId, formId, leadData });
 }

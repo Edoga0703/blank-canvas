@@ -890,29 +890,41 @@ export function parseAiOutput(
     const codeExecution = structured.ejecucion_codigo || structured.code_execution || null;
     const webhookSaliente = structured.webhook_saliente || structured.outbound_webhook || null;
 
-    const cleanMarker = (s: string) =>
-      s
+    const skusFromParts: string[] = [];
+    const cleanMarker = (s: string) => {
+      const prodMatches = s.matchAll(/\[PRODUTO:([^\]]+)\]/gi);
+      for (const m of prodMatches) {
+        if (m[1]) skusFromParts.push(m[1].trim());
+      }
+      return s
         .replace(/\[\s*(?:TRACKING|PIXEL|WEBHOOK|CODIGO|CODE|EJECUTAR|ESTAGIO|STAGE|AGENDAR|INTENCAO|HANDOFF|QUALIFICADO|SUGESTAO|PRODUTO|PEDIDO)[^\]]*\]/gi, "")
         .trim();
+    };
 
-    if (parts.length > 0) {
-      const sanitizedParts = parts.map(cleanMarker).filter(Boolean);
-      return {
-        parts: sanitizedParts.slice(0, 3),
-        stage: resolvedStage,
-        agendar,
-        intent,
-        handoff,
-        qualified,
-        pedido: structured.pedido || null,
-        sugestao: structured.sugestao || null,
-        produtosSku: Array.isArray(structured.produtos_sku) ? structured.produtos_sku : [],
-        rawStructured: structured,
-        pixelTracking,
-        codeExecution,
-        webhookSaliente,
-      };
-    }
+    const sanitizedParts = parts.map(cleanMarker).filter(Boolean);
+    const combinedSkus = Array.from(
+      new Set([
+        ...(Array.isArray(structured.produtos_sku) ? structured.produtos_sku : []),
+        ...(Array.isArray(structured.acciones_crm?.produtos_sku) ? structured.acciones_crm.produtos_sku : []),
+        ...skusFromParts,
+      ]),
+    );
+
+    return {
+      parts: sanitizedParts.slice(0, 3),
+      stage: resolvedStage,
+      agendar,
+      intent,
+      handoff,
+      qualified,
+      pedido: structured.pedido || null,
+      sugestao: structured.sugestao || null,
+      produtosSku: combinedSkus,
+      rawStructured: structured,
+      pixelTracking,
+      codeExecution,
+      webhookSaliente,
+    };
   }
   let stage: string | null = null;
   let agendar: AgendarBrief | null = null;

@@ -137,7 +137,7 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
       const formatted = ruleText.startsWith("-") || /^\d+\./.test(ruleText) ? ruleText : `- ${ruleText}`;
       const updated = current ? `${current}\n${formatted}` : formatted;
 
-      const { error: upErr } = await supabaseAdmin
+      const { error: upErr } = await (supabaseAdmin as any)
         .from("agent_config")
         .update({ regras_rigidas: updated, updated_at: new Date().toISOString() })
         .eq("id", cfg.id);
@@ -258,10 +258,10 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
         }
       }
 
-      const { error: upErr } = await supabaseAdmin
+      const { error: upErr } = await (supabaseAdmin as any)
         .from("agent_config")
         .update({
-          canais_ativos: currentCanais,
+          canais_ativos: currentCanais as any,
           regras_rigidas: updatedRegras,
           updated_at: new Date().toISOString(),
         })

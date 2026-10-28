@@ -2,6 +2,8 @@ export const MESSAGING_PROVIDERS = [
   "dapi",
   "dapi_official",
   "meta_direct",
+  "lovable_whatsapp",
+  "telegram",
 ] as const;
 
 export type MessagingProviderId = (typeof MESSAGING_PROVIDERS)[number];
@@ -56,6 +58,7 @@ export type MessageStatusEvent = {
   externalMessageId: string;
   status: DeliveryStatus;
   occurredAt: string;
+  phone?: string | null;
   errorCode?: string | null;
   errorMessage?: string | null;
   raw: unknown;

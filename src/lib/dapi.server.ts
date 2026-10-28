@@ -5,45 +5,89 @@
 
 const DEFAULT_BASE_URL = "https://api.d-api.cloud/api/v1";
 
-function getBaseUrl(): string {
-  const url = process.env.DAPI_BASE_URL || DEFAULT_BASE_URL;
-  return url.replace(/\/+$/, "");
+export class DapiHttpError extends Error {
+  status: number;
+  body: any;
+  constructor(message: string, status: number, body?: any) {
+    super(message);
+    this.name = "DapiHttpError";
+    this.status = status;
+    this.body = body;
+  }
 }
 
 const DEFAULT_DAPI_API_KEY = "098aeda184429bc8201ba60d88116821906397caa5fd5b935b615318a245da03";
 
 function getApiKey(customKey?: string | null): string {
-  const key = (customKey || process.env.DAPI_API_KEY || DEFAULT_DAPI_API_KEY || "").trim();
-  return key || DEFAULT_DAPI_API_KEY;
+  const candidate = String(customKey || "").trim();
+  // En sesiones dapi_official (Cloud API), instance_token almacena el token de Meta (EAA... / IGAA... / IGQV...),
+  // el cual NO es una API Key de D-API y nunca debe enviarse en el header Authorization de D-API.
+  const isMetaGraphToken =
+    candidate.startsWith("EAA") ||
+    candidate.startsWith("IGAA") ||
+    candidate.startsWith("IGQV");
+  const validCustomKey = candidate && !isMetaGraphToken ? candidate : "";
+  const envKey = String(process.env.DAPI_API_KEY || process.env.VITE_DAPI_API_KEY || "").trim();
+  const key = validCustomKey || envKey || DEFAULT_DAPI_API_KEY;
+  if (!key) {
+    throw new Error("DAPI_API_KEY no está configurada en las variables de entorno del servidor.");
+  }
+  return key;
 }
 
-function getHeaders(customKey?: string | null): Record<string, string> {
-  const key = getApiKey(customKey);
-  return {
-    "Authorization": key,
-    "Content-Type": "application/json",
-    "User-Agent": "Capiconversa-CRM/1.2.06",
-  };
+export function extractDapiResponseId(res: unknown): string {
+  if (!res || typeof res !== "object") return "";
+  const r = res as Record<string, any>;
+  const candidates = [
+    r.id,
+    r.messageId,
+    r.message_id,
+    r.key?.id,
+    r.data?.id,
+    r.data?.messageId,
+    r.data?.message_id,
+    r.data?.key?.id,
+    r.data?.message?.key?.id,
+    r.message?.key?.id,
+    r.messages?.[0]?.id,
+    r.data?.messages?.[0]?.id,
+    r.result?.id,
+    r.result?.key?.id,
+  ];
+  const found = candidates.find((v): v is string => typeof v === "string" && v.trim().length > 0);
+  return found ? found.trim() : "";
+}
+
+function getBaseUrl(): string {
+  const url = process.env.DAPI_BASE_URL || DEFAULT_BASE_URL;
+  return url.replace(/\/+$/, "");
 }
 
 async function dapiFetch<T = any>(
   endpoint: string,
   options: RequestInit = {},
   timeoutMs = 15_000,
-  customKey?: string | null,
+  customApiKey?: string | null,
 ): Promise<T> {
   const baseUrl = getBaseUrl();
   const url = `${baseUrl}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
+  const apiKey = getApiKey(customApiKey);
+
+  const headers: Record<string, string> = {
+    Authorization: apiKey,
+    "x-api-key": apiKey,
+    "Content-Type": "application/json",
+    "User-Agent": "Capiconversa-CRM/1.2.26",
+    ...(options.headers as Record<string, string>),
+  };
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const res = await fetch(url, {
       ...options,
-      headers: {
-        ...getHeaders(customKey),
-        ...(options.headers || {}),
-      },
+      headers,
       signal: controller.signal,
     });
 
@@ -56,13 +100,44 @@ async function dapiFetch<T = any>(
     }
 
     if (!res.ok) {
-      const errMsg = data?.message || data?.error || `D-API error ${res.status}: ${text.slice(0, 200)}`;
-      throw new Error(errMsg);
+      const errMsg =
+        data?.message ||
+        data?.error ||
+        data?.details ||
+        `D-API Error (${res.status}): ${text.slice(0, 200)}`;
+      throw new DapiHttpError(errMsg, res.status, data);
     }
 
     return data as T;
   } finally {
     clearTimeout(timer);
+  }
+}
+
+async function postWithRouteFallback<T = any>(
+  primaryEndpoint: string,
+  fallbackEndpoint: string,
+  bodyObj: Record<string, any>,
+  timeoutMs = 15_000,
+  apiKey?: string | null,
+): Promise<T> {
+  try {
+    return await dapiFetch<T>(
+      primaryEndpoint,
+      { method: "POST", body: JSON.stringify(bodyObj) },
+      timeoutMs,
+      apiKey,
+    );
+  } catch (err: any) {
+    if (err instanceof DapiHttpError && (err.status === 404 || err.status === 405)) {
+      return await dapiFetch<T>(
+        fallbackEndpoint,
+        { method: "POST", body: JSON.stringify(bodyObj) },
+        timeoutMs,
+        apiKey,
+      );
+    }
+    throw err;
   }
 }
 
@@ -447,15 +522,13 @@ export async function dapiSendText(
     }
   }
 
-  const res = await dapiFetch<any>("/messages/send/text", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  }, 15_000, apiKey).catch(() => {
-    return dapiFetch<any>("/messages/text", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }, 15_000, apiKey);
-  });
+  const res = await postWithRouteFallback<any>(
+    "/messages/send/text",
+    "/messages/text",
+    payload,
+    15_000,
+    apiKey,
+  );
 
   const id = extractDapiResponseId(res);
   return { id, provider: "dapi", raw: res };
@@ -578,18 +651,12 @@ export async function dapiSendMedia(
 
   let res: any;
   try {
-    res = await dapiFetch<any>(
+    res = await postWithRouteFallback<any>(
       primaryEndpoint,
-      { method: "POST", body: JSON.stringify(body) },
+      fallbackEndpoint,
+      body,
       35_000,
       apiKey,
-    ).catch(() =>
-      dapiFetch<any>(
-        fallbackEndpoint,
-        { method: "POST", body: JSON.stringify(body) },
-        35_000,
-        apiKey,
-      ),
     );
   } catch (sendErr: any) {
     // Último fallback: si era una URL HTTP pública y D-API falló al descargarla, convertir a Base64 en servidor y reintentar
@@ -599,18 +666,12 @@ export async function dapiSendMedia(
         const buf = Buffer.from(await dlRes.arrayBuffer());
         const b64Url = `data:${defaultMime.split(";")[0]};base64,${buf.toString("base64")}`;
         const retryBody = buildMediaBody(b64Url);
-        res = await dapiFetch<any>(
+        res = await postWithRouteFallback<any>(
           primaryEndpoint,
-          { method: "POST", body: JSON.stringify(retryBody) },
+          fallbackEndpoint,
+          retryBody,
           35_000,
           apiKey,
-        ).catch(() =>
-          dapiFetch<any>(
-            fallbackEndpoint,
-            { method: "POST", body: JSON.stringify(retryBody) },
-            35_000,
-            apiKey,
-          ),
         );
       } else {
         throw sendErr;
@@ -671,15 +732,13 @@ export async function dapiSendTemplate(
     components: template.components || [],
   };
 
-  const res = await dapiFetch<any>("/messages/send/template", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  }, 15_000, apiKey).catch(() => {
-    return dapiFetch<any>("/messages/template", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }, 15_000, apiKey);
-  });
+  const res = await postWithRouteFallback<any>(
+    "/messages/send/template",
+    "/messages/template",
+    payload,
+    20_000,
+    apiKey,
+  );
 
   const id = extractDapiResponseId(res);
   return { id, provider: "dapi", raw: res };
@@ -865,28 +924,27 @@ export async function dapiSendContact(
   const contactFullName = contact.fullName || contact.name || "Contato";
   const rawPhone = contact.phoneNumber || contact.phone || "";
   const cleanContactPhone = rawPhone.replace(/\D/g, "");
-  const payload = {
+  const payload: Record<string, any> = {
     sessionId,
     to: cleanTo,
     contactName: contactFullName,
-    fullName: contactFullName,
+    contactPhone: cleanContactPhone,
     phoneNumber: cleanContactPhone,
-    phone: `+${cleanContactPhone}`,
-    organization: contact.organization || "",
+    phone: cleanContactPhone,
+    ...(contact.organization ? { organization: contact.organization } : {}),
     contact: {
-      fullName: contact.fullName,
-      phoneNumber: `+${cleanContactPhone}`,
-      organization: contact.organization || "",
+      fullName: contactFullName,
+      phoneNumber: cleanContactPhone,
+      ...(contact.organization ? { organization: contact.organization } : {}),
     },
   };
-  const res = await dapiFetch<any>("/messages/send/contact", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  }, 15_000, apiKey).catch(() =>
-    dapiFetch<any>("/messages/contact", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }, 15_000, apiKey),
+
+  const res = await postWithRouteFallback<any>(
+    "/messages/send/contact",
+    "/messages/contact",
+    payload,
+    15_000,
+    apiKey,
   );
   const id = extractDapiResponseId(res);
   return { id, provider: "dapi", raw: res };

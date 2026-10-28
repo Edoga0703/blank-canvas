@@ -738,8 +738,6 @@ export const translations: Record<SupportedLanguage, Record<string, any>> = {
       move_to: "Move to {name}",
       already_in_correct_stage: "Lead already in the correct stage",
       form: "Form",
-      stage_won: "Won",
-      stage_lost: "Lost",
       tabs: {
         data: "Data",
         media: "Media",
@@ -1211,8 +1209,6 @@ export const translations: Record<SupportedLanguage, Record<string, any>> = {
       move_to: "Mover para {name}",
       already_in_correct_stage: "Lead já na etapa correta",
       form: "Formulário",
-      stage_won: "Ganho",
-      stage_lost: "Perdido",
       tabs: {
         data: "Dados",
         media: "Mídia",

@@ -81,3 +81,19 @@ CREATE TABLE IF NOT EXISTS public.lead_click_session (
 -- 6. Índices para Alto Rendimiento
 CREATE INDEX IF NOT EXISTS idx_meta_capi_event_log_company ON public.meta_capi_event_log(company_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_lead_click_session_lookup ON public.lead_click_session(company_id, code);
+
+ALTER TABLE public.meta_capi_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.meta_capi_event_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.lead_click_session ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS meta_capi_event_log_select_company ON public.meta_capi_event_log;
+CREATE POLICY meta_capi_event_log_select_company
+  ON public.meta_capi_event_log
+  FOR SELECT
+  TO authenticated
+  USING (
+    company_id IN (
+      SELECT cu.company_id FROM public.company_user cu
+      WHERE cu.user_id = auth.uid() AND cu.ativo = true
+    )
+  );

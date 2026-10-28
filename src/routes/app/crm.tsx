@@ -22,7 +22,7 @@ import {
   Plus, MoreHorizontal, Sparkles, Pencil, Trash2, Palette, Zap, Clock, ChevronDown, Lock,
   Users, Loader2, Wand2, Search, SlidersHorizontal, RefreshCw, User as UserIcon,
   TrendingUp, MessageSquare, ArrowRightLeft, Columns3, Calendar, Bot, Star, Coins, CalendarPlus, UserPlus, Eye, EyeOff, Forward,
-  Upload, X, FileText, Image as ImageIcon, Video, Mic
+  Upload, X, FileText, Image as ImageIcon, Video, Mic, Target
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { generateAutomacaoMessage } from "@/lib/automacao-ai.functions";

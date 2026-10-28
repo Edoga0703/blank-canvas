@@ -75,7 +75,7 @@ export async function analyzeLeadInternal(
       .order("ordem", { ascending: true })
       .limit(1)
       .maybeSingle();
-    pipelineId = firstPipe?.id;
+    pipelineId = firstPipe?.id ?? null;
   }
 
   const [{ data: pipeline }, { data: rawStages }, comprehensiveLeadCtx] = await Promise.all([
@@ -134,7 +134,7 @@ export async function analyzeLeadInternal(
   const hasAlternativeContext = Boolean(
     card.ultima_mensagem ||
       card.observacao ||
-      (Array.isArray(card.campos_extras?.respostas) && card.campos_extras.respostas.length > 0) ||
+      (Array.isArray((card.campos_extras as any)?.respostas) && (card.campos_extras as any).respostas.length > 0) ||
       (comprehensiveLeadCtx?.formSubmissions && comprehensiveLeadCtx.formSubmissions.length > 0) ||
       (comprehensiveLeadCtx?.notas && comprehensiveLeadCtx.notas.length > 0) ||
       (comprehensiveLeadCtx?.agendamentos && comprehensiveLeadCtx.agendamentos.length > 0),
@@ -318,9 +318,7 @@ Responde OBLIGATORIAMENTE con un único bloque JSON válido con el siguiente for
       updates.valor = parsedResult.valor_sugerido;
     }
 
-    if (parsedResult.produto_sugerida && typeof (parsedResult as any).produto_sugerida === "string" && !freshCard?.item_nome) {
-      updates.item_nome = (parsedResult as any).produto_sugerida;
-    } else if (parsedResult.produto_sugerido && typeof parsedResult.produto_sugerido === "string" && !freshCard?.item_nome) {
+    if (parsedResult.produto_sugerido && typeof parsedResult.produto_sugerido === "string" && !freshCard?.item_nome) {
       updates.item_nome = parsedResult.produto_sugerido;
     }
 
@@ -330,7 +328,7 @@ Responde OBLIGATORIAMENTE con un único bloque JSON válido con el siguiente for
 
     await supabaseAdmin
       .from("crm_cards")
-      .update(updates)
+      .update(updates as any)
       .eq("id", card.id);
   } catch (e) {
     console.warn("[crm-lead-analyzer] Error al guardar diagnóstico:", e);

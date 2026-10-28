@@ -29,7 +29,7 @@ function fileNameFor(row: any, url: URL) {
  */
 export async function archivePendingMetaMessageMedia(admin: any, options?: {
   companyId?: string;
-  provider?: "meta_instagram" | "meta_messenger";
+  provider?: "meta_instagram" | "meta_messenger" | string;
   limit?: number;
 }) {
   const limit = Math.min(Math.max(options?.limit ?? 10, 1), 50);
@@ -49,7 +49,7 @@ export async function archivePendingMetaMessageMedia(admin: any, options?: {
     .select("id,provider,provider_timestamp,created_at")
     .in("id", messageIds);
   if (messagesError) throw messagesError;
-  const byMessage = new Map((messages ?? []).map((message: any) => [message.id, message]));
+  const byMessage = new Map<string, any>((messages ?? []).map((message: any) => [message.id, message]));
 
   const candidates = (attachments ?? []).filter((row: any) => {
     const message = byMessage.get(row.mensagem_id);

@@ -35,14 +35,22 @@ export const Route = createFileRoute("/api/public/meta-leads-webhook")({
         const appSecret = process.env["META_APP_SECRET"];
 
         // 1. Validar assinatura (se o secret estiver configurado)
-        if (appSecret && signature) {
-          const expectedSignature = createHmac("sha256", appSecret)
-            .update(rawBody)
-            .digest("hex");
-          
-          const signatureHash = signature.replace("sha256=", "");
-          if (!timingSafeEqual(Buffer.from(signatureHash), Buffer.from(expectedSignature))) {
-            console.error("[meta-leads-webhook] Assinatura inválida");
+        const allowUnsigned = process.env["META_ALLOW_UNSIGNED_WEBHOOKS"] === "true";
+        if (!appSecret) {
+          if (!allowUnsigned) {
+            return new Response("Webhook secret not configured", { status: 503 });
+          }
+        } else {
+          if (!signature.startsWith("sha256=")) {
+            return new Response("Invalid signature", { status: 401 });
+          }
+          const hex = signature.slice("sha256=".length).trim();
+          if (!/^[a-f0-9]{64}$/i.test(hex)) {
+            return new Response("Invalid signature", { status: 401 });
+          }
+          const receivedBuf = Buffer.from(hex, "hex");
+          const expectedBuf = createHmac("sha256", appSecret).update(rawBody).digest();
+          if (receivedBuf.length !== expectedBuf.length || !timingSafeEqual(receivedBuf, expectedBuf)) {
             return new Response("Invalid signature", { status: 401 });
           }
         }
@@ -84,40 +92,19 @@ export const Route = createFileRoute("/api/public/meta-leads-webhook")({
 async function processLead(leadId: string, pageId: string, formId?: string) {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { resolveMetaLeadPageCredentials } = await import("@/lib/meta-leads.server");
 
-    // 1. Encontrar a instância Meta correspondente para obter o access token
-    // 1. Buscar a instância com o token da página (or phone_number_id / instance_name)
-    let inst = await (supabaseAdmin as any)
-      .from("whatsapp_instances")
-      .select("instance_token, company_id")
-      .or(`phone_number_id.eq.${pageId},instance_name.eq.${pageId}`)
-      .like("provider", "meta%")
-      .maybeSingle()
-      .then((r: any) => r.data);
-
-    // Fallback: buscar na tabela meta_social_accounts onde page_id é a chave de FB
-    if (!inst?.instance_token) {
-      const { data: socialAcc } = await (supabaseAdmin as any)
-        .from("meta_social_accounts")
-        .select("access_token, company_id")
-        .eq("page_id", pageId)
-        .maybeSingle();
-
-      if (socialAcc?.access_token) {
-        inst = {
-          instance_token: socialAcc.access_token,
-          company_id: socialAcc.company_id,
-        } as any;
-      }
-    }
-
-    if (!inst?.instance_token) {
-      console.error(`[meta-leads-webhook] Token não encontrado para a página ${pageId}`);
+    const creds = await resolveMetaLeadPageCredentials(supabaseAdmin, pageId);
+    if (!creds?.accessToken || !creds.companyId) {
+      console.error(`[meta-leads-webhook] Nenhum token encontrado para a página ${pageId}`);
       return;
     }
 
+    const token = creds.accessToken;
+    const companyId = creds.companyId;
+
     // 2. Buscar dados do lead na Graph API
-    const graphUrl = `https://graph.facebook.com/v23.0/${leadId}?access_token=${inst.instance_token}`;
+    const graphUrl = `https://graph.facebook.com/v23.0/${leadId}?access_token=${token}`;
     const response = await fetch(graphUrl);
     const leadData = await response.json();
 
@@ -152,7 +139,7 @@ async function processLead(leadId: string, pageId: string, formId?: string) {
     const { data: stages } = await (supabaseAdmin as any)
       .from("crm_stage")
       .select("id, pipeline_id, nome, distribution_queue_id, distribution_user_id, crm_pipeline!inner(tipo, distribution_queue_id)")
-      .eq("company_id", inst.company_id)
+      .eq("company_id", companyId)
       .eq("crm_pipeline.tipo", "comercial")
       .order("ordem", { ascending: true })
       .limit(1);
@@ -161,7 +148,7 @@ async function processLead(leadId: string, pageId: string, formId?: string) {
 
 
     const payload: any = {
-      company_id: inst.company_id,
+      company_id: companyId,
       numero: cleanNumero,
       nome: nome || `Lead Meta ${leadId.slice(-4)}`,
       email: email || null,
@@ -184,7 +171,7 @@ async function processLead(leadId: string, pageId: string, formId?: string) {
     const { data: existing } = await (supabaseAdmin as any)
       .from("crm_cards")
       .select("id")
-      .eq("company_id", inst.company_id)
+      .eq("company_id", companyId)
       .eq("numero", cleanNumero)
       .maybeSingle();
 
@@ -217,7 +204,7 @@ async function processLead(leadId: string, pageId: string, formId?: string) {
     if (!existing) {
       try {
         const { pickLeadOwner } = await import("@/lib/crm-engine.server");
-        const ownerId = await pickLeadOwner(supabaseAdmin, inst.company_id, firstStage?.id);
+        const ownerId = await pickLeadOwner(supabaseAdmin, companyId, firstStage?.id);
         if (ownerId) {
           await (supabaseAdmin as any)
             .from("crm_cards")
@@ -232,7 +219,7 @@ async function processLead(leadId: string, pageId: string, formId?: string) {
     // Registrar evento
 
     await (supabaseAdmin as any).from("lead_evento").insert({
-      company_id: inst.company_id,
+      company_id: companyId,
       card_id: cardId,
       tipo: "captura",
       descricao: `Lead capturado automaticamente via Meta Lead Ads`
@@ -241,13 +228,13 @@ async function processLead(leadId: string, pageId: string, formId?: string) {
     // Disparar automação de régua se existir
     try {
       const { processKanbanReguaForNumero } = await import("@/lib/kanban-engine.server");
-      await processKanbanReguaForNumero(supabaseAdmin, inst.company_id, cleanNumero);
+      await processKanbanReguaForNumero(supabaseAdmin, companyId, cleanNumero);
     } catch (e) {
       console.warn("[meta-leads-webhook] Erro ao disparar régua:", e);
     }
 
     void import("@/lib/crm-lead-analyzer.server")
-      .then(({ checkAndAnalyzeLeadCooldown }) => checkAndAnalyzeLeadCooldown(inst.company_id, cleanNumero))
+      .then(({ checkAndAnalyzeLeadCooldown }) => checkAndAnalyzeLeadCooldown(companyId, cleanNumero))
       .catch(() => null);
 
   } catch (err) {

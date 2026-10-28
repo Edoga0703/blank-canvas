@@ -282,7 +282,7 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
 
             await supabaseAdmin
               .from("whatsapp_instances")
-              .update(updates)
+              .update(updates as any)
               .eq("id", inst.id);
 
             return new Response(JSON.stringify({ ok: true, event: "connection.status", status: newStatus }), {

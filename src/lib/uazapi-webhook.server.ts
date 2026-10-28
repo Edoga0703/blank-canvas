@@ -465,6 +465,14 @@ export async function handleUazapiWebhookInternal(inst: any, normalized: any) {
           responderEmAudio: false,
         });
         console.log(`[uazapi-internal] Automation finished for ${number}: ${result.engine}`);
+        try {
+          const { checkAndAnalyzeLeadCooldown } = await import("@/lib/crm-lead-analyzer.server");
+          checkAndAnalyzeLeadCooldown(companyId, number).catch((err) =>
+            console.warn("[uazapi-internal] checkAndAnalyzeLeadCooldown error:", err?.message),
+          );
+        } catch {
+          // best-effort
+        }
       }
     }
   } else if (normalized.event === "connection.update") {

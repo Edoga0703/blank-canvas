@@ -337,6 +337,7 @@ export async function metaSendMedia(
       const b64 = mediaUrl.slice(commaIdx + 1);
       const buf = Buffer.from(b64, "base64");
       const stored = await storeMediaObject({
+        companyId: (params as any).companyId || "system",
         bytes: buf,
         mimeType: mime,
         fileName: `meta_out_${Date.now()}.${ext}`,

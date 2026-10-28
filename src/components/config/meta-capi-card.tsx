@@ -33,6 +33,8 @@ export function MetaCapiCard() {
     test_event_code: "",
     moeda_padrao: "BRL",
     enviar_somente_com_clique: false,
+    has_access_token: false,
+    access_token_masked: "",
   });
 
   async function loadData() {
@@ -47,11 +49,13 @@ export function MetaCapiCard() {
           ativo: !!cfg.ativo,
           modo_conexao: cfg.modo_conexao || "hibrido",
           dataset_id: cfg.dataset_id || "",
-          access_token: cfg.access_token || "",
+          access_token: "",
           waba_id: cfg.waba_id || "",
           test_event_code: cfg.test_event_code || "",
           moeda_padrao: cfg.currency || (cfg as any).moeda_padrao || "BRL",
           enviar_somente_com_clique: !!cfg.enviar_somente_com_clique,
+          has_access_token: Boolean((cfg as any).has_access_token),
+          access_token_masked: (cfg as any).access_token_masked || "",
         });
       }
       setLogs(logList || []);
@@ -69,7 +73,15 @@ export function MetaCapiCard() {
   async function handleSave() {
     setSaving(true);
     try {
-      await saveConfig({ data: { ...config, currency: config.moeda_padrao } as any });
+      const saved = await saveConfig({ data: { ...config, currency: config.moeda_padrao } as any });
+      if (saved) {
+        setConfig((prev) => ({
+          ...prev,
+          access_token: "",
+          has_access_token: Boolean((saved as any).has_access_token),
+          access_token_masked: (saved as any).access_token_masked || "",
+        }));
+      }
       toast.success("Configurações do Meta CAPI salvas com sucesso!");
     } catch (e: any) {
       toast.error(e?.message || "Erro ao salvar configuração.");
@@ -79,8 +91,8 @@ export function MetaCapiCard() {
   }
 
   async function handleTest() {
-    if (!config.access_token || (!config.dataset_id && !config.waba_id)) {
-      toast.error("Informe pelo menos o Access Token e o Dataset ID antes de testar.");
+    if ((!config.access_token.trim() && !config.has_access_token) || (!config.dataset_id && !config.waba_id)) {
+      toast.error("Preencha o Access Token e o Pixel/Dataset ID (ou WABA ID) antes de testar.");
       return;
     }
     setTesting(true);
@@ -179,7 +191,11 @@ export function MetaCapiCard() {
               </Label>
               <Input
                 type="password"
-                placeholder="EAAB..."
+                placeholder={
+                  config.access_token_masked
+                    ? `Token salvo (${config.access_token_masked}) — digite apenas para substituir`
+                    : "EAAB..."
+                }
                 value={config.access_token}
                 onChange={(e) => setConfig((prev) => ({ ...prev, access_token: e.target.value.trim() }))}
                 className="text-xs font-mono"

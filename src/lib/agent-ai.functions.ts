@@ -621,7 +621,7 @@ export const saveAgentConfig = createServerFn({ method: "POST" })
           res = await supabase
             .from("agent_config")
             .update(payloadToSave)
-            .eq("id", targetId)
+            .eq("id", targetId!)
             .eq("company_id", companyId);
         } else {
           res = await supabase
@@ -813,7 +813,7 @@ export const applyAgentSuggestion = createServerFn({ method: "POST" })
         .from("audit_log")
         .update({
           detalhes: {
-            ...(auditRow.detalhes || {}),
+            ...((auditRow.detalhes as any) || {}),
             status: "approved",
             approved_at: new Date().toISOString(),
           },
@@ -846,7 +846,7 @@ export const dismissAgentSuggestion = createServerFn({ method: "POST" })
         .from("audit_log")
         .update({
           detalhes: {
-            ...(auditRow.detalhes || {}),
+            ...((auditRow.detalhes as any) || {}),
             status: "dismissed",
             dismissed_at: new Date().toISOString(),
           },

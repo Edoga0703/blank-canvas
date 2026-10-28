@@ -18,6 +18,9 @@ export const META_BUSINESS_MESSAGING_EVENTS = [
 export type MetaMessagingEventName = (typeof META_BUSINESS_MESSAGING_EVENTS)[number];
 
 export interface MetaCapiConfig {
+  company_id?: string;
+  has_access_token?: boolean;
+  access_token_masked?: string;
   ativo: boolean;
   modo_conexao: "hibrido" | "waba_official" | "pixel_tradicional";
   moeda_padrao?: string;
@@ -152,12 +155,31 @@ export async function getMetaCapiConfig(companyId: string): Promise<MetaCapiConf
  * Guarda la configuración de Meta CAPI de una empresa.
  * Escribe en meta_capi_config si existe y sincroniza en integracao_chave.
  */
-export async function saveMetaCapiConfig(companyId: string, cfg: Partial<MetaCapiConfig>): Promise<MetaCapiConfig> {
+export async function saveMetaCapiConfig(
+  companyId: string,
+  cfg: Partial<MetaCapiConfig> & { clear_access_token?: boolean },
+): Promise<MetaCapiConfig> {
   const current = await getMetaCapiConfig(companyId);
   const resolvedCurrency = cfg.currency || (cfg as any).moeda_padrao || current.currency || "BRL";
+
+  const rawIncomingToken = cfg.access_token;
+  const shouldClearToken = Boolean(cfg.clear_access_token);
+  const hasNewToken =
+    typeof rawIncomingToken === "string" &&
+    rawIncomingToken.trim().length > 0 &&
+    !rawIncomingToken.includes("••••");
+
+  const preservedAccessToken = shouldClearToken
+    ? null
+    : hasNewToken
+      ? rawIncomingToken!.trim()
+      : current.access_token;
+
   const updated: MetaCapiConfig = {
     ...current,
     ...cfg,
+    company_id: companyId,
+    access_token: preservedAccessToken,
     currency: resolvedCurrency,
     moeda_padrao: resolvedCurrency,
   };
@@ -241,11 +263,14 @@ export async function saveMetaCapiConfig(companyId: string, cfg: Partial<MetaCap
   return updated;
 }
 
-export async function buildHashedUserDataFromCard(card: any): Promise<Record<string, any>> {
+export async function buildHashedUserDataFromCard(
+  card: any,
+  options?: { skipPhoneHash?: boolean },
+): Promise<Record<string, any>> {
   const out: Record<string, any> = {};
   const digits = String(card.numero || "").replace(/\D/g, "").replace(/^0+/, "");
 
-  if (digits.length >= 8 && digits.length <= 15) {
+  if (!options?.skipPhoneHash && digits.length >= 8 && digits.length <= 15) {
     out.ph = [await sha256(digits)];
     if (digits.startsWith("55") && digits.length >= 12) {
       out.country = [await sha256("br")];
@@ -394,6 +419,7 @@ export interface SendConversionInput {
   dedupKey?: string;
   testEventCodeOverride?: string | null;
   forceSend?: boolean;
+  triggerSource?: string;
 }
 
 export interface SendConversionResult {
@@ -404,23 +430,46 @@ export interface SendConversionResult {
   error?: string | null;
 }
 
-export async function discoverOrCreateMetaDataset(accessToken: string, wabaId?: string | null): Promise<string | null> {
-  if (!accessToken) return null;
+export async function discoverOrCreateMetaDataset(
+  param1: { nodeId?: string | null; accessToken: string } | string,
+  param2?: string | null,
+): Promise<{ datasetId: string | null; error?: string | null }> {
+  const token = typeof param1 === "string" ? param1 : param1.accessToken;
+  const nodeId = typeof param1 === "string" ? param2 : param1.nodeId;
+
+  if (!token) return { datasetId: null, error: "Access Token ausente." };
+
   try {
-    const meRes = await fetch(`https://graph.facebook.com/${META_CAPI_GRAPH_VERSION}/me/adaccounts?fields=id,name,datasets{id,name}&access_token=${encodeURIComponent(accessToken)}`, {
-      signal: AbortSignal.timeout(10_000),
-    });
+    if (nodeId) {
+      const cleanNode = String(nodeId).trim();
+      const dsRes = await fetch(
+        `https://graph.facebook.com/${META_CAPI_GRAPH_VERSION}/${encodeURIComponent(cleanNode)}?fields=id,name,dataset{id,name}&access_token=${encodeURIComponent(token)}`,
+        { signal: AbortSignal.timeout(10_000) },
+      ).catch(() => null);
+      if (dsRes && dsRes.ok) {
+        const dsJson: any = await dsRes.json().catch(() => null);
+        if (dsJson?.dataset?.id) {
+          return { datasetId: String(dsJson.dataset.id) };
+        }
+      }
+    }
+
+    const meRes = await fetch(
+      `https://graph.facebook.com/${META_CAPI_GRAPH_VERSION}/me/adaccounts?fields=id,name,datasets{id,name}&access_token=${encodeURIComponent(token)}`,
+      { signal: AbortSignal.timeout(10_000) },
+    );
     if (meRes.ok) {
       const data: any = await meRes.json().catch(() => null);
       for (const acc of data?.data || []) {
         const firstDs = acc.datasets?.data?.[0]?.id;
-        if (firstDs) return String(firstDs);
+        if (firstDs) return { datasetId: String(firstDs) };
       }
     }
   } catch (e: any) {
     console.warn("[discoverOrCreateMetaDataset] Fallback de autodescubrimiento falló:", e?.message);
+    return { datasetId: null, error: e?.message || "Error al autodescubrir Dataset." };
   }
-  return null;
+  return { datasetId: null, error: "No se encontró ningún Dataset o Pixel vinculado a esta cuenta." };
 }
 
 /**
@@ -505,8 +554,14 @@ export async function sendMetaConversionForLead(input: SendConversionInput): Pro
   }
 
   if (!targetDatasetId && targetWabaId && cfg.access_token) {
-    const discovered = await discoverOrCreateMetaDataset(cfg.access_token, targetWabaId);
-    if (discovered) targetDatasetId = discovered;
+    const discovered = await discoverOrCreateMetaDataset({
+      nodeId: targetWabaId,
+      accessToken: cfg.access_token,
+    });
+    if (discovered.datasetId) {
+      targetDatasetId = discovered.datasetId;
+      await saveMetaCapiConfig(companyId, { dataset_id: targetDatasetId });
+    }
   }
   const endpointId = targetDatasetId;
   if (!endpointId) {

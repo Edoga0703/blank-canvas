@@ -267,7 +267,7 @@ export function AppShell({
   const [moreOpen, setMoreOpen] = useState(false);
   const { capacidades: capsAtivas, carregando: capsCarregando } = useCapacidades();
   const capOk = (slug?: string) => !slug || capsCarregando || capsAtivas.includes(slug);
-  const moreItems: { to: string; label: string; icon: any; adminOnly?: boolean; capacidade?: string; mobileHidden?: boolean }[] = [
+  const moreItems: { to: string; label: string; icon: any; adminOnly?: boolean; capacidade?: string; mobileHidden?: boolean; search?: Record<string, any> }[] = [
     { to: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/app/conversas", label: "Conversas", icon: Inbox },
     { to: "/app/crm", label: "CRM Kanban", icon: KanbanSquare },
@@ -652,7 +652,7 @@ function NavLink({ item, active, primary, collapsed, badgeCount, onNavigateStart
   return (
     <Link
       to={item.to}
-      search={item.search}
+      search={item.search as any}
       preload="intent"
       onPointerDown={() => onNavigateStart?.(item.to)}
       onClick={(event) => {

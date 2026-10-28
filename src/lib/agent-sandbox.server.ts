@@ -24,13 +24,16 @@ export function isSafeUrl(rawUrl: string): boolean {
     const parsed = new URL(rawUrl);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
     const host = parsed.hostname.toLowerCase();
-    if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0" || host === "::1") return false;
+    if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0" || host === "::1" || host === "[::1]") return false;
     if (
       host === "169.254.169.254" ||
       host === "metadata.google.internal" ||
+      host.endsWith(".internal") ||
+      host.endsWith(".local") ||
       host.startsWith("10.") ||
       host.startsWith("192.168.") ||
-      /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+      /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+      /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(host)
     ) {
       return false;
     }

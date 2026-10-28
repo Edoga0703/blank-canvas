@@ -116,7 +116,7 @@ async function assertMetaWindowForInstance(inst: WaInstance, numero: string) {
   const { assertMetaResponseWindow } = await import("./meta-response-window.server");
   await assertMetaResponseWindow(supabaseAdmin, {
     companyId,
-    provider: inst.provider,
+    provider: inst.provider as any,
     contactId: numero,
   });
 }
@@ -131,7 +131,7 @@ export async function waPresenceTyping(inst: WaInstance, numero: string, _ms: nu
       await tgSendPresence(inst.instance_token, numero, "composing");
     } else if (inst.provider === "dapi") {
       const { dapiSendPresence } = await import("./dapi.server");
-      await dapiSendPresence(inst.instance_name, numero, "composing", inst.instance_token);
+      await dapiSendPresence(inst.instance_name, numero, "composing", 4000, inst.instance_token);
     }
   } catch { /* presence best-effort */ }
 }
