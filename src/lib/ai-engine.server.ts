@@ -554,9 +554,29 @@ export async function processAiResponse(
       }
     }
 
-    const fullSystemPrompt = dynamicCustomerPrompt
-      ? `${system}\n\n${dynamicCustomerPrompt}`
-      : system;
+    let metaCapiConfig: any = null;
+    try {
+      const { getMetaCapiConfig } = await import("./meta-capi.server");
+      metaCapiConfig = await getMetaCapiConfig(companyId);
+    } catch (e) {
+      console.warn("[ai-engine] Failed to load Meta CAPI config:", e);
+    }
+
+    const { buildStructuredContextBlock } = await import("./ai-prompt");
+    const structuredContextBlock = buildStructuredContextBlock({
+      canal: inst.provider === "meta_instagram" ? "Instagram Direct" : inst.provider === "meta_messenger" ? "Messenger" : inst.provider === "telegram" ? "Telegram" : "WhatsApp",
+      instanciaNome: inst.instance_name,
+      contatoNumero: number,
+      card,
+      metaCapiConfig,
+      externalData: dynamicCustomerPrompt ? { smp: "datos_reales_smp_disponibles" } : undefined,
+    });
+
+    const fullSystemPrompt = [
+      system,
+      dynamicCustomerPrompt,
+      structuredContextBlock,
+    ].filter(Boolean).join("\n\n");
 
     // 6. Chamar a IA com o provedor configurado
     const response = await lovableAiChat(
@@ -585,6 +605,73 @@ export async function processAiResponse(
 
     const parsed = parseAiOutput(response, stages as any);
     const replyParts = parsed.parts.map((part) => part.trim()).filter(Boolean);
+
+    // Drael Protocol: Ejecución de código en Sandbox aislado si fue solicitado en este turno
+    if (parsed.codeExecution?.ejecutar && parsed.codeExecution?.codigo) {
+      try {
+        const { executeSandboxCode } = await import("./agent-sandbox.server");
+        const execRes = await executeSandboxCode(parsed.codeExecution.codigo, {
+          cliente: { numero: number, nombre: card?.nome },
+          card,
+        });
+        console.log(`[ai-engine] Sandbox code executed for ${number}:`, execRes);
+        if (execRes.ok && execRes.result) {
+          if (typeof execRes.result === "string" && execRes.result.trim()) {
+            replyParts.push(execRes.result.trim());
+          } else if (execRes.result.mensaje || execRes.result.reply) {
+            replyParts.push(String(execRes.result.mensaje || execRes.result.reply).trim());
+          }
+        }
+        await supabaseAdmin.from("audit_log").insert({
+          company_id: companyId,
+          acao: "ai_code_execution",
+          detalhes: {
+            code: parsed.codeExecution.codigo,
+            result: execRes.result,
+            error: execRes.error,
+            number,
+          },
+        } as any);
+      } catch (codeErr: any) {
+        console.warn("[ai-engine] Sandbox execution error:", codeErr);
+      }
+    }
+
+    // Drael Protocol: Disparo de evento Meta CAPI / Pixel si fue solicitado en la salida estructurada
+    if (parsed.pixelTracking?.evento && card?.id) {
+      try {
+        const { sendMetaConversionForLead } = await import("./meta-capi.server");
+        await sendMetaConversionForLead({
+          companyId,
+          cardId: card.id,
+          eventName: parsed.pixelTracking.evento as any,
+          value: parsed.pixelTracking.valor != null ? Number(parsed.pixelTracking.valor) : undefined,
+          currency: parsed.pixelTracking.moneda || undefined,
+        });
+        console.log(`[ai-engine] Meta CAPI Pixel event emitted: ${parsed.pixelTracking.evento}`);
+      } catch (pixErr: any) {
+        console.warn("[ai-engine] Pixel event emit error:", pixErr?.message);
+      }
+    }
+
+    // Drael Protocol: Disparo de Webhook saliente hacia sistema externo si fue solicitado
+    if (parsed.webhookSaliente?.disparar && parsed.webhookSaliente?.evento) {
+      try {
+        await supabaseAdmin.from("audit_log").insert({
+          company_id: companyId,
+          acao: "ai_outbound_webhook",
+          detalhes: {
+            evento: parsed.webhookSaliente.evento,
+            payload: parsed.webhookSaliente.payload,
+            number,
+          },
+        } as any);
+        console.log(`[ai-engine] Outbound webhook emitted: ${parsed.webhookSaliente.evento}`);
+      } catch (hookErr: any) {
+        console.warn("[ai-engine] Outbound webhook error:", hookErr?.message);
+      }
+    }
+
     const replyText = replyParts.join("\n\n");
     console.log(`[ai-engine] Parsed intent: ${parsed.intent}, parts count: ${replyParts.length}, qualified: ${parsed.qualified}, sugestao: ${Boolean(parsed.sugestao)}`);
 

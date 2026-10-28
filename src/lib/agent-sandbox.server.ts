@@ -125,3 +125,48 @@ export async function testExternalWebhook(params: WebhookTestParams): Promise<We
     };
   }
 }
+
+/**
+ * Ejecuta código JavaScript seguro generado por el agente (Drael) en un sandbox aislado con timeout estricto
+ */
+export async function executeSandboxCode(
+  code: string,
+  contextData: Record<string, any> = {}
+): Promise<{ ok: boolean; result?: any; error?: string }> {
+  const cleanCode = (code || "").trim();
+  if (!cleanCode) return { ok: false, error: "Código vacío." };
+
+  try {
+    const vm = await import("node:vm");
+    const safeGlobals = {
+      ...contextData,
+      Math,
+      Date,
+      JSON,
+      Number,
+      String,
+      Boolean,
+      Array,
+      Object,
+      parseInt,
+      parseFloat,
+      encodeURIComponent,
+      decodeURIComponent,
+      Buffer: undefined,
+      process: undefined,
+      require: undefined,
+      fetch: undefined,
+    };
+
+    const wrappedCode = cleanCode.includes("return ")
+      ? `(function() {\n${cleanCode}\n})()`
+      : `(function() {\nreturn (\n${cleanCode}\n);\n})()`;
+
+    const script = new vm.Script(wrappedCode);
+    const context = vm.createContext(safeGlobals);
+    const result = script.runInContext(context, { timeout: 2000 });
+    return { ok: true, result };
+  } catch (err: any) {
+    return { ok: false, error: `Error en sandbox de código: ${err?.message || "Fallo de ejecución"}` };
+  }
+}

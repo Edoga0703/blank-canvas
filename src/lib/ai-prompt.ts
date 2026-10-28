@@ -225,6 +225,74 @@ function buildKnowledgeFilesBloco(knowledgeFiles: unknown): string {
   );
 }
 
+
+export interface StructuredContextParams {
+  canal?: string;
+  instanciaNome?: string;
+  contatoNumero?: string;
+  contatoNome?: string;
+  card?: any;
+  metaCapiConfig?: any;
+  externalData?: any;
+  capacidades?: {
+    ejecucion_sandbox?: boolean;
+    lookup_cliente?: boolean;
+    mover_etapa_crm?: boolean;
+    pausar_chat?: boolean;
+    disparar_webhooks?: boolean;
+    disparar_pixel?: boolean;
+  };
+}
+
+/**
+ * Construye el bloque JSON estructurado con todos los metadatos de la conversación,
+ * tracking de pixel, canal y datos externos para que el agente (Drael) opere con contexto formal.
+ */
+export function buildStructuredContextBlock(params: StructuredContextParams): string {
+  const card = params.card || {};
+  const browserTrack = card.campos_extras?.browser_tracking || {};
+
+  const contextObj = {
+    entorno: {
+      canal: params.canal || "WhatsApp",
+      instancia: params.instanciaNome || "Canal Principal",
+      timestamp: new Date().toISOString(),
+      capacidades_activas: {
+        ejecucion_sandbox: true,
+        lookup_cliente: true,
+        mover_etapa_crm: true,
+        pausar_chat: true,
+        disparar_webhooks: true,
+        disparar_pixel: Boolean(params.metaCapiConfig?.ativo),
+        ...(params.capacidades || {})
+      }
+    },
+    cliente: {
+      telefono: params.contatoNumero || "",
+      nombre: params.contatoNome || card.nome || "Cliente",
+      lead_id: card.id || null,
+      etapa_crm_actual: card.stage_nome || card.stage_id || "Inicial",
+      etiquetas: Array.isArray(card.tags) ? card.tags : []
+    },
+    tracking_pixel: {
+      pixel_id: params.metaCapiConfig?.dataset_id || null,
+      fbclid: card.fbclid || null,
+      fbc: browserTrack.fbc || (card.fbclid ? `fb.1.${Date.now()}.${card.fbclid}` : null),
+      fbp: browserTrack.fbp || null,
+      utm_source: card.utm_source || null,
+      utm_campaign: card.utm_campaign || null,
+      utm_medium: card.utm_medium || null,
+      utm_content: card.utm_content || null
+    },
+    datos_externos: params.externalData || {}
+  };
+
+  return `═══════════════════════════════════════════════════════
+[DATOS ESTRUCTURADOS DEL TURNO - DRAEL CONTEXT JSON]:
+${JSON.stringify(contextObj, null, 2)}
+═══════════════════════════════════════════════════════`;
+}
+
 export function buildSystemPrompt(
   c: Partial<AgentConfig> & {
     handoff_mode?: string | null;
@@ -616,6 +684,45 @@ Se NÃO houver ambiguidade ou dúvida, NUNCA inclua o marcador [SUGESTAO].
 Este marcador é estritamente interno e NUNCA aparece para o cliente.`
   );
 
+
+  blocos.push(`═══════════════════════════════════════════════════════
+PROTOCOLO DE RESPUESTA ESTRUCTURADO (DRAEL SPECIFICATION):
+Puedes responder en formato JSON estructurado canónico con el siguiente esquema:
+{
+  "respuesta_cliente": {
+    "mensajes": [
+      "Texto corto y directo para el cliente..."
+    ],
+    "tono": "amigable"
+  },
+  "intencion": {
+    "categoria": "CONSULTA_PRECIO | CONSULTA_VENCIMIENTO | RECLAMO | COMPRA | DUDA | NEUTRA",
+    "sentimiento": "POSITIVA | NEGATIVA | NEUTRA",
+    "calificado": false
+  },
+  "acciones_crm": {
+    "cambiar_etapa": "NombreDeEtapaValida | null",
+    "pausar_ia_para_humano": false,
+    "agregar_etiquetas": []
+  },
+  "tracking_pixel": {
+    "evento": "Lead | Purchase | InitiateCheckout | Contact | null",
+    "valor": 0.0,
+    "moneda": "USD | VES"
+  },
+  "ejecucion_codigo": {
+    "ejecutar": false,
+    "lenguaje": "javascript",
+    "codigo": null
+  },
+  "webhook_saliente": {
+    "disparar": false,
+    "evento": null,
+    "payload": null
+  }
+}
+═══════════════════════════════════════════════════════`);
+
   return blocos.filter(Boolean).join("\n\n");
 }
 
@@ -670,6 +777,38 @@ function extraiPedido(text: string): { pedido: PedidoBrief | null; rest: string 
   }
 }
 
+/**
+ * Extrae JSON estructurado si la respuesta del modelo es un objeto o está envuelta en markdown.
+ */
+function extractStructuredJson(raw: string): any | null {
+  if (!raw || typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+
+  if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {}
+  }
+
+  const mdMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (mdMatch) {
+    try {
+      return JSON.parse(mdMatch[1].trim());
+    } catch {}
+  }
+
+  const firstBrace = raw.indexOf("{");
+  const lastBrace = raw.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    const candidate = raw.slice(firstBrace, lastBrace + 1).trim();
+    try {
+      return JSON.parse(candidate);
+    } catch {}
+  }
+
+  return null;
+}
+
 export function parseAiOutput(
   raw: string,
   stages?: StageBrief[],
@@ -683,9 +822,79 @@ export function parseAiOutput(
   pedido: PedidoBrief | null;
   sugestao: PromptSuggestion | null;
   produtosSku?: string[];
+  rawStructured?: any;
+  pixelTracking?: {
+    evento?: string | null;
+    valor?: number | null;
+    moneda?: string | null;
+  } | null;
+  codeExecution?: {
+    ejecutar?: boolean;
+    lenguaje?: string | null;
+    codigo?: string | null;
+  } | null;
+  webhookSaliente?: {
+    disparar?: boolean;
+    evento?: string | null;
+    payload?: any;
+  } | null;
 } {
-
   let text = raw || "";
+
+  // 1. Detección y extracción de JSON estructurado canónico (Drael Protocol)
+  const structured = extractStructuredJson(text);
+  if (structured && (structured.respuesta_cliente || structured.intencion || structured.acciones_crm || structured.mensajes)) {
+    let parts: string[] = [];
+    if (Array.isArray(structured.respuesta_cliente?.mensajes)) {
+      parts = structured.respuesta_cliente.mensajes.map((m: any) => String(m).trim()).filter(Boolean);
+    } else if (Array.isArray(structured.respuesta_cliente)) {
+      parts = structured.respuesta_cliente.map((m: any) => String(m).trim()).filter(Boolean);
+    } else if (typeof structured.respuesta_cliente?.mensajes === "string") {
+      parts = [structured.respuesta_cliente.mensajes.trim()];
+    } else if (typeof structured.respuesta_cliente === "string") {
+      parts = [structured.respuesta_cliente.trim()];
+    } else if (Array.isArray(structured.mensajes)) {
+      parts = structured.mensajes.map((m: any) => String(m).trim()).filter(Boolean);
+    } else if (typeof structured.mensaje === "string") {
+      parts = [structured.mensaje.trim()];
+    }
+
+    const stageCandidate = structured.acciones_crm?.cambiar_etapa || structured.stage || null;
+    let resolvedStage: string | null = null;
+    if (stageCandidate && stages && stages.length) {
+      const found = stages.find((s) => s.nome.toLowerCase() === String(stageCandidate).toLowerCase());
+      resolvedStage = found ? found.nome : String(stageCandidate);
+    } else if (stageCandidate) {
+      resolvedStage = String(stageCandidate);
+    }
+
+    const intentRaw = structured.intencion?.sentimiento || structured.intencion?.categoria || structured.intent || null;
+    const intent = intentRaw ? String(intentRaw).toUpperCase() : null;
+    const handoff = Boolean(structured.acciones_crm?.pausar_ia_para_humano ?? structured.handoff ?? false);
+    const qualified = Boolean(structured.intencion?.calificado ?? structured.qualified ?? false);
+    const agendar = structured.acciones_crm?.agendamiento || structured.agendar || null;
+    const pixelTracking = structured.tracking_pixel || structured.pixel_tracking || null;
+    const codeExecution = structured.ejecucion_codigo || structured.code_execution || null;
+    const webhookSaliente = structured.webhook_saliente || structured.outbound_webhook || null;
+
+    if (parts.length > 0) {
+      return {
+        parts: parts.slice(0, 3),
+        stage: resolvedStage,
+        agendar,
+        intent,
+        handoff,
+        qualified,
+        pedido: structured.pedido || null,
+        sugestao: structured.sugestao || null,
+        produtosSku: Array.isArray(structured.produtos_sku) ? structured.produtos_sku : [],
+        rawStructured: structured,
+        pixelTracking,
+        codeExecution,
+        webhookSaliente,
+      };
+    }
+  }
   let stage: string | null = null;
   let agendar: AgendarBrief | null = null;
 
