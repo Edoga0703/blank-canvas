@@ -2357,6 +2357,8 @@ function AutomacaoDialog({ companyId, stage, stages, allStages, pipelines, agent
 
   async function save() {
     setSaving(true);
+    const hasCol = (col: string) => col in currentStage && (currentStage as any)[col] !== undefined;
+
     const patch: any = {
       modo_atendimento: form.modo_atendimento || "auto",
       agent_id: form.agent_id || null,
@@ -2370,10 +2372,6 @@ function AutomacaoDialog({ companyId, stage, stages, allStages, pipelines, agent
       hora_do_dia: form.hora_do_dia || null,
       mensagem_tipo: form.mensagem_tipo,
       mensagem_texto: form.mensagem_texto || null,
-      mensagem_prompt: (form.mensagem_prompt || "").trim() || null,
-      criterio_ia: (form.criterio_ia || "").trim() || null,
-      bloqueada_para_ia: !!form.bloqueada_para_ia,
-      meta_conversion_event: (form.meta_conversion_event || "").trim() || null,
       mensagem_midia_url: form.mensagem_tipo === "template" ? (form.mensagem_midia_url || null) : null,
       mensagem_midia_tipo: form.mensagem_tipo === "template" ? (form.mensagem_midia_tipo || null) : null,
       mensagem_midia_mime: form.mensagem_tipo === "template" ? (form.mensagem_midia_mime || null) : null,
@@ -2396,6 +2394,20 @@ function AutomacaoDialog({ companyId, stage, stages, allStages, pipelines, agent
       retorno_janela_dias: Number(form.retorno_janela_dias) || 0,
       arquivar_perdidos_dias: Number(form.arquivar_perdidos_dias) || null,
     };
+
+    // Solo agregar las columnas opcionales si ya existen físicamente en crm_stage
+    if (hasCol("criterio_ia")) {
+      patch.criterio_ia = (form.criterio_ia || "").trim() || null;
+    }
+    if (hasCol("bloqueada_para_ia")) {
+      patch.bloqueada_para_ia = !!form.bloqueada_para_ia;
+    }
+    if (hasCol("meta_conversion_event")) {
+      patch.meta_conversion_event = (form.meta_conversion_event || "").trim() || null;
+    }
+
+    // Empaquetar siempre criterio_ia, bloqueada_para_ia y meta_conversion_event dentro de mensagem_prompt
+    // para persistencia universal garantizada, independientemente de la versión del esquema SQL.
     const packedPrompt = packStageAiMeta({
       criterio_ia: form.criterio_ia,
       bloqueada_para_ia: form.bloqueada_para_ia,
@@ -2403,15 +2415,38 @@ function AutomacaoDialog({ companyId, stage, stages, allStages, pipelines, agent
       mensagem_prompt: form.mensagem_prompt,
     });
     patch.mensagem_prompt = packedPrompt || null;
+
     let { error } = await supabase.from("crm_stage").update(patch).eq("id", currentStage.id);
-    if (error && (String(error.message || "").includes("meta_conversion_event") || String(error.message || "").includes("criterio_ia") || error.code === "42703")) {
-      const fallbackPatch = { ...patch };
-      delete fallbackPatch.criterio_ia;
-      delete fallbackPatch.bloqueada_para_ia;
-      delete fallbackPatch.meta_conversion_event;
-      fallbackPatch.mensagem_prompt = packedPrompt || null;
-      const retry = await supabase.from("crm_stage").update(fallbackPatch).eq("id", currentStage.id);
-      error = retry.error;
+
+    // Reintento resiliente si PostgREST devuelve PGRST204 (columna no encontrada en schema cache)
+    if (error) {
+      const errMsg = String(error.message || "").toLowerCase();
+      const errCode = String(error.code || "");
+      const isMissingCol =
+        errCode === "PGRST204" ||
+        errCode === "42703" ||
+        errMsg.includes("schema cache") ||
+        errMsg.includes("column") ||
+        errMsg.includes("bloqueada_para_ia") ||
+        errMsg.includes("criterio_ia") ||
+        errMsg.includes("meta_conversion_event");
+
+      if (isMissingCol) {
+        const fallbackPatch = { ...patch };
+        delete fallbackPatch.criterio_ia;
+        delete fallbackPatch.bloqueada_para_ia;
+        delete fallbackPatch.meta_conversion_event;
+
+        // Extraer si PostgREST señaló otra columna faltante
+        const match = error.message.match(/Could not find the '([^']+)' column/i) || error.message.match(/column "?([^"s]+)"? of relation/i);
+        if (match && match[1]) {
+          delete fallbackPatch[match[1]];
+        }
+
+        fallbackPatch.mensagem_prompt = packedPrompt || null;
+        const retry = await supabase.from("crm_stage").update(fallbackPatch).eq("id", currentStage.id);
+        error = retry.error;
+      }
     }
     setSaving(false);
     if (error) return toast.error(error.message);
