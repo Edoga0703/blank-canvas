@@ -335,15 +335,15 @@ async function persistMessage(
                 .maybeSingle();
 
               if (clickSession) {
-                setIfEmpty("fbclid", clickSession.fbclid);
-                setIfEmpty("gclid", clickSession.gclid);
-                setIfEmpty("utm_source", clickSession.utm_source);
-                setIfEmpty("utm_medium", clickSession.utm_medium);
-                setIfEmpty("utm_campaign", clickSession.utm_campaign);
-                setIfEmpty("utm_term", clickSession.utm_term);
-                setIfEmpty("utm_content", clickSession.utm_content);
-                setIfEmpty("referrer", clickSession.referrer);
-                setIfEmpty("first_page", clickSession.first_page);
+                if (clickSession.fbclid) patch.fbclid = clickSession.fbclid;
+                if (clickSession.gclid) patch.gclid = clickSession.gclid;
+                if (clickSession.utm_source) patch.utm_source = clickSession.utm_source;
+                if (clickSession.utm_medium) patch.utm_medium = clickSession.utm_medium;
+                if (clickSession.utm_campaign) patch.utm_campaign = clickSession.utm_campaign;
+                if (clickSession.utm_term) patch.utm_term = clickSession.utm_term;
+                if (clickSession.utm_content) patch.utm_content = clickSession.utm_content;
+                if (clickSession.referrer) patch.referrer = clickSession.referrer;
+                if (clickSession.first_page && !(currentCard as any).first_page) patch.first_page = clickSession.first_page;
 
                 const prevExtras =
                   currentCard.campos_extras && typeof currentCard.campos_extras === "object"
@@ -379,10 +379,15 @@ async function persistMessage(
             if (adCtx.ctwaClid) patch.ctwa_clid = adCtx.ctwaClid;
             else setIfEmpty("ctwa_clid", t.ctwa_clid);
 
-            setIfEmpty("referrer", adCtx.sourceUrl);
-            setIfEmpty("origem", adCtx.title ? `Meta Ads: ${adCtx.title}` : (adCtx.sourceId ? `Meta Ads: Anúncio ${adCtx.sourceId}` : "Meta Ads"));
-            setIfEmpty("utm_source", "meta_ads");
-            setIfEmpty("utm_campaign", adCtx.sourceId);
+            if (adCtx.sourceUrl) {
+              patch.referrer = adCtx.sourceUrl;
+              if (!(currentCard as any).first_page) patch.first_page = adCtx.sourceUrl;
+            }
+            if (adCtx.sourceId) {
+              patch.utm_campaign = adCtx.sourceId;
+              patch.utm_source = "meta_ads";
+              patch.origem = adCtx.title ? `Meta Ads: ${adCtx.title}` : `Meta Ads: Anúncio ${adCtx.sourceId}`;
+            }
 
             const prevExtras =
               patch.campos_extras ||

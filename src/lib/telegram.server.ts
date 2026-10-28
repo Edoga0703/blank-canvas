@@ -74,26 +74,46 @@ async function sendFile(
   media: string,
   opts?: { caption?: string; fileName?: string; mimetype?: string },
 ) {
+  let blob: Blob;
+  const filename =
+    opts?.fileName ||
+    (field === "voice"
+      ? "audio.ogg"
+      : field === "photo"
+      ? "image.jpg"
+      : field === "video"
+      ? "video.mp4"
+      : "arquivo");
+
   const isUrl = /^https?:\/\//i.test(media);
   if (isUrl) {
-    const r: any = await tg(token, method, {
-      chat_id: chatId,
-      [field]: media,
-      ...(opts?.caption ? { caption: opts.caption } : {}),
+    try {
+      const resp = await fetch(media, { signal: AbortSignal.timeout(30_000) });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const arrayBuffer = await resp.arrayBuffer();
+      const cType = opts?.mimetype || resp.headers.get("content-type") || "application/octet-stream";
+      blob = new Blob([arrayBuffer], { type: cType });
+    } catch (e: any) {
+      console.warn(`[tg sendFile] Falha ao baixar mídia no servidor (${e?.message}), tentando URL direta...`);
+      const r: any = await tg(token, method, {
+        chat_id: chatId,
+        [field]: media,
+        ...(opts?.caption ? { caption: opts.caption } : {}),
+      });
+      return { key: { id: String(r?.message_id ?? "") }, messageId: r?.message_id };
+    }
+  } else {
+    const base64 = media.includes(",") ? media.split(",").pop()! : media;
+    const bytes = Buffer.from(base64, "base64");
+    blob = new Blob([bytes], {
+      type: opts?.mimetype || (field === "voice" ? "audio/ogg" : "application/octet-stream"),
     });
-    return { key: { id: String(r?.message_id ?? "") }, messageId: r?.message_id };
   }
 
-  const base64 = media.includes(",") ? media.split(",").pop()! : media;
-  const bytes = Buffer.from(base64, "base64");
   const form = new FormData();
   form.append("chat_id", chatId);
   if (opts?.caption) form.append("caption", opts.caption);
-  form.append(
-    field,
-    new Blob([bytes], { type: opts?.mimetype || "application/octet-stream" }),
-    opts?.fileName || "arquivo",
-  );
+  form.append(field, blob, filename);
 
   const res = await fetch(`${API}/bot${cleanToken(token)}/${method}`, {
     method: "POST",

@@ -126,9 +126,12 @@ export async function waPresenceTyping(inst: WaInstance, numero: string, _ms: nu
     if (isMetaProvider(inst.provider) && inst.instance_token) {
       const { metaSendPresence } = await import("./meta.server");
       await metaSendPresence(inst.instance_token, numero, "composing");
+    } else if (inst.provider === "telegram" && inst.instance_token) {
+      const { tgSendPresence } = await import("./telegram.server");
+      await tgSendPresence(inst.instance_token, numero, "composing");
     } else if (inst.provider === "dapi") {
       const { dapiSendPresence } = await import("./dapi.server");
-      await dapiSendPresence(inst.instance_name, numero, "composing");
+      await dapiSendPresence(inst.instance_name, numero, "composing", inst.instance_token);
     }
   } catch { /* presence best-effort */ }
 }
@@ -141,7 +144,10 @@ export function assertSendableNumber(numero: string, provider?: WaProvider): str
     if (!clean) throw new Error("Destinatário Meta/Telegram inválido.");
     return clean;
   }
-  if (raw.includes("@g.us")) throw new Error("Destinatário é um grupo: envio ignorado.");
+  // Permitir grupos WhatsApp (@g.us)
+  if (raw.includes("@g.us")) {
+    return raw;
+  }
   const base = raw.includes("@") ? raw.split("@")[0] : raw;
   if (/[a-zA-Z]/.test(base)) {
     throw new Error(`Destinatário inválido (não é um número): ${raw}`);
@@ -172,8 +178,8 @@ export async function waSendText(
     return metaSendText(inst.instance_token, numero, texto);
   }
   if (inst.provider === "telegram") {
-    const { tgSendMessage } = await import("./telegram.server");
-    return tgSendMessage(inst.instance_token || "", numero, texto);
+    const { tgSendText } = await import("./telegram.server");
+    return tgSendText(inst.instance_token || "", numero, texto);
   }
   if (inst.provider === "dapi_official") {
     await assertMetaWindowForInstance(inst, numero);
@@ -206,6 +212,17 @@ export async function waSendMedia(
       caption: media.caption,
     });
   }
+  if (inst.provider === "telegram") {
+    if (!inst.instance_token) throw new Error(`Token do Telegram ausente para conexão ${inst.instance_name}`);
+    const { tgSendMedia } = await import("./telegram.server");
+    return tgSendMedia(inst.instance_token, numero, {
+      mediatype: media.type,
+      media: media.url,
+      caption: media.caption,
+      fileName: media.fileName,
+      mimetype: media.mime,
+    });
+  }
   if (inst.provider === "dapi_official") {
     await assertMetaWindowForInstance(inst, numero);
   }
@@ -224,6 +241,11 @@ export async function waSendAudio(inst: WaInstance, numero: string, audioBase64O
       media: audioBase64OrUrl,
     });
   }
+  if (inst.provider === "telegram") {
+    if (!inst.instance_token) throw new Error(`Token do Telegram ausente para conexão ${inst.instance_name}`);
+    const { tgSendAudio } = await import("./telegram.server");
+    return tgSendAudio(inst.instance_token, numero, audioBase64OrUrl);
+  }
   if (inst.provider === "dapi_official") {
     await assertMetaWindowForInstance(inst, numero);
   }
@@ -238,7 +260,7 @@ export async function waSendTemplate(
 ) {
   numero = assertSendableNumber(numero, inst.provider);
   const { dapiSendTemplate } = await import("./dapi.server");
-  return dapiSendTemplate(inst.instance_name, numero, template);
+  return dapiSendTemplate(inst.instance_name, numero, template, inst.instance_token);
 }
 
 // -------- helpers usados pelo motor de campanha --------

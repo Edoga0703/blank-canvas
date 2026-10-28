@@ -282,10 +282,7 @@ export async function buildHashedUserDataFromCard(card: any): Promise<Record<str
     }
   }
 
-  const ctwaClid = card.ctwa_clid || card.campos_extras?.ad_referral?.ctwa_clid;
-  if (ctwaClid) {
-    out.ctwa_clid = String(ctwaClid).trim();
-  }
+  // ctwa_clid se maneja exclusivamente en sendMetaConversionForLead cuando action_source = business_messaging
 
   if (card.email && String(card.email).includes("@")) {
     out.em = [await sha256(String(card.email))];
@@ -360,6 +357,27 @@ export async function enrichCardWithMetaAdDetails(
     if (adInfo.adset?.name) patch.utm_medium = String(adInfo.adset.name).slice(0, 250);
     if (adInfo.name) patch.utm_content = String(adInfo.name).slice(0, 250);
 
+    const { data: current } = await (supabaseAdmin as any)
+      .from("crm_cards")
+      .select("campos_extras")
+      .eq("id", cardId)
+      .maybeSingle();
+
+    const prevExtras = current?.campos_extras && typeof current.campos_extras === "object" ? current.campos_extras : {};
+    patch.campos_extras = {
+      ...prevExtras,
+      ad_referral: {
+        ...(prevExtras.ad_referral || {}),
+        source_id: sourceAdId,
+        ad_id: sourceAdId,
+        ad_name: adInfo.name || null,
+        adset_id: adInfo.adset?.id || null,
+        adset_name: adInfo.adset?.name || null,
+        campaign_id: adInfo.campaign?.id || null,
+        campaign_name: adInfo.campaign?.name || null,
+      },
+    };
+
     await (supabaseAdmin as any).from("crm_cards").update(patch).eq("id", cardId);
   } catch (err: any) {
     console.warn("[enrichCardWithMetaAdDetails] Error:", err?.message);
@@ -384,6 +402,25 @@ export interface SendConversionResult {
   fbtraceId?: string | null;
   eventsReceived?: number;
   error?: string | null;
+}
+
+export async function discoverOrCreateMetaDataset(accessToken: string, wabaId?: string | null): Promise<string | null> {
+  if (!accessToken) return null;
+  try {
+    const meRes = await fetch(`https://graph.facebook.com/${META_CAPI_GRAPH_VERSION}/me/adaccounts?fields=id,name,datasets{id,name}&access_token=${encodeURIComponent(accessToken)}`, {
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (meRes.ok) {
+      const data: any = await meRes.json().catch(() => null);
+      for (const acc of data?.data || []) {
+        const firstDs = acc.datasets?.data?.[0]?.id;
+        if (firstDs) return String(firstDs);
+      }
+    }
+  } catch (e: any) {
+    console.warn("[discoverOrCreateMetaDataset] Fallback de autodescubrimiento falló:", e?.message);
+  }
+  return null;
 }
 
 /**
@@ -467,9 +504,13 @@ export async function sendMetaConversionForLead(input: SendConversionInput): Pro
     }
   }
 
-  const endpointId = targetDatasetId || targetWabaId;
+  if (!targetDatasetId && targetWabaId && cfg.access_token) {
+    const discovered = await discoverOrCreateMetaDataset(cfg.access_token, targetWabaId);
+    if (discovered) targetDatasetId = discovered;
+  }
+  const endpointId = targetDatasetId;
   if (!endpointId) {
-    return { ok: false, status: "failed", error: "No hay Dataset ID, Pixel ID ni WABA ID configurado." };
+    return { ok: false, status: "failed", error: "No hay Dataset ID o Pixel ID válido configurado para enviar eventos de CAPI a Meta." };
   }
 
   const nowEpoch = Math.floor(Date.now() / 1000);
@@ -504,12 +545,18 @@ export async function sendMetaConversionForLead(input: SendConversionInput): Pro
     actionSource = "business_messaging";
     messagingChannel = card.canal_chat;
     const hashed = await buildHashedUserDataFromCard(card);
+    delete hashed.ph;
     Object.assign(userData, hashed);
-    if (card.canal_chat === "instagram" && cfg.instagram_account_id) {
-      userData.instagram_business_account_id = cfg.instagram_account_id;
-    }
-    if (card.canal_chat === "messenger" && cfg.page_id) {
-      userData.page_id = cfg.page_id;
+    if (card.canal_chat === "instagram") {
+      userData.ig_sid = card.numero;
+      if (cfg.instagram_account_id) {
+        userData.instagram_business_account_id = cfg.instagram_account_id;
+      }
+    } else if (card.canal_chat === "messenger") {
+      userData.page_scoped_user_id = card.numero;
+      if (cfg.page_id) {
+        userData.page_id = cfg.page_id;
+      }
     }
   } else if (isMetaLeadAd) {
     // Modo 3: Meta Lead Ads
@@ -537,6 +584,8 @@ export async function sendMetaConversionForLead(input: SendConversionInput): Pro
 
   const customDataPayload: Record<string, any> = {
     currency: eventCurrency,
+    event_source: "crm",
+    lead_event_source: "Capiconversa CRM",
     ...(input.customData || {}),
   };
   if (finalValue !== null && finalValue !== undefined) {
@@ -557,6 +606,9 @@ export async function sendMetaConversionForLead(input: SendConversionInput): Pro
     custom_data: customDataPayload,
     event_id: dedupKey,
   };
+  if (card.first_page || card.referrer) {
+    singleEvent.event_source_url = card.first_page || card.referrer;
+  }
 
   if (messagingChannel) {
     singleEvent.messaging_channel = messagingChannel;

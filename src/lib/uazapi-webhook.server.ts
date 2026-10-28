@@ -314,7 +314,8 @@ export async function handleUazapiWebhookInternal(inst: any, normalized: any) {
         midia_url: midiaUrl,
         midia_tipo: midiaTipo,
         midia_mime: midiaMime,
-        midia_nome: midiaNome
+        midia_nome: midiaNome,
+        provider: (inst as any).provider || "dapi",
       })
       .select("*")
       .maybeSingle();
@@ -341,7 +342,8 @@ export async function handleUazapiWebhookInternal(inst: any, normalized: any) {
     // 2. Atualizar CRM
     const { upsertCard, getStagesBrief, pickLeadOwner } = await import("@/lib/crm-engine.server");
     const stages = await getStagesBrief(supabaseAdmin, companyId);
-    const currentCard = await upsertCard(supabaseAdmin, companyId, effectiveUserId, number, pushName || null, text || "", stages, "whatsapp");
+    const channelProvider = (inst as any).provider === "telegram" ? "telegram" : "whatsapp";
+    const currentCard = await upsertCard(supabaseAdmin, companyId, effectiveUserId, number, pushName || null, text || "", stages, channelProvider);
 
     // Foto do lead: URLs de perfil do WhatsApp expiram, então renovamos quando
     // está faltando ou tem mais de 24h (é o que fazia a foto "sumir" do Kanban).

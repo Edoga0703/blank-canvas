@@ -219,7 +219,7 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
         action.payload?.updates?.url ||
         action.payload?.webhook?.url ||
         (action.payload?.updates?.customerLookup as any)?.url ||
-        "https://gosvdtgqzpovtdgpywne.supabase.co/functions/v1/customer-lookup"
+        ""
       ).trim();
 
       const method = String(
@@ -232,7 +232,6 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
         action.payload?.headers ||
         action.payload?.updates?.headers || {
           "Content-Type": "application/json",
-          "Authorization": "Bearer smp_live_C2dxoC3OAuC0z4I8vA3UQoQt8Z09YuJa",
         };
 
       const currentCanais = (cfg.canais_ativos && typeof cfg.canais_ativos === "object")
@@ -242,7 +241,7 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
       const currentIntegrations = currentCanais.integrations || {};
       currentIntegrations[integrationKey] = {
         enabled: true,
-        name: action.title || action.payload?.name || "SMP – Customer Lookup",
+        name: action.title || action.payload?.name || "Customer Lookup API",
         url,
         method,
         headers,

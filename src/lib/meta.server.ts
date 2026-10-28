@@ -326,6 +326,27 @@ export async function metaSendMedia(
   recipientId: string,
   params: { mediatype: "image" | "video" | "document" | "audio"; media: string; caption?: string },
 ) {
+  let mediaUrl = params.media;
+  if (mediaUrl.startsWith("data:")) {
+    try {
+      const { storeMediaObject, createR2DownloadUrl } = await import("@/lib/storage/r2.server");
+      const commaIdx = mediaUrl.indexOf(",");
+      const header = mediaUrl.slice(0, commaIdx);
+      const mime = header.split(";")[0]?.replace(/^data:/, "") || "application/octet-stream";
+      const ext = mime.split("/")[1]?.split("+")[0] || "bin";
+      const b64 = mediaUrl.slice(commaIdx + 1);
+      const buf = Buffer.from(b64, "base64");
+      const stored = await storeMediaObject({
+        bytes: buf,
+        mimeType: mime,
+        fileName: `meta_out_${Date.now()}.${ext}`,
+      });
+      mediaUrl = stored.storageUrl || createR2DownloadUrl(stored.storageKey, 3600);
+    } catch (e: any) {
+      console.error("[metaSendMedia] Error al subir data: URI a R2:", e?.message);
+    }
+  }
+
   const type =
     params.mediatype === "document" ? "file" :
     params.mediatype === "audio" ? "audio" :
@@ -336,7 +357,7 @@ export async function metaSendMedia(
     body: JSON.stringify({
       recipient: { id: recipientId },
       messaging_type: "RESPONSE",
-      message: { attachment: { type, payload: { url: params.media, is_reusable: true } } },
+      message: { attachment: { type, payload: { url: mediaUrl, is_reusable: true } } },
     }),
   });
   if (params.caption) {

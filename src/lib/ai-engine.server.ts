@@ -338,8 +338,8 @@ export async function processAiResponse(
       const isNowTextMessage = Boolean(effectiveIncomingText && !effectiveIncomingText.startsWith("[ÁUDIO]"));
       const shouldClearAudioPause = pausedByAudio && isNowTextMessage;
 
-      // 2. Si la etapa está configurada explícitamente en modo "ia", tiene prioridad absoluta
-      const isExplicitIaStage = stageCfg?.modo_atendimento === "ia";
+      // 2. Si la etapa está configurada explícitamente en modo "ia" (y no fue pausada por humano), tiene prioridad
+      const isExplicitIaStage = !pausedByHuman && stageCfg?.modo_atendimento === "ia";
 
       // 3. Si la pausa humana ocurrió hace más de 4 horas de inactividad, reactivar para no desatender al cliente
       const isStaleHumanPause = pausedByHuman && hoursSincePause > 4;
@@ -653,14 +653,31 @@ export async function processAiResponse(
     if (parsed.pixelTracking?.evento && card?.id) {
       try {
         const { sendMetaConversionForLead } = await import("./meta-capi.server");
+        const rawEvent = String(parsed.pixelTracking.evento).trim();
+        const eventMap: Record<string, string> = {
+          lead: "Lead",
+          qualified_lead: "QualifiedLead",
+          lead_submitted: "LeadSubmitted",
+          purchase: "Purchase",
+          compra: "Purchase",
+          schedule: "Schedule",
+          appointment: "AppointmentBooked",
+          appointment_booked: "AppointmentBooked",
+          agendamiento: "Schedule",
+          contact: "Contact",
+          contacto: "Contact",
+          view_content: "ViewContent",
+          initiate_checkout: "InitiateCheckout",
+        };
+        const validEvent = eventMap[rawEvent.toLowerCase()] || rawEvent;
         await sendMetaConversionForLead({
           companyId,
           cardId: card.id,
-          eventName: parsed.pixelTracking.evento as any,
+          eventName: validEvent as any,
           value: parsed.pixelTracking.valor != null ? Number(parsed.pixelTracking.valor) : undefined,
           currency: parsed.pixelTracking.moneda || undefined,
         });
-        console.log(`[ai-engine] Meta CAPI Pixel event emitted: ${parsed.pixelTracking.evento}`);
+        console.log(`[ai-engine] Meta CAPI Pixel event emitted: ${validEvent} (from ${rawEvent})`);
       } catch (pixErr: any) {
         console.warn("[ai-engine] Pixel event emit error:", pixErr?.message);
       }

@@ -97,10 +97,11 @@ async function isAutomatedOrExistingEcho(params: {
   phone: string;
   messageId: string;
   safeText: string;
-}): Promise<boolean> {
-  const { companyId, phone, messageId, safeText } = params;
+  mediaType?: string;
+}): Promise<{ matched: boolean; rowId: string | null }> {
+  const { companyId, phone, messageId, safeText, mediaType } = params;
 
-  // 1. Por ID exacto de mensaje en WhatsApp (registrado previamente por CRM, IA o webhook previo)
+  // 1. Por ID exacto de mensaje en WhatsApp
   if (messageId && !messageId.startsWith("dapi_")) {
     const { data: existingById } = await supabaseAdmin
       .from("mensagens")
@@ -109,13 +110,12 @@ async function isAutomatedOrExistingEcho(params: {
       .eq("whatsapp_message_id", messageId)
       .limit(1)
       .maybeSingle();
-    if (existingById) return true;
+    if (existingById?.id) return { matched: true, rowId: existingById.id };
   }
 
-  // 2. Solo si hay un mensaje saliente PENDIENTE o recién despachado por el CRM en los últimos 5s sin ID final
-  // (evita descartar mensajes legítimos idénticos enviados sucesivamente por asesores desde WhatsApp móvil/web)
+  // 2. Mensaje de texto recién despachado por el CRM/IA en los últimos 12s sin ID definitivo
   if (safeText) {
-    const raceCutoff = new Date(Date.now() - 5_000).toISOString();
+    const raceCutoff = new Date(Date.now() - 12_000).toISOString();
     const { data: pendingCrmMsg } = await supabaseAdmin
       .from("mensagens")
       .select("id")
@@ -128,10 +128,28 @@ async function isAutomatedOrExistingEcho(params: {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (pendingCrmMsg) return true;
+    if (pendingCrmMsg?.id) return { matched: true, rowId: pendingCrmMsg.id };
   }
 
-  return false;
+  // 3. Mensaje multimedia (foto/video/audio/documento) recién despachado por el CRM/IA en los últimos 15s sin ID definitivo
+  if (mediaType && mediaType !== "text") {
+    const mediaCutoff = new Date(Date.now() - 15_000).toISOString();
+    const { data: pendingMediaMsg } = await supabaseAdmin
+      .from("mensagens")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("numero", phone)
+      .eq("direcao", "saida")
+      .eq("midia_tipo", mediaType)
+      .gte("created_at", mediaCutoff)
+      .or("status_envio.eq.pendente,whatsapp_message_id.is.null")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (pendingMediaMsg?.id) return { matched: true, rowId: pendingMediaMsg.id };
+  }
+
+  return { matched: false, rowId: null };
 }
 
 function extractDapiText(data: any): string {
@@ -327,16 +345,26 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
           }
 
           // 1d. Mensajes editados por el cliente o asesor [Solo API No Oficial]
-          if (eventName === "message.edited" || eventName === "messages.edited" || data.type === "edited") {
+          if (
+            eventName === "message.edited" ||
+            eventName === "messages.edited" ||
+            data.type === "edited" ||
+            Boolean(data.message?.editedMessage) ||
+            data.message?.protocolMessage?.type === 14 ||
+            data.message?.protocolMessage?.type === "MESSAGE_EDIT"
+          ) {
             const editedId = String(
               data.target_message_id ||
                 data.editedMessageId ||
                 data.message?.editedMessage?.message?.protocolMessage?.key?.id ||
+                data.message?.protocolMessage?.key?.id ||
                 data.id ||
                 "",
             ).trim();
             const newText = extractDapiText(
-              data.message?.editedMessage?.message?.protocolMessage?.editedMessage || data,
+              data.message?.editedMessage?.message?.protocolMessage?.editedMessage ||
+                data.message?.protocolMessage?.editedMessage ||
+                data,
             );
             if (editedId && newText) {
               await supabaseAdmin
@@ -433,7 +461,51 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
               (data.chat_id && String(data.chat_id).endsWith("@g.us"))
             );
             if (isGroup) {
-              return new Response(JSON.stringify({ ok: true, ignored: true, reason: "group" }), {
+              const { data: co } = await supabaseAdmin
+                .from("company")
+                .select("grupos_ativos")
+                .eq("id", inst.company_id)
+                .maybeSingle();
+              if ((co as any)?.grupos_ativos) {
+                const groupJid =
+                  (senderPart.jid && senderPart.jid.endsWith("@g.us") ? senderPart.jid : null) ||
+                  (recipientPart.jid && recipientPart.jid.endsWith("@g.us") ? recipientPart.jid : null) ||
+                  (typeof data.from === "string" && data.from.endsWith("@g.us") ? data.from : null) ||
+                  (data.chat_id && String(data.chat_id).endsWith("@g.us") ? String(data.chat_id) : null);
+                if (groupJid) {
+                  const groupText = extractDapiText(data);
+                  const groupMsgId = String(data.id || data.message_id || data.key?.id || `grp_${Date.now()}`);
+                  const nowIso = new Date().toISOString();
+                  await (supabaseAdmin as any).from("whatsapp_grupo").upsert(
+                    {
+                      company_id: inst.company_id,
+                      jid: groupJid,
+                      nome: data.chatName || data.groupName || data.chat?.name || groupJid,
+                      ultima_em: nowIso,
+                    },
+                    { onConflict: "company_id,jid" },
+                  );
+                  await (supabaseAdmin as any).from("mensagens").upsert(
+                    {
+                      company_id: inst.company_id,
+                      user_id: inst.user_id,
+                      instance_id: inst.id,
+                      numero: groupJid,
+                      grupo_jid: groupJid,
+                      contato_nome: data.pushName || data.from_name || senderPart.name || null,
+                      direcao: fromMe ? "saida" : "entrada",
+                      autor: fromMe ? "humano" : "contato",
+                      texto: groupText || "",
+                      provider: inst.provider || "dapi",
+                      whatsapp_message_id: groupMsgId,
+                      status_envio: fromMe ? "enviado" : "recebido",
+                      created_at: nowIso,
+                    },
+                    { onConflict: "company_id,provider,whatsapp_message_id" },
+                  );
+                }
+              }
+              return new Response(JSON.stringify({ ok: true, groupProcessed: true }), {
                 status: 200,
                 headers: { "Content-Type": "application/json" },
               });
@@ -461,24 +533,25 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
             // Manejo de eco y mensajes salientes (fromMe === true / messages.sent)
             if (fromMe) {
               const text = extractDapiText(data);
-              let knownEcho = await isAutomatedOrExistingEcho({
+              const outDataType = resolveDapiMediaType(data);
+              const echoCheck = await isAutomatedOrExistingEcho({
                 companyId: inst.company_id,
                 phone,
                 messageId,
                 safeText: text,
+                mediaType: outDataType,
               });
 
-              if (knownEcho) {
-                // El mensaje ya fue insertado por el CRM; actualizamos su estado final
-                await supabaseAdmin
-                  .from("mensagens")
-                  .update({
-                    status_envio: "enviado",
-                    whatsapp_message_id: messageId,
-                  } as any)
-                  .eq("company_id", inst.company_id)
-                  .eq("whatsapp_message_id", messageId);
-
+              if (echoCheck.matched) {
+                if (echoCheck.rowId) {
+                  await supabaseAdmin
+                    .from("mensagens")
+                    .update({
+                      status_envio: "enviado",
+                      ...(messageId && !messageId.startsWith("dapi_") ? { whatsapp_message_id: messageId } : {}),
+                    } as any)
+                    .eq("id", echoCheck.rowId);
+                }
                 return new Response(JSON.stringify({ ok: true, echo: true }), {
                   status: 200,
                   headers: { "Content-Type": "application/json" },
@@ -487,7 +560,6 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
 
               // Mensaje saliente nuevo (enviado desde celular físico, API o script externo):
               // Procesar multimedia si está presente
-              const outDataType = resolveDapiMediaType(data);
               let mediaUrl: string | null = data.media_url || data.media_data?.early_media_url || null;
               let mimeType: string | null = data.media_data?.mimetype || data.mimetype || (outDataType === "sticker" ? "image/webp" : null);
 
@@ -587,10 +659,12 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
               }
 
               // Entendimiento de imagen/documento por IA (comprobantes / catálogos)
-              if ((dataType === "image" || dataType === "document") && mediaUrl && !text) {
-                const desc = await describeIncomingFile(mediaUrl, dataType as "image" | "document", mimeType, text);
+              if ((dataType === "image" || dataType === "document") && mediaUrl) {
+                const originalCaption = text;
+                const desc = await describeIncomingFile(mediaUrl, dataType as "image" | "document", mimeType, originalCaption);
                 if (desc) {
-                  text = `[${dataType === "document" ? "Documento" : "Imagen"} recibido: ${desc}]`;
+                  const aiBlock = `[${dataType === "document" ? "Documento" : "Imagen"} recibido: ${desc}]`;
+                  text = originalCaption ? `${originalCaption}\n\n${aiBlock}` : aiBlock;
                 }
               }
             }

@@ -546,8 +546,15 @@ function ConversasPage() {
             // dedupe (evita duplicar o otimista quando o realtime chegar)
             if (p.some((x) => x.id === m.id)) return p;
             
-            // Remove otimistas correspondentes
-            const filtered = p.filter((x) => !(x.id.startsWith("tmp-") && x.numero === m.numero && x.texto === m.texto && x.direcao === m.direcao));
+            // Remove otimistas correspondentes (texto ou mídia)
+            const filtered = p.filter((x) => {
+              if (!x.id.startsWith("tmp-")) return true;
+              if (x.numero !== m.numero || x.direcao !== m.direcao) return true;
+              if (x.texto && m.texto && x.texto === m.texto) return false;
+              if (x.midia_tipo && m.midia_tipo && x.midia_tipo === m.midia_tipo) return false;
+              if (!x.texto && !m.texto) return false;
+              return false;
+            });
             
             // Adiciona a nova mensagem e re-ordena por created_at descendente para garantir o topo
             const updated = [m, ...filtered];
@@ -713,6 +720,9 @@ function ConversasPage() {
   const MSG_COLS =
     "id,numero,contato_nome,direcao,autor,texto,created_at,user_id,midia_url,midia_tipo,midia_mime,midia_nome,reacao,editado_em,deletado_em,whatsapp_message_id,reply_to_id,status_envio,provider,raw_payload";
 
+  const CARD_COLS =
+    "id,company_id,numero,nome,foto_url,owner_id,stage_id,canal_chat,department_id,transfer_para_user_id,transfer_de_user_id,transfer_status,tags,valor,email,campos_extras,ctwa_clid,fbclid,gclid,utm_source,utm_medium,utm_campaign,utm_content,utm_term,origem,referrer,first_page,status,ultima_em,created_at";
+
   // Paginação por cursor (keyset): OFFSET profundo fazia o banco reler tudo a
   // cada página e era a principal causa da lentidão ao abrir Conversas.
   async function fetchAllMensagens(cid: string, max = 3000) {
@@ -739,8 +749,7 @@ function ConversasPage() {
   async function loadCards(cid: string) {
     const { data } = await supabase
       .from("crm_cards")
-      .select("id,numero,nome,foto_url,owner_id,stage_id,canal_chat,department_id,transfer_para_user_id,transfer_de_user_id,transfer_status")
-
+      .select(CARD_COLS)
       .eq("company_id", cid);
     if (!data) return;
     setCards((prev) => {
@@ -754,7 +763,7 @@ function ConversasPage() {
     // Tags (cards/etapas/pausas) precisam chegar JUNTO com a primeira pintura
     // da lista — por isso disparam em paralelo com o recorte rápido.
     const metaPromise = Promise.all([
-      supabase.from("crm_cards").select("id,numero,nome,foto_url,owner_id,stage_id,canal_chat,department_id,transfer_para_user_id,transfer_de_user_id,transfer_status").eq("company_id", cid),
+      supabase.from("crm_cards").select(CARD_COLS).eq("company_id", cid),
       supabase.from("crm_stage").select("id,nome,cor,ordem,tipo,modo_atendimento").eq("company_id", cid).order("ordem", { ascending: true }),
       supabase.from("contact_pause").select("numero,pausado").eq("company_id", cid),
       supabase.from("company_user").select("user_id").eq("company_id", cid).eq("ativo", true),
@@ -827,7 +836,7 @@ function ConversasPage() {
         .from("mensagens").select(MSG_COLS).eq("company_id", cid)
         .order("created_at", { ascending: false })
         .limit(100),
-      supabase.from("crm_cards").select("id,numero,nome,foto_url,owner_id,stage_id,canal_chat,department_id,transfer_para_user_id,transfer_de_user_id,transfer_status").eq("company_id", cid).order("ultima_em", { ascending: false, nullsFirst: false }).limit(400),
+      supabase.from("crm_cards").select(CARD_COLS).eq("company_id", cid).order("ultima_em", { ascending: false, nullsFirst: false }).limit(400),
     ]);
 
     if (cds) {
@@ -848,8 +857,14 @@ function ConversasPage() {
       // remove otimistas que já tem versão real
       for (const m of data as unknown as Msg[]) {
         for (const [k, v] of byId) {
-          if (k.startsWith("tmp-") && v.numero === m.numero && v.texto === m.texto && v.direcao === m.direcao) {
-            byId.delete(k);
+          if (k.startsWith("tmp-") && v.numero === m.numero && v.direcao === m.direcao) {
+            if (
+              (v.texto && m.texto && v.texto === m.texto) ||
+              (v.midia_tipo && m.midia_tipo && v.midia_tipo === m.midia_tipo) ||
+              (!v.texto && !m.texto)
+            ) {
+              byId.delete(k);
+            }
           }
         }
       }
@@ -968,7 +983,14 @@ function ConversasPage() {
 
   const activeGroup = active ? grupos.find((g) => g.jid === active) : undefined;
   const activeConv = conversations.find((c) => c.numero === active) ?? (active ? { numero: active, nome: activeGroup?.nome ?? cards[active]?.nome ?? null, last: thread[thread.length - 1] } : null);
-  const activeCard = active ? cards[active] : undefined;
+  const activeCard = useMemo(() => {
+    if (!active) return undefined;
+    if (cards[active]) return cards[active];
+    if (isGrupo(active)) return undefined;
+    const comp = numeroComparable(active);
+    if (!comp) return undefined;
+    return Object.values(cards).find((c) => numeroComparable(c.numero) === comp);
+  }, [active, cards]);
   // Grupos são abertos para toda a equipe: ninguém precisa assumir para responder.
   const activeIsGrupo = !!active && isGrupo(active);
   const activeStage = activeCard?.stage_id ? stages.find((s) => s.id === activeCard.stage_id) : null;

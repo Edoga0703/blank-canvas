@@ -36,7 +36,7 @@ export const reactMessage = createServerFn({ method: "POST" })
         const inst = await getActiveInstanceForContact(cid, msg.numero, userId);
         if (inst && (inst.provider === "dapi" || inst.provider === "dapi_official")) {
           const { dapiSendReaction } = await import("@/lib/dapi.server");
-          await dapiSendReaction(inst.instance_name, msg.numero, msg.whatsapp_message_id, data.emoji || "");
+          await dapiSendReaction(inst.instance_name, msg.numero, msg.whatsapp_message_id, data.emoji || "", inst.instance_token);
           syncedToWhatsapp = true;
         }
       } catch (syncErr) {
@@ -57,7 +57,7 @@ export const editMessage = createServerFn({ method: "POST" })
 
     const { data: cur } = await supabase
       .from("mensagens")
-      .select("texto,texto_original,direcao,numero,whatsapp_message_id,created_at,midia_tipo")
+      .select("texto,texto_original,direcao,numero,whatsapp_message_id,created_at,midia_tipo,provider")
       .eq("id", data.messageId)
       .eq("company_id", cid)
       .maybeSingle();
@@ -86,7 +86,7 @@ export const editMessage = createServerFn({ method: "POST" })
         const inst = await getActiveInstanceForContact(cid, cur.numero, userId);
         if (inst && inst.provider === "dapi") {
           const { dapiEditMessage } = await import("@/lib/dapi.server");
-          await dapiEditMessage(inst.instance_name, cur.numero, cur.whatsapp_message_id, novo);
+          await dapiEditMessage(inst.instance_name, cur.numero, cur.whatsapp_message_id, novo, inst.instance_token);
           syncedToWhatsapp = true;
         }
       } catch (syncErr) {
@@ -135,7 +135,7 @@ export const deleteMessage = createServerFn({ method: "POST" })
         const inst = await getActiveInstanceForContact(cid, cur.numero, userId);
         if (inst && inst.provider === "dapi") {
           const { dapiDeleteMessage } = await import("@/lib/dapi.server");
-          await dapiDeleteMessage(inst.instance_name, cur.numero, cur.whatsapp_message_id);
+          await dapiDeleteMessage(inst.instance_name, cur.numero, cur.whatsapp_message_id, inst.instance_token);
           syncedToWhatsapp = true;
         }
       } catch (syncErr) {

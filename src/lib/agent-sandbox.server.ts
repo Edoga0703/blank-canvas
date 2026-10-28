@@ -19,13 +19,21 @@ export interface WebhookTestResult {
 /**
  * Valida que una URL no intente atacar IPs de metadatos de nube o loopback interno
  */
-function isSafeUrl(rawUrl: string): boolean {
+export function isSafeUrl(rawUrl: string): boolean {
   try {
     const parsed = new URL(rawUrl);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
     const host = parsed.hostname.toLowerCase();
-    if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") return false;
-    if (host === "169.254.169.254" || host.startsWith("10.") || host.startsWith("192.168.")) return false;
+    if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0" || host === "::1") return false;
+    if (
+      host === "169.254.169.254" ||
+      host === "metadata.google.internal" ||
+      host.startsWith("10.") ||
+      host.startsWith("192.168.") ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+    ) {
+      return false;
+    }
     return true;
   } catch {
     return false;
@@ -88,6 +96,7 @@ export async function testExternalWebhook(params: WebhookTestParams): Promise<We
       method,
       headers,
       body: bodyStr,
+      redirect: "error",
       signal: AbortSignal.timeout(8000), // 8s timeout máximo
     });
 
@@ -135,6 +144,9 @@ export async function executeSandboxCode(
 ): Promise<{ ok: boolean; result?: any; error?: string }> {
   const cleanCode = (code || "").trim();
   if (!cleanCode) return { ok: false, error: "Código vacío." };
+  if (/\b(process|constructor|prototype|__proto__|import|require|eval|Function)\b/i.test(cleanCode)) {
+    return { ok: false, error: "Uso de palabras clave restringidas detectado en código sandbox." };
+  }
 
   try {
     const vm = await import("node:vm");

@@ -174,18 +174,27 @@ function tokenizeInline(text: string): InlineToken[] {
     return key;
   });
 
-  // Protect URLs
-  processed = processed.replace(/(https?:\/\/[^\s<]+)/g, (_, url) => {
-    const key = `\uE000URL${pIdx++}\uE001`;
-    placeholderMap.set(key, { type: "link", content: url, url });
-    return key;
-  });
-
-  // Protect markdown links [label](url)
+  // 1. Protect markdown links [label](url) FIRST
   processed = processed.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g, (_, label, url) => {
     const key = `\uE000LINK${pIdx++}\uE001`;
     placeholderMap.set(key, { type: "link", content: label, url });
     return key;
+  });
+
+  // 2. Protect bare URLs second, stripping trailing punctuation (.,!?:;)"')
+  processed = processed.replace(/(https?:\/\/[^\s<]+)/g, (fullMatch, rawUrl) => {
+    let url = rawUrl;
+    let trailing = "";
+    while (url.length > 0 && /[.,!?:;)"']/.test(url[url.length - 1])) {
+      if (url.endsWith(")") && (url.match(/\(/g) || []).length >= (url.match(/\)/g) || []).length) {
+        break;
+      }
+      trailing = url[url.length - 1] + trailing;
+      url = url.slice(0, -1);
+    }
+    const key = `\uE000URL${pIdx++}\uE001`;
+    placeholderMap.set(key, { type: "link", content: url, url });
+    return key + trailing;
   });
 
   function parseFormatting(s: string): InlineToken[] {

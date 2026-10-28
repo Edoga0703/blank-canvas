@@ -95,6 +95,7 @@ import { Route as ApiPublicMetaHealthRouteImport } from './routes/api/public/met
 import { Route as ApiPublicMetaLeadsWebhookRouteImport } from './routes/api/public/meta-leads-webhook'
 import { Route as ApiPublicMetaWebhookRouteImport } from './routes/api/public/meta-webhook'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram-webhook'
+import { Route as ApiPublicTrackClickRouteImport } from './routes/api/public/track-click'
 import { Route as ApiPublicUazapiWebhookRouteImport } from './routes/api/public/uazapi-webhook'
 import { Route as ApiPublicWablastWebhookRouteImport } from './routes/api/public/wablast-webhook'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp-webhook'
@@ -561,6 +562,11 @@ const ApiPublicTelegramWebhookRoute =
     path: '/api/public/telegram-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicTrackClickRoute = ApiPublicTrackClickRouteImport.update({
+  id: '/api/public/track-click',
+  path: '/api/public/track-click',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicUazapiWebhookRoute = ApiPublicUazapiWebhookRouteImport.update({
   id: '/api/public/uazapi-webhook',
   path: '/api/public/uazapi-webhook',
@@ -799,6 +805,7 @@ export interface FileRoutesByFullPath {
   '/api/public/meta-leads-webhook': typeof ApiPublicMetaLeadsWebhookRoute
   '/api/public/meta-webhook': typeof ApiPublicMetaWebhookRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
+  '/api/public/track-click': typeof ApiPublicTrackClickRoute
   '/api/public/uazapi-webhook': typeof ApiPublicUazapiWebhookRoute
   '/api/public/wablast-webhook': typeof ApiPublicWablastWebhookRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
@@ -912,6 +919,7 @@ export interface FileRoutesByTo {
   '/api/public/meta-leads-webhook': typeof ApiPublicMetaLeadsWebhookRoute
   '/api/public/meta-webhook': typeof ApiPublicMetaWebhookRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
+  '/api/public/track-click': typeof ApiPublicTrackClickRoute
   '/api/public/uazapi-webhook': typeof ApiPublicUazapiWebhookRoute
   '/api/public/wablast-webhook': typeof ApiPublicWablastWebhookRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
@@ -1028,6 +1036,7 @@ export interface FileRoutesById {
   '/api/public/meta-leads-webhook': typeof ApiPublicMetaLeadsWebhookRoute
   '/api/public/meta-webhook': typeof ApiPublicMetaWebhookRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
+  '/api/public/track-click': typeof ApiPublicTrackClickRoute
   '/api/public/uazapi-webhook': typeof ApiPublicUazapiWebhookRoute
   '/api/public/wablast-webhook': typeof ApiPublicWablastWebhookRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
@@ -1145,6 +1154,7 @@ export interface FileRouteTypes {
     | '/api/public/meta-leads-webhook'
     | '/api/public/meta-webhook'
     | '/api/public/telegram-webhook'
+    | '/api/public/track-click'
     | '/api/public/uazapi-webhook'
     | '/api/public/wablast-webhook'
     | '/api/public/whatsapp-webhook'
@@ -1258,6 +1268,7 @@ export interface FileRouteTypes {
     | '/api/public/meta-leads-webhook'
     | '/api/public/meta-webhook'
     | '/api/public/telegram-webhook'
+    | '/api/public/track-click'
     | '/api/public/uazapi-webhook'
     | '/api/public/wablast-webhook'
     | '/api/public/whatsapp-webhook'
@@ -1373,6 +1384,7 @@ export interface FileRouteTypes {
     | '/api/public/meta-leads-webhook'
     | '/api/public/meta-webhook'
     | '/api/public/telegram-webhook'
+    | '/api/public/track-click'
     | '/api/public/uazapi-webhook'
     | '/api/public/wablast-webhook'
     | '/api/public/whatsapp-webhook'
@@ -1439,6 +1451,7 @@ export interface RootRouteChildren {
   ApiPublicMetaLeadsWebhookRoute: typeof ApiPublicMetaLeadsWebhookRoute
   ApiPublicMetaWebhookRoute: typeof ApiPublicMetaWebhookRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
+  ApiPublicTrackClickRoute: typeof ApiPublicTrackClickRoute
   ApiPublicUazapiWebhookRoute: typeof ApiPublicUazapiWebhookRoute
   ApiPublicWablastWebhookRoute: typeof ApiPublicWablastWebhookRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
@@ -2070,6 +2083,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/track-click': {
+      id: '/api/public/track-click'
+      path: '/api/public/track-click'
+      fullPath: '/api/public/track-click'
+      preLoaderRoute: typeof ApiPublicTrackClickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/uazapi-webhook': {
       id: '/api/public/uazapi-webhook'
       path: '/api/public/uazapi-webhook'
@@ -2431,6 +2451,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicMetaLeadsWebhookRoute: ApiPublicMetaLeadsWebhookRoute,
   ApiPublicMetaWebhookRoute: ApiPublicMetaWebhookRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
+  ApiPublicTrackClickRoute: ApiPublicTrackClickRoute,
   ApiPublicUazapiWebhookRoute: ApiPublicUazapiWebhookRoute,
   ApiPublicWablastWebhookRoute: ApiPublicWablastWebhookRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,

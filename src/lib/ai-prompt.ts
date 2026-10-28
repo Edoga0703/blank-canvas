@@ -890,9 +890,15 @@ export function parseAiOutput(
     const codeExecution = structured.ejecucion_codigo || structured.code_execution || null;
     const webhookSaliente = structured.webhook_saliente || structured.outbound_webhook || null;
 
+    const cleanMarker = (s: string) =>
+      s
+        .replace(/\[\s*(?:TRACKING|PIXEL|WEBHOOK|CODIGO|CODE|EJECUTAR|ESTAGIO|STAGE|AGENDAR|INTENCAO|HANDOFF|QUALIFICADO|SUGESTAO|PRODUTO|PEDIDO)[^\]]*\]/gi, "")
+        .trim();
+
     if (parts.length > 0) {
+      const sanitizedParts = parts.map(cleanMarker).filter(Boolean);
       return {
-        parts: parts.slice(0, 3),
+        parts: sanitizedParts.slice(0, 3),
         stage: resolvedStage,
         agendar,
         intent,
@@ -988,6 +994,10 @@ export function parseAiOutput(
     if (s && !produtosSku.includes(s)) produtosSku.push(s);
     return "";
   }).trim();
+
+  text = text
+    .replace(/\[\s*(?:TRACKING|PIXEL|WEBHOOK|CODIGO|CODE|EJECUTAR|ESTAGIO|STAGE|AGENDAR|INTENCAO|HANDOFF|QUALIFICADO|SUGESTAO|PRODUTO|PEDIDO)[^\]]*\]/gi, "")
+    .trim();
 
   const parts = text
     .split(PART_SEPARATOR)

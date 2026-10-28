@@ -427,7 +427,7 @@ export async function dapiSendText(
   contextInfo?: any,
   apiKey?: string | null,
 ): Promise<{ id: string; provider: string; raw: any }> {
-  const cleanTo = to.replace(/\D/g, "");
+  const cleanTo = to.includes("@g.us") ? to.trim() : to.replace(/\D/g, "");
   const payload: Record<string, any> = {
     sessionId,
     to: cleanTo,
@@ -457,7 +457,7 @@ export async function dapiSendText(
     }, 15_000, apiKey);
   });
 
-  const id = res?.id || res?.messageId || res?.data?.id || `dapi_${Date.now()}`;
+  const id = extractDapiResponseId(res);
   return { id, provider: "dapi", raw: res };
 }
 
@@ -479,7 +479,7 @@ export async function dapiSendMedia(
   },
   apiKey?: string | null,
 ): Promise<{ id: string; provider: string; raw: any }> {
-  const cleanTo = to.replace(/\D/g, "");
+  const cleanTo = to.includes("@g.us") ? to.trim() : to.replace(/\D/g, "");
 
   let formattedUrl = String(media.url || "").trim();
   const defaultMime =
@@ -620,7 +620,7 @@ export async function dapiSendMedia(
     }
   }
 
-  const id = res?.id || res?.messageId || res?.data?.id || `dapi_${Date.now()}`;
+  const id = extractDapiResponseId(res);
   return { id, provider: "dapi", raw: res };
 }
 
@@ -659,8 +659,9 @@ export async function dapiSendTemplate(
     language: string;
     components?: any[];
   },
+  apiKey?: string | null,
 ): Promise<{ id: string; provider: string; raw: any }> {
-  const cleanTo = to.replace(/\D/g, "");
+  const cleanTo = to.includes("@g.us") ? to.trim() : to.replace(/\D/g, "");
   const payload = {
     sessionId,
     to: cleanTo,
@@ -673,14 +674,14 @@ export async function dapiSendTemplate(
   const res = await dapiFetch<any>("/messages/send/template", {
     method: "POST",
     body: JSON.stringify(payload),
-  }).catch(() => {
+  }, 15_000, apiKey).catch(() => {
     return dapiFetch<any>("/messages/template", {
       method: "POST",
       body: JSON.stringify(payload),
-    });
+    }, 15_000, apiKey);
   });
 
-  const id = res?.id || res?.messageId || res?.data?.id || `dapi_${Date.now()}`;
+  const id = extractDapiResponseId(res);
   return { id, provider: "dapi", raw: res };
 }
 
@@ -754,6 +755,7 @@ export async function dapiDownloadMedia(
   sessionId: string,
   messageId: string,
   mediaMeta?: DapiMediaDownloadMeta,
+  apiKey?: string | null,
 ): Promise<{ base64?: string; mimetype?: string; media_url?: string } | null> {
   try {
     const payload: Record<string, any> = {
@@ -769,7 +771,7 @@ export async function dapiDownloadMedia(
     const res = await dapiFetch<any>("/media/download", {
       method: "POST",
       body: JSON.stringify(payload),
-    });
+    }, 20_000, apiKey);
     return {
       base64: res?.base64 || res?.data || null,
       mimetype: res?.mimetype || res?.mime || mediaMeta?.mimetype || null,
@@ -788,8 +790,9 @@ export async function dapiSendReaction(
   to: string,
   messageId: string,
   emoji: string,
+  apiKey?: string | null,
 ): Promise<{ success: boolean; raw?: any }> {
-  const cleanTo = to.replace(/\D/g, "");
+  const cleanTo = to.includes("@g.us") ? to.trim() : to.replace(/\D/g, "");
   const payload = {
     sessionId,
     to: cleanTo,
@@ -801,11 +804,11 @@ export async function dapiSendReaction(
   const res = await dapiFetch<any>("/messages/send/reaction", {
     method: "POST",
     body: JSON.stringify(payload),
-  }).catch(() =>
+  }, 15_000, apiKey).catch(() =>
     dapiFetch<any>("/messages/reaction", {
       method: "POST",
       body: JSON.stringify(payload),
-    }),
+    }, 15_000, apiKey),
   );
   return { success: true, raw: res };
 }
@@ -816,8 +819,9 @@ export async function dapiEditMessage(
   to: string,
   messageId: string,
   newText: string,
+  apiKey?: string | null,
 ): Promise<{ success: boolean; raw?: any }> {
-  const cleanTo = to.replace(/\D/g, "");
+  const cleanTo = to.includes("@g.us") ? to.trim() : to.replace(/\D/g, "");
   const payload = {
     sessionId,
     to: cleanTo,
@@ -826,7 +830,7 @@ export async function dapiEditMessage(
   const res = await dapiFetch<any>(`/messages/${encodeURIComponent(messageId)}`, {
     method: "PUT",
     body: JSON.stringify(payload),
-  });
+  }, 15_000, apiKey);
   return { success: res?.success ?? true, raw: res };
 }
 
@@ -835,8 +839,9 @@ export async function dapiDeleteMessage(
   sessionId: string,
   to: string,
   messageId: string,
+  apiKey?: string | null,
 ): Promise<{ success: boolean; raw?: any }> {
-  const cleanTo = to.replace(/\D/g, "");
+  const cleanTo = to.includes("@g.us") ? to.trim() : to.replace(/\D/g, "");
   const payload = {
     sessionId,
     to: cleanTo,
@@ -845,7 +850,7 @@ export async function dapiDeleteMessage(
   const res = await dapiFetch<any>(`/chats/messages/${encodeURIComponent(messageId)}`, {
     method: "DELETE",
     body: JSON.stringify(payload),
-  });
+  }, 15_000, apiKey);
   return { success: res?.success ?? true, raw: res };
 }
 
@@ -854,8 +859,9 @@ export async function dapiSendContact(
   sessionId: string,
   to: string,
   contact: { fullName?: string; phoneNumber?: string; name?: string; phone?: string; organization?: string },
+  apiKey?: string | null,
 ): Promise<{ id: string; provider: string; raw: any }> {
-  const cleanTo = to.replace(/\D/g, "");
+  const cleanTo = to.includes("@g.us") ? to.trim() : to.replace(/\D/g, "");
   const contactFullName = contact.fullName || contact.name || "Contato";
   const rawPhone = contact.phoneNumber || contact.phone || "";
   const cleanContactPhone = rawPhone.replace(/\D/g, "");
@@ -876,13 +882,13 @@ export async function dapiSendContact(
   const res = await dapiFetch<any>("/messages/send/contact", {
     method: "POST",
     body: JSON.stringify(payload),
-  }).catch(() =>
+  }, 15_000, apiKey).catch(() =>
     dapiFetch<any>("/messages/contact", {
       method: "POST",
       body: JSON.stringify(payload),
-    }),
+    }, 15_000, apiKey),
   );
-  const id = res?.id || res?.messageId || res?.data?.id || `dapi_${Date.now()}`;
+  const id = extractDapiResponseId(res);
   return { id, provider: "dapi", raw: res };
 }
 
@@ -892,13 +898,14 @@ export async function dapiSendPresence(
   to: string,
   presence: "composing" | "typing" | "recording" | "paused" = "typing",
   durationMs: number = 4000,
+  apiKey?: string | null,
 ): Promise<void> {
-  const cleanTo = to.replace(/\D/g, "");
+  const cleanTo = to.includes("@g.us") ? to.trim() : to.replace(/\D/g, "");
   const normalizedPresence = presence === "composing" ? "typing" : presence;
   await dapiFetch<any>("/chats/presence", {
     method: "POST",
     body: JSON.stringify({ sessionId, to: cleanTo, presence: normalizedPresence, durationMs }),
-  }).catch(() => null);
+  }, 10_000, apiKey).catch(() => null);
 }
 
 /** [Solo API Oficial - dapi_official] Elimina una plantilla HSM en D-API / Meta */

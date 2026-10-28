@@ -38,6 +38,11 @@ export async function queryCustomerLookup(
   phone: string,
 ): Promise<string> {
   if (!config?.enabled || !config?.url) return "";
+  const { isSafeUrl } = await import("./agent-sandbox.server");
+  if (!isSafeUrl(config.url)) {
+    console.warn(`[customer-lookup] URL bloqueada por seguridad SSRF: ${config.url}`);
+    return "";
+  }
   const cleanPhone = (phone || "").trim();
   if (!cleanPhone) return "";
 
@@ -71,6 +76,7 @@ export async function queryCustomerLookup(
       method,
       headers,
       body,
+      redirect: "error",
       signal: AbortSignal.timeout(4000), // Timeout de 4s para no ralentizar el bot
     });
 
