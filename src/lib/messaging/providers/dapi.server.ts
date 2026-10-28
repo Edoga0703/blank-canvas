@@ -102,6 +102,52 @@ function resolveDapiMediaType(data: any): "text" | "image" | "audio" | "video" |
 
 function extractText(data: any): string {
   if (!data) return "";
+
+  // 1. Ubicación (Activa <ChatLocation /> en conversas.tsx)
+  const loc =
+    data.location ||
+    data.message?.locationMessage ||
+    data.message?.liveLocationMessage ||
+    (data.type === "location" ? data : null);
+  const lat = loc?.latitude ?? loc?.degreesLatitude ?? data.latitude;
+  const lng = loc?.longitude ?? loc?.degreesLongitude ?? data.longitude;
+  if (typeof lat === "number" && typeof lng === "number") {
+    const label = loc?.name || loc?.address || data.caption || "";
+    return `📍 Localização: ${lat}, ${lng}${label ? ` (${label})` : ""}`;
+  }
+
+  // 2. Tarjeta de Contacto vCard (Activa <ChatVCard /> en conversas.tsx)
+  const vcard =
+    data.vcard ||
+    data.contact?.vcard ||
+    data.contacts?.[0]?.vcard ||
+    data.message?.contactMessage?.vcard ||
+    data.message?.contactsArrayMessage?.contacts?.[0]?.vcard;
+  if (typeof vcard === "string" && vcard.includes("BEGIN:VCARD")) {
+    return vcard.trim();
+  }
+  if (data.type === "contact" || data.type === "contacts" || data.contact) {
+    const c = data.contact || data.contacts?.[0] || data;
+    const cName = c?.fullName || c?.name?.formatted_name || c?.displayName || "Contato";
+    const cPhone = c?.phoneNumber || c?.phones?.[0]?.phone || c?.wa_id || "";
+    if (cPhone) return `👤 *${cName}*\n📞 ${cPhone}`;
+  }
+
+  // 3. Respuestas a Listas y Botones Interactivos
+  if (data.type === "list_response" || data.interactive?.type === "list_reply") {
+    const reply = data.interactive?.list_reply || data.data || {};
+    return String(reply.title || reply.id || reply.selected_row_id || "").trim();
+  }
+  if (
+    data.type === "button_response" ||
+    data.type === "interactive" ||
+    data.interactive?.type === "button_reply"
+  ) {
+    const reply = data.interactive?.button_reply || data.button || data.data || {};
+    return String(reply.title || reply.text || reply.id || reply.selected_button_id || "").trim();
+  }
+
+  // 4. Texto estándar y subtítulos multimedia
   if (typeof data.message === "string") return data.message.trim();
   if (typeof data.text === "string") return data.text.trim();
   if (typeof data.body === "string") return data.body.trim();
@@ -118,12 +164,6 @@ function extractText(data: any): string {
     if (typeof m.documentMessage?.caption === "string") return m.documentMessage.caption.trim();
   }
 
-  if (data.type === "list_response") {
-    return String(data.data?.selected_row_id || data.data?.title || "").trim();
-  }
-  if (data.type === "button_response" || data.type === "interactive") {
-    return String(data.data?.selected_button_id || data.data?.selected_row_id || data.data?.title || "").trim();
-  }
   return "";
 }
 

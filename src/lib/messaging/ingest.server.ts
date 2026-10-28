@@ -461,16 +461,23 @@ async function persistMessage(
       }
 
       const isUntranscribedAudio = isAudio && (!event.text || !event.text.trim() || summaryText === "[ÁUDIO]");
-      const { processInboundAutomation } = await import("@/lib/inbound-automation.server");
-      await processInboundAutomation(supabaseAdmin, {
-        companyId: connection.company_id,
-        numero: event.phone,
-        texto: summaryText,
-        inboundMessageId: message.id,
-        stageId: currentCard?.stage_id,
-        responderEmAudio: isAudio,
-        isAudioMessage: isUntranscribedAudio,
-      });
+      // Desacoplar la ejecución de la IA del ciclo HTTP del webhook para evitar timeouts de D-API (10-15s)
+      // mientras se procesa el buffer de debouncing y la generación del modelo
+      void import("@/lib/inbound-automation.server")
+        .then(({ processInboundAutomation }) =>
+          processInboundAutomation(supabaseAdmin, {
+            companyId: connection.company_id,
+            numero: event.phone,
+            texto: summaryText,
+            inboundMessageId: message.id,
+            stageId: currentCard?.stage_id,
+            responderEmAudio: isAudio,
+            isAudioMessage: isUntranscribedAudio,
+          }),
+        )
+        .catch((automationError) => {
+          console.error("[ingest.automation] Error al ejecutar automatización de CRM/IA en segundo plano:", automationError);
+        });
     } catch (automationError) {
       console.error("[ingest.automation] Error al ejecutar automatización de CRM/IA:", automationError);
     }

@@ -99,10 +99,8 @@ async function isAutomatedOrExistingEcho(params: {
   safeText: string;
 }): Promise<boolean> {
   const { companyId, phone, messageId, safeText } = params;
-  const recentCutoff = new Date(Date.now() - 90_000).toISOString();
-  const veryRecentCutoff = new Date(Date.now() - 12_000).toISOString();
 
-  // 1. Por ID exacto de mensaje en WhatsApp
+  // 1. Por ID exacto de mensaje en WhatsApp (registrado previamente por CRM, IA o webhook previo)
   if (messageId && !messageId.startsWith("dapi_")) {
     const { data: existingById } = await supabaseAdmin
       .from("mensagens")
@@ -114,34 +112,23 @@ async function isAutomatedOrExistingEcho(params: {
     if (existingById) return true;
   }
 
-  // 2. Por texto idéntico enviado desde el CRM/IA en los últimos 90 segundos (consulta parametrizada segura)
+  // 2. Solo si hay un mensaje saliente PENDIENTE o recién despachado por el CRM en los últimos 5s sin ID final
+  // (evita descartar mensajes legítimos idénticos enviados sucesivamente por asesores desde WhatsApp móvil/web)
   if (safeText) {
-    const { data: existingByText } = await supabaseAdmin
+    const raceCutoff = new Date(Date.now() - 5_000).toISOString();
+    const { data: pendingCrmMsg } = await supabaseAdmin
       .from("mensagens")
       .select("id")
       .eq("company_id", companyId)
       .eq("numero", phone)
       .eq("direcao", "saida")
       .eq("texto", safeText)
-      .gte("created_at", recentCutoff)
+      .gte("created_at", raceCutoff)
+      .or("status_envio.eq.pendente,whatsapp_message_id.is.null")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (existingByText) return true;
-  }
-
-  // 3. Solo si la IA está procesando EN ESTE INSTANTE (pending/processing en los últimos 12s) y no hay texto
-  if (!safeText) {
-    const { data: activeAiProc } = await (supabaseAdmin as any)
-      .from("ai_message_processing")
-      .select("id")
-      .eq("company_id", companyId)
-      .eq("numero", phone)
-      .gte("created_at", veryRecentCutoff)
-      .in("status", ["pending", "processing"])
-      .limit(1)
-      .maybeSingle();
-    if (activeAiProc) return true;
+    if (pendingCrmMsg) return true;
   }
 
   return false;

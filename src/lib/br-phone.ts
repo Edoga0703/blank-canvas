@@ -1,11 +1,7 @@
 /**
  * Normalização e validação de números brasileiros e internacionais (E.164) para WhatsApp.
- *
- * Regras para números do Brasil:
- * - DDI 55 sempre presente
- * - DDD válido (11..99, lista oficial)
- * - Celular: 9 dígitos começando com 9 (o "9º dígito" é adicionado quando faltar)
- * - Fixo (8 dígitos iniciando em 2..5) é aceito como está
+ * Suporta Venezuela (+58), Colômbia (+57), México (+52), Argentina (+54), Chile (+56),
+ * Peru (+51), Espanha (+34), EUA (+1), América Central, Caribe e todo o padrão E.164.
  */
 
 const DDDS_VALIDOS = new Set([
@@ -55,35 +51,6 @@ function tryParseBrazilianLocal(localDigits: string): BrPhoneResult {
   return { numero: "55" + String(ddd).padStart(2, "0") + assinante, valid: true };
 }
 
-export function parseBrPhone(raw: string): BrPhoneResult {
-  const rawStr = String(raw || "").trim();
-  const hasExplicitPlus = rawStr.startsWith("+");
-  let d = rawStr.replace(/\D/g, "");
-  if (!d) return { numero: "", valid: false, reason: "Número vazio" };
-
-  d = d.replace(/^0+/, "");
-
-  // 1. Si comienza con 55 y tiene longitud de número de Brasil (12 o 13 dígitos)
-  if (d.startsWith("55") && (d.length === 12 || d.length === 13)) {
-    return tryParseBrazilianLocal(d.slice(2));
-  }
-
-  // 2. Si NO tiene '+' internacional explícito y tiene 10 u 11 dígitos, probar primero como DDD de Brasil
-  if (!hasExplicitPlus && (d.length === 10 || d.length === 11)) {
-    const brCandidate = tryParseBrazilianLocal(d);
-    if (brCandidate.valid) {
-      return brCandidate;
-    }
-  }
-
-  // 3. Números internacionales (não-BR) en formato E.164 (9 a 15 dígitos)
-  if (!d.startsWith("55") && d.length >= 9 && d.length <= 15) {
-    return { numero: d, valid: true };
-  }
-
-  return tryParseBrazilianLocal(d.startsWith("55") ? d.slice(2) : d);
-}
-
 /**
  * Normaliza cualquier número nacional (Brasil) o internacional (E.164).
  * Respeta prefijos internacionales existentes (58 Venezuela, 57 Colombia, 1 USA, 52 México, etc.)
@@ -96,50 +63,87 @@ export function normalizePhone(raw: unknown, fallbackCountryCode?: string): stri
   if (!d) return "";
   d = d.replace(/^0+/, "");
 
-  // 1. Números de Brasil con DDI 55 (12 o 13 dígitos)
+  // 1. Números internacionales que inician con '+' explícito (E.164: 8 a 15 dígitos)
+  if (hasExplicitPlus && d.length >= 8 && d.length <= 15) {
+    return d;
+  }
+
+  // 2. Números locales de Venezuela sin DDI (10 dígitos empezando por 412, 414, 416, 424, 426)
+  if (d.length === 10 && /^(412|414|416|424|426)/.test(d)) {
+    return "58" + d;
+  }
+
+  // 3. Números locales de Colombia sin DDI (10 dígitos empezando por 300..350)
+  if (d.length === 10 && /^3[0-5]\d/.test(d)) {
+    return "57" + d;
+  }
+
+  // 4. Códigos de país de 3 y 4 dígitos comunes (Latinoamérica, Caribe, etc.)
+  // Ej: 507 (Panamá), 506 (Costa Rica), 593 (Ecuador), 591 (Bolivia), 595 (Paraguay), 598 (Uruguay),
+  // 502 (Guatemala), 503 (El Salvador), 504 (Honduras), 505 (Nicaragua), 1809/1829/1849 (Rep. Dominicana)
+  const cc3 = d.slice(0, 3);
+  const cc4 = d.slice(0, 4);
+  const KNOWN_CC_3 = new Set([
+    "593", "591", "595", "598", "501", "502", "503", "504", "505", "506", "507", "509",
+    "1809", "1829", "1849", "1787", "1939"
+  ]);
+  if ((KNOWN_CC_3.has(cc3) || KNOWN_CC_3.has(cc4)) && d.length >= 10 && d.length <= 13) {
+    return d;
+  }
+
+  // 5. Códigos de país de 2 dígitos (Latinoamérica y Europa principal)
+  // Ej: 58 (Venezuela), 57 (Colombia), 52 (México), 54 (Argentina), 56 (Chile), 51 (Perú), 34 (España)
+  const cc2 = d.slice(0, 2);
+  const KNOWN_CC_2 = new Set([
+    "58", "57", "52", "54", "56", "51", "34", "44", "33", "49", "39", "31", "32", "35", "41", "43", "46", "47", "48", "61", "64"
+  ]);
+  if (cc2 !== "55" && KNOWN_CC_2.has(cc2) && d.length >= 10 && d.length <= 14) {
+    return d;
+  }
+
+  // 6. USA / Canadá (DDI 1 + 10 dígitos = 11 dígitos, código de área 200-999)
+  if (d.length === 11 && d.startsWith("1") && /^[2-9]/.test(d[1])) {
+    return d;
+  }
+
+  // 7. Números de Brasil con DDI 55 (12 o 13 dígitos)
   if (d.startsWith("55") && (d.length === 12 || d.length === 13)) {
     const br = tryParseBrazilianLocal(d.slice(2));
     if (br.valid && br.numero) return br.numero;
-  }
-
-  // 2. Números internacionales completos (12 a 15 dígitos): ya traen su DDI
-  if (d.length >= 12 && d.length <= 15) {
     return d;
   }
 
-  // 3. Si el usuario escribió '+' explícitamente (ej. +1 305 555 0199 o +58 412 1234567), respetar su DDI
-  if (hasExplicitPlus && d.length >= 9 && d.length <= 15) {
-    return d;
-  }
-
-  // 4. Números locales de Brasil de 10 u 11 dígitos sin DDI (ej. (11) 98765-4321 o (85) 99999-0000)
-  // Nota: un celular de São Paulo tiene 11 dígitos, empieza con 11..19 y su 3er dígito es 9.
-  if (d.length === 10 || d.length === 11) {
-    const ddi2 = d.slice(0, 2);
-    const isKnownHispanoDdi = ["58", "57", "52", "54", "56", "51", "34"].includes(ddi2) && d[2] !== "9";
-    if (isKnownHispanoDdi) {
-      return d;
-    }
-
+  // 8. Números locales de Brasil sin DDI (10 u 11 dígitos)
+  // Celular con 9º dígito: 11 dígitos con DDD 11..99 y tercer dígito 9
+  if (d.length === 11 && /^[1-9][1-9]9[0-9]{8}$/.test(d)) {
     const br = tryParseBrazilianLocal(d);
-    if (br.valid && br.numero) {
-      return br.numero;
-    }
-
-    // USA / Canadá (11 dígitos que inician con 1 y no coincidieron como celular de SP)
-    if (d.length === 11 && d.startsWith("1")) {
-      return d;
-    }
+    if (br.valid && br.numero) return br.numero;
+  }
+  // Teléfono fijo de Brasil: 10 dígitos con DDD 11..99 y tercer dígito 2..5
+  if (d.length === 10 && /^[1-9][1-9][2-5][0-9]{7}$/.test(d)) {
+    const br = tryParseBrazilianLocal(d);
+    if (br.valid && br.numero) return br.numero;
   }
 
-  // 5. Fallback con código de país por defecto
-  const envCc = typeof process !== "undefined" && process.env ? (process.env.DEFAULT_COUNTRY_CODE || "55") : "55";
-  const cc = fallbackCountryCode !== undefined ? fallbackCountryCode : envCc;
-  if ((d.length === 10 || d.length === 11) && cc && !d.startsWith(cc)) {
-    return cc + d;
+  // 9. Ya tiene formato E.164 internacional completo (11 a 15 dígitos)
+  if (d.length >= 11 && d.length <= 15) {
+    return d;
+  }
+
+  // 10. Fallback controlado solo si el usuario/entorno definió un código explícito y el número es corto (< 11)
+  if ((d.length === 10 || d.length === 11) && fallbackCountryCode && !d.startsWith(fallbackCountryCode)) {
+    return fallbackCountryCode + d;
   }
 
   return d;
+}
+
+export function parseBrPhone(raw: string): BrPhoneResult {
+  const norm = normalizePhone(raw);
+  if (norm && norm.length >= 8 && norm.length <= 15) {
+    return { numero: norm, valid: true };
+  }
+  return { numero: "", valid: false, reason: "Número inválido" };
 }
 
 /** Retorna el número normalizado (acepta tanto BR como internacional E.164). */

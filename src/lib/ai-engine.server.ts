@@ -315,7 +315,7 @@ export async function processAiResponse(
     const [{ data: pause }, { data: stageCfg }] = await Promise.all([
       supabaseAdmin
         .from("contact_pause")
-        .select("pausado, pausado_por")
+        .select("pausado, pausado_por, pausado_em")
         .eq("company_id", companyId)
         .eq("numero", number)
         .maybeSingle(),
@@ -329,14 +329,26 @@ export async function processAiResponse(
     ]);
 
     if (pause?.pausado) {
-      // Pausa feita por um atendente (assumiu a conversa / respondeu) NUNCA é limpa
-      // automaticamente — o humano está no comando até reativar a IA manualmente.
       const pausedByHuman = (pause as any).pausado_por === "humano";
-      if (!pausedByHuman && stageCfg?.modo_atendimento === "ia") {
-        console.log(`[ai-engine] Clearing stale pause for ${number} (stage is IA)`);
+      const pausedByAudio = (pause as any).pausado_por === "audio_inbound";
+      const pausedAt = (pause as any).pausado_em ? new Date((pause as any).pausado_em).getTime() : 0;
+      const hoursSincePause = (Date.now() - pausedAt) / (3600 * 1000);
+
+      // 1. Si la pausa fue por audio anterior y el cliente ahora escribe texto legible, reactivar automáticamente
+      const isNowTextMessage = Boolean(effectiveIncomingText && !effectiveIncomingText.startsWith("[ÁUDIO]"));
+      const shouldClearAudioPause = pausedByAudio && isNowTextMessage;
+
+      // 2. Si la etapa está configurada explícitamente en modo "ia", tiene prioridad absoluta
+      const isExplicitIaStage = stageCfg?.modo_atendimento === "ia";
+
+      // 3. Si la pausa humana ocurrió hace más de 4 horas de inactividad, reactivar para no desatender al cliente
+      const isStaleHumanPause = pausedByHuman && hoursSincePause > 4;
+
+      if (shouldClearAudioPause || isExplicitIaStage || isStaleHumanPause) {
+        console.log(`[ai-engine] Clearing pause for ${number} (audioRecover=${shouldClearAudioPause}, explicitIa=${isExplicitIaStage}, staleHuman=${isStaleHumanPause})`);
         await supabaseAdmin
           .from("contact_pause")
-          .update({ pausado: false } as any)
+          .update({ pausado: false, pausado_por: null } as any)
           .eq("company_id", companyId)
           .eq("numero", number);
       } else {
@@ -370,7 +382,7 @@ export async function processAiResponse(
     // Um humano atendeu recentemente (inclusive após encerrar o ticket): a IA não assume sozinha,
     // exceto em etapas explicitamente configuradas como "IA".
     if (stageCfg.modo_atendimento !== "ia") {
-      const desde = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+      const desde = new Date(Date.now() - 2 * 3600 * 1000).toISOString();
       const { data: humano } = await (supabaseAdmin as any)
         .from("mensagens")
         .select("id")
