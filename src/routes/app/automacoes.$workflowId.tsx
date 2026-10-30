@@ -251,8 +251,7 @@ const nodeTypes = {
 // ============================================================================
 
 function AutomacaoCanvasPage() {
-  const params = useParams({ strict: false });
-  const workflowId = (params as any)?.workflowId || "";
+  const { workflowId } = Route.useParams();
   const getWorkflow = useServerFn(getWorkflowFn);
   const saveDraft = useServerFn(saveWorkflowDraftFn);
   const publishWf = useServerFn(publishWorkflowFn);
@@ -303,6 +302,7 @@ function AutomacaoCanvasPage() {
 
   // Cargar datos del flujo
   async function loadData() {
+    if (!workflowId) return;
     setLoading(true);
     try {
       const [resWfRaw, resAux] = await Promise.all([

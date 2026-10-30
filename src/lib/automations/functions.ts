@@ -11,7 +11,12 @@ import {
 import { getNodeDefinition } from "./registry.server";
 
 async function assertAutomationEditor(companyId: string, userId: string, fallbackClient?: any) {
-  let { data: member, error } = await ((supabaseAdmin as any) || fallbackClient)
+  const sb = (supabaseAdmin as any) || fallbackClient;
+  // Bypass para super administradores da plataforma
+  const { data: prof } = await sb.from("profiles").select("is_super_admin").eq("user_id", userId).maybeSingle();
+  if (prof?.is_super_admin) return;
+
+  let { data: member, error } = await sb
     .from("company_user")
     .select("role, ativo")
     .eq("company_id", companyId)

@@ -97,6 +97,7 @@ import { Route as ApiPublicMetaLeadsWebhookRouteImport } from './routes/api/publ
 import { Route as ApiPublicMetaWebhookRouteImport } from './routes/api/public/meta-webhook'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram-webhook'
 import { Route as ApiPublicTrackClickRouteImport } from './routes/api/public/track-click'
+import { Route as AppAutomacoesIndexRouteImport } from './routes/app/automacoes.index'
 import { Route as AppAutomacoesWorkflowIdRouteImport } from './routes/app/automacoes.$workflowId'
 import { Route as AppTreinamentosIndexRouteImport } from './routes/app/treinamentos.index'
 import { Route as AppTreinamentosCourseIdRouteImport } from './routes/app/treinamentos.$courseId'
@@ -574,6 +575,11 @@ const ApiPublicTrackClickRoute = ApiPublicTrackClickRouteImport.update({
   path: '/api/public/track-click',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppAutomacoesIndexRoute = AppAutomacoesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppAutomacoesRoute,
+} as any)
 const AppAutomacoesWorkflowIdRoute = AppAutomacoesWorkflowIdRouteImport.update({
   id: '/$workflowId',
   path: '/$workflowId',
@@ -825,6 +831,7 @@ export interface FileRoutesByFullPath {
   '/app/treinamentos/$courseId': typeof AppTreinamentosCourseIdRoute
   '/oauth/drive/return': typeof OauthDriveReturnRoute
   '/oauth/sheets/return': typeof OauthSheetsReturnRoute
+  '/app/automacoes/': typeof AppAutomacoesIndexRoute
   '/app/treinamentos/': typeof AppTreinamentosIndexRoute
   '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
   '/api/public/hooks/$token': typeof ApiPublicHooksTokenRoute
@@ -869,7 +876,6 @@ export interface FileRoutesByTo {
   '/app/agendamentos': typeof AppAgendamentosRoute
   '/app/agente': typeof AppAgenteRoute
   '/app/agente-avancado': typeof AppAgenteAvancadoRoute
-  '/app/automacoes': typeof AppAutomacoesRouteWithChildren
   '/app/campanhas': typeof AppCampanhasRoute
   '/app/catalogo': typeof AppCatalogoRoute
   '/app/checkout': typeof AppCheckoutRoute
@@ -941,6 +947,7 @@ export interface FileRoutesByTo {
   '/app/treinamentos/$courseId': typeof AppTreinamentosCourseIdRoute
   '/oauth/drive/return': typeof OauthDriveReturnRoute
   '/oauth/sheets/return': typeof OauthSheetsReturnRoute
+  '/app/automacoes': typeof AppAutomacoesIndexRoute
   '/app/treinamentos': typeof AppTreinamentosIndexRoute
   '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
   '/api/public/hooks/$token': typeof ApiPublicHooksTokenRoute
@@ -1060,6 +1067,7 @@ export interface FileRoutesById {
   '/app/treinamentos/$courseId': typeof AppTreinamentosCourseIdRoute
   '/oauth/drive/return': typeof OauthDriveReturnRoute
   '/oauth/sheets/return': typeof OauthSheetsReturnRoute
+  '/app/automacoes/': typeof AppAutomacoesIndexRoute
   '/app/treinamentos/': typeof AppTreinamentosIndexRoute
   '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
   '/api/public/hooks/$token': typeof ApiPublicHooksTokenRoute
@@ -1180,6 +1188,7 @@ export interface FileRouteTypes {
     | '/app/treinamentos/$courseId'
     | '/oauth/drive/return'
     | '/oauth/sheets/return'
+    | '/app/automacoes/'
     | '/app/treinamentos/'
     | '/api/public/billing/webhook'
     | '/api/public/hooks/$token'
@@ -1224,7 +1233,6 @@ export interface FileRouteTypes {
     | '/app/agendamentos'
     | '/app/agente'
     | '/app/agente-avancado'
-    | '/app/automacoes'
     | '/app/campanhas'
     | '/app/catalogo'
     | '/app/checkout'
@@ -1296,6 +1304,7 @@ export interface FileRouteTypes {
     | '/app/treinamentos/$courseId'
     | '/oauth/drive/return'
     | '/oauth/sheets/return'
+    | '/app/automacoes'
     | '/app/treinamentos'
     | '/api/public/billing/webhook'
     | '/api/public/hooks/$token'
@@ -1414,6 +1423,7 @@ export interface FileRouteTypes {
     | '/app/treinamentos/$courseId'
     | '/oauth/drive/return'
     | '/oauth/sheets/return'
+    | '/app/automacoes/'
     | '/app/treinamentos/'
     | '/api/public/billing/webhook'
     | '/api/public/hooks/$token'
@@ -2123,6 +2133,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTrackClickRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/automacoes/': {
+      id: '/app/automacoes/'
+      path: '/'
+      fullPath: '/app/automacoes/'
+      preLoaderRoute: typeof AppAutomacoesIndexRouteImport
+      parentRoute: typeof AppAutomacoesRoute
+    }
     '/app/automacoes/$workflowId': {
       id: '/app/automacoes/$workflowId'
       path: '/$workflowId'
@@ -2324,10 +2341,12 @@ declare module '@tanstack/react-router' {
 
 interface AppAutomacoesRouteChildren {
   AppAutomacoesWorkflowIdRoute: typeof AppAutomacoesWorkflowIdRoute
+  AppAutomacoesIndexRoute: typeof AppAutomacoesIndexRoute
 }
 
 const AppAutomacoesRouteChildren: AppAutomacoesRouteChildren = {
   AppAutomacoesWorkflowIdRoute: AppAutomacoesWorkflowIdRoute,
+  AppAutomacoesIndexRoute: AppAutomacoesIndexRoute,
 }
 
 const AppAutomacoesRouteWithChildren = AppAutomacoesRoute._addFileChildren(

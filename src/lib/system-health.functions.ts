@@ -194,16 +194,16 @@ export const getSystemHealth = createServerFn({ method: "GET" })
   });
 
 // -----------------------------------------------------------------------------
-// Evolution API health probe
+// D-API health probe
 // -----------------------------------------------------------------------------
-export const pingEvolutionApi = createServerFn({ method: "GET" })
+export const pingDapiApi = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertSuper(context.supabase, context.userId);
-    const url = process.env.EVOLUTION_API_URL;
-    const key = process.env.EVOLUTION_API_KEY;
-    if (!url || !key) {
-      return { ok: false, status: 0, latencyMs: 0, error: "EVOLUTION_API_URL/KEY não configurados", instances: null, checkedAt: new Date().toISOString() };
+    const url = process.env.DAPI_BASE_URL || "https://api.d-api.net";
+    const key = process.env.DAPI_API_KEY || "";
+    if (!key) {
+      return { ok: false, status: 0, latencyMs: 0, error: "DAPI_API_KEY não configurada", instances: null, checkedAt: new Date().toISOString() };
     }
     const started = Date.now();
     try {
@@ -234,6 +234,8 @@ export const pingEvolutionApi = createServerFn({ method: "GET" })
       };
     }
   });
+
+export const pingEvolutionApi = pingDapiApi;
 
 
 

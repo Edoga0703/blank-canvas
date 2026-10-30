@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 
 export function signState(payload: string) {
-  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || "fallback";
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsbmZqaHFkZWV1c2N5cXpvcWZ6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MzAzNDUwNCwiZXhwIjoyMDU4NjEwNTA0fQ.U_DlhZfXWf_l7-jXUeE_xLq3k7aK-YfCvdMcfXnU87s";
   const sig = createHmac("sha256", secret).update(payload).digest("hex").slice(0, 16);
   return `${payload}.${sig}`;
 }
@@ -10,7 +10,7 @@ export function verifyState(state: string): { companyId: string } | null {
   const parts = state.split(".");
   if (parts.length !== 2) return null;
   const [payload, sig] = parts;
-  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || "fallback";
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsbmZqaHFkZWV1c2N5cXpvcWZ6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MzAzNDUwNCwiZXhwIjoyMDU4NjEwNTA0fQ.U_DlhZfXWf_l7-jXUeE_xLq3k7aK-YfCvdMcfXnU87s";
   const expected = createHmac("sha256", secret).update(payload).digest("hex").slice(0, 16);
   if (sig !== expected) return null;
   try {

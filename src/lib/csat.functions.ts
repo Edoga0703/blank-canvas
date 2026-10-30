@@ -121,7 +121,7 @@ export const sendCsat = createServerFn({ method: "POST" })
       if (/not.*connect|closed|disconnect|state/i.test(msg)) {
         return { ok: false as const, token: row.token, reason: "whatsapp_disconnected" as const, message: "WhatsApp desconectado. Reconecte em Configurações → Integrações." };
       }
-      return { ok: false as const, token: row.token, reason: "evolution_error" as const, message: msg || "Falha ao enviar pela Evolution API.", details: e?.details };
+      return { ok: false as const, token: row.token, reason: "dapi_error" as const, message: msg || "Falha ao enviar via WhatsApp (D-API).", details: e?.details };
     }
     const { error: msgErr } = await supabase.from("mensagens").insert({
       company_id: companyId, user_id: userId, numero, contato_nome: data.contatoNome ?? null,

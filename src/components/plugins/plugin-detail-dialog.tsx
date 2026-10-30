@@ -210,7 +210,6 @@ export function PluginTile({
 }
 
 const CONFIG_ROUTE: Record<string, string> = {
-  "whatsapp-uazapi": "/app/conexao",
   "whatsapp-dapi": "/app/conexao",
   "meta-official-api": "/app/conexao",
   messenger: "/app/conexao",
@@ -221,7 +220,6 @@ const CONFIG_ROUTE: Record<string, string> = {
 };
 
 const CONFIG_LABEL: Record<string, string> = {
-  "whatsapp-uazapi": "Ir para Conexões",
   "whatsapp-dapi": "Ir para Conexões",
   "meta-official-api": "Ir para Conexões",
   messenger: "Ir para Conexões",

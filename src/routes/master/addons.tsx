@@ -253,7 +253,7 @@ function formatBRL(cents: number, moeda = "BRL") {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: moeda }).format(cents / 100);
 }
 function tipoLabel(t: string) {
-  return t === "whatsapp_uazapi" ? "Uazapi"
+  return t === "whatsapp_uazapi" || t === "whatsapp_dapi" ? "D-API"
     : t === "whatsapp_meta" ? "API Oficial Meta"
     : "Custom";
 }
