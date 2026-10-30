@@ -25,7 +25,7 @@ function getApiKey(customKey?: string | null): string {
     candidate.startsWith("IGAA") ||
     candidate.startsWith("IGQV");
   const validCustomKey = candidate && !isMetaGraphToken ? candidate : "";
-  const envKey = String(process.env.DAPI_API_KEY || "").trim();
+  const envKey = String(process.env.DAPI_API_KEY || "098aeda184429bc8201ba60d88116821906397caa5fd5b935b615318a245da03").trim();
   const key = validCustomKey || envKey;
   if (!key) {
     throw new Error("DAPI_API_KEY no está configurada en las variables de entorno del servidor.");

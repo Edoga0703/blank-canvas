@@ -10,8 +10,8 @@ import {
 } from "./schema";
 import { getNodeDefinition } from "./registry.server";
 
-async function assertAutomationEditor(companyId: string, userId: string) {
-  const { data: member, error } = await (supabaseAdmin as any)
+async function assertAutomationEditor(companyId: string, userId: string, fallbackClient?: any) {
+  let { data: member, error } = await ((supabaseAdmin as any) || fallbackClient)
     .from("company_user")
     .select("role, ativo")
     .eq("company_id", companyId)
