@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-30T03:36:30.251045+00:00",
+  "generated_at": "2026-10-30T07:01:51.013909+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -2343,7 +2343,7 @@
     },
     {
       "path": "src/routes/app/automacoes.$workflowId.tsx",
-      "bytes": 46893
+      "bytes": 46919
     },
     {
       "path": "src/routes/app/catalogo.tsx",
@@ -2403,7 +2403,7 @@
     },
     {
       "path": "src/routes/app/automacoes.tsx",
-      "bytes": 11000
+      "bytes": 11464
     },
     {
       "path": "src/routes/app/respostas-rapidas.tsx",
