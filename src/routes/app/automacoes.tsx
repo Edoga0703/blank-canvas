@@ -1,5 +1,5 @@
 // src/routes/app/automacoes.tsx
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, Outlet, useChildMatches } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -43,8 +43,16 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/app/automacoes")({
-  component: AutomacoesListPage,
+  component: AutomacoesRouteComponent,
 });
+
+function AutomacoesRouteComponent() {
+  const childMatches = useChildMatches();
+  if (childMatches.length > 0) {
+    return <Outlet />;
+  }
+  return <AutomacoesListPage />;
+}
 
 function AutomacoesListPage() {
   const navigate = useNavigate();
@@ -90,7 +98,11 @@ function AutomacoesListPage() {
       setCreateDialogOpen(false);
       setNewTitle("");
       setNewDesc("");
-      navigate({ to: `/app/automacoes/${res.id}` });
+      await loadData();
+      navigate({
+        to: "/app/automacoes/$workflowId",
+        params: { workflowId: res.id },
+      });
     } catch (e: any) {
       toast.error(e?.message || "Erro ao criar fluxo");
     } finally {
@@ -224,9 +236,13 @@ function AutomacoesListPage() {
                   </div>
 
                   <div>
-                    <h3 className="font-semibold text-base group-hover:text-[var(--brand)] transition-colors line-clamp-1">
+                    <Link
+                      to="/app/automacoes/$workflowId"
+                      params={{ workflowId: wf.id }}
+                      className="font-semibold text-base group-hover:text-[var(--brand)] transition-colors line-clamp-1 block cursor-pointer"
+                    >
                       {wf.name}
-                    </h3>
+                    </Link>
                     <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
                       {wf.description || "Sem descrição"}
                     </p>

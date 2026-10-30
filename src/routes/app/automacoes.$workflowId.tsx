@@ -251,7 +251,8 @@ const nodeTypes = {
 // ============================================================================
 
 function AutomacaoCanvasPage() {
-  const { workflowId } = useParams({ from: "/app/automacoes/$workflowId" });
+  const params = useParams({ strict: false });
+  const workflowId = (params as any)?.workflowId || "";
   const getWorkflow = useServerFn(getWorkflowFn);
   const saveDraft = useServerFn(saveWorkflowDraftFn);
   const publishWf = useServerFn(publishWorkflowFn);
