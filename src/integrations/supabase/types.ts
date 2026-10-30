@@ -3025,6 +3025,7 @@ export type Database = {
       crm_cards: {
         Row: {
           campos_extras: Json
+          ultimo_analise_ia_em: string | null
           canal_chat: string | null
           canal_custom: string | null
           canal_entrada: string | null
@@ -3323,6 +3324,7 @@ export type Database = {
       crm_pipeline: {
         Row: {
           agent_id: string | null
+          crm_master_prompt: string | null
           ativo: boolean
           company_id: string
           created_at: string
@@ -3493,6 +3495,9 @@ export type Database = {
           sla_horas: number | null
           tipo: Database["public"]["Enums"]["stage_tipo"]
           trigger_pipeline_destino: string | null
+          bloqueada_para_ia: boolean | null
+          criterio_ia: string | null
+          meta_conversion_event: string | null
         }
         Insert: {
           agent_id?: string | null
@@ -3541,6 +3546,9 @@ export type Database = {
           sla_horas?: number | null
           tipo?: Database["public"]["Enums"]["stage_tipo"]
           trigger_pipeline_destino?: string | null
+          bloqueada_para_ia?: boolean | null
+          criterio_ia?: string | null
+          meta_conversion_event?: string | null
         }
         Update: {
           agent_id?: string | null
@@ -3589,6 +3597,9 @@ export type Database = {
           sla_horas?: number | null
           tipo?: Database["public"]["Enums"]["stage_tipo"]
           trigger_pipeline_destino?: string | null
+          bloqueada_para_ia?: boolean | null
+          criterio_ia?: string | null
+          meta_conversion_event?: string | null
         }
         Relationships: [
           {
@@ -7131,8 +7142,284 @@ export type Database = {
         }
         Relationships: []
       }
+
+      meta_capi_config: {
+        Row: {
+          id: string
+          company_id: string
+          ativo: boolean
+          modo_conexao: string
+          access_token: string | null
+          waba_id: string | null
+          page_id: string | null
+          instagram_account_id: string | null
+          dataset_id: string | null
+          currency: string
+          test_event_code: string | null
+          enable_sha256_fallback: boolean
+          auto_send_on_stage_change: boolean
+          auto_send_on_sale: boolean
+          auto_send_on_appointment: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          ativo?: boolean
+          modo_conexao?: string
+          access_token?: string | null
+          waba_id?: string | null
+          page_id?: string | null
+          instagram_account_id?: string | null
+          dataset_id?: string | null
+          currency?: string
+          test_event_code?: string | null
+          enable_sha256_fallback?: boolean
+          auto_send_on_stage_change?: boolean
+          auto_send_on_sale?: boolean
+          auto_send_on_appointment?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          ativo?: boolean
+          modo_conexao?: string
+          access_token?: string | null
+          waba_id?: string | null
+          page_id?: string | null
+          instagram_account_id?: string | null
+          dataset_id?: string | null
+          currency?: string
+          test_event_code?: string | null
+          enable_sha256_fallback?: boolean
+          auto_send_on_stage_change?: boolean
+          auto_send_on_sale?: boolean
+          auto_send_on_appointment?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      meta_capi_event_log: {
+        Row: {
+          id: string
+          company_id: string
+          card_id: string | null
+          dedup_key: string
+          event_name: string
+          action_source: string
+          messaging_channel: string | null
+          dataset_id: string
+          ctwa_clid: string | null
+          value: number | null
+          currency: string | null
+          status: string
+          fbtrace_id: string | null
+          error_message: string | null
+          request_payload: Json | null
+          response_payload: Json | null
+          created_at: string
+          lease_owner: string | null
+          lease_until: string | null
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          card_id?: string | null
+          dedup_key: string
+          event_name: string
+          action_source: string
+          messaging_channel?: string | null
+          dataset_id: string
+          ctwa_clid?: string | null
+          value?: number | null
+          currency?: string | null
+          status?: string
+          fbtrace_id?: string | null
+          error_message?: string | null
+          request_payload?: Json | null
+          response_payload?: Json | null
+          created_at?: string
+          lease_owner?: string | null
+          lease_until?: string | null
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          card_id?: string | null
+          dedup_key?: string
+          event_name?: string
+          action_source?: string
+          messaging_channel?: string | null
+          dataset_id?: string
+          ctwa_clid?: string | null
+          value?: number | null
+          currency?: string | null
+          status?: string
+          fbtrace_id?: string | null
+          error_message?: string | null
+          request_payload?: Json | null
+          response_payload?: Json | null
+          created_at?: string
+          lease_owner?: string | null
+          lease_until?: string | null
+        }
+        Relationships: []
+      }
+      lead_click_session: {
+        Row: {
+          id: string
+          company_id: string
+          code: string
+          slug: string | null
+          fbclid: string | null
+          gclid: string | null
+          fbc: string | null
+          fbp: string | null
+          utm_source: string | null
+          utm_medium: string | null
+          utm_campaign: string | null
+          utm_term: string | null
+          utm_content: string | null
+          client_ip: string | null
+          client_user_agent: string | null
+          referrer: string | null
+          first_page: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          code: string
+          slug?: string | null
+          fbclid?: string | null
+          gclid?: string | null
+          fbc?: string | null
+          fbp?: string | null
+          utm_source?: string | null
+          utm_medium?: string | null
+          utm_campaign?: string | null
+          utm_term?: string | null
+          utm_content?: string | null
+          client_ip?: string | null
+          client_user_agent?: string | null
+          referrer?: string | null
+          first_page?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          code?: string
+          slug?: string | null
+          fbclid?: string | null
+          gclid?: string | null
+          fbc?: string | null
+          fbp?: string | null
+          utm_source?: string | null
+          utm_medium?: string | null
+          utm_campaign?: string | null
+          utm_term?: string | null
+          utm_content?: string | null
+          client_ip?: string | null
+          client_user_agent?: string | null
+          referrer?: string | null
+          first_page?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      meta_lead_deliveries: {
+        Row: {
+          id: string
+          leadgen_id: string
+          page_id: string
+          form_id: string | null
+          company_id: string | null
+          card_id: string | null
+          status: string
+          attempts: number
+          lease_owner: string | null
+          lease_until: string | null
+          last_error: string | null
+          created_at: string
+          processed_at: string | null
+        }
+        Insert: {
+          id?: string
+          leadgen_id: string
+          page_id: string
+          form_id?: string | null
+          company_id?: string | null
+          card_id?: string | null
+          status?: string
+          attempts?: number
+          lease_owner?: string | null
+          lease_until?: string | null
+          last_error?: string | null
+          created_at?: string
+          processed_at?: string | null
+        }
+        Update: {
+          id?: string
+          leadgen_id?: string
+          page_id?: string
+          form_id?: string | null
+          company_id?: string | null
+          card_id?: string | null
+          status?: string
+          attempts?: number
+          lease_owner?: string | null
+          lease_until?: string | null
+          last_error?: string | null
+          created_at?: string
+          processed_at?: string | null
+        }
+        Relationships: []
+      }
+      automation_inbound_fallback_jobs: {
+        Row: {
+          id: string
+          company_id: string
+          event_id: string
+          status: string
+          attempts: number
+          lease_owner: string | null
+          lease_until: string | null
+          last_error: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          event_id: string
+          status?: string
+          attempts?: number
+          lease_owner?: string | null
+          lease_until?: string | null
+          last_error?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          event_id?: string
+          status?: string
+          attempts?: number
+          lease_owner?: string | null
+          lease_until?: string | null
+          last_error?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+
       whatsapp_instances: {
         Row: {
+          meta_dataset_id: string | null
           billing_status: Database["public"]["Enums"]["whatsapp_billing_status"]
           company_id: string
           display_name: string | null
