@@ -258,13 +258,29 @@ export const startCampaign = createServerFn({ method: "POST" })
         if (!map.has(num)) map.set(num, r.nome ?? null);
       }
     } else {
-      let q = supabase.from("crm_cards").select("numero, nome, tags").eq("company_id", companyId);
-      if ((c.filtro_tags ?? []).length) q = q.overlaps("tags", c.filtro_tags as string[]);
-      const { data: rows } = await q;
-      for (const r of (rows ?? []) as any[]) {
-        const num = normalizeBr(r.numero);
-        if (!num) continue;
-        if (!map.has(num)) map.set(num, r.nome ?? null);
+      let fromIdx = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+      while (hasMore) {
+        let q = supabase
+          .from("crm_cards")
+          .select("numero, nome, tags")
+          .eq("company_id", companyId)
+          .range(fromIdx, fromIdx + pageSize - 1);
+        if ((c.filtro_tags ?? []).length) q = q.overlaps("tags", c.filtro_tags as string[]);
+        const { data: pageRows, error: pageErr } = await q;
+        if (pageErr) throw pageErr;
+        const list = (pageRows ?? []) as any[];
+        for (const r of list) {
+          const num = normalizeBr(r.numero);
+          if (!num) continue;
+          if (!map.has(num)) map.set(num, r.nome ?? null);
+        }
+        if (list.length < pageSize) {
+          hasMore = false;
+        } else {
+          fromIdx += pageSize;
+        }
       }
     }
     if (map.size === 0) throw new Error("Nenhum contato encontrado para disparo.");

@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 // Webhook público do Telegram (um bot por empresa).
-// Normaliza o update para o mesmo shape do webhook interno de WhatsApp
-// e reencaminha, reaproveitando toda a pipeline (Conversas, IA, Kanban, CSAT).
+// Despacha diretamente para o motor unificado de mensageria e automações.
 export const Route = createFileRoute("/api/public/telegram-webhook")({
   server: {
     handlers: {
@@ -25,7 +24,7 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const { data: inst } = await (supabaseAdmin as any)
             .from("whatsapp_instances")
-            .select("instance_name, company_id, webhook_token, instance_token, provider")
+            .select("id, instance_name, company_id, webhook_token, instance_token, provider")
             .eq("webhook_token", token)
             .eq("provider", "telegram")
             .maybeSingle();
@@ -43,8 +42,8 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
           const texto: string = msg?.text ?? msg?.caption ?? "";
           const botToken = inst.instance_token as string | null;
 
-          // Resolve URL pública do arquivo, quando houver mídia.
-          let message: any = { conversation: texto };
+          let mediaUrl: string | null = null;
+          let mediaType: string = "text";
           if (botToken) {
             const { tgFileUrl } = await import("@/lib/telegram.server");
             const photo = Array.isArray(msg?.photo) ? msg.photo[msg.photo.length - 1] : null;
@@ -52,62 +51,102 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
             if (media?.file_id) {
               const fileUrl = await tgFileUrl(botToken, media.file_id);
               if (fileUrl) {
-                if (photo) {
-                  message = { imageMessage: { mimetype: "image/jpeg", url: fileUrl, caption: texto || undefined } };
-                } else if (msg?.video) {
-                  message = { videoMessage: { mimetype: msg.video.mime_type || "video/mp4", url: fileUrl, caption: texto || undefined } };
-                } else if (msg?.voice || msg?.audio) {
-                  const a = msg.voice ?? msg.audio;
-                  message = { audioMessage: { mimetype: a.mime_type || "audio/ogg", url: fileUrl } };
-                } else {
-                  message = {
-                    documentMessage: {
-                      mimetype: msg.document?.mime_type || "application/octet-stream",
-                      url: fileUrl,
-                      fileName: msg.document?.file_name || "arquivo",
-                      caption: texto || undefined,
-                    },
-                  };
-                }
+                mediaUrl = fileUrl;
+                if (photo) mediaType = "image";
+                else if (msg?.video) mediaType = "video";
+                else if (msg?.voice || msg?.audio) mediaType = "audio";
+                else mediaType = "document";
               }
             }
           }
 
-          if (!texto && message?.conversation !== undefined && !message.conversation) {
+          if (!texto && !mediaUrl) {
             return new Response("no content", { status: 200 });
           }
 
-          const normalized = {
-            event: "messages.upsert",
-            instance: inst.instance_name,
-            data: {
-              key: {
-                remoteJid: `${chatId}@s.whatsapp.net`,
-                fromMe: false,
-                id: String(msg?.message_id ?? `tg_${Date.now()}`),
-              },
-              message,
-              pushName: nome,
-              messageTimestamp: Number(msg?.date ?? Math.floor(Date.now() / 1000)),
-            },
-          };
+          const providerMessageId = String(msg?.message_id ?? `tg_${Date.now()}`);
 
-          try {
-            const { handleUazapiWebhookInternal } = await import("@/lib/uazapi-webhook.server");
-            await handleUazapiWebhookInternal(inst, normalized);
-          } catch (e: any) {
-            console.warn("[telegram-webhook] handleUazapiWebhookInternal failed", e?.message);
-          }
+          // 1. Persistir mensagem no banco
+          const { data: insertedMsg } = await (supabaseAdmin as any)
+            .from("mensagens")
+            .insert({
+              company_id: inst.company_id,
+              numero: String(chatId),
+              texto: texto || (mediaUrl ? "[Mídia]" : ""),
+              midia_url: mediaUrl,
+              midia_tipo: mediaUrl ? mediaType : null,
+              direcao: "entrada",
+              whatsapp_message_id: providerMessageId,
+              canal_chat: "telegram",
+              autor: "contato",
+              status_envio: "recebido",
+              created_at: new Date().toISOString(),
+            })
+            .select("id")
+            .maybeSingle();
 
-          // Marca o canal do lead e salva o nome do perfil.
-          try {
+          // 2. Atualizar ou criar card no CRM
+          const { data: existingCard } = await (supabaseAdmin as any)
+            .from("crm_cards")
+            .select("id, stage_id")
+            .eq("company_id", inst.company_id)
+            .eq("numero", String(chatId))
+            .maybeSingle();
+
+          let cardId = existingCard?.id || null;
+          if (!existingCard) {
+            const { data: newCard } = await (supabaseAdmin as any)
+              .from("crm_cards")
+              .insert({
+                company_id: inst.company_id,
+                numero: String(chatId),
+                nome,
+                canal_chat: "telegram",
+                canal_entrada: "telegram",
+                ultima_mensagem: texto || "[Mídia]",
+                ultima_em: new Date().toISOString(),
+              })
+              .select("id, stage_id")
+              .maybeSingle();
+            cardId = newCard?.id || null;
+          } else {
             await (supabaseAdmin as any)
               .from("crm_cards")
-              .update({ canal_chat: "telegram", nome })
-              .eq("company_id", inst.company_id)
-              .eq("numero", String(chatId));
-          } catch (e: any) {
-            console.warn("[telegram-webhook] update card falhou", e?.message);
+              .update({
+                canal_chat: "telegram",
+                nome: nome || undefined,
+                ultima_mensagem: texto || "[Mídia]",
+                ultima_em: new Date().toISOString(),
+              })
+              .eq("id", existingCard.id);
+          }
+
+          // 3. Despachar para o motor de automatizações multicanal
+          if (insertedMsg?.id) {
+            const { recordInboundAutomationEvent } = await import("@/lib/automations/inbound-events.server");
+            await recordInboundAutomationEvent({
+              companyId: inst.company_id,
+              messageId: insertedMsg.id,
+              source: "telegram",
+              instanceId: inst.id,
+              payload: {
+                cardId,
+                messageId: insertedMsg.id,
+                phone: String(chatId),
+                text: texto || "",
+                channel: "telegram",
+                instanceId: inst.id,
+                provider: "telegram",
+                externalConversationId: String(chatId),
+                author: "contact",
+                direction: "incoming",
+                kind: mediaUrl ? mediaType : "text",
+                isGroup: Boolean(msg?.chat?.type === "group" || msg?.chat?.type === "supergroup"),
+                stageId: existingCard?.stage_id || null,
+                responderEmAudio: false,
+                isAudioMessage: false,
+              },
+            });
           }
         } catch (e: any) {
           console.warn("[telegram-webhook]", e?.message);

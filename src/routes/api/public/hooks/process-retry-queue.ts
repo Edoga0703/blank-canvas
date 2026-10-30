@@ -11,7 +11,7 @@ function nextDelayMs(tentativas: number) {
 async function processOne(admin: any, item: any): Promise<{ ok: boolean; erro?: string; waId?: string | null; permanent?: boolean }> {
   const rawNumero = String((item as any)?.payload?.numero ?? "");
 
-  const { getInstanceForContact } = await import("@/lib/evolution-helpers");
+  const { getInstanceForContact } = await import("@/lib/whatsapp-helpers");
   const inst = await getInstanceForContact(
     admin,
     item.company_id,

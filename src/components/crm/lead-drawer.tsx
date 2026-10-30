@@ -66,7 +66,7 @@ export interface RespostaExtra {
 export interface Stage { id: string; nome: string; cor: string; }
 export interface Member { user_id: string; email?: string | null; nome?: string | null; }
 
-import { handleChatAction } from "@/lib/evolution.functions";
+import { handleChatAction } from "@/lib/whatsapp.functions";
 import { EncaminharDialog } from "@/components/chat/encaminhar-dialog";
 
 

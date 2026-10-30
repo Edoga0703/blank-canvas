@@ -59,7 +59,7 @@ import {
   FOCOS_ABORDAGEM,
   type ProspectoRow,
 } from "@/lib/prospeccao.functions";
-import { sendWhatsappText, sendWhatsappMedia, sendWhatsappAudio } from "@/lib/evolution.functions";
+import { sendWhatsappText, sendWhatsappMedia, sendWhatsappAudio } from "@/lib/whatsapp.functions";
 import { transcribeAudio } from "@/lib/transcribe.functions";
 import { supabase } from "@/integrations/supabase/client";
 

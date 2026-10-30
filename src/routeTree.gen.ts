@@ -28,6 +28,7 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as AppAgendamentosRouteImport } from './routes/app/agendamentos'
 import { Route as AppAgenteRouteImport } from './routes/app/agente'
 import { Route as AppAgenteAvancadoRouteImport } from './routes/app/agente-avancado'
+import { Route as AppAutomacoesRouteImport } from './routes/app/automacoes'
 import { Route as AppCampanhasRouteImport } from './routes/app/campanhas'
 import { Route as AppCatalogoRouteImport } from './routes/app/catalogo'
 import { Route as AppCheckoutRouteImport } from './routes/app/checkout'
@@ -96,9 +97,7 @@ import { Route as ApiPublicMetaLeadsWebhookRouteImport } from './routes/api/publ
 import { Route as ApiPublicMetaWebhookRouteImport } from './routes/api/public/meta-webhook'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram-webhook'
 import { Route as ApiPublicTrackClickRouteImport } from './routes/api/public/track-click'
-import { Route as ApiPublicUazapiWebhookRouteImport } from './routes/api/public/uazapi-webhook'
-import { Route as ApiPublicWablastWebhookRouteImport } from './routes/api/public/wablast-webhook'
-import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp-webhook'
+import { Route as AppAutomacoesWorkflowIdRouteImport } from './routes/app/automacoes.$workflowId'
 import { Route as AppTreinamentosIndexRouteImport } from './routes/app/treinamentos.index'
 import { Route as AppTreinamentosCourseIdRouteImport } from './routes/app/treinamentos.$courseId'
 import { Route as OauthDriveReturnRouteImport } from './routes/oauth/drive/return'
@@ -113,8 +112,11 @@ import { Route as ApiPublicHooksGoogleCalendarRenewRouteImport } from './routes/
 import { Route as ApiPublicHooksMetaStoriesRouteImport } from './routes/api/public/hooks/meta-stories'
 import { Route as ApiPublicHooksMetaSyncRouteImport } from './routes/api/public/hooks/meta-sync'
 import { Route as ApiPublicHooksProcessAgendamentosRouteImport } from './routes/api/public/hooks/process-agendamentos'
+import { Route as ApiPublicHooksProcessAutomationJobsRouteImport } from './routes/api/public/hooks/process-automation-jobs'
 import { Route as ApiPublicHooksProcessCampaignsRouteImport } from './routes/api/public/hooks/process-campaigns'
+import { Route as ApiPublicHooksProcessInboundFallbacksRouteImport } from './routes/api/public/hooks/process-inbound-fallbacks'
 import { Route as ApiPublicHooksProcessKanbanReguasRouteImport } from './routes/api/public/hooks/process-kanban-reguas'
+import { Route as ApiPublicHooksProcessMetaLeadsRouteImport } from './routes/api/public/hooks/process-meta-leads'
 import { Route as ApiPublicHooksProcessRelatorioIaRouteImport } from './routes/api/public/hooks/process-relatorio-ia'
 import { Route as ApiPublicHooksProcessRetryQueueRouteImport } from './routes/api/public/hooks/process-retry-queue'
 import { Route as ApiPublicHooksWhatsappWatchdogRouteImport } from './routes/api/public/hooks/whatsapp-watchdog'
@@ -219,6 +221,11 @@ const AppAgenteRoute = AppAgenteRouteImport.update({
 const AppAgenteAvancadoRoute = AppAgenteAvancadoRouteImport.update({
   id: '/agente-avancado',
   path: '/agente-avancado',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAutomacoesRoute = AppAutomacoesRouteImport.update({
+  id: '/automacoes',
+  path: '/automacoes',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCampanhasRoute = AppCampanhasRouteImport.update({
@@ -567,22 +574,11 @@ const ApiPublicTrackClickRoute = ApiPublicTrackClickRouteImport.update({
   path: '/api/public/track-click',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicUazapiWebhookRoute = ApiPublicUazapiWebhookRouteImport.update({
-  id: '/api/public/uazapi-webhook',
-  path: '/api/public/uazapi-webhook',
-  getParentRoute: () => rootRouteImport,
+const AppAutomacoesWorkflowIdRoute = AppAutomacoesWorkflowIdRouteImport.update({
+  id: '/$workflowId',
+  path: '/$workflowId',
+  getParentRoute: () => AppAutomacoesRoute,
 } as any)
-const ApiPublicWablastWebhookRoute = ApiPublicWablastWebhookRouteImport.update({
-  id: '/api/public/wablast-webhook',
-  path: '/api/public/wablast-webhook',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicWhatsappWebhookRoute =
-  ApiPublicWhatsappWebhookRouteImport.update({
-    id: '/api/public/whatsapp-webhook',
-    path: '/api/public/whatsapp-webhook',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const AppTreinamentosIndexRoute = AppTreinamentosIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -660,16 +656,34 @@ const ApiPublicHooksProcessAgendamentosRoute =
     path: '/api/public/hooks/process-agendamentos',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksProcessAutomationJobsRoute =
+  ApiPublicHooksProcessAutomationJobsRouteImport.update({
+    id: '/api/public/hooks/process-automation-jobs',
+    path: '/api/public/hooks/process-automation-jobs',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksProcessCampaignsRoute =
   ApiPublicHooksProcessCampaignsRouteImport.update({
     id: '/api/public/hooks/process-campaigns',
     path: '/api/public/hooks/process-campaigns',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksProcessInboundFallbacksRoute =
+  ApiPublicHooksProcessInboundFallbacksRouteImport.update({
+    id: '/api/public/hooks/process-inbound-fallbacks',
+    path: '/api/public/hooks/process-inbound-fallbacks',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksProcessKanbanReguasRoute =
   ApiPublicHooksProcessKanbanReguasRouteImport.update({
     id: '/api/public/hooks/process-kanban-reguas',
     path: '/api/public/hooks/process-kanban-reguas',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksProcessMetaLeadsRoute =
+  ApiPublicHooksProcessMetaLeadsRouteImport.update({
+    id: '/api/public/hooks/process-meta-leads',
+    path: '/api/public/hooks/process-meta-leads',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksProcessRelatorioIaRoute =
@@ -738,6 +752,7 @@ export interface FileRoutesByFullPath {
   '/app/agendamentos': typeof AppAgendamentosRoute
   '/app/agente': typeof AppAgenteRoute
   '/app/agente-avancado': typeof AppAgenteAvancadoRoute
+  '/app/automacoes': typeof AppAutomacoesRouteWithChildren
   '/app/campanhas': typeof AppCampanhasRoute
   '/app/catalogo': typeof AppCatalogoRoute
   '/app/checkout': typeof AppCheckoutRoute
@@ -806,9 +821,7 @@ export interface FileRoutesByFullPath {
   '/api/public/meta-webhook': typeof ApiPublicMetaWebhookRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/api/public/track-click': typeof ApiPublicTrackClickRoute
-  '/api/public/uazapi-webhook': typeof ApiPublicUazapiWebhookRoute
-  '/api/public/wablast-webhook': typeof ApiPublicWablastWebhookRoute
-  '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
+  '/app/automacoes/$workflowId': typeof AppAutomacoesWorkflowIdRoute
   '/app/treinamentos/$courseId': typeof AppTreinamentosCourseIdRoute
   '/oauth/drive/return': typeof OauthDriveReturnRoute
   '/oauth/sheets/return': typeof OauthSheetsReturnRoute
@@ -823,8 +836,11 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/meta-stories': typeof ApiPublicHooksMetaStoriesRoute
   '/api/public/hooks/meta-sync': typeof ApiPublicHooksMetaSyncRoute
   '/api/public/hooks/process-agendamentos': typeof ApiPublicHooksProcessAgendamentosRoute
+  '/api/public/hooks/process-automation-jobs': typeof ApiPublicHooksProcessAutomationJobsRoute
   '/api/public/hooks/process-campaigns': typeof ApiPublicHooksProcessCampaignsRoute
+  '/api/public/hooks/process-inbound-fallbacks': typeof ApiPublicHooksProcessInboundFallbacksRoute
   '/api/public/hooks/process-kanban-reguas': typeof ApiPublicHooksProcessKanbanReguasRoute
+  '/api/public/hooks/process-meta-leads': typeof ApiPublicHooksProcessMetaLeadsRoute
   '/api/public/hooks/process-relatorio-ia': typeof ApiPublicHooksProcessRelatorioIaRoute
   '/api/public/hooks/process-retry-queue': typeof ApiPublicHooksProcessRetryQueueRoute
   '/api/public/hooks/whatsapp-watchdog': typeof ApiPublicHooksWhatsappWatchdogRoute
@@ -853,6 +869,7 @@ export interface FileRoutesByTo {
   '/app/agendamentos': typeof AppAgendamentosRoute
   '/app/agente': typeof AppAgenteRoute
   '/app/agente-avancado': typeof AppAgenteAvancadoRoute
+  '/app/automacoes': typeof AppAutomacoesRouteWithChildren
   '/app/campanhas': typeof AppCampanhasRoute
   '/app/catalogo': typeof AppCatalogoRoute
   '/app/checkout': typeof AppCheckoutRoute
@@ -920,9 +937,7 @@ export interface FileRoutesByTo {
   '/api/public/meta-webhook': typeof ApiPublicMetaWebhookRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/api/public/track-click': typeof ApiPublicTrackClickRoute
-  '/api/public/uazapi-webhook': typeof ApiPublicUazapiWebhookRoute
-  '/api/public/wablast-webhook': typeof ApiPublicWablastWebhookRoute
-  '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
+  '/app/automacoes/$workflowId': typeof AppAutomacoesWorkflowIdRoute
   '/app/treinamentos/$courseId': typeof AppTreinamentosCourseIdRoute
   '/oauth/drive/return': typeof OauthDriveReturnRoute
   '/oauth/sheets/return': typeof OauthSheetsReturnRoute
@@ -937,8 +952,11 @@ export interface FileRoutesByTo {
   '/api/public/hooks/meta-stories': typeof ApiPublicHooksMetaStoriesRoute
   '/api/public/hooks/meta-sync': typeof ApiPublicHooksMetaSyncRoute
   '/api/public/hooks/process-agendamentos': typeof ApiPublicHooksProcessAgendamentosRoute
+  '/api/public/hooks/process-automation-jobs': typeof ApiPublicHooksProcessAutomationJobsRoute
   '/api/public/hooks/process-campaigns': typeof ApiPublicHooksProcessCampaignsRoute
+  '/api/public/hooks/process-inbound-fallbacks': typeof ApiPublicHooksProcessInboundFallbacksRoute
   '/api/public/hooks/process-kanban-reguas': typeof ApiPublicHooksProcessKanbanReguasRoute
+  '/api/public/hooks/process-meta-leads': typeof ApiPublicHooksProcessMetaLeadsRoute
   '/api/public/hooks/process-relatorio-ia': typeof ApiPublicHooksProcessRelatorioIaRoute
   '/api/public/hooks/process-retry-queue': typeof ApiPublicHooksProcessRetryQueueRoute
   '/api/public/hooks/whatsapp-watchdog': typeof ApiPublicHooksWhatsappWatchdogRoute
@@ -969,6 +987,7 @@ export interface FileRoutesById {
   '/app/agendamentos': typeof AppAgendamentosRoute
   '/app/agente': typeof AppAgenteRoute
   '/app/agente-avancado': typeof AppAgenteAvancadoRoute
+  '/app/automacoes': typeof AppAutomacoesRouteWithChildren
   '/app/campanhas': typeof AppCampanhasRoute
   '/app/catalogo': typeof AppCatalogoRoute
   '/app/checkout': typeof AppCheckoutRoute
@@ -1037,9 +1056,7 @@ export interface FileRoutesById {
   '/api/public/meta-webhook': typeof ApiPublicMetaWebhookRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/api/public/track-click': typeof ApiPublicTrackClickRoute
-  '/api/public/uazapi-webhook': typeof ApiPublicUazapiWebhookRoute
-  '/api/public/wablast-webhook': typeof ApiPublicWablastWebhookRoute
-  '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
+  '/app/automacoes/$workflowId': typeof AppAutomacoesWorkflowIdRoute
   '/app/treinamentos/$courseId': typeof AppTreinamentosCourseIdRoute
   '/oauth/drive/return': typeof OauthDriveReturnRoute
   '/oauth/sheets/return': typeof OauthSheetsReturnRoute
@@ -1054,8 +1071,11 @@ export interface FileRoutesById {
   '/api/public/hooks/meta-stories': typeof ApiPublicHooksMetaStoriesRoute
   '/api/public/hooks/meta-sync': typeof ApiPublicHooksMetaSyncRoute
   '/api/public/hooks/process-agendamentos': typeof ApiPublicHooksProcessAgendamentosRoute
+  '/api/public/hooks/process-automation-jobs': typeof ApiPublicHooksProcessAutomationJobsRoute
   '/api/public/hooks/process-campaigns': typeof ApiPublicHooksProcessCampaignsRoute
+  '/api/public/hooks/process-inbound-fallbacks': typeof ApiPublicHooksProcessInboundFallbacksRoute
   '/api/public/hooks/process-kanban-reguas': typeof ApiPublicHooksProcessKanbanReguasRoute
+  '/api/public/hooks/process-meta-leads': typeof ApiPublicHooksProcessMetaLeadsRoute
   '/api/public/hooks/process-relatorio-ia': typeof ApiPublicHooksProcessRelatorioIaRoute
   '/api/public/hooks/process-retry-queue': typeof ApiPublicHooksProcessRetryQueueRoute
   '/api/public/hooks/whatsapp-watchdog': typeof ApiPublicHooksWhatsappWatchdogRoute
@@ -1087,6 +1107,7 @@ export interface FileRouteTypes {
     | '/app/agendamentos'
     | '/app/agente'
     | '/app/agente-avancado'
+    | '/app/automacoes'
     | '/app/campanhas'
     | '/app/catalogo'
     | '/app/checkout'
@@ -1155,9 +1176,7 @@ export interface FileRouteTypes {
     | '/api/public/meta-webhook'
     | '/api/public/telegram-webhook'
     | '/api/public/track-click'
-    | '/api/public/uazapi-webhook'
-    | '/api/public/wablast-webhook'
-    | '/api/public/whatsapp-webhook'
+    | '/app/automacoes/$workflowId'
     | '/app/treinamentos/$courseId'
     | '/oauth/drive/return'
     | '/oauth/sheets/return'
@@ -1172,8 +1191,11 @@ export interface FileRouteTypes {
     | '/api/public/hooks/meta-stories'
     | '/api/public/hooks/meta-sync'
     | '/api/public/hooks/process-agendamentos'
+    | '/api/public/hooks/process-automation-jobs'
     | '/api/public/hooks/process-campaigns'
+    | '/api/public/hooks/process-inbound-fallbacks'
     | '/api/public/hooks/process-kanban-reguas'
+    | '/api/public/hooks/process-meta-leads'
     | '/api/public/hooks/process-relatorio-ia'
     | '/api/public/hooks/process-retry-queue'
     | '/api/public/hooks/whatsapp-watchdog'
@@ -1202,6 +1224,7 @@ export interface FileRouteTypes {
     | '/app/agendamentos'
     | '/app/agente'
     | '/app/agente-avancado'
+    | '/app/automacoes'
     | '/app/campanhas'
     | '/app/catalogo'
     | '/app/checkout'
@@ -1269,9 +1292,7 @@ export interface FileRouteTypes {
     | '/api/public/meta-webhook'
     | '/api/public/telegram-webhook'
     | '/api/public/track-click'
-    | '/api/public/uazapi-webhook'
-    | '/api/public/wablast-webhook'
-    | '/api/public/whatsapp-webhook'
+    | '/app/automacoes/$workflowId'
     | '/app/treinamentos/$courseId'
     | '/oauth/drive/return'
     | '/oauth/sheets/return'
@@ -1286,8 +1307,11 @@ export interface FileRouteTypes {
     | '/api/public/hooks/meta-stories'
     | '/api/public/hooks/meta-sync'
     | '/api/public/hooks/process-agendamentos'
+    | '/api/public/hooks/process-automation-jobs'
     | '/api/public/hooks/process-campaigns'
+    | '/api/public/hooks/process-inbound-fallbacks'
     | '/api/public/hooks/process-kanban-reguas'
+    | '/api/public/hooks/process-meta-leads'
     | '/api/public/hooks/process-relatorio-ia'
     | '/api/public/hooks/process-retry-queue'
     | '/api/public/hooks/whatsapp-watchdog'
@@ -1317,6 +1341,7 @@ export interface FileRouteTypes {
     | '/app/agendamentos'
     | '/app/agente'
     | '/app/agente-avancado'
+    | '/app/automacoes'
     | '/app/campanhas'
     | '/app/catalogo'
     | '/app/checkout'
@@ -1385,9 +1410,7 @@ export interface FileRouteTypes {
     | '/api/public/meta-webhook'
     | '/api/public/telegram-webhook'
     | '/api/public/track-click'
-    | '/api/public/uazapi-webhook'
-    | '/api/public/wablast-webhook'
-    | '/api/public/whatsapp-webhook'
+    | '/app/automacoes/$workflowId'
     | '/app/treinamentos/$courseId'
     | '/oauth/drive/return'
     | '/oauth/sheets/return'
@@ -1402,8 +1425,11 @@ export interface FileRouteTypes {
     | '/api/public/hooks/meta-stories'
     | '/api/public/hooks/meta-sync'
     | '/api/public/hooks/process-agendamentos'
+    | '/api/public/hooks/process-automation-jobs'
     | '/api/public/hooks/process-campaigns'
+    | '/api/public/hooks/process-inbound-fallbacks'
     | '/api/public/hooks/process-kanban-reguas'
+    | '/api/public/hooks/process-meta-leads'
     | '/api/public/hooks/process-relatorio-ia'
     | '/api/public/hooks/process-retry-queue'
     | '/api/public/hooks/whatsapp-watchdog'
@@ -1452,9 +1478,6 @@ export interface RootRouteChildren {
   ApiPublicMetaWebhookRoute: typeof ApiPublicMetaWebhookRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
   ApiPublicTrackClickRoute: typeof ApiPublicTrackClickRoute
-  ApiPublicUazapiWebhookRoute: typeof ApiPublicUazapiWebhookRoute
-  ApiPublicWablastWebhookRoute: typeof ApiPublicWablastWebhookRoute
-  ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
   OauthDriveReturnRoute: typeof OauthDriveReturnRoute
   OauthSheetsReturnRoute: typeof OauthSheetsReturnRoute
   ApiPublicBillingWebhookRoute: typeof ApiPublicBillingWebhookRoute
@@ -1467,8 +1490,11 @@ export interface RootRouteChildren {
   ApiPublicHooksMetaStoriesRoute: typeof ApiPublicHooksMetaStoriesRoute
   ApiPublicHooksMetaSyncRoute: typeof ApiPublicHooksMetaSyncRoute
   ApiPublicHooksProcessAgendamentosRoute: typeof ApiPublicHooksProcessAgendamentosRoute
+  ApiPublicHooksProcessAutomationJobsRoute: typeof ApiPublicHooksProcessAutomationJobsRoute
   ApiPublicHooksProcessCampaignsRoute: typeof ApiPublicHooksProcessCampaignsRoute
+  ApiPublicHooksProcessInboundFallbacksRoute: typeof ApiPublicHooksProcessInboundFallbacksRoute
   ApiPublicHooksProcessKanbanReguasRoute: typeof ApiPublicHooksProcessKanbanReguasRoute
+  ApiPublicHooksProcessMetaLeadsRoute: typeof ApiPublicHooksProcessMetaLeadsRoute
   ApiPublicHooksProcessRelatorioIaRoute: typeof ApiPublicHooksProcessRelatorioIaRoute
   ApiPublicHooksProcessRetryQueueRoute: typeof ApiPublicHooksProcessRetryQueueRoute
   ApiPublicHooksWhatsappWatchdogRoute: typeof ApiPublicHooksWhatsappWatchdogRoute
@@ -1612,6 +1638,13 @@ declare module '@tanstack/react-router' {
       path: '/agente-avancado'
       fullPath: '/app/agente-avancado'
       preLoaderRoute: typeof AppAgenteAvancadoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/automacoes': {
+      id: '/app/automacoes'
+      path: '/automacoes'
+      fullPath: '/app/automacoes'
+      preLoaderRoute: typeof AppAutomacoesRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/campanhas': {
@@ -2090,26 +2123,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTrackClickRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/uazapi-webhook': {
-      id: '/api/public/uazapi-webhook'
-      path: '/api/public/uazapi-webhook'
-      fullPath: '/api/public/uazapi-webhook'
-      preLoaderRoute: typeof ApiPublicUazapiWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/wablast-webhook': {
-      id: '/api/public/wablast-webhook'
-      path: '/api/public/wablast-webhook'
-      fullPath: '/api/public/wablast-webhook'
-      preLoaderRoute: typeof ApiPublicWablastWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/whatsapp-webhook': {
-      id: '/api/public/whatsapp-webhook'
-      path: '/api/public/whatsapp-webhook'
-      fullPath: '/api/public/whatsapp-webhook'
-      preLoaderRoute: typeof ApiPublicWhatsappWebhookRouteImport
-      parentRoute: typeof rootRouteImport
+    '/app/automacoes/$workflowId': {
+      id: '/app/automacoes/$workflowId'
+      path: '/$workflowId'
+      fullPath: '/app/automacoes/$workflowId'
+      preLoaderRoute: typeof AppAutomacoesWorkflowIdRouteImport
+      parentRoute: typeof AppAutomacoesRoute
     }
     '/app/treinamentos/': {
       id: '/app/treinamentos/'
@@ -2209,6 +2228,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksProcessAgendamentosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/process-automation-jobs': {
+      id: '/api/public/hooks/process-automation-jobs'
+      path: '/api/public/hooks/process-automation-jobs'
+      fullPath: '/api/public/hooks/process-automation-jobs'
+      preLoaderRoute: typeof ApiPublicHooksProcessAutomationJobsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/process-campaigns': {
       id: '/api/public/hooks/process-campaigns'
       path: '/api/public/hooks/process-campaigns'
@@ -2216,11 +2242,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksProcessCampaignsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/process-inbound-fallbacks': {
+      id: '/api/public/hooks/process-inbound-fallbacks'
+      path: '/api/public/hooks/process-inbound-fallbacks'
+      fullPath: '/api/public/hooks/process-inbound-fallbacks'
+      preLoaderRoute: typeof ApiPublicHooksProcessInboundFallbacksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/process-kanban-reguas': {
       id: '/api/public/hooks/process-kanban-reguas'
       path: '/api/public/hooks/process-kanban-reguas'
       fullPath: '/api/public/hooks/process-kanban-reguas'
       preLoaderRoute: typeof ApiPublicHooksProcessKanbanReguasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/process-meta-leads': {
+      id: '/api/public/hooks/process-meta-leads'
+      path: '/api/public/hooks/process-meta-leads'
+      fullPath: '/api/public/hooks/process-meta-leads'
+      preLoaderRoute: typeof ApiPublicHooksProcessMetaLeadsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/process-relatorio-ia': {
@@ -2282,6 +2322,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppAutomacoesRouteChildren {
+  AppAutomacoesWorkflowIdRoute: typeof AppAutomacoesWorkflowIdRoute
+}
+
+const AppAutomacoesRouteChildren: AppAutomacoesRouteChildren = {
+  AppAutomacoesWorkflowIdRoute: AppAutomacoesWorkflowIdRoute,
+}
+
+const AppAutomacoesRouteWithChildren = AppAutomacoesRoute._addFileChildren(
+  AppAutomacoesRouteChildren,
+)
+
 interface AppTreinamentosRouteChildren {
   AppTreinamentosCourseIdRoute: typeof AppTreinamentosCourseIdRoute
   AppTreinamentosIndexRoute: typeof AppTreinamentosIndexRoute
@@ -2300,6 +2352,7 @@ interface AppRouteChildren {
   AppAgendamentosRoute: typeof AppAgendamentosRoute
   AppAgenteRoute: typeof AppAgenteRoute
   AppAgenteAvancadoRoute: typeof AppAgenteAvancadoRoute
+  AppAutomacoesRoute: typeof AppAutomacoesRouteWithChildren
   AppCampanhasRoute: typeof AppCampanhasRoute
   AppCatalogoRoute: typeof AppCatalogoRoute
   AppCheckoutRoute: typeof AppCheckoutRoute
@@ -2329,6 +2382,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAgendamentosRoute: AppAgendamentosRoute,
   AppAgenteRoute: AppAgenteRoute,
   AppAgenteAvancadoRoute: AppAgenteAvancadoRoute,
+  AppAutomacoesRoute: AppAutomacoesRouteWithChildren,
   AppCampanhasRoute: AppCampanhasRoute,
   AppCatalogoRoute: AppCatalogoRoute,
   AppCheckoutRoute: AppCheckoutRoute,
@@ -2452,9 +2506,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicMetaWebhookRoute: ApiPublicMetaWebhookRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
   ApiPublicTrackClickRoute: ApiPublicTrackClickRoute,
-  ApiPublicUazapiWebhookRoute: ApiPublicUazapiWebhookRoute,
-  ApiPublicWablastWebhookRoute: ApiPublicWablastWebhookRoute,
-  ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
   OauthDriveReturnRoute: OauthDriveReturnRoute,
   OauthSheetsReturnRoute: OauthSheetsReturnRoute,
   ApiPublicBillingWebhookRoute: ApiPublicBillingWebhookRoute,
@@ -2470,9 +2521,14 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksMetaSyncRoute: ApiPublicHooksMetaSyncRoute,
   ApiPublicHooksProcessAgendamentosRoute:
     ApiPublicHooksProcessAgendamentosRoute,
+  ApiPublicHooksProcessAutomationJobsRoute:
+    ApiPublicHooksProcessAutomationJobsRoute,
   ApiPublicHooksProcessCampaignsRoute: ApiPublicHooksProcessCampaignsRoute,
+  ApiPublicHooksProcessInboundFallbacksRoute:
+    ApiPublicHooksProcessInboundFallbacksRoute,
   ApiPublicHooksProcessKanbanReguasRoute:
     ApiPublicHooksProcessKanbanReguasRoute,
+  ApiPublicHooksProcessMetaLeadsRoute: ApiPublicHooksProcessMetaLeadsRoute,
   ApiPublicHooksProcessRelatorioIaRoute: ApiPublicHooksProcessRelatorioIaRoute,
   ApiPublicHooksProcessRetryQueueRoute: ApiPublicHooksProcessRetryQueueRoute,
   ApiPublicHooksWhatsappWatchdogRoute: ApiPublicHooksWhatsappWatchdogRoute,

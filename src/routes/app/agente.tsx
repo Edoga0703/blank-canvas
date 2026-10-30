@@ -23,7 +23,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { brand } from "@/config/brand";
 import { buildSystemPrompt } from "@/lib/ai-prompt";
-import { testAiReply } from "@/lib/evolution.functions";
+import { testAiReply } from "@/lib/whatsapp.functions";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 

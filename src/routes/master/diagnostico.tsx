@@ -13,10 +13,7 @@ import { HelpTip } from "@/components/help-tip";
 import { getProvidersHealth, getWhatsappFleet, setProviderCapacity, type ProviderHealth, type WhatsappFleet } from "@/lib/provider-monitor.functions";
 import { WhatsappFleetPanel } from "@/components/master/whatsapp-fleet-panel";
 import { Input } from "@/components/ui/input";
-import {
-  testUazapiConnection,
-  type ProviderTestResult,
-} from "@/lib/uazapi-test.functions";
+import { testDapiConnection, type ProviderTestResult } from "@/lib/dapi-test.functions";
 
 export const Route = createFileRoute("/master/diagnostico")({
   component: DiagnosticoPage,
@@ -35,7 +32,7 @@ function loadHistory(): Record<string, Sample[]> {
 function DiagnosticoPage() {
   const fetchHealth = useServerFn(getProvidersHealth);
   const fetchFleet = useServerFn(getWhatsappFleet);
-  const runUazapi = useServerFn(testUazapiConnection);
+  const runDapi = useServerFn(testDapiConnection);
 
   const [fleet, setFleet] = useState<WhatsappFleet | null>(null);
   const [health, setHealth] = useState<ProviderHealth[]>([]);
@@ -94,7 +91,7 @@ function DiagnosticoPage() {
   }, [auto, refresh]);
 
   async function test(key: Key) {
-    const fn = runUazapi;
+    const fn = runDapi;
     try {
       const r = (await fn()) as any;
       const normalized: ProviderTestResult = { provider: key, ...r };

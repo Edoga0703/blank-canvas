@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Copy, Loader2, QrCode, RefreshCw, Smartphone, Wifi } from "lucide-react";
 import { toast } from "sonner";
-import { checkWhatsappStatus, connectWhatsapp } from "@/lib/evolution.functions";
+import { checkWhatsappStatus, connectWhatsapp } from "@/lib/whatsapp.functions";
 
 type Props = {
   open: boolean;

@@ -330,6 +330,22 @@ export const saveProfissionalHorarios = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Validar permisos: un usuario solo puede editar su propio horario a menos que sea admin/gestor
+    if (data.user_id !== userId) {
+      const { data: actorCu } = await supabaseAdmin
+        .from("company_user")
+        .select("role")
+        .eq("company_id", companyId)
+        .eq("user_id", userId)
+        .eq("ativo", true)
+        .maybeSingle();
+      const role = String(actorCu?.role || "").toLowerCase();
+      if (!["owner", "admin", "super_admin", "gestor"].includes(role)) {
+        throw new Error("Permiso insuficiente: solo administradores o gestores pueden modificar horarios de otros profesionales.");
+      }
+    }
+
     const { error } = await supabaseAdmin
       .from("company_user")
       .update({ horarios: data.horarios })

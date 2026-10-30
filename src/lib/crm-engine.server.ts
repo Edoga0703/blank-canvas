@@ -425,7 +425,16 @@ export async function moveCardToStage(
     if (patch.regua_status === undefined) patch.regua_status = "pausada";
   }
 
-  await admin.from("crm_cards").update(patch).eq("id", cardId);
+  const { data: updatedCard, error: updateErr } = await admin
+    .from("crm_cards")
+    .update(patch)
+    .eq("id", cardId)
+    .select("id, stage_id, company_id")
+    .single();
+
+  if (updateErr || !updatedCard) {
+    throw updateErr ?? new Error(`No se pudo actualizar la tarjeta ${cardId}`);
+  }
 
   // Webhooks de saída: venda ganha / lead perdido.
   if (cardInfo?.company_id && (stage?.tipo === "ganho" || stage?.tipo === "perda")) {
@@ -458,7 +467,7 @@ export async function moveCardToStage(
           cardId,
           eventName: metaEvent,
           value: cardInfo.valor ? Number(cardInfo.valor) : undefined,
-          dedupKey: `${cardId}_${stageId}_${metaEvent}_${Date.now()}`,
+          dedupKey: `${cardId}_${stageId}_${metaEvent}`,
         }).catch((e) => console.warn("[moveCardToStage.metaCapi] Error:", e?.message));
       }
     } catch (e: any) {

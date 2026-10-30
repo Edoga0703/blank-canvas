@@ -986,7 +986,7 @@ function Field({ label, value, children }: { label: string; value?: string | nul
 }
 
 const CONEXAO_TIPOS = [
-  { tipo: "whatsapp_uazapi" as const, nome: "Uazapi", desc: "Conexão não-oficial estável (add-on pago)." },
+  
   { tipo: "whatsapp_meta" as const, nome: "API Oficial Meta", desc: "WhatsApp Cloud API oficial (add-on pago)." },
 ];
 

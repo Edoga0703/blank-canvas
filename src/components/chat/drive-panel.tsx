@@ -33,7 +33,7 @@ import {
   getDriveFileContent,
   type DriveItem,
 } from "@/lib/drive.functions";
-import { sendWhatsappMedia } from "@/lib/evolution.functions";
+import { sendWhatsappMedia } from "@/lib/whatsapp.functions";
 
 function waitForOAuth(popup: Window) {
   return new Promise<string | null>((resolve, reject) => {

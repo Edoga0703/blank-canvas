@@ -1,3 +1,11 @@
+function mapProviderToChannel(provider?: string | null): "whatsapp" | "instagram_dm" | "facebook_messenger" | "telegram" {
+  const p = String(provider || "").toLowerCase();
+  if (p === "meta_instagram") return "instagram_dm";
+  if (p === "meta_messenger") return "facebook_messenger";
+  if (p === "telegram") return "telegram";
+  return "whatsapp";
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type {
@@ -98,13 +106,17 @@ async function resolveConnection(
 
   if (!data) throw new Error(`No existe una conexión ${provider} registrada para este evento.`);
 
-  return data as {
+  return {
+    ...data,
+    channel: mapProviderToChannel(data.provider),
+  } as {
     id: string;
     company_id: string;
     user_id: string | null;
     instance_name: string;
     external_connection_id: string | null;
     provider?: string | null;
+    channel: "whatsapp" | "instagram_dm" | "facebook_messenger" | "telegram";
   };
 }
 
@@ -467,25 +479,35 @@ async function persistMessage(
       }
 
       const isUntranscribedAudio = isAudio && (!event.text || !event.text.trim() || summaryText === "[ÁUDIO]");
-      // Desacoplar la ejecución de la IA del ciclo HTTP del webhook para evitar timeouts de D-API (10-15s)
-      // mientras se procesa el buffer de debouncing y la generación del modelo
-      void import("@/lib/inbound-automation.server")
-        .then(({ processInboundAutomation }) =>
-          processInboundAutomation(supabaseAdmin, {
-            companyId: connection.company_id,
-            numero: event.phone,
-            texto: summaryText,
-            inboundMessageId: message.id,
-            stageId: currentCard?.stage_id,
-            responderEmAudio: isAudio,
-            isAudioMessage: isUntranscribedAudio,
-          }),
-        )
-        .catch((automationError) => {
-          console.error("[ingest.automation] Error al ejecutar automatización de CRM/IA en segundo plano:", automationError);
-        });
+
+      const { recordInboundAutomationEvent } = await import("@/lib/automations/inbound-events.server");
+      await recordInboundAutomationEvent({
+        companyId: connection.company_id,
+        messageId: message.id,
+        source: connection.provider || "dapi",
+        instanceId: connection.id,
+        occurredAt: event.occurredAt,
+        payload: {
+          cardId: currentCard?.id || null,
+          messageId: message.id,
+          phone: event.phone,
+          text: summaryText,
+          channel: connection.channel,
+          instanceId: connection.id,
+          provider: connection.provider,
+          externalConversationId: event.phone,
+          author: "contact",
+          direction: "incoming",
+          kind: event.attachments?.[0]?.kind || "text",
+          isGroup: Boolean((event.raw as any)?.data?.is_group || event.phone.includes("@g.us")),
+          stageId: currentCard?.stage_id || null,
+          responderEmAudio: isAudio,
+          isAudioMessage: isUntranscribedAudio,
+        },
+      });
     } catch (automationError) {
-      console.error("[ingest.automation] Error al ejecutar automatización de CRM/IA:", automationError);
+      console.error("[ingest.automation] Error al registrar automatización:", automationError);
+      throw automationError;
     }
   } else if (event.direction === "outgoing") {
     try {

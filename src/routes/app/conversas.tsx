@@ -44,7 +44,7 @@ import { reactMessage, editMessage, deleteMessage } from "@/lib/message-actions.
 import { toast } from "sonner";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { AvatarViewer } from "@/components/ui/avatar-viewer";
-import { sendWhatsappText, setContactIaActive, sendWhatsappMedia, sendWhatsappAudio, getWhatsappProfilePic, handleChatAction, syncWhatsappHistory } from "@/lib/evolution.functions";
+import { sendWhatsappText, setContactIaActive, sendWhatsappMedia, sendWhatsappAudio, getWhatsappProfilePic, handleChatAction, syncWhatsappHistory } from "@/lib/whatsapp.functions";
 import { QuickScheduleDialog } from "@/components/agenda/quick-schedule-dialog";
 import { LeadDrawer, LeadDetailsPanel, LeadTagsInline, type LeadCard, type Stage, type Member } from "@/components/crm/lead-drawer";
 import { GrupoDetailsPanel } from "@/components/chat/grupo-details-panel";

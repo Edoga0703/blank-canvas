@@ -18,7 +18,7 @@ import {
 import {
   analisarAtendimentosAtivos, listarContatosEnvioRelatorio, panoramaAtendimentos,
 } from "@/lib/atendimento-relatorios.functions";
-import { sendWhatsappMedia } from "@/lib/evolution.functions";
+import { sendWhatsappMedia } from "@/lib/whatsapp.functions";
 import { brand } from "@/config/brand";
 
 export const Route = createFileRoute("/app/relatorios")({

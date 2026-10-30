@@ -271,6 +271,7 @@ export function AppShell({
     { to: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/app/conversas", label: "Conversas", icon: Inbox },
     { to: "/app/crm", label: "CRM Kanban", icon: KanbanSquare },
+    { to: "/app/automacoes", label: "Automações", icon: Workflow },
     { to: "/app/contatos", label: "Contatos", icon: Contact },
     { to: "/app/agendamentos", label: "Agendamentos", icon: CalendarClock },
     { to: "/app/respostas-rapidas", label: "Respostas Rápidas", icon: Bolt },

@@ -159,7 +159,7 @@ function AddonsPage() {
           {editing && (
             <div className="grid grid-cols-2 gap-4">
               <Field label="Nome"><Input value={editing.nome ?? ""} onChange={(e) => setEditing({ ...editing, nome: e.target.value })} /></Field>
-              <Field label="Slug"><Input value={editing.slug ?? ""} onChange={(e) => setEditing({ ...editing, slug: e.target.value })} placeholder="conexao-uazapi" /></Field>
+              <Field label="Slug"><Input value={editing.slug ?? ""} onChange={(e) => setEditing({ ...editing, slug: e.target.value })} placeholder="conexao-custom" /></Field>
               <Field label="Descrição" full>
                 <Textarea rows={2} value={editing.descricao ?? ""} onChange={(e) => setEditing({ ...editing, descricao: e.target.value })} />
               </Field>
@@ -167,7 +167,7 @@ function AddonsPage() {
                 <select className="w-full h-10 px-3 rounded-md border bg-background text-sm"
                   value={editing.tipo ?? "custom"}
                   onChange={(e) => setEditing({ ...editing, tipo: e.target.value as any })}>
-                  <option value="whatsapp_uazapi">WhatsApp Uazapi</option>
+                  
                   <option value="whatsapp_meta">WhatsApp API Oficial (Meta)</option>
                   <option value="custom">Outro</option>
                 </select>

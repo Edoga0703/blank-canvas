@@ -71,7 +71,7 @@ export async function getActiveInstanceForContact(
   userId?: string,
 ): Promise<WaInstance | null> {
   try {
-    const { getInstanceForContact } = await import("@/lib/evolution-helpers");
+    const { getInstanceForContact } = await import("@/lib/whatsapp-helpers");
     const inst = await getInstanceForContact(
       supabaseAdmin,
       companyId,

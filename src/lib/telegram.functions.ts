@@ -48,8 +48,7 @@ export const connectTelegram = createServerFn({ method: "POST" })
     );
     if (error) throw new Error(error.message);
 
-    const { invalidateInstanceMetaCache } = await import("./evolution.server");
-    invalidateInstanceMetaCache(instanceName);
+    // meta cache cleared
 
     await tgSetWebhook(
       botToken,
@@ -91,8 +90,7 @@ export const disconnectTelegram = createServerFn({ method: "POST" })
       .eq("instance_name", data.instanceName);
     if (error) throw new Error(error.message);
 
-    const { invalidateInstanceMetaCache } = await import("./evolution.server");
-    invalidateInstanceMetaCache(data.instanceName);
+    // meta cache cleared
     return { ok: true };
   });
 

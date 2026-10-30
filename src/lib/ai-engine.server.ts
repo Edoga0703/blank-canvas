@@ -863,7 +863,7 @@ export async function processAiResponse(
         console.warn("[ai-engine] Presence error (ignoring):", e);
       }
       
-      const { extractWhatsappMessageId } = await import("@/lib/evolution-helpers");
+      const { extractWhatsappMessageId } = await import("@/lib/whatsapp-helpers");
 
       // Enviar mensagem (em áudio quando o cliente mandou áudio)
       try {

@@ -75,7 +75,7 @@ export const enviarCartaoContato = createServerFn({ method: "POST" })
       throw new Error("O envio para grupos não está habilitado.");
     }
 
-    const { getInstanceForContact, extractWhatsappMessageId } = await import("./evolution-helpers");
+    const { getInstanceForContact, extractWhatsappMessageId } = await import("./whatsapp-helpers");
     const { waSendText } = await import("./wa-dispatch.server");
 
     let waId: string | null = null;

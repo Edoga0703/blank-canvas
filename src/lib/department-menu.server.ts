@@ -1,6 +1,6 @@
 import { assignCardToSector } from "./sector-assignment.server";
 import { getActiveInstance, waSendText } from "./wa-dispatch.server";
-import { extractWhatsappMessageId } from "./evolution-helpers";
+import { extractWhatsappMessageId } from "./whatsapp-helpers";
 
 type Admin = any;
 type MenuOption = { numero: string; department_id: string; label: string };

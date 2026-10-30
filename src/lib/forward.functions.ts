@@ -160,7 +160,7 @@ export const encaminharMensagem = createServerFn({ method: "POST" })
       for (const c of (cards ?? []) as any[]) cardsPorNumero.set(String(c.numero), c);
     }
 
-    const { getInstanceForContact, extractWhatsappMessageId } = await import("./evolution-helpers");
+    const { getInstanceForContact, extractWhatsappMessageId } = await import("./whatsapp-helpers");
     const { waSendText, waSendMedia, waSendAudio } = await import("./wa-dispatch.server");
     const mediaTypeEnvio = (midiaTipo === "image" || midiaTipo === "video" || midiaTipo === "document")
       ? midiaTipo : "document";

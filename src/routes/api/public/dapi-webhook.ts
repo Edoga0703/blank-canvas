@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { ingestMessagingEvent } from "@/lib/messaging/ingest.server";
@@ -225,7 +226,7 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
       POST: async ({ request }) => {
         try {
           const url = new URL(request.url);
-          const token = (url.searchParams.get("t") || request.headers.get("x-webhook-token") || "").trim();
+          const token = (request.headers.get("x-webhook-token") || url.searchParams.get("t") || "").trim();
 
           const rawText = await request.text();
           let body: any = {};
@@ -252,8 +253,17 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
             return new Response("Unauthorized or unknown session", { status: 401 });
           }
 
-          if (inst.webhook_token && inst.webhook_token !== token) {
-            console.warn(`[dapi-webhook] Token inválido o ausente para sessionId=${sessionId}`);
+          // Se exige al menos un secreto configurado; cualquiera de los dos permite autenticar la entrega.
+          const serverSecret = (process.env.DAPI_WEBHOOK_SECRET || "").trim();
+          const instanceSecret = String(inst.webhook_token || "").trim();
+          const matches = (candidate: string) => {
+            if (!candidate || !token) return false;
+            const a = Buffer.from(candidate);
+            const b = Buffer.from(token);
+            return a.length === b.length && timingSafeEqual(a, b);
+          };
+          if ((!serverSecret && !instanceSecret) || (!matches(serverSecret) && !matches(instanceSecret))) {
+            console.warn(`[dapi-webhook] Autenticación inválida para sessionId=${sessionId}`);
             return new Response("Unauthorized webhook token", { status: 401 });
           }
 

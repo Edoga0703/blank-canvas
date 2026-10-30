@@ -15,6 +15,8 @@ export async function processInboundAutomation(
     stageId?: string | null;
     responderEmAudio?: boolean;
     isAudioMessage?: boolean;
+    instanceId?: string | null;
+    channel?: string | null;
   },
 ) {
   const { companyId, numero, texto, inboundMessageId } = params;
@@ -50,6 +52,29 @@ export async function processInboundAutomation(
     }
     void triggerBackgroundLeadAudit();
     return { engine: "none", reason: "audio_inbound_human_attention" };
+  }
+
+  // 0c) Verificar control de conversación (Humano vs Workflow) scoped por instancia
+  try {
+    const { getConversationControl } = await import("@/lib/automations/conversation-control.server");
+    const control = await getConversationControl({
+      companyId,
+      externalConversationId: numero,
+      instanceId: params.instanceId,
+    });
+    if (control.ownerKind === "human") {
+      console.log(`[inbound] Conversación ${numero} (instancia: ${params.instanceId || 'general'}) controlada por asesor humano. Silenciando IA libre.`);
+      void triggerBackgroundLeadAudit();
+      return { engine: "none", reason: "human_control" };
+    }
+    if (control.ownerKind === "workflow" && control.leaseUntil && control.leaseUntil.getTime() > Date.now()) {
+      console.log(`[inbound] Conversación ${numero} (instancia: ${params.instanceId || 'general'}) controlada por Workflow activo ${control.ownerExecutionId}. Silenciando IA libre.`);
+      void triggerBackgroundLeadAudit();
+      return { engine: "workflow", executionId: control.ownerExecutionId };
+    }
+  } catch (wfCtrlErr) {
+    // Un fallo del árbitro no autoriza respuestas libres de IA.
+    throw wfCtrlErr;
   }
 
   // 0b) Pesquisa de satisfação respondida no próprio chat (quando ativa para este contato).

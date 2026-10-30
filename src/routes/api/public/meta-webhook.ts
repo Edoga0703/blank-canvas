@@ -667,17 +667,37 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                 }
               }
 
-              // 5. Automação / Atendimento IA
+              // 5. Automação / Atendimento IA (Workflow primero, luego IA con arbitraje)
               const effectiveText = text || (mediaType ? `[${mediaType.toUpperCase()}]` : "");
               if (effectiveText) {
-                const { processInboundAutomation } = await import("@/lib/inbound-automation.server");
-                await processInboundAutomation(supabaseAdmin, {
+                const channel = inst.provider === "meta_instagram" ? "instagram_dm" : "facebook_messenger";
+                const eventPayload = {
+                  cardId: currentCard?.id || null,
+                  messageId: insertedMsg.id,
+                  phone: senderId,
+                  text: effectiveText,
+                  channel,
+                  instanceId: inst.id,
+                  provider: inst.provider,
+                  externalConversationId: senderId,
+                  author: "contact",
+                  direction: "incoming",
+                  kind: mediaType || "text",
+                };
+
+                const { recordInboundAutomationEvent } = await import("@/lib/automations/inbound-events.server");
+                await recordInboundAutomationEvent({
                   companyId: inst.company_id,
-                  numero: senderId,
-                  texto: effectiveText,
-                  inboundMessageId: stableMessageId,
-                  stageId: currentCard?.stage_id,
-                  isAudioMessage: mediaType === "audio",
+                  messageId: insertedMsg.id,
+                  source: inst.provider,
+                  instanceId: inst.id,
+                  payload: {
+                    ...eventPayload,
+                    isGroup: false,
+                    stageId: currentCard?.stage_id || null,
+                    responderEmAudio: false,
+                    isAudioMessage: false,
+                  },
                 });
               }
 

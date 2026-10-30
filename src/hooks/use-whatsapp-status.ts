@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { checkWhatsappStatus } from "@/lib/evolution.functions";
+import { checkWhatsappStatus } from "@/lib/whatsapp.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 type Status = "connected" | "connecting" | "disconnected" | "unknown";

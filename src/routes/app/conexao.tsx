@@ -23,7 +23,7 @@ import {
   connectWhatsapp, connectDapiOfficial, checkWhatsappStatus, disconnectWhatsapp, deleteWhatsapp,
   reconfigureWebhook, listWhatsappInstances,
   setWhatsappPaused,
-} from "@/lib/evolution.functions";
+} from "@/lib/whatsapp.functions";
 import { usePlanFeatures } from "@/hooks/use-plan-features";
 import { PlanUsageBadge } from "@/components/plan-usage-badge";
 import { NovaConexaoDialog } from "@/components/conexao/nova-conexao-dialog";

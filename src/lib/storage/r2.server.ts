@@ -20,9 +20,9 @@ export type StoredMediaObject = {
 };
 
 const R2_DEFAULTS: Record<string, string> = {
-  R2_ACCOUNT_ID: "3bc2408cba1eadcd78d9ccdb0a8c987d",
-  R2_ACCESS_KEY_ID: "a0048ab1cf7078594e2057b9b31131de",
-  R2_SECRET_ACCESS_KEY: "328e9326f2e6adad6740f7ea6d1cf64ded1d4727e95408ad5fb4451ff5d29a3c",
+  R2_ACCOUNT_ID: "",
+  R2_ACCESS_KEY_ID: "",
+  R2_SECRET_ACCESS_KEY: "",
   R2_BUCKET: "capiversa-media",
   R2_MAX_FILE_BYTES: "52428800",
   R2_SIGNED_URL_TTL_SECONDS: "900",

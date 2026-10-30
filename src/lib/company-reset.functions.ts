@@ -40,8 +40,14 @@ export const resetCompanyData = createServerFn({ method: "POST" })
       "servicos",
       "csat_respostas",
       "audit_log",
+      "automation_step_runs",
+      "automation_jobs",
+      "automation_executions",
+      "automation_events",
+      "automation_conversation_control",
+      "automation_workflow_versions",
+      "automation_workflows",
       "automation_logs",
-      "automation_flows",
       "ai_training_data",
       "agent_ai_configs"
     ];

@@ -14,6 +14,407 @@ export type Database = {
   }
   public: {
     Tables: {
+      automation_workflows: {
+        Row: {
+          active_version_id: string | null
+          archived_at: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          active_version_id?: string | null
+          archived_at?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          active_version_id?: string | null
+          archived_at?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_workflows_active_version_fk"
+            columns: ["active_version_id"]
+            isOneToOne: false
+            referencedRelation: "automation_workflow_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_workflow_versions: {
+        Row: {
+          checksum: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          graph: Json
+          id: string
+          published_at: string | null
+          published_by: string | null
+          schema_version: number
+          version_number: number
+          workflow_id: string
+        }
+        Insert: {
+          checksum?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          graph: Json
+          id?: string
+          published_at?: string | null
+          published_by?: string | null
+          schema_version?: number
+          version_number: number
+          workflow_id: string
+        }
+        Update: {
+          checksum?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          graph?: Json
+          id?: string
+          published_at?: string | null
+          published_by?: string | null
+          schema_version?: number
+          version_number?: number
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_workflow_versions_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "automation_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_events: {
+        Row: {
+          actor_id: string | null
+          attempts: number
+          company_id: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          event_name: string
+          id: string
+          idempotency_key: string
+          last_error: string | null
+          lease_owner: string | null
+          lease_until: string | null
+          occurred_at: string
+          payload: Json
+          processing_state: string
+          source: string
+        }
+        Insert: {
+          actor_id?: string | null
+          attempts?: number
+          company_id: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          event_name: string
+          id?: string
+          idempotency_key: string
+          last_error?: string | null
+          lease_owner?: string | null
+          lease_until?: string | null
+          occurred_at?: string
+          payload?: Json
+          processing_state?: string
+          source: string
+        }
+        Update: {
+          actor_id?: string | null
+          attempts?: number
+          company_id?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          event_name?: string
+          id?: string
+          idempotency_key?: string
+          last_error?: string | null
+          lease_owner?: string | null
+          lease_until?: string | null
+          occurred_at?: string
+          payload?: Json
+          processing_state?: string
+          source?: string
+        }
+        Relationships: []
+      }
+      automation_executions: {
+        Row: {
+          company_id: string
+          context: Json
+          correlation_id: string | null
+          created_at: string
+          current_node_id: string | null
+          error_code: string | null
+          error_summary: string | null
+          event_id: string | null
+          external_conversation_id: string | null
+          finished_at: string | null
+          id: string
+          source_channel: string | null
+          source_instance_id: string | null
+          started_at: string | null
+          status: string
+          subject_id: string | null
+          subject_type: string | null
+          wake_at: string | null
+          workflow_id: string
+          workflow_version_id: string
+        }
+        Insert: {
+          company_id: string
+          context?: Json
+          correlation_id?: string | null
+          created_at?: string
+          current_node_id?: string | null
+          error_code?: string | null
+          error_summary?: string | null
+          event_id?: string | null
+          external_conversation_id?: string | null
+          finished_at?: string | null
+          id?: string
+          source_channel?: string | null
+          source_instance_id?: string | null
+          started_at?: string | null
+          status?: string
+          subject_id?: string | null
+          subject_type?: string | null
+          wake_at?: string | null
+          workflow_id: string
+          workflow_version_id: string
+        }
+        Update: {
+          company_id?: string
+          context?: Json
+          correlation_id?: string | null
+          created_at?: string
+          current_node_id?: string | null
+          error_code?: string | null
+          error_summary?: string | null
+          event_id?: string | null
+          external_conversation_id?: string | null
+          finished_at?: string | null
+          id?: string
+          source_channel?: string | null
+          source_instance_id?: string | null
+          started_at?: string | null
+          status?: string
+          subject_id?: string | null
+          subject_type?: string | null
+          wake_at?: string | null
+          workflow_id?: string
+          workflow_version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_executions_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "automation_workflows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_executions_workflow_version_id_fkey"
+            columns: ["workflow_version_id"]
+            isOneToOne: false
+            referencedRelation: "automation_workflow_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_step_runs: {
+        Row: {
+          attempt: number
+          company_id: string
+          duration_ms: number | null
+          error_code: string | null
+          error_summary: string | null
+          execution_id: string
+          external_request_id: string | null
+          finished_at: string | null
+          id: string
+          input_redacted: Json
+          node_id: string
+          output_redacted: Json
+          selected_port: string | null
+          started_at: string
+          status: string
+        }
+        Insert: {
+          attempt?: number
+          company_id: string
+          duration_ms?: number | null
+          error_code?: string | null
+          error_summary?: string | null
+          execution_id: string
+          external_request_id?: string | null
+          finished_at?: string | null
+          id?: string
+          input_redacted?: Json
+          node_id: string
+          output_redacted?: Json
+          selected_port?: string | null
+          started_at?: string
+          status: string
+        }
+        Update: {
+          attempt?: number
+          company_id?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          error_summary?: string | null
+          execution_id?: string
+          external_request_id?: string | null
+          finished_at?: string | null
+          id?: string
+          input_redacted?: Json
+          node_id?: string
+          output_redacted?: Json
+          selected_port?: string | null
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_step_runs_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "automation_executions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_jobs: {
+        Row: {
+          attempts: number
+          company_id: string
+          created_at: string
+          execution_id: string
+          id: string
+          idempotency_key: string
+          last_error: string | null
+          lease_owner: string | null
+          lease_until: string | null
+          max_attempts: number
+          node_id: string
+          run_after: string
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          company_id: string
+          created_at?: string
+          execution_id: string
+          id?: string
+          idempotency_key: string
+          last_error?: string | null
+          lease_owner?: string | null
+          lease_until?: string | null
+          max_attempts?: number
+          node_id: string
+          run_after?: string
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          company_id?: string
+          created_at?: string
+          execution_id?: string
+          id?: string
+          idempotency_key?: string
+          last_error?: string | null
+          lease_owner?: string | null
+          lease_until?: string | null
+          max_attempts?: number
+          node_id?: string
+          run_after?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_jobs_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "automation_executions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_conversation_control: {
+        Row: {
+          card_id: string | null
+          changed_by: string | null
+          company_id: string
+          external_conversation_id: string
+          id: string
+          instance_id: string | null
+          lease_until: string | null
+          owner_execution_id: string | null
+          owner_kind: string
+          reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          card_id?: string | null
+          changed_by?: string | null
+          company_id: string
+          external_conversation_id: string
+          id?: string
+          instance_id?: string | null
+          lease_until?: string | null
+          owner_execution_id?: string | null
+          owner_kind?: string
+          reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          card_id?: string | null
+          changed_by?: string | null
+          company_id?: string
+          external_conversation_id?: string
+          id?: string
+          instance_id?: string | null
+          lease_until?: string | null
+          owner_execution_id?: string | null
+          owner_kind?: string
+          reason?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       message_attachments: {
         Row: {
           attachment_key: string

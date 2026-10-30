@@ -516,22 +516,7 @@ export async function sendMetaConversionForLead(input: SendConversionInput): Pro
     }
   }
 
-  // Deduplicación estricta
   const dedupKey = input.dedupKey || `${card.id}_${eventName}_${Math.floor(Date.now() / (1000 * 60 * 30))}`;
-  try {
-    const { data: existingLog } = await (supabaseAdmin as any)
-      .from("meta_capi_event_log")
-      .select("id, status")
-      .eq("company_id", companyId)
-      .eq("dedup_key", dedupKey)
-      .maybeSingle();
-
-    if (existingLog && existingLog.status === "sent") {
-      return { ok: true, status: "skipped", error: "Evento ya enviado previamente (dedup_key)." };
-    }
-  } catch {
-    // Si la tabla no existe aún, continuar
-  }
 
   // Resolver dataset_id (Pixel ID) o WABA ID
   let targetDatasetId = cfg.dataset_id?.trim() || "";
@@ -679,6 +664,22 @@ export async function sendMetaConversionForLead(input: SendConversionInput): Pro
     requestBody.test_event_code = activeTestCode.trim();
   }
 
+  const leaseOwner = globalThis.crypto.randomUUID();
+  const { data: reservedLogId, error: reserveErr } = await (supabaseAdmin as any)
+    .rpc("meta_capi_reserve_event", {
+      p_company_id: companyId, p_card_id: card.id, p_dedup_key: dedupKey,
+      p_event_name: resolvedEventName, p_action_source: actionSource,
+      p_dataset_id: endpointId, p_messaging_channel: messagingChannel || null,
+      p_ctwa_clid: card.ctwa_clid || null, p_value: finalValue,
+      p_currency: eventCurrency, p_lease_owner: leaseOwner,
+    });
+  if (reserveErr) {
+    return { ok: false, status: "failed", error: `Reserva CAPI falló: ${reserveErr.message}` };
+  }
+  if (!reservedLogId) {
+    return { ok: true, status: "skipped", error: "Evento CAPI ya enviado o en curso." };
+  }
+
   let resultStatus: "sent" | "failed" = "failed";
   let fbtraceId: string | null = null;
   let responseData: any = null;
@@ -707,37 +708,19 @@ export async function sendMetaConversionForLead(input: SendConversionInput): Pro
     resultStatus = "failed";
   }
 
-  // Guardar log de auditoría
-  try {
-    await (supabaseAdmin as any).from("meta_capi_event_log").insert({
-      company_id: companyId,
-      card_id: card.id,
-      dedup_key: dedupKey,
-      event_name: resolvedEventName,
-      action_source: actionSource,
-      messaging_channel: messagingChannel || null,
-      dataset_id: endpointId,
-      ctwa_clid: card.ctwa_clid || null,
-      value: finalValue,
-      currency: eventCurrency,
-      status: resultStatus,
-      fbtrace_id: fbtraceId,
-      error_message: errorMsg,
-      request_payload: singleEvent,
-      response_payload: responseData,
-    });
-  } catch {
-    // Si la tabla no existe, guardar en lead_evento como fallback
-    try {
-      await (supabaseAdmin as any).from("lead_evento").insert({
-        company_id: companyId,
-        card_id: card.id,
-        tipo: "meta_capi",
-        descricao: `Meta CAPI [${resolvedEventName}] -> ${resultStatus === "sent" ? "Enviado con éxito" : `Fallo: ${errorMsg?.slice(0, 100)}`}`,
-      });
-    } catch {
-      // best-effort
-    }
+  // Cerrar solo la reserva propia. Un lease reemplazado jamás sobrescribe otro intento.
+  const { data: finalized, error: logErr } = await (supabaseAdmin as any)
+    .from("meta_capi_event_log")
+    .update({
+      status: resultStatus, fbtrace_id: fbtraceId, error_message: errorMsg,
+      request_payload: singleEvent, response_payload: responseData,
+      lease_owner: null, lease_until: null,
+    })
+    .eq("id", reservedLogId).eq("lease_owner", leaseOwner)
+    .select("id").maybeSingle();
+  if (logErr || !finalized) {
+    console.error("[meta-capi] No se pudo cerrar reserva:", logErr?.message || "lease perdido");
+    return { ok: false, status: "failed", error: "Estado CAPI incierto; revisar meta_capi_event_log antes de reintentar." };
   }
 
   return {
@@ -815,3 +798,4 @@ export async function sendSyntheticMetaTestEvent(params: {
     };
   }
 }
+

@@ -3,7 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { listWhatsappInstances } from "@/lib/evolution.functions";
+import { listWhatsappInstances } from "@/lib/whatsapp.functions";
 
 export const Route = createFileRoute("/wa/callback")({
   head: () => ({

@@ -27,8 +27,14 @@ function sanitizeMessages(messages: ChatMsg[]): ChatMsg[] {
   return out;
 }
 
-async function fetchJson(url: string, init: RequestInit) {
-  return fetch(url, init);
+async function fetchJson(url: string, init: RequestInit, timeoutMs = 30_000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: init.signal || controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -140,19 +146,31 @@ async function openAiChat(
   baseUrl = "https://api.openai.com/v1",
 ): Promise<string> {
   const url = `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
+  const isDrael = baseUrl.includes("drael.sh");
+  const payload: Record<string, any> = {
+    model,
+    messages,
+    temperature,
+    presence_penalty: 0.2,
+    frequency_penalty: 0.1,
+  };
+  if (isDrael) {
+    payload.tools = []; // Evita activar herramientas implícitas en Drael
+  }
   const res = await fetchJson(url, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model, messages, temperature, presence_penalty: 0.2, frequency_penalty: 0.1 }),
-  });
+    body: JSON.stringify(payload),
+  }, 25_000);
   if (!res.ok) {
     const t = await res.text();
-    const providerName = baseUrl.includes("drael.sh") ? "Drael" : "OpenAI";
+    const providerName = isDrael ? "Drael" : "OpenAI";
     throw new Error(`${providerName}: ${res.status} ${t.slice(0, 200)}`);
   }
   const data = await res.json();
   const choice = data?.choices?.[0]?.message;
-  return choice?.content?.toString().trim() || choice?.reasoning_content?.toString().trim() || "";
+  // NUNCA devolver reasoning_content para no filtrar cadena de pensamiento interna al cliente
+  return choice?.content?.toString().trim() || "";
 }
 
 async function anthropicChat(key: string, model: string, messages: ChatMsg[]): Promise<string> {

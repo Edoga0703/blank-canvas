@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { resolveCompanyId } from "@/lib/evolution-helpers";
+import { resolveCompanyId } from "@/lib/whatsapp-helpers";
 
 export const registerLovableWhatsappConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

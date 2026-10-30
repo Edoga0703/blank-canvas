@@ -14,29 +14,18 @@ export function assertCronRequest(request: Request): Response | null {
   const authHeader = request.headers.get("authorization") ?? "";
   const bearer = authHeader.replace(/^Bearer\s+/i, "").trim();
   const cronHeader = (request.headers.get("x-cron-secret") ?? "").trim();
-  let querySecret = "";
-  try {
-    const url = new URL(request.url);
-    querySecret = (url.searchParams.get("cron_secret") || url.searchParams.get("secret") || "").trim();
-  } catch { /* noop */ }
+  const provided = cronHeader || bearer;
 
-  const provided = cronHeader || bearer || querySecret;
+  const cronSecret = (process.env.CRON_SECRET || "").trim();
 
-  const validSecrets = [
-    process.env.CRON_SECRET,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-  ]
-    .map((s) => (s ?? "").trim())
-    .filter(Boolean);
-
-  if (!validSecrets.length) {
-    return new Response(JSON.stringify({ ok: false, error: "CRON_SECRET não configurado" }), {
+  if (!cronSecret) {
+    return new Response(JSON.stringify({ ok: false, error: "CRON_SECRET não configurado no servidor" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
 
-  if (validSecrets.some((expected) => matches(provided, expected))) {
+  if (provided && matches(provided, cronSecret)) {
     return null;
   }
 
