@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-30T02:59:41.775077+00:00",
+  "generated_at": "2026-10-30T03:36:30.251045+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -39,7 +39,7 @@
     },
     {
       "path": "vite.config.ts",
-      "bytes": 3144
+      "bytes": 4635
     },
     {
       "path": "webhooks.html",
@@ -603,7 +603,7 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 30078
+      "bytes": 30142
     },
     {
       "path": "src/lib/meta-lead-deliveries.server.ts",
@@ -1047,7 +1047,7 @@
     },
     {
       "path": "src/lib/cron-auth.server.ts",
-      "bytes": 1210
+      "bytes": 1255
     },
     {
       "path": "src/lib/meta-capi.server.ts",
@@ -2159,7 +2159,7 @@
     },
     {
       "path": "src/lib/automations/functions.ts",
-      "bytes": 19626
+      "bytes": 19666
     },
     {
       "path": "src/lib/automations/inbound-events.server.ts",
@@ -2287,7 +2287,7 @@
     },
     {
       "path": "src/integrations/supabase/client.server.ts",
-      "bytes": 2709
+      "bytes": 2928
     },
     {
       "path": "src/integrations/supabase/auth-attacher.ts",
