@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-30T07:01:51.013909+00:00",
+  "generated_at": "2026-10-30T07:37:11.252553+00:00",
   "files": [
     {
       "path": "roadmap.md",
@@ -143,7 +143,7 @@
     },
     {
       "path": "src/routeTree.gen.ts",
-      "bytes": 102809
+      "bytes": 103520
     },
     {
       "path": ".lovable/project.json",
@@ -571,7 +571,7 @@
     },
     {
       "path": "src/lib/google.server.ts",
-      "bytes": 15800
+      "bytes": 16222
     },
     {
       "path": "src/lib/handoff.functions.ts",
@@ -755,7 +755,7 @@
     },
     {
       "path": "src/lib/csat.functions.ts",
-      "bytes": 8978
+      "bytes": 8975
     },
     {
       "path": "src/lib/agenda.functions.ts",
@@ -1279,7 +1279,7 @@
     },
     {
       "path": "src/lib/system-health.functions.ts",
-      "bytes": 11369
+      "bytes": 11408
     },
     {
       "path": "src/lib/crm-lead-analyzer.functions.ts",
@@ -2083,7 +2083,7 @@
     },
     {
       "path": "src/components/plugins/plugin-detail-dialog.tsx",
-      "bytes": 19427
+      "bytes": 19348
     },
     {
       "path": "src/components/plugins/plugin-banners.tsx",
@@ -2159,7 +2159,7 @@
     },
     {
       "path": "src/lib/automations/functions.ts",
-      "bytes": 19666
+      "bytes": 19884
     },
     {
       "path": "src/lib/automations/inbound-events.server.ts",
@@ -2263,15 +2263,15 @@
     },
     {
       "path": "src/lib/mcp/tools/list-leads.ts",
-      "bytes": 1591
+      "bytes": 1849
     },
     {
       "path": "src/lib/mcp/tools/list-conversations.ts",
-      "bytes": 1659
+      "bytes": 1917
     },
     {
       "path": "src/lib/mcp/tools/send-whatsapp.ts",
-      "bytes": 2513
+      "bytes": 2771
     },
     {
       "path": "src/lib/messaging/providers/dapi.server.ts",
@@ -2343,7 +2343,7 @@
     },
     {
       "path": "src/routes/app/automacoes.$workflowId.tsx",
-      "bytes": 46919
+      "bytes": 46889
     },
     {
       "path": "src/routes/app/catalogo.tsx",
@@ -2352,6 +2352,10 @@
     {
       "path": "src/routes/app/conversas.tsx",
       "bytes": 196003
+    },
+    {
+      "path": "src/routes/app/automacoes.index.tsx",
+      "bytes": 10742
     },
     {
       "path": "src/routes/app/conexao.tsx",
@@ -2403,7 +2407,7 @@
     },
     {
       "path": "src/routes/app/automacoes.tsx",
-      "bytes": 11464
+      "bytes": 719
     },
     {
       "path": "src/routes/app/respostas-rapidas.tsx",
@@ -2467,7 +2471,7 @@
     },
     {
       "path": "src/routes/master/addons.tsx",
-      "bytes": 12073
+      "bytes": 12097
     },
     {
       "path": "src/routes/master/index.tsx",
@@ -2551,7 +2555,7 @@
     },
     {
       "path": "src/routes/lovable/email/auth/webhook.ts",
-      "bytes": 7598
+      "bytes": 7236
     },
     {
       "path": "src/routes/lovable/email/queue/process.ts",
@@ -3502,6 +3506,10 @@
     {
       "source": "src/routeTree.gen.ts",
       "target": "./routes/api/public/track-click"
+    },
+    {
+      "source": "src/routeTree.gen.ts",
+      "target": "./routes/app/automacoes.index"
     },
     {
       "source": "src/routeTree.gen.ts",
@@ -14476,6 +14484,54 @@
       "target": "@/lib/ensure-session"
     },
     {
+      "source": "src/routes/app/automacoes.index.tsx",
+      "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/app/automacoes.index.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/routes/app/automacoes.index.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/routes/app/automacoes.index.tsx",
+      "target": "@/lib/automations/functions"
+    },
+    {
+      "source": "src/routes/app/automacoes.index.tsx",
+      "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/routes/app/automacoes.index.tsx",
+      "target": "@/components/ui/input"
+    },
+    {
+      "source": "src/routes/app/automacoes.index.tsx",
+      "target": "@/components/ui/label"
+    },
+    {
+      "source": "src/routes/app/automacoes.index.tsx",
+      "target": "@/components/ui/textarea"
+    },
+    {
+      "source": "src/routes/app/automacoes.index.tsx",
+      "target": "@/components/ui/dialog"
+    },
+    {
+      "source": "src/routes/app/automacoes.index.tsx",
+      "target": "@/components/ui/dropdown-menu"
+    },
+    {
+      "source": "src/routes/app/automacoes.index.tsx",
+      "target": "sonner"
+    },
+    {
+      "source": "src/routes/app/automacoes.index.tsx",
+      "target": "lucide-react"
+    },
+    {
       "source": "src/routes/app/conexao.tsx",
       "target": "@tanstack/react-router"
     },
@@ -15314,50 +15370,6 @@
     {
       "source": "src/routes/app/automacoes.tsx",
       "target": "@tanstack/react-router"
-    },
-    {
-      "source": "src/routes/app/automacoes.tsx",
-      "target": "react"
-    },
-    {
-      "source": "src/routes/app/automacoes.tsx",
-      "target": "@tanstack/react-start"
-    },
-    {
-      "source": "src/routes/app/automacoes.tsx",
-      "target": "@/lib/automations/functions"
-    },
-    {
-      "source": "src/routes/app/automacoes.tsx",
-      "target": "@/components/ui/button"
-    },
-    {
-      "source": "src/routes/app/automacoes.tsx",
-      "target": "@/components/ui/input"
-    },
-    {
-      "source": "src/routes/app/automacoes.tsx",
-      "target": "@/components/ui/label"
-    },
-    {
-      "source": "src/routes/app/automacoes.tsx",
-      "target": "@/components/ui/textarea"
-    },
-    {
-      "source": "src/routes/app/automacoes.tsx",
-      "target": "@/components/ui/dialog"
-    },
-    {
-      "source": "src/routes/app/automacoes.tsx",
-      "target": "@/components/ui/dropdown-menu"
-    },
-    {
-      "source": "src/routes/app/automacoes.tsx",
-      "target": "sonner"
-    },
-    {
-      "source": "src/routes/app/automacoes.tsx",
-      "target": "lucide-react"
     },
     {
       "source": "src/routes/app/respostas-rapidas.tsx",
@@ -16862,6 +16874,10 @@
     {
       "source": "src/routes/lovable/email/auth/webhook.ts",
       "target": "@/lib/email-templates/reauthentication"
+    },
+    {
+      "source": "src/routes/lovable/email/auth/webhook.ts",
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/routes/lovable/email/queue/process.ts",
