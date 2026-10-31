@@ -981,3 +981,100 @@ export async function dapiDeleteTemplate(
     return { success: false };
   }
 }
+
+
+/**
+ * Envío de mensaje interactivo tipo Lista (WhatsApp List Message).
+ * Endpoint D-API: POST /api/v1/interactive/send/list
+ */
+export async function dapiSendList(
+  sessionId: string,
+  to: string,
+  list: {
+    description: string;
+    buttonText: string;
+    sections: Array<{
+      title?: string;
+      rows: Array<{
+        rowId: string;
+        title: string;
+        description?: string;
+      }>;
+    }>;
+    title?: string;
+    footerText?: string;
+  },
+  apiKey?: string | null,
+): Promise<{ id: string; provider: string; raw: any }> {
+  const cleanTo = to.includes("@g.us") ? to.trim() : to.replace(/\D/g, "");
+  const payload: Record<string, any> = {
+    sessionId,
+    to: cleanTo,
+    description: list.description,
+    buttonText: list.buttonText,
+    sections: list.sections,
+  };
+  if (list.title) payload.title = list.title;
+  if (list.footerText) payload.footerText = list.footerText;
+
+  const res = await dapiFetch<any>(
+    "/interactive/send/list",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+    15_000,
+    apiKey,
+  );
+
+  const id = extractDapiResponseId(res);
+  return { id, provider: "dapi", raw: res };
+}
+
+/**
+ * Envío de mensaje interactivo con botones Native Flow (Quick Reply, URL, Llamada, Copiar).
+ * Endpoint D-API: POST /api/v1/interactive/send/nativeflow
+ */
+export async function dapiSendButtons(
+  sessionId: string,
+  to: string,
+  nativeFlow: {
+    body: string;
+    buttons: Array<{
+      type: "quick_reply" | "url" | "call" | "copy";
+      title: string;
+      id?: string;
+      url?: string;
+      phone?: string;
+      copy_code?: string;
+    }>;
+    title?: string;
+    footer?: string;
+    imageUrl?: string;
+  },
+  apiKey?: string | null,
+): Promise<{ id: string; provider: string; raw: any }> {
+  const cleanTo = to.includes("@g.us") ? to.trim() : to.replace(/\D/g, "");
+  const payload: Record<string, any> = {
+    sessionId,
+    to: cleanTo,
+    body: nativeFlow.body,
+    buttons: nativeFlow.buttons,
+  };
+  if (nativeFlow.title) payload.title = nativeFlow.title;
+  if (nativeFlow.footer) payload.footer = nativeFlow.footer;
+  if (nativeFlow.imageUrl) payload.imageUrl = nativeFlow.imageUrl;
+
+  const res = await dapiFetch<any>(
+    "/interactive/send/nativeflow",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+    15_000,
+    apiKey,
+  );
+
+  const id = extractDapiResponseId(res);
+  return { id, provider: "dapi", raw: res };
+}

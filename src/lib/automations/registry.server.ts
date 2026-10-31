@@ -306,19 +306,23 @@ registerNode({
       targetInstanceId = config.specificInstanceId;
     }
 
-    if (config.connectionPolicy === "same_as_trigger" && !targetInstanceId) {
-      throw new Error("No se pudo determinar la conexión de origen (same_as_trigger). Configura una conexión específica en el nodo.");
+    if (!targetInstanceId) {
+      const { getActiveInstance } = await import("@/lib/wa-dispatch.server");
+      const activeInst = await getActiveInstance(ctx.companyId).catch(() => null);
+      if (activeInst) {
+        targetInstanceId = (activeInst as any).id || activeInst.instance_name;
+      }
     }
 
     if (!targetInstanceId) {
-      throw new Error("Falta especificar la conexión de envío para este nodo.");
+      throw new Error("No se pudo determinar una conexión de WhatsApp válida para enviar el mensaje.");
     }
 
     const { data: instanceRow } = await (supabaseAdmin as any)
       .from("whatsapp_instances")
       .select("id, company_id, instance_name, instance_token, provider, provider_type, phone_number_id, waba_id, status, paused")
       .eq("company_id", ctx.companyId)
-      .eq("id", targetInstanceId)
+      .or(`id.eq.${targetInstanceId},instance_name.eq.${targetInstanceId}`)
       .maybeSingle();
 
     if (!instanceRow) {

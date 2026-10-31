@@ -315,7 +315,11 @@ export function AppShell({
   const isConversasPath = pathForLayout.startsWith("/app/conversas");
   const isCrmPath = pathForLayout.startsWith("/app/crm");
   const isTrainingPath = loc.pathname.startsWith("/app/treinamentos");
-  const isContainedPath = isConversasPath || isCrmPath;
+  const isAutomacoesCanvasPath =
+    pathForLayout.startsWith("/app/automacoes/") &&
+    pathForLayout !== "/app/automacoes" &&
+    pathForLayout !== "/app/automacoes/";
+  const isContainedPath = isConversasPath || isCrmPath || isAutomacoesCanvasPath;
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("sidebar_collapsed");
@@ -399,7 +403,7 @@ export function AppShell({
             className={
               isTrainingPath
                  ? "relative flex-1 min-w-0 min-h-0 w-full overflow-y-auto bg-background"
-                 : isConversasPath
+                 : isConversasPath || isAutomacoesCanvasPath
                    ? "relative flex-1 min-w-0 min-h-0 w-full overflow-hidden"
                   : isCrmPath
                     ? "relative flex-1 min-w-0 min-h-0 w-full max-w-[1600px] 2xl:max-w-[1920px] mx-auto overflow-hidden px-3 pt-3 pb-24 sm:px-4 sm:pt-4 md:px-8 md:pt-6 lg:pb-6"
@@ -411,7 +415,7 @@ export function AppShell({
                  <div className="h-full w-full animate-pulse rounded-full bg-primary" />
               </div>
             )}
-            <div className={isConversasPath || isCrmPath || isTrainingPath ? "contents" : "max-w-[1600px] 2xl:max-w-[1920px] w-full mx-auto"}>
+            <div className={isConversasPath || isCrmPath || isTrainingPath || isAutomacoesCanvasPath ? "contents" : "max-w-[1600px] 2xl:max-w-[1920px] w-full mx-auto"}>
               {children}
             </div>
           </main>

@@ -470,7 +470,7 @@ function AutomacaoCanvasPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] w-full overflow-hidden bg-background">
+    <div className="flex flex-col h-full w-full overflow-hidden bg-background">
       {/* Top Bar */}
       <div className="h-14 border-b bg-card/80 backdrop-blur px-4 flex items-center justify-between gap-4 z-10 shrink-0">
         <div className="flex items-center gap-3">
