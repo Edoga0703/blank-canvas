@@ -653,11 +653,41 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
             if (["image", "audio", "video", "document", "sticker"].includes(dataType)) {
               // Si D-API no envió URL directa, descargamos el binario base64 pasando direct_path y media_key
               if (!mediaUrl) {
+                const rawMsg =
+                  data.message?.imageMessage ||
+                  data.message?.audioMessage ||
+                  data.message?.videoMessage ||
+                  data.message?.documentMessage ||
+                  data.message?.stickerMessage ||
+                  {};
+                const resolvedDirectPath =
+                  data.direct_path ||
+                  data.directPath ||
+                  data.media_data?.direct_path ||
+                  data.media_data?.directPath ||
+                  rawMsg.directPath ||
+                  rawMsg.direct_path ||
+                  null;
+                const resolvedMediaKey =
+                  data.media_key ||
+                  data.mediaKey ||
+                  data.media_data?.media_key ||
+                  data.media_data?.mediaKey ||
+                  rawMsg.mediaKey ||
+                  rawMsg.media_key ||
+                  null;
+                const resolvedMime =
+                  data.media_data?.mimetype ||
+                  data.mimetype ||
+                  rawMsg.mimetype ||
+                  mimeType ||
+                  (dataType === "sticker" ? "image/webp" : dataType === "audio" ? "audio/ogg" : "application/octet-stream");
+
                 const downloaded = await dapiDownloadMedia(sessionId, messageId, {
-                  direct_path: data.direct_path || data.media_data?.direct_path || null,
-                  media_key: data.media_key || data.media_data?.media_key || null,
-                  mimetype: mimeType,
-                  url: data.url || data.media_data?.url || null,
+                  direct_path: resolvedDirectPath,
+                  media_key: resolvedMediaKey,
+                  mimetype: resolvedMime,
+                  url: data.url || data.media_data?.url || rawMsg.url || null,
                 });
                 if (downloaded?.base64) {
                   const rawB64 = String(downloaded.base64);

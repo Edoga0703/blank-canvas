@@ -817,11 +817,12 @@ export async function dapiDownloadMedia(
     const payload: Record<string, any> = {
       sessionId,
       messageId,
+      media_id: messageId,
+      mimetype: mediaMeta?.mimetype || "application/octet-stream",
       base64: true,
     };
     if (mediaMeta?.direct_path) payload.direct_path = mediaMeta.direct_path;
     if (mediaMeta?.media_key) payload.media_key = mediaMeta.media_key;
-    if (mediaMeta?.mimetype) payload.mimetype = mediaMeta.mimetype;
     if (mediaMeta?.url) payload.url = mediaMeta.url;
 
     const res = await dapiFetch<any>("/media/download", {
