@@ -43,6 +43,7 @@ export const Route = createFileRoute("/app/conexao")({
 });
 
 type Instance = {
+  id?: string;
   instance_name: string;
   display_name?: string | null;
   status: string;
@@ -189,8 +190,9 @@ function ConexoesPage() {
     setBusy(inst.instance_name);
     try {
       const r: any = await connect({ data: { instanceName: inst.instance_name, createNew: false, provider: "dapi" } });
-      if (r?.qrBase64) setQrByInstance((prev) => ({ ...prev, [inst.instance_name]: r.qrBase64 }));
-      setQrDialog({ instanceName: inst.instance_name, qr: r?.qrBase64 ?? null });
+      const targetName = r?.instanceName || inst.instance_name;
+      if (r?.qrBase64) setQrByInstance((prev) => ({ ...prev, [targetName]: r.qrBase64 }));
+      setQrDialog({ instanceName: targetName, qr: r?.qrBase64 ?? null });
       await refresh(true);
     } catch (e: any) { toast.error(e?.message || "Falha ao reconectar"); }
     finally { setBusy(null); }
@@ -207,19 +209,35 @@ function ConexoesPage() {
   }
 
   async function doDisconnect(inst: Instance) {
-    if (!confirm(`Desconectar "${inst.numero || inst.instance_name}"?`)) return;
+    const isConn = inst.status === "connecting";
+    if (!confirm(isConn ? "Cancelar tentativa de conexão?" : `Desconectar "${inst.numero || inst.instance_name}"?`)) return;
     setBusy(inst.instance_name);
+    setInstances((prev) =>
+      prev.map((i) =>
+        i.instance_name === inst.instance_name ? { ...i, status: "disconnected" } : i,
+      ),
+    );
     try {
       await disconnect({ data: { instanceName: inst.instance_name } });
       await refresh(true);
-      toast.success("Desconectado");
-    } catch (e: any) { toast.error(e?.message || "Falha ao desconectar"); }
-    finally { setBusy(null); }
+      toast.success(isConn ? "Conexão cancelada" : "Desconectado");
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao desconectar");
+      await refresh(true);
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function doDelete(inst: Instance) {
     if (!confirm("Excluir conexão? A instância será removida e você precisará reconectar.")) return;
     setBusy(inst.instance_name);
+    // Remoção otimista imediata para que o card suma da tela sem atrasos
+    setInstances((prev) =>
+      prev.filter(
+        (i) => i.instance_name !== inst.instance_name && (!inst.id || i.id !== inst.id),
+      ),
+    );
     try {
       if ((inst.provider ?? "").startsWith("meta_")) {
         const { disconnectMetaChannel } = await import("@/lib/meta.functions");
@@ -231,8 +249,12 @@ function ConexoesPage() {
       await plan.refresh();
       if (expanded === inst.instance_name) setExpanded(null);
       toast.success("Conexão excluída");
-    } catch (e: any) { toast.error(e?.message || "Falha ao excluir conexão"); }
-    finally { setBusy(null); }
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao excluir conexão");
+      await refresh(true);
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function doReconfWebhook(inst: Instance) {
@@ -482,8 +504,8 @@ function ConexoesPage() {
                               <IconAction tip={inst.paused ? "Retomar" : "Pausar"} onClick={() => doTogglePause(inst)} disabled={isBusy || inst.status !== "connected"}>
                                 {inst.paused ? <Play className="size-4" /> : <Pause className="size-4" />}
                               </IconAction>
-                              {inst.status === "connected" && (inst.provider === "dapi" || isOfficial) && (
-                                <IconAction tip="Desconectar" onClick={() => doDisconnect(inst)} disabled={isBusy}>
+                              {(inst.status === "connected" || inst.status === "connecting") && (inst.provider === "dapi" || isOfficial) && (
+                                <IconAction tip={inst.status === "connecting" ? "Cancelar conexão" : "Desconectar"} onClick={() => doDisconnect(inst)} disabled={isBusy}>
                                   <Power className="size-4" />
                                 </IconAction>
                               )}

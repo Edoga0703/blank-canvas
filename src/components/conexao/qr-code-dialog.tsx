@@ -54,8 +54,11 @@ export function QrCodeDialog({ open, instanceName, initialQr, onOpenChange, onCo
     const tick = async () => {
       try {
         const r: any = await check({ data: { instanceName } });
-        if (r?.qrBase64 && typeof r.qrBase64 === "string" && r.qrBase64.startsWith("data:image/")) {
-          setQr(r.qrBase64);
+        if (r?.qrBase64 && typeof r.qrBase64 === "string") {
+          const formatted = r.qrBase64.startsWith("data:image/")
+            ? r.qrBase64
+            : (r.qrBase64.startsWith("iVBOR") || r.qrBase64.startsWith("/9j/") ? `data:image/png;base64,${r.qrBase64}` : r.qrBase64);
+          setQr(formatted);
         }
         if (r?.status) setStatus(r.status);
         if (r?.status === "connected") {
@@ -76,13 +79,20 @@ export function QrCodeDialog({ open, instanceName, initialQr, onOpenChange, onCo
     setQr(null);
     try {
       const r: any = await connect({ data: { instanceName, createNew: false } });
-      if (r?.qrBase64 && typeof r.qrBase64 === "string" && r.qrBase64.startsWith("data:image/")) {
-        setQr(r.qrBase64);
+      const currentQr = r?.qrBase64;
+      if (currentQr && typeof currentQr === "string") {
+        const formatted = currentQr.startsWith("data:image/")
+          ? currentQr
+          : (currentQr.startsWith("iVBOR") || currentQr.startsWith("/9j/") ? `data:image/png;base64,${currentQr}` : currentQr);
+        setQr(formatted);
         toast.message("QR Code atualizado.");
       } else {
         const s: any = await check({ data: { instanceName } });
-        if (s?.qrBase64 && typeof s.qrBase64 === "string" && s.qrBase64.startsWith("data:image/")) {
-          setQr(s.qrBase64);
+        if (s?.qrBase64 && typeof s.qrBase64 === "string") {
+          const formatted = s.qrBase64.startsWith("data:image/")
+            ? s.qrBase64
+            : (s.qrBase64.startsWith("iVBOR") || s.qrBase64.startsWith("/9j/") ? `data:image/png;base64,${s.qrBase64}` : s.qrBase64);
+          setQr(formatted);
           toast.message("QR Code atualizado.");
         }
       }

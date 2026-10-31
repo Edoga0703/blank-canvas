@@ -53,49 +53,88 @@ export const connectWhatsapp = createServerFn({ method: "POST" })
       : existingQuery.order("updated_at", { ascending: false }));
 
     const existing = data.createNew ? null : (dRows?.[0] ?? null);
-    const instanceName = existing?.instance_name || `dapi_${companyId.replace(/-/g, "").slice(0, 8)}_${crypto.randomUUID().slice(0, 4)}`;
-    const webhookToken = existing?.webhook_token || crypto.randomUUID();
-    const webhookUrl = buildWebhookUrl(webhookToken, "dapi");
+    let instanceName = existing?.instance_name || `dapi_${companyId.replace(/-/g, "").slice(0, 8)}_${crypto.randomUUID().slice(0, 4)}`;
+    let webhookToken = existing?.webhook_token || crypto.randomUUID();
+    let webhookUrl = buildWebhookUrl(webhookToken, "dapi");
 
     let qrBase64: string | null = null;
     let pairingCode: string | null = null;
 
-    try {
-      if (existing && !data.createNew) {
-        const { dapiRestartSession } = await import("./dapi.server");
-        await dapiSetWebhookConfig(instanceName, webhookUrl).catch(() => null);
-        await dapiRestartSession(instanceName).catch(() => null);
-      }
-
-      if (!existing || data.createNew) {
+    const startOrRecoverSession = async (name: string): Promise<{ qrcode: string | null; ok: boolean; needNewId?: boolean }> => {
+      // 1. Intentar crear sesión directamente en D-API
+      try {
         const createRes = await dapiCreateSession({
-          sessionId: instanceName,
+          sessionId: name,
           type: "unofficial",
           connectionMode: data.phone ? "pair" : "qr",
           webhookUrl,
           phoneNumber: data.phone || undefined,
           pairPhone: data.phone || undefined,
         });
-        qrBase64 = createRes.qrcode || null;
-      }
+        return { qrcode: createRes?.qrcode || null, ok: true };
+      } catch (cErr: any) {
+        const errMsg = String(cErr?.message || cErr?.body?.error || cErr?.body?.details || "");
+        // Si D-API tiene un registro huérfano con clave única duplicada en su base de datos
+        if (errMsg.includes("unique constraint") || errMsg.includes("duplicate key")) {
+          return { qrcode: null, ok: false, needNewId: true };
+        }
 
-      if (data.phone) {
-        const pairRes = await dapiGetPairingCode(instanceName, data.phone);
-        pairingCode = pairRes.code || null;
-      } else if (!qrBase64) {
-        // En D-API el contenedor tarda de 1 a 3 segundos en generar la primera imagen del QR.
-        // Hacemos hasta 3 intentos breves (1s c/u) para que la respuesta ya devuelva el QR listo.
-        for (let attempt = 0; attempt < 3; attempt++) {
-          await new Promise((res) => setTimeout(res, 1000));
-          const qrRes = await dapiGetQr(instanceName);
-          if (qrRes.qrcode) {
-            qrBase64 = qrRes.qrcode;
-            break;
-          }
+        // Si ya existe la sesión en D-API, intentar configurarle el webhook y reiniciarla
+        try {
+          const { dapiRestartSession } = await import("./dapi.server");
+          await dapiSetWebhookConfig(name, webhookUrl).catch(() => null);
+          await dapiRestartSession(name);
+          return { qrcode: null, ok: true };
+        } catch (rErr: any) {
+          const rMsg = String(rErr?.message || "");
+          console.warn("[dapi.connectWhatsapp] Falló create y restart para:", name, errMsg, rMsg);
+          return { qrcode: null, ok: false, needNewId: true };
         }
       }
-    } catch (dErr: any) {
-      console.warn("[dapi.connectWhatsapp] Erro na sessão D-API:", dErr?.message);
+    };
+
+    let sessionStatus = await startOrRecoverSession(instanceName);
+
+    // Si la sesión no pudo crearse ni reiniciarse (o hubo conflicto de clave en D-API),
+    // generamos un nuevo ID limpio y único
+    if (!sessionStatus.ok && sessionStatus.needNewId) {
+      const oldInstanceName = instanceName;
+      instanceName = `dapi_${companyId.replace(/-/g, "").slice(0, 8)}_${crypto.randomUUID().slice(0, 6)}`;
+      webhookToken = crypto.randomUUID();
+      webhookUrl = buildWebhookUrl(webhookToken, "dapi");
+      console.log(`[dapi.connectWhatsapp] Auto-regenerando sesión WhatsApp: ${oldInstanceName} -> ${instanceName}`);
+
+      sessionStatus = await startOrRecoverSession(instanceName);
+
+      // Si teníamos una fila anterior en Supabase con el nombre viejo en conflicto, actualizarla
+      if (existing?.id) {
+        try {
+          await (sbAdminTok as any)
+            .from("whatsapp_instances")
+            .update({ instance_name: instanceName, webhook_token: webhookToken })
+            .eq("id", existing.id);
+        } catch (uErr) {
+          console.warn("[dapi.updateOldRow]", uErr);
+        }
+      }
+    }
+
+    qrBase64 = sessionStatus.qrcode || null;
+
+    if (data.phone) {
+      const pairRes = await dapiGetPairingCode(instanceName, data.phone);
+      pairingCode = pairRes.code || null;
+    } else if (!qrBase64) {
+      // D-API Whatsmeow tarda de 1 a 3 segundos en emitir el primer QR en frío.
+      // Hacemos hasta 5 intentos breves (1s c/u) para devolver el QR listo de inmediato.
+      for (let attempt = 0; attempt < 5; attempt++) {
+        await new Promise((res) => setTimeout(res, 1000));
+        const qrRes = await dapiGetQr(instanceName);
+        if (qrRes.qrcode) {
+          qrBase64 = qrRes.qrcode;
+          break;
+        }
+      }
     }
 
     await (sbAdminTok as any).from("whatsapp_instances").upsert(
