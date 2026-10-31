@@ -362,8 +362,7 @@ export async function dapiSetWebhookConfig(
       method: "POST",
       body: JSON.stringify({
         enabled: true,
-        type: "single",
-        webhookUrl,
+        type: "per_event",
         events: eventsMap,
       }),
     }).catch(() => null);

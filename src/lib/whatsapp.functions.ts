@@ -152,6 +152,9 @@ export const connectWhatsapp = createServerFn({ method: "POST" })
       { onConflict: "instance_name" },
     );
 
+    // Configurar webhook por eventos en D-API de inmediato
+    dapiSetWebhookConfig(instanceName, webhookUrl).catch(() => null);
+
     return {
       instanceName,
       qrBase64,
@@ -193,15 +196,24 @@ export const checkWhatsappStatus = createServerFn({ method: "POST" })
       const qrRes = await dapiGetQr(row.instance_name);
       currentQr = qrRes.qrcode || null;
     }
-    if (dStatus.status === "connected" && row.status !== "connected") {
-      await (sbAdminTok as any)
-        .from("whatsapp_instances")
-        .update({
-          status: "connected",
-          numero: dStatus.numero || row.numero,
-          last_state_at: new Date().toISOString(),
-        })
-        .eq("instance_name", row.instance_name);
+    if (dStatus.status === "connected") {
+      const needsWebhook = !row.webhook_configured_at;
+      if (needsWebhook && row.webhook_token) {
+        const { dapiSetWebhookConfig } = await import("./dapi.server");
+        const webhookUrl = buildWebhookUrl(row.webhook_token, "dapi");
+        await dapiSetWebhookConfig(row.instance_name, webhookUrl).catch(() => null);
+      }
+      if (row.status !== "connected" || (dStatus.numero && dStatus.numero !== row.numero) || needsWebhook) {
+        await (sbAdminTok as any)
+          .from("whatsapp_instances")
+          .update({
+            status: "connected",
+            numero: dStatus.numero || row.numero,
+            webhook_configured_at: row.webhook_configured_at || new Date().toISOString(),
+            last_state_at: new Date().toISOString(),
+          })
+          .eq("instance_name", row.instance_name);
+      }
     }
     return {
       status: dStatus.status || row.status || "disconnected",
