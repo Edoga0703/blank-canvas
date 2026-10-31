@@ -205,18 +205,24 @@ export const listWhatsappInstances = createServerFn({ method: "POST" })
 
     // Purga automática en caliente de cualquier conexión legada de WhatsApp (Evolution, Uazapi, WaBlast, Lovable)
     if (legacyIds.length > 0) {
-      await (sbAdminTok as any)
-        .from("company_user_instance")
-        .delete()
-        .eq("company_id", companyId)
-        .in("instance_id", legacyIds)
-        .catch(() => null);
-      await (sbAdminTok as any)
-        .from("whatsapp_instances")
-        .delete()
-        .eq("company_id", companyId)
-        .in("id", legacyIds)
-        .catch(() => null);
+      try {
+        await (sbAdminTok as any)
+          .from("company_user_instance")
+          .delete()
+          .eq("company_id", companyId)
+          .in("instance_id", legacyIds);
+      } catch (e) {
+        console.warn("[legacy.purge.company_user_instance]", e);
+      }
+      try {
+        await (sbAdminTok as any)
+          .from("whatsapp_instances")
+          .delete()
+          .eq("company_id", companyId)
+          .in("id", legacyIds);
+      } catch (e) {
+        console.warn("[legacy.purge.whatsapp_instances]", e);
+      }
     }
 
     return { instances: sortInstances(validInstances) };
@@ -303,14 +309,19 @@ export const disconnectWhatsapp = createServerFn({ method: "POST" })
       ? q.eq("instance_name", data.instanceName).limit(1)
       : q.order("updated_at", { ascending: false }).limit(1));
     const row = (rows ?? [])[0] ?? null;
-    if (row?.instance_name) {
+    const targetName = row?.instance_name || data.instanceName;
+    if (targetName) {
       const { dapiDeleteSession } = await import("./dapi.server");
-      try { await dapiDeleteSession(row.instance_name); } catch (e) { console.warn("[dapi.disconnect]", e); }
-      await (sbAdminTok as any)
-        .from("whatsapp_instances")
-        .update({ status: "disconnected", last_state_at: new Date().toISOString() })
-        .eq("company_id", companyId)
-        .eq("instance_name", row.instance_name);
+      try { await dapiDeleteSession(targetName); } catch (e) { console.warn("[dapi.disconnect]", e); }
+      try {
+        await (sbAdminTok as any)
+          .from("whatsapp_instances")
+          .update({ status: "disconnected", last_state_at: new Date().toISOString() })
+          .eq("company_id", companyId)
+          .or(`instance_name.eq.${targetName},id.eq.${targetName}`);
+      } catch (e) {
+        console.warn("[dapi.disconnect.update]", e);
+      }
     }
     return { ok: true };
   });
@@ -330,25 +341,35 @@ export const deleteWhatsapp = createServerFn({ method: "POST" })
       ? q.eq("instance_name", data.instanceName).limit(1)
       : q.order("updated_at", { ascending: false }).limit(1))
       .maybeSingle();
-    if (row?.instance_name) {
-      const prov = String(row.provider || row.provider_type || "dapi");
-      if (prov === "dapi" || prov === "dapi_official" || String(row.instance_name).startsWith("dapi_")) {
+
+    const targetInstanceName = row?.instance_name || data.instanceName;
+
+    if (targetInstanceName) {
+      const prov = String(row?.provider || row?.provider_type || "dapi");
+      if (prov === "dapi" || prov === "dapi_official" || String(targetInstanceName).startsWith("dapi_")) {
         const { dapiDeleteSession } = await import("./dapi.server");
-        try { await dapiDeleteSession(row.instance_name); } catch (e) { console.warn("[dapi.delete]", e); }
+        try { await dapiDeleteSession(targetInstanceName); } catch (e) { console.warn("[dapi.delete]", e); }
       }
-      if (row.id) {
+      if (row?.id) {
+        try {
+          await (sbAdminTok as any)
+            .from("company_user_instance")
+            .delete()
+            .eq("company_id", companyId)
+            .eq("instance_id", row.id);
+        } catch (e) {
+          console.warn("[delete.company_user_instance]", e);
+        }
+      }
+      try {
         await (sbAdminTok as any)
-          .from("company_user_instance")
+          .from("whatsapp_instances")
           .delete()
           .eq("company_id", companyId)
-          .eq("instance_id", row.id)
-          .catch(() => null);
+          .or(`instance_name.eq.${targetInstanceName},id.eq.${targetInstanceName}`);
+      } catch (e) {
+        console.warn("[delete.whatsapp_instances]", e);
       }
-      await (sbAdminTok as any)
-        .from("whatsapp_instances")
-        .delete()
-        .eq("company_id", companyId)
-        .eq("instance_name", row.instance_name);
     }
     return { ok: true };
   });
