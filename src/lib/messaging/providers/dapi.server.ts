@@ -247,7 +247,17 @@ export const dapiProvider: MessagingProvider = {
     }
 
     // Eventos de mensajes entrantes y salientes
-    if (eventName === "messages.received" || eventName === "messages.upsert" || eventName === "messages.sent") {
+    const isMsgEv =
+        eventName === "messages.received" ||
+        eventName === "message.received" ||
+        eventName === "messages.upsert" ||
+        eventName === "message.upsert" ||
+        eventName === "messages.sent" ||
+        eventName === "message.sent" ||
+        eventName === "messages.create" ||
+        eventName === "message.create" ||
+        eventName === "messages";
+      if (isMsgEv) {
       const fromMe = Boolean(data.fromMe ?? data.key?.fromMe) || eventName === "messages.sent";
       const senderPart = parseParticipant(data.from || data.sender || data.key?.remoteJid || data.remoteJid, data);
       const recipientPart = parseParticipant(data.to || data.recipient_id || data.recipient, data);

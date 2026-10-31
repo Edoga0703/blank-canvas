@@ -457,7 +457,17 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
           }
 
           // 3. Manejo de mensajes (messages.received, messages.sent)
-          if (eventName === "messages.received" || eventName === "messages.upsert" || eventName === "messages.sent") {
+          const isMsgEvent =
+            eventName === "messages.received" ||
+            eventName === "message.received" ||
+            eventName === "messages.upsert" ||
+            eventName === "message.upsert" ||
+            eventName === "messages.sent" ||
+            eventName === "message.sent" ||
+            eventName === "messages.create" ||
+            eventName === "message.create" ||
+            eventName === "messages";
+          if (isMsgEvent) {
             const fromMe = Boolean(data.fromMe ?? data.key?.fromMe) || eventName === "messages.sent";
             const senderPart = parseDapiParticipant(data.from || data.sender || data.key?.remoteJid || data.remoteJid, data);
             const recipientPart = parseDapiParticipant(data.to || data.recipient_id || data.recipient, data);
