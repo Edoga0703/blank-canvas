@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-31T21:28:10.292633+00:00",
+  "generated_at": "2026-10-31T22:09:28.018232+00:00",
   "files": [
     {
       "path": "webhooks_security.html",
@@ -1191,7 +1191,7 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 30142
+      "bytes": 30125
     },
     {
       "path": "src/lib/error-capture.ts",
@@ -1475,7 +1475,7 @@
     },
     {
       "path": "src/lib/whatsapp.functions.ts",
-      "bytes": 45887
+      "bytes": 46549
     },
     {
       "path": "src/lib/session-middleware.ts",
@@ -6962,6 +6962,10 @@
     {
       "source": "src/lib/whatsapp.functions.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/whatsapp.functions.ts",
+      "target": "./dapi.server"
     },
     {
       "source": "src/lib/whatsapp.functions.ts",
