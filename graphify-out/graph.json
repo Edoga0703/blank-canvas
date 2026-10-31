@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-31T22:51:57.324702+00:00",
+  "generated_at": "2026-10-31T23:24:13.507039+00:00",
   "files": [
     {
       "path": "webhooks_security.html",
@@ -1863,7 +1863,7 @@
     },
     {
       "path": "src/lib/messaging/providers/dapi.server.ts",
-      "bytes": 12452
+      "bytes": 12754
     },
     {
       "path": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
@@ -2911,7 +2911,7 @@
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
-      "bytes": 32502
+      "bytes": 32850
     },
     {
       "path": "src/routes/api/public/lead-photo.ts",
