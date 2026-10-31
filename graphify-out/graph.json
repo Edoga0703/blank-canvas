@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-31T23:24:13.507039+00:00",
+  "generated_at": "2026-10-31T23:32:47.429806+00:00",
   "files": [
     {
       "path": "webhooks_security.html",
@@ -1191,7 +1191,7 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 32570
+      "bytes": 32596
     },
     {
       "path": "src/lib/error-capture.ts",
@@ -2911,7 +2911,7 @@
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
-      "bytes": 32850
+      "bytes": 34030
     },
     {
       "path": "src/routes/api/public/lead-photo.ts",
