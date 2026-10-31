@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-31T22:09:28.018232+00:00",
+  "generated_at": "2026-10-31T22:51:57.324702+00:00",
   "files": [
     {
       "path": "webhooks_security.html",
@@ -723,7 +723,7 @@
     },
     {
       "path": "src/components/app-shell.tsx",
-      "bytes": 37547
+      "bytes": 37795
     },
     {
       "path": "src/components/notifications-bell.tsx",
@@ -1191,7 +1191,7 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 30125
+      "bytes": 32570
     },
     {
       "path": "src/lib/error-capture.ts",
@@ -1751,7 +1751,7 @@
     },
     {
       "path": "src/lib/automations/registry.server.ts",
-      "bytes": 16985
+      "bytes": 17135
     },
     {
       "path": "src/lib/automations/fallback.server.ts",
@@ -2751,7 +2751,7 @@
     },
     {
       "path": "src/routes/app/automacoes.$workflowId.tsx",
-      "bytes": 46889
+      "bytes": 46875
     },
     {
       "path": "src/routes/app/parceiro.tsx",
@@ -8514,6 +8514,10 @@
     {
       "source": "src/lib/automations/registry.server.ts",
       "target": "./conversation-control.server"
+    },
+    {
+      "source": "src/lib/automations/registry.server.ts",
+      "target": "@/lib/wa-dispatch.server"
     },
     {
       "source": "src/lib/automations/registry.server.ts",
