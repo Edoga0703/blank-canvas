@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-01T19:22:30.189642+00:00",
+  "generated_at": "2026-11-01T19:40:57.830116+00:00",
   "files": [
     {
       "path": "webhooks_security.html",
@@ -1127,7 +1127,7 @@
     },
     {
       "path": "src/lib/meta-capi.server.ts",
-      "bytes": 29357
+      "bytes": 29860
     },
     {
       "path": "src/lib/training.functions.ts",
@@ -1287,7 +1287,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.server.ts",
-      "bytes": 29377
+      "bytes": 29705
     },
     {
       "path": "src/lib/drive.functions.ts",
@@ -2283,7 +2283,7 @@
     },
     {
       "path": "src/components/crm/crm-bulk-analyzer-dialog.tsx",
-      "bytes": 24007
+      "bytes": 30684
     },
     {
       "path": "src/components/crm/olist-pedidos-tab.tsx",
@@ -2731,7 +2731,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 158825
+      "bytes": 158842
     },
     {
       "path": "src/routes/app/campanhas.tsx",
@@ -11990,6 +11990,10 @@
     {
       "source": "src/components/crm/crm-bulk-analyzer-dialog.tsx",
       "target": "@/components/ui/progress"
+    },
+    {
+      "source": "src/components/crm/crm-bulk-analyzer-dialog.tsx",
+      "target": "@/components/ui/select"
     },
     {
       "source": "src/components/crm/crm-bulk-analyzer-dialog.tsx",
