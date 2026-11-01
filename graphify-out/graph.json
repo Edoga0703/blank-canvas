@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-01T17:48:00.339775+00:00",
+  "generated_at": "2026-11-01T18:53:33.217904+00:00",
   "files": [
     {
       "path": "webhooks_security.html",
@@ -1287,7 +1287,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.server.ts",
-      "bytes": 19922
+      "bytes": 28622
     },
     {
       "path": "src/lib/drive.functions.ts",
@@ -1371,7 +1371,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.functions.ts",
-      "bytes": 3762
+      "bytes": 5153
     },
     {
       "path": "src/lib/agendamentos.functions.ts",
@@ -2282,6 +2282,10 @@
       "bytes": 22717
     },
     {
+      "path": "src/components/crm/crm-bulk-analyzer-dialog.tsx",
+      "bytes": 18814
+    },
+    {
       "path": "src/components/crm/olist-pedidos-tab.tsx",
       "bytes": 2219
     },
@@ -2727,7 +2731,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 156914
+      "bytes": 158825
     },
     {
       "path": "src/routes/app/campanhas.tsx",
@@ -6128,6 +6132,14 @@
       "target": "./crm-lead-analyzer.functions"
     },
     {
+      "source": "src/lib/crm-lead-analyzer.server.ts",
+      "target": "@/lib/meta-capi.server"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.server.ts",
+      "target": "@/lib/meta-capi.server"
+    },
+    {
       "source": "src/lib/drive.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -6554,6 +6566,14 @@
     {
       "source": "src/lib/crm-lead-analyzer.functions.ts",
       "target": "./kanban-engine.server"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.functions.ts",
+      "target": "./crm-lead-analyzer.server"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.functions.ts",
+      "target": "./crm-lead-analyzer.server"
     },
     {
       "source": "src/lib/crm-lead-analyzer.functions.ts",
@@ -11944,6 +11964,54 @@
       "target": "@/lib/i18n/context"
     },
     {
+      "source": "src/components/crm/crm-bulk-analyzer-dialog.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/components/crm/crm-bulk-analyzer-dialog.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/components/crm/crm-bulk-analyzer-dialog.tsx",
+      "target": "@/components/ui/dialog"
+    },
+    {
+      "source": "src/components/crm/crm-bulk-analyzer-dialog.tsx",
+      "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/components/crm/crm-bulk-analyzer-dialog.tsx",
+      "target": "@/components/ui/switch"
+    },
+    {
+      "source": "src/components/crm/crm-bulk-analyzer-dialog.tsx",
+      "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/components/crm/crm-bulk-analyzer-dialog.tsx",
+      "target": "@/components/ui/progress"
+    },
+    {
+      "source": "src/components/crm/crm-bulk-analyzer-dialog.tsx",
+      "target": "lucide-react"
+    },
+    {
+      "source": "src/components/crm/crm-bulk-analyzer-dialog.tsx",
+      "target": "sonner"
+    },
+    {
+      "source": "src/components/crm/crm-bulk-analyzer-dialog.tsx",
+      "target": "@/lib/crm-lead-analyzer.functions"
+    },
+    {
+      "source": "src/components/crm/crm-bulk-analyzer-dialog.tsx",
+      "target": "@/lib/crm-lead-analyzer.server"
+    },
+    {
+      "source": "src/components/crm/crm-bulk-analyzer-dialog.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
       "source": "src/components/crm/olist-pedidos-tab.tsx",
       "target": "@tanstack/react-query"
     },
@@ -15066,6 +15134,10 @@
     {
       "source": "src/routes/app/crm.tsx",
       "target": "@/components/crm/crm-copilot-sheet"
+    },
+    {
+      "source": "src/routes/app/crm.tsx",
+      "target": "@/components/crm/crm-bulk-analyzer-dialog"
     },
     {
       "source": "src/routes/app/crm.tsx",
