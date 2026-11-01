@@ -611,12 +611,17 @@ export async function sendMetaConversionForLead(input: SendConversionInput): Pro
     // Modo 4: QR No Oficial (dapi) / Píxel Tradicional
     actionSource = card.fbclid ? "website" : "system_generated";
     const hashed = await buildHashedUserDataFromCard(card);
-    if (input.includeCustomerNames === false) { delete hashed.fn; delete hashed.ln; }
     Object.assign(userData, hashed);
     const resolvedCtwaClid = String(card.ctwa_clid || card.campos_extras?.ad_referral?.ctwa_clid || "").trim();
     if (resolvedCtwaClid) {
       userData.ctwa_clid = resolvedCtwaClid;
     }
+  }
+
+  // Control estricto de privacidad: eliminar nombres de clientes hasheados si el switch está desactivado
+  if (input.includeCustomerNames === false) {
+    delete userData.fn;
+    delete userData.ln;
   }
 
   // Traducción de nombre de evento si se usa action_source = website
@@ -638,6 +643,18 @@ export async function sendMetaConversionForLead(input: SendConversionInput): Pro
   if (input.includeProductNames !== false && card.item_nome) {
     customDataPayload.content_name = card.item_nome;
   }
+
+  // Garantía de privacidad estricta: expurgar datos si el switch está apagado
+  if (input.includeProductNames === false) {
+    delete customDataPayload.content_name;
+    delete customDataPayload.contents;
+    delete customDataPayload.content_type;
+    delete customDataPayload.content_category;
+  }
+  if (input.includeValues === false) {
+    delete customDataPayload.value;
+  }
+
   if (card.utm_campaign) {
     customDataPayload.campaign_name = card.utm_campaign;
   }

@@ -562,18 +562,25 @@ export async function getCardsForBulkAnalysis(
     stageName = st?.nome;
   }
 
-  const items: BulkCardItem[] = cards.map((c: any) => {
-    const extras = c.campos_extras && typeof c.campos_extras === "object" ? c.campos_extras : {};
-    const hasDiag = Boolean(extras.ultimo_diagnostico_ia || (c as any).ultimo_analise_ia_em);
-    return {
-      id: c.id,
-      nome: c.nome,
-      numero: c.numero,
-      stage_id: c.stage_id,
-      stage_nome: stageName,
-      hasPreviousAnalysis: hasDiag,
-    };
-  });
+  const items: BulkCardItem[] = cards
+    .filter((c: any) => {
+      if (input.forceAll !== false) return true;
+      const extras = c.campos_extras && typeof c.campos_extras === "object" ? c.campos_extras : {};
+      const hasDiag = Boolean(extras.ultimo_diagnostico_ia || (c as any).ultimo_analise_ia_em);
+      return !hasDiag;
+    })
+    .map((c: any) => {
+      const extras = c.campos_extras && typeof c.campos_extras === "object" ? c.campos_extras : {};
+      const hasDiag = Boolean(extras.ultimo_diagnostico_ia || (c as any).ultimo_analise_ia_em);
+      return {
+        id: c.id,
+        nome: c.nome,
+        numero: c.numero,
+        stage_id: c.stage_id,
+        stage_nome: stageName,
+        hasPreviousAnalysis: hasDiag,
+      };
+    });
 
   return { cards: items, total: items.length, stageName };
 }

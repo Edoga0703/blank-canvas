@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Sparkles,
   Loader2,
@@ -18,48 +19,83 @@ import {
   Share2,
   DollarSign,
   Users,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  Layers,
+  Filter,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getStageCardsForBulkFn, processBulkAnalyzeChunkFn } from "@/lib/crm-lead-analyzer.functions";
 import type { BulkCardItem, BulkChunkResultItem } from "@/lib/crm-lead-analyzer.server";
 import { useLanguage } from "@/lib/i18n/context";
 
-interface CrmBulkAnalyzerDialogProps {
+export interface StageOption {
+  id: string;
+  nome: string;
+  cor?: string;
+  count?: number;
+}
+
+export interface CrmBulkAnalyzerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  stageId?: string | null;
-  stageName?: string | null;
+  initialStageId?: string | null;
   pipelineId?: string | null;
+  pipelineName?: string | null;
+  stages?: StageOption[];
   onCompleted?: () => void;
 }
 
 export function CrmBulkAnalyzerDialog({
   open,
   onOpenChange,
-  stageId,
-  stageName,
+  initialStageId,
   pipelineId,
+  pipelineName,
+  stages = [],
   onCompleted,
 }: CrmBulkAnalyzerDialogProps) {
   const { t } = useLanguage();
   const getCardsFn = useServerFn(getStageCardsForBulkFn);
   const processChunkFn = useServerFn(processBulkAnalyzeChunkFn);
 
+  // Alcance del análisis: "stage" (una sola etapa) o "pipeline" (todas las etapas)
+  const [targetScope, setTargetScope] = useState<"stage" | "pipeline">(initialStageId ? "stage" : "pipeline");
+  const [selectedStageId, setSelectedStageId] = useState<string>(
+    initialStageId || (stages.length > 0 ? stages[0].id : "")
+  );
+
+  // Sincronizar etapa inicial y alcance al abrir
+  useEffect(() => {
+    if (open) {
+      if (initialStageId) {
+        setSelectedStageId(initialStageId);
+        setTargetScope("stage");
+      } else {
+        setTargetScope("pipeline");
+        if (stages.length > 0 && !selectedStageId) {
+          setSelectedStageId(stages[0].id);
+        }
+      }
+    }
+  }, [open, initialStageId, stages]);
+
   // Estado de preparación
   const [loadingCards, setLoadingCards] = useState(false);
   const [cardPool, setCardPool] = useState<BulkCardItem[]>([]);
-  const [targetScope, setTargetScope] = useState<"stage" | "pipeline">(stageId ? "stage" : "pipeline");
   const [autoMove, setAutoMove] = useState(true);
   const [sendMetaEvents, setSendMetaEvents] = useState(true);
   const [forceAll, setForceAll] = useState(true);
 
   // Opciones de privacidad y granularidad de Meta CAPI
-  const [includeProductNames, setIncludeProductNames] = useState(false); // Por defecto falso por privacidad comercial
+  const [includeProductNames, setIncludeProductNames] = useState(false); // Por defecto FALSO por privacidad
   const [includeValues, setIncludeValues] = useState(true);
   const [includeCustomerNames, setIncludeCustomerNames] = useState(true);
   const [eventPurchase, setEventPurchase] = useState(true);
   const [eventQualified, setEventQualified] = useState(true);
   const [eventLead, setEventLead] = useState(false);
+  const [showPayloadPreview, setShowPayloadPreview] = useState(false);
 
   // Estado de ejecución
   const [status, setStatus] = useState<"idle" | "running" | "paused" | "completed">("idle");
@@ -77,26 +113,26 @@ export function CrmBulkAnalyzerDialog({
   const isRunningRef = useRef(false);
   const isPausedRef = useRef(false);
 
-  // Cargar lista de cards cuando se abre el modal
+  // Cargar lista de cards cuando cambia el alcance o la etapa
   useEffect(() => {
     if (open) {
       void fetchCards();
     } else {
-      // Limpiar al cerrar si no está corriendo
       if (status !== "running") {
         setStatus("idle");
         setCurrentIndex(0);
         setRecentLogs([]);
       }
     }
-  }, [open, targetScope, stageId, pipelineId, forceAll]);
+  }, [open, targetScope, selectedStageId, pipelineId, forceAll]);
 
   async function fetchCards() {
     setLoadingCards(true);
     try {
+      const activeStageId = targetScope === "stage" ? selectedStageId : null;
       const res = await getCardsFn({
         data: {
-          stageId: targetScope === "stage" ? stageId : null,
+          stageId: activeStageId,
           pipelineId: targetScope === "pipeline" ? pipelineId : null,
           forceAll,
         },
@@ -124,12 +160,10 @@ export function CrmBulkAnalyzerDialog({
     let localStats = { analyzed: 0, moved: 0, metaEvents: 0, purchases: 0, errors: 0 };
 
     for (let i = 0; i < allCards.length; i += CHUNK_SIZE) {
-      // Si el usuario pausó
       while (isPausedRef.current && isRunningRef.current) {
         await new Promise((r) => setTimeout(r, 600));
       }
 
-      // Si el usuario canceló
       if (!isRunningRef.current) break;
 
       const chunk = allCards.slice(i, i + CHUNK_SIZE);
@@ -159,7 +193,11 @@ export function CrmBulkAnalyzerDialog({
 
         for (const item of res.results) {
           if (!item.ok) localStats.errors++;
-          if (item.metaEventSent === "Purchase" || item.toStageName?.toLowerCase().includes("ganado") || item.toStageName?.toLowerCase().includes("activo")) {
+          if (
+            item.metaEventSent === "Purchase" ||
+            item.toStageName?.toLowerCase().includes("ganado") ||
+            item.toStageName?.toLowerCase().includes("activo")
+          ) {
             localStats.purchases++;
           }
         }
@@ -172,13 +210,12 @@ export function CrmBulkAnalyzerDialog({
         setStats({ ...localStats });
       }
 
-      // Pequeña pausa de 500ms entre lotes para respiración del servidor y evitar saturación de API
       await new Promise((r) => setTimeout(r, 500));
     }
 
     isRunningRef.current = false;
     setStatus("completed");
-    toast.success("¡Reanálisis masivo completado con éxito!");
+    toast.success("¡Reanálisis completado con éxito!");
     if (onCompleted) onCompleted();
   }
 
@@ -201,18 +238,52 @@ export function CrmBulkAnalyzerDialog({
 
   const progressPercent = cardPool.length > 0 ? Math.round((currentIndex / cardPool.length) * 100) : 0;
 
+  // Nombre de la etapa seleccionada
+  const activeStageObject = stages.find((s) => s.id === selectedStageId);
+  const activeStageLabel = activeStageObject?.nome || "Etapa seleccionada";
+
+  // Previsualización interactiva del JSON que recibirá Meta
+  const sampleMetaPayload = useMemo(() => {
+    const payload: Record<string, any> = {
+      event_name: eventPurchase ? "Purchase" : eventQualified ? "QualifiedLead" : "Lead",
+      event_time: 1730489500,
+      action_source: "business_messaging",
+      user_data: {
+        ph: ["9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72 (SHA-256)"],
+        country: ["c584795e0c5b52a1... (SHA-256)"],
+        ...(includeCustomerNames
+          ? {
+              fn: ["2c6a4613... (SHA-256)"],
+              ln: ["4d8f28a1... (SHA-256)"],
+            }
+          : {}),
+      },
+      custom_data: {
+        currency: "USD",
+        event_source: "crm",
+        lead_event_source: "Capiconversa CRM",
+        ...(includeValues ? { value: 6.0 } : {}),
+        ...(includeProductNames ? { content_name: "Disney+ Premium (Catálogo)" } : {}),
+      },
+    };
+    return payload;
+  }, [includeProductNames, includeValues, includeCustomerNames, eventPurchase, eventQualified]);
+
   return (
-    <Dialog open={open} onOpenChange={(o) => {
-      if (status === "running") {
-        if (confirm("El reanálisis está en curso. ¿Deseas detenerlo y cerrar?")) {
-          handleStop();
-          onOpenChange(false);
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (status === "running") {
+          if (confirm("El reanálisis está en curso. ¿Deseas detenerlo y cerrar?")) {
+            handleStop();
+            onOpenChange(false);
+          }
+        } else {
+          onOpenChange(o);
         }
-      } else {
-        onOpenChange(o);
-      }
-    }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      }}
+    >
+      <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2 text-primary">
             <span className="grid place-items-center size-8 rounded-xl bg-primary/10 text-primary">
@@ -223,41 +294,44 @@ export function CrmBulkAnalyzerDialog({
             </DialogTitle>
           </div>
           <DialogDescription className="text-xs text-muted-foreground">
-            Audita conversaciones históricas con el Bot Analista, reclasifica leads automáticamente hacia sus etapas correspondientes y despacha eventos de atribución offline a Meta Ads.
+            Audita leads contra las reglas y catálogo del embudo, reclasifícalos automáticamente hacia sus etapas correspondientes y envía conversiones offline personalizadas a Meta Ads.
           </DialogDescription>
         </DialogHeader>
 
         {status === "idle" && (
           <div className="space-y-4 py-2">
-            {/* Tarjeta de resumen de alcance */}
-            <div className="rounded-xl border border-[color:var(--hairline)] bg-[color:var(--panel-2)]/50 p-3.5 space-y-3">
+            {/* 1. SELECCIÓN DE ALCANCE: UNA SOLA ETAPA VS TODO EL EMBUDO */}
+            <div className="rounded-xl border border-[color:var(--hairline)] bg-[color:var(--panel-2)]/60 p-3.5 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Alcance seleccionado
+                <span className="text-xs font-bold text-foreground uppercase tracking-wide flex items-center gap-1.5">
+                  <Filter className="size-3.5 text-primary" />
+                  Alcance del Reanálisis
                 </span>
                 <Badge variant="outline" className="text-xs font-bold text-primary bg-primary/10 border-primary/20">
                   {loadingCards ? (
                     <Loader2 className="size-3 animate-spin mr-1" />
                   ) : (
-                    `${cardPool.length} leads listos`
+                    `${cardPool.length} leads en cola`
                   )}
                 </Badge>
               </div>
 
+              {/* Botones de conmutación de alcance */}
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setTargetScope("stage")}
-                  disabled={!stageId}
                   className={`text-left p-2.5 rounded-lg border text-xs transition-colors ${
                     targetScope === "stage"
                       ? "border-primary bg-primary/5 text-primary font-bold ring-1 ring-primary/30"
                       : "border-border hover:bg-muted/40 text-foreground"
-                  } ${!stageId ? "opacity-50 cursor-not-allowed" : ""}`}
+                  }`}
                 >
-                  <span className="block font-semibold">Columna actual</span>
-                  <span className="text-[11px] text-muted-foreground font-normal">
-                    {stageName ? `"${stageName}"` : "Etapa seleccionada"}
+                  <span className="flex items-center gap-1.5 font-bold">
+                    <Filter className="size-3.5" /> Una Sola Etapa
+                  </span>
+                  <span className="text-[11px] text-muted-foreground font-normal block mt-0.5 truncate">
+                    Re-analizar solo una columna
                   </span>
                 </button>
 
@@ -270,18 +344,56 @@ export function CrmBulkAnalyzerDialog({
                       : "border-border hover:bg-muted/40 text-foreground"
                   }`}
                 >
-                  <span className="block font-semibold">Todo el embudo</span>
-                  <span className="text-[11px] text-muted-foreground font-normal">
-                    Todas las columnas del pipeline activo
+                  <span className="flex items-center gap-1.5 font-bold">
+                    <Layers className="size-3.5" /> Todo el Embudo
+                  </span>
+                  <span className="text-[11px] text-muted-foreground font-normal block mt-0.5 truncate">
+                    Auditar todas las columnas juntas
                   </span>
                 </button>
               </div>
+
+              {/* Si eligió UNA SOLA ETAPA: Mostrar selector desplegable de etapas */}
+              {targetScope === "stage" && stages.length > 0 && (
+                <div className="pt-1 space-y-1">
+                  <label className="text-[11px] font-semibold text-muted-foreground block">
+                    Elige la etapa a auditar:
+                  </label>
+                  <Select value={selectedStageId} onValueChange={setSelectedStageId}>
+                    <SelectTrigger className="w-full text-xs h-9 bg-card">
+                      <SelectValue placeholder="Selecciona una etapa" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stages.map((st) => (
+                        <SelectItem key={st.id} value={st.id} className="text-xs">
+                          <div className="flex items-center justify-between gap-3 w-full">
+                            <span className="flex items-center gap-1.5">
+                              {st.cor && (
+                                <span
+                                  className="size-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: st.cor }}
+                                />
+                              )}
+                              <span className="font-medium">{st.nome}</span>
+                            </span>
+                            {st.count !== undefined && (
+                              <span className="text-[10px] text-muted-foreground ml-auto tabular-nums">
+                                ({st.count} leads)
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
-            {/* Opciones de procesamiento */}
+            {/* 2. OPCIONES DE MOVIMIENTO */}
             <div className="rounded-xl border border-border p-3.5 space-y-3 text-xs">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block">
-                Opciones del proceso
+                Comportamiento en el Tablero
               </span>
 
               <div className="flex items-center justify-between gap-3">
@@ -290,103 +402,11 @@ export function CrmBulkAnalyzerDialog({
                     ⚡ Mover de etapa automáticamente según la IA
                   </span>
                   <span className="text-[11px] text-muted-foreground block">
-                    Si el análisis sugiere otra etapa y ésta no está bloqueada para humanos, reubica la tarjeta en el Kanban.
+                    Si el análisis concluye que el lead debe ir a otra etapa (y no está bloqueada para humanos), reubica la tarjeta en el tablero.
                   </span>
                 </div>
                 <Switch checked={autoMove} onCheckedChange={setAutoMove} />
               </div>
-
-              <div className="border-t border-border/60 pt-2.5 flex items-center justify-between gap-3">
-                <div className="space-y-0.5">
-                  <span className="font-semibold block text-foreground flex items-center gap-1.5">
-                    🎯 Generar y enviar eventos offline a Meta (CAPI)
-                    <Badge variant="secondary" className="text-[9px] px-1 py-0 uppercase">Recomendado</Badge>
-                  </span>
-                  <span className="text-[11px] text-muted-foreground block">
-                    Envía conversiones a Meta para entrenar el Pixel y bajar el CAC de tus campañas de anuncios.
-                  </span>
-                </div>
-                <Switch checked={sendMetaEvents} onCheckedChange={setSendMetaEvents} />
-              </div>
-
-              {sendMetaEvents && (
-                <div className="ml-2 pl-3 border-l-2 border-primary/30 py-1 space-y-2.5 bg-primary/5 rounded-r-lg p-2.5 text-xs">
-                  <span className="text-[11px] font-bold text-primary uppercase tracking-wide flex items-center gap-1">
-                    🔒 Control de Privacidad de Datos hacia Meta
-                  </span>
-
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="space-y-0.5">
-                      <span className="font-medium text-foreground block text-[11.5px]">
-                        Enviar nombres de productos del catálogo (content_name)
-                      </span>
-                      <span className="text-[10.5px] text-muted-foreground block">
-                        Si lo desactivas, Meta nunca sabrá qué cuenta/servicio exacto se vendió o cotizó.
-                      </span>
-                    </div>
-                    <Switch checked={includeProductNames} onCheckedChange={setIncludeProductNames} />
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 border-t border-border/40 pt-2">
-                    <div className="space-y-0.5">
-                      <span className="font-medium text-foreground block text-[11.5px]">
-                        Enviar montos y valores monetarios (value y USD)
-                      </span>
-                      <span className="text-[10.5px] text-muted-foreground block">
-                        Envía el valor económico del pedido para optimizar por ROAS o volumen de compra.
-                      </span>
-                    </div>
-                    <Switch checked={includeValues} onCheckedChange={setIncludeValues} />
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 border-t border-border/40 pt-2">
-                    <div className="space-y-0.5">
-                      <span className="font-medium text-foreground block text-[11.5px]">
-                        Enviar nombres del cliente hasheados (fn y ln)
-                      </span>
-                      <span className="text-[10.5px] text-muted-foreground block">
-                        Si lo desactivas, Meta solo hará el match con el teléfono (ph) en SHA-256.
-                      </span>
-                    </div>
-                    <Switch checked={includeCustomerNames} onCheckedChange={setIncludeCustomerNames} />
-                  </div>
-
-                  <div className="border-t border-border/40 pt-2 space-y-1.5">
-                    <span className="text-[10.5px] font-semibold text-foreground block">
-                      Tipos de eventos a despachar:
-                    </span>
-                    <div className="flex flex-wrap gap-3 text-[11px]">
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={eventPurchase}
-                          onChange={(e) => setEventPurchase(e.target.checked)}
-                          className="rounded text-primary focus:ring-primary size-3.5"
-                        />
-                        <span>🏆 Purchase (Ventas)</span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={eventQualified}
-                          onChange={(e) => setEventQualified(e.target.checked)}
-                          className="rounded text-primary focus:ring-primary size-3.5"
-                        />
-                        <span>⭐ QualifiedLead (Calificados)</span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={eventLead}
-                          onChange={(e) => setEventLead(e.target.checked)}
-                          className="rounded text-primary focus:ring-primary size-3.5"
-                        />
-                        <span>👤 Lead (Cualquier contacto)</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               <div className="border-t border-border/60 pt-2.5 flex items-center justify-between gap-3">
                 <div className="space-y-0.5">
@@ -400,6 +420,130 @@ export function CrmBulkAnalyzerDialog({
                 <Switch checked={forceAll} onCheckedChange={setForceAll} />
               </div>
             </div>
+
+            {/* 3. CONTROL DE TRACKING OFFLINE HACIA META (CAPI) */}
+            <div className="rounded-xl border border-border p-3.5 space-y-3 text-xs">
+              <div className="flex items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <span className="font-semibold block text-foreground flex items-center gap-1.5">
+                    🎯 Generar y enviar eventos offline a Meta (CAPI)
+                    <Badge variant="secondary" className="text-[9px] px-1 py-0 uppercase">Recomendado</Badge>
+                  </span>
+                  <span className="text-[11px] text-muted-foreground block">
+                    Envía conversiones offline a Meta para entrenar el Pixel y bajar el Costo por Adquisición (CAC).
+                  </span>
+                </div>
+                <Switch checked={sendMetaEvents} onCheckedChange={setSendMetaEvents} />
+              </div>
+
+              {/* Sub-opciones de Privacidad Granular hacia Meta */}
+              {sendMetaEvents && (
+                <div className="mt-2 pl-3 border-l-2 border-primary/40 py-1 space-y-3 bg-primary/5 rounded-r-xl p-3 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-primary uppercase tracking-wide flex items-center gap-1">
+                      <ShieldCheck className="size-3.5 text-primary" />
+                      Control de Privacidad y Datos Hacia Meta
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowPayloadPreview(!showPayloadPreview)}
+                      className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1"
+                    >
+                      {showPayloadPreview ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+                      {showPayloadPreview ? "Ocultar vista previa" : "Ver qué recibirá Meta"}
+                    </button>
+                  </div>
+
+                  {/* Switch 1: Nombres de catálogo (OFF por defecto) */}
+                  <div className="flex items-center justify-between gap-2 border-t border-border/40 pt-2">
+                    <div className="space-y-0.5">
+                      <span className="font-medium text-foreground block text-[11.5px]">
+                        Enviar nombres de productos del catálogo (content_name)
+                      </span>
+                      <span className="text-[10.5px] text-muted-foreground block">
+                        <b>Desactivado por defecto.</b> Si está apagado, Meta NUNCA sabrá qué producto o cuenta vendiste ni qué cotizó el cliente.
+                      </span>
+                    </div>
+                    <Switch checked={includeProductNames} onCheckedChange={setIncludeProductNames} />
+                  </div>
+
+                  {/* Switch 2: Montos monetarios */}
+                  <div className="flex items-center justify-between gap-2 border-t border-border/40 pt-2">
+                    <div className="space-y-0.5">
+                      <span className="font-medium text-foreground block text-[11.5px]">
+                        Enviar montos y valores monetarios (value y USD)
+                      </span>
+                      <span className="text-[10.5px] text-muted-foreground block">
+                        Envía el valor económico identificado para que Meta optimice por ROAS. Apágalo si prefieres ocultar los montos.
+                      </span>
+                    </div>
+                    <Switch checked={includeValues} onCheckedChange={setIncludeValues} />
+                  </div>
+
+                  {/* Switch 3: Nombres de clientes */}
+                  <div className="flex items-center justify-between gap-2 border-t border-border/40 pt-2">
+                    <div className="space-y-0.5">
+                      <span className="font-medium text-foreground block text-[11.5px]">
+                        Enviar nombres de cliente hasheados (fn y ln)
+                      </span>
+                      <span className="text-[10.5px] text-muted-foreground block">
+                        Si lo apagas, el match con Meta se hace estrictamente con el teléfono hasheado en SHA-256.
+                      </span>
+                    </div>
+                    <Switch checked={includeCustomerNames} onCheckedChange={setIncludeCustomerNames} />
+                  </div>
+
+                  {/* Checkbox de Eventos Permitidos */}
+                  <div className="border-t border-border/40 pt-2 space-y-1.5">
+                    <span className="text-[10.5px] font-semibold text-foreground block">
+                      Tipos de eventos a despachar:
+                    </span>
+                    <div className="flex flex-wrap gap-3 text-[11px]">
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={eventPurchase}
+                          onChange={(e) => setEventPurchase(e.target.checked)}
+                          className="rounded text-primary focus:ring-primary size-3.5"
+                        />
+                        <span className="font-medium">🏆 Purchase (Ventas ganadas)</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={eventQualified}
+                          onChange={(e) => setEventQualified(e.target.checked)}
+                          className="rounded text-primary focus:ring-primary size-3.5"
+                        />
+                        <span className="font-medium">⭐ QualifiedLead (Calificados)</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={eventLead}
+                          onChange={(e) => setEventLead(e.target.checked)}
+                          className="rounded text-primary focus:ring-primary size-3.5"
+                        />
+                        <span className="font-medium">👤 Lead (Contactos iniciales)</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Vista previa en vivo del JSON que viajará a Meta */}
+                  {showPayloadPreview && (
+                    <div className="mt-2 p-2.5 rounded-lg bg-slate-950 text-slate-100 font-mono text-[10.5px] space-y-1 overflow-x-auto border border-slate-800">
+                      <div className="flex items-center justify-between text-slate-400 text-[9.5px] border-b border-slate-800 pb-1 mb-1">
+                        <span>VISTA PREVIA DEL PAYLOAD EXACTO QUE RECIBIRÁ META:</span>
+                        {!includeProductNames && (
+                          <span className="text-emerald-400 font-bold">✓ Nombres de productos EXCLUIDOS</span>
+                        )}
+                      </div>
+                      <pre>{JSON.stringify(sampleMetaPayload, null, 2)}</pre>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -412,7 +556,11 @@ export function CrmBulkAnalyzerDialog({
                   {status === "running" && <Loader2 className="size-3.5 animate-spin text-primary" />}
                   {status === "paused" && <Pause className="size-3.5 text-amber-500" />}
                   {status === "completed" && <CheckCircle2 className="size-3.5 text-emerald-600" />}
-                  {status === "running" ? "Procesando en segundo plano..." : status === "paused" ? "Pausado" : "¡Completado!"}
+                  {status === "running"
+                    ? `Analizando ${targetScope === "stage" ? `etapa "${activeStageLabel}"` : "todo el embudo"}...`
+                    : status === "paused"
+                    ? "Pausado"
+                    : "¡Reanálisis Completado!"}
                 </span>
                 <span className="font-bold tabular-nums text-muted-foreground">
                   {currentIndex} / {cardPool.length} ({progressPercent}%)

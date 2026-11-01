@@ -857,8 +857,7 @@ function KanbanPage() {
           className="size-8 p-0 shrink-0 sm:size-auto sm:h-9 sm:px-3 rounded-full text-[13px] border-primary/30 text-primary hover:bg-primary/5 font-semibold"
           disabled={!activePipelineId || stages.length === 0}
           onClick={() => {
-            const nuevoContactoStage = stages.find((s) => s.nome.toLowerCase().includes("nuevo"));
-            setBulkStage(nuevoContactoStage ? { id: nuevoContactoStage.id, nome: nuevoContactoStage.nome } : null);
+            setBulkStage(null);
             setBulkAnalyzerOpen(true);
           }}
         >
@@ -1174,9 +1173,15 @@ function KanbanPage() {
       <CrmBulkAnalyzerDialog
         open={bulkAnalyzerOpen}
         onOpenChange={setBulkAnalyzerOpen}
-        stageId={bulkStage?.id}
-        stageName={bulkStage?.nome}
+        initialStageId={bulkStage?.id}
         pipelineId={activePipelineId}
+        pipelineName={activePipeline?.nome}
+        stages={stages.map((s) => ({
+          id: s.id,
+          nome: s.nome,
+          cor: s.cor,
+          count: allCards.filter((c) => c.stage_id === s.id).length,
+        }))}
         onCompleted={() => {
           if (companyId) void loadAll(companyId);
         }}
