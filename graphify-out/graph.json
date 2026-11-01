@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-01T18:53:33.217904+00:00",
+  "generated_at": "2026-11-01T19:22:30.189642+00:00",
   "files": [
     {
       "path": "webhooks_security.html",
@@ -1127,7 +1127,7 @@
     },
     {
       "path": "src/lib/meta-capi.server.ts",
-      "bytes": 29105
+      "bytes": 29357
     },
     {
       "path": "src/lib/training.functions.ts",
@@ -1287,7 +1287,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.server.ts",
-      "bytes": 28622
+      "bytes": 29377
     },
     {
       "path": "src/lib/drive.functions.ts",
@@ -1371,7 +1371,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.functions.ts",
-      "bytes": 5153
+      "bytes": 5792
     },
     {
       "path": "src/lib/agendamentos.functions.ts",
@@ -2283,7 +2283,7 @@
     },
     {
       "path": "src/components/crm/crm-bulk-analyzer-dialog.tsx",
-      "bytes": 18814
+      "bytes": 24007
     },
     {
       "path": "src/components/crm/olist-pedidos-tab.tsx",
