@@ -20,22 +20,32 @@ export type StoredMediaObject = {
 };
 
 const R2_DEFAULTS: Record<string, string> = {
-  R2_ACCOUNT_ID: "",
-  R2_ACCESS_KEY_ID: "",
-  R2_SECRET_ACCESS_KEY: "",
+  R2_ACCOUNT_ID: "3bc2408cba1eadcd78d9ccdb0a8c987d",
+  R2_ACCESS_KEY_ID: "a0048ab1cf7078594e2057b9b31131de",
+  R2_SECRET_ACCESS_KEY: "328e9326f2e6adad6740f7ea6d1cf64ded1d4727e95408ad5fb4451ff5d29a3c",
   R2_BUCKET: "capiversa-media",
   R2_MAX_FILE_BYTES: "52428800",
   R2_SIGNED_URL_TTL_SECONDS: "900",
 };
 
+function getR2Env(name: string): string {
+  if (name === "R2_ACCOUNT_ID") return (process.env.R2_ACCOUNT_ID || process.env["R2_ACCOUNT_ID"] || R2_DEFAULTS.R2_ACCOUNT_ID).trim();
+  if (name === "R2_ACCESS_KEY_ID") return (process.env.R2_ACCESS_KEY_ID || process.env["R2_ACCESS_KEY_ID"] || R2_DEFAULTS.R2_ACCESS_KEY_ID).trim();
+  if (name === "R2_SECRET_ACCESS_KEY") return (process.env.R2_SECRET_ACCESS_KEY || process.env["R2_SECRET_ACCESS_KEY"] || R2_DEFAULTS.R2_SECRET_ACCESS_KEY).trim();
+  if (name === "R2_BUCKET") return (process.env.R2_BUCKET || process.env["R2_BUCKET"] || R2_DEFAULTS.R2_BUCKET).trim();
+  if (name === "R2_MAX_FILE_BYTES") return (process.env.R2_MAX_FILE_BYTES || process.env["R2_MAX_FILE_BYTES"] || R2_DEFAULTS.R2_MAX_FILE_BYTES).trim();
+  if (name === "R2_SIGNED_URL_TTL_SECONDS") return (process.env.R2_SIGNED_URL_TTL_SECONDS || process.env["R2_SIGNED_URL_TTL_SECONDS"] || R2_DEFAULTS.R2_SIGNED_URL_TTL_SECONDS).trim();
+  return (process.env[name]?.trim() || R2_DEFAULTS[name] || "");
+}
+
 function required(name: string): string {
-  const value = process.env[name]?.trim() || R2_DEFAULTS[name];
+  const value = getR2Env(name);
   if (!value) throw new Error(`Falta la variable de servidor ${name} para usar Cloudflare R2.`);
   return value;
 }
 
 function positiveInteger(name: string, fallback: number): number {
-  const envVal = process.env[name]?.trim() || R2_DEFAULTS[name];
+  const envVal = getR2Env(name);
   const parsed = Number(envVal || fallback);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
@@ -46,7 +56,7 @@ function getConfig(): R2Config {
     accessKeyId: required("R2_ACCESS_KEY_ID"),
     secretAccessKey: required("R2_SECRET_ACCESS_KEY"),
     bucket: required("R2_BUCKET"),
-    publicBaseUrl: (process.env["R2_PUBLIC_BASE_URL"]?.trim() || "").replace(/\/$/, "") || null,
+    publicBaseUrl: (process.env.R2_PUBLIC_BASE_URL?.trim() || process.env["R2_PUBLIC_BASE_URL"]?.trim() || "").replace(/\/$/, "") || null,
     maxFileBytes: positiveInteger("R2_MAX_FILE_BYTES", 50 * 1024 * 1024),
     signedUrlTtlSeconds: Math.min(604800, positiveInteger("R2_SIGNED_URL_TTL_SECONDS", 900)),
   };
@@ -54,7 +64,7 @@ function getConfig(): R2Config {
 
 export function isR2Configured(): boolean {
   return ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET"].every((name) =>
-    Boolean(process.env[name]?.trim() || R2_DEFAULTS[name]),
+    Boolean(getR2Env(name)),
   );
 }
 

@@ -18,7 +18,7 @@ export const Route = createFileRoute("/api/public/meta-leads-webhook")({
         const challenge = url.searchParams.get("hub.challenge") ?? "";
         
         // O token deve ser configurado no painel da Meta e no CRM (ou ser um padrão seguro)
-        const expected = (process.env["META_WEBHOOK_VERIFY_TOKEN"] || "").trim();
+        const expected = (process.env.META_WEBHOOK_VERIFY_TOKEN || process.env["META_WEBHOOK_VERIFY_TOKEN"] || "capiconversa_meta_verify_2026").trim();
         if (!expected) {
           return new Response("META_WEBHOOK_VERIFY_TOKEN not configured", { status: 503 });
         }
@@ -35,7 +35,7 @@ export const Route = createFileRoute("/api/public/meta-leads-webhook")({
       POST: async ({ request }) => {
         const rawBody = await request.text();
         const signature = request.headers.get("x-hub-signature-256") || "";
-        const appSecret = process.env["META_APP_SECRET"];
+        const appSecret = process.env.META_APP_SECRET || process.env["META_APP_SECRET"] || "12674b5b0e24fafbdee7e60fa1a0d08f";
 
         // 1. Validar assinatura (se o secret estiver configurado)
         const allowUnsigned = process.env["META_ALLOW_UNSIGNED_WEBHOOKS"] === "true";

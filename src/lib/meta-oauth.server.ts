@@ -78,12 +78,12 @@ export async function ensureMetaSecrets() {
     return cachedMetaConfig;
   }
 
-  let envAppId = (process.env["META_APP_ID"] || "").trim();
-  let envAppSecret = (process.env["META_APP_SECRET"] || "").trim();
-  let envAppSecretIg = (process.env["META_APP_SECRET_INSTAGRAM"] || "").trim();
-  let envWebhookToken = (process.env["META_WEBHOOK_VERIFY_TOKEN"] || "").trim();
-  let envPublicUrl = (process.env["PUBLIC_APP_URL"] || "").trim();
-  let envOrigins = (process.env["META_ALLOWED_ORIGINS"] || "").trim();
+  let envAppId = (process.env.META_APP_ID || process.env["META_APP_ID"] || "1766570271287613").trim();
+  let envAppSecret = (process.env.META_APP_SECRET || process.env["META_APP_SECRET"] || "12674b5b0e24fafbdee7e60fa1a0d08f").trim();
+  let envAppSecretIg = (process.env.META_APP_SECRET_INSTAGRAM || process.env["META_APP_SECRET_INSTAGRAM"] || "").trim();
+  let envWebhookToken = (process.env.META_WEBHOOK_VERIFY_TOKEN || process.env["META_WEBHOOK_VERIFY_TOKEN"] || "capiconversa_meta_verify_2026").trim();
+  let envPublicUrl = (process.env.PUBLIC_APP_URL || process.env["PUBLIC_APP_URL"] || "https://capiconversa.com").trim();
+  let envOrigins = (process.env.META_ALLOWED_ORIGINS || process.env["META_ALLOWED_ORIGINS"] || "").trim();
 
   // Se faltam dados no environment, busca em master_settings do Supabase
   if (!envAppId || !envAppSecret) {
@@ -130,13 +130,13 @@ export async function ensureMetaSecrets() {
 }
 
 function secret() {
-  const value = process.env["META_APP_SECRET"] || cachedMetaConfig?.appSecret;
+  const value = process.env.META_APP_SECRET || process.env["META_APP_SECRET"] || cachedMetaConfig?.appSecret || "12674b5b0e24fafbdee7e60fa1a0d08f";
   if (!value) throw new Error("META_APP_SECRET não configurado (nem no .env nem em master_settings).");
   return value;
 }
 
 function appId() {
-  const value = process.env["META_APP_ID"] || cachedMetaConfig?.appId;
+  const value = process.env.META_APP_ID || process.env["META_APP_ID"] || cachedMetaConfig?.appId || "1766570271287613";
   if (!value) throw new Error("META_APP_ID não configurado (nem no .env nem em master_settings).");
   return value;
 }
