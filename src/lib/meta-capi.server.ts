@@ -420,6 +420,9 @@ export interface SendConversionInput {
   testEventCodeOverride?: string | null;
   forceSend?: boolean;
   triggerSource?: string;
+  includeProductNames?: boolean;
+  includeValues?: boolean;
+  includeCustomerNames?: boolean;
 }
 
 export interface SendConversionResult {
@@ -608,6 +611,7 @@ export async function sendMetaConversionForLead(input: SendConversionInput): Pro
     // Modo 4: QR No Oficial (dapi) / Píxel Tradicional
     actionSource = card.fbclid ? "website" : "system_generated";
     const hashed = await buildHashedUserDataFromCard(card);
+    if (input.includeCustomerNames === false) { delete hashed.fn; delete hashed.ln; }
     Object.assign(userData, hashed);
     const resolvedCtwaClid = String(card.ctwa_clid || card.campos_extras?.ad_referral?.ctwa_clid || "").trim();
     if (resolvedCtwaClid) {
@@ -628,10 +632,10 @@ export async function sendMetaConversionForLead(input: SendConversionInput): Pro
     lead_event_source: "Capiconversa CRM",
     ...(input.customData || {}),
   };
-  if (finalValue !== null && finalValue !== undefined) {
+  if (input.includeValues !== false && finalValue !== null && finalValue !== undefined) {
     customDataPayload.value = Number(finalValue);
   }
-  if (card.item_nome) {
+  if (input.includeProductNames !== false && card.item_nome) {
     customDataPayload.content_name = card.item_nome;
   }
   if (card.utm_campaign) {

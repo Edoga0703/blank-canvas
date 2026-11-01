@@ -596,7 +596,14 @@ export type BulkChunkResultItem = {
 export async function executeBulkAnalyzeChunk(
   companyId: string,
   cardIds: string[],
-  options: { sendMetaEvents?: boolean; autoMove?: boolean } = {},
+  options: {
+  sendMetaEvents?: boolean;
+  autoMove?: boolean;
+  includeProductNames?: boolean;
+  includeValues?: boolean;
+  includeCustomerNames?: boolean;
+  allowedMetaEvents?: string[];
+} = {},
 ): Promise<{
   processed: number;
   movedCount: number;
@@ -605,6 +612,12 @@ export async function executeBulkAnalyzeChunk(
 }> {
   const sendMeta = options.sendMetaEvents !== false;
   const autoMove = options.autoMove !== false;
+  const includeProductNames = Boolean(options.includeProductNames);
+  const includeValues = options.includeValues !== false;
+  const includeCustomerNames = options.includeCustomerNames !== false;
+  const allowedMetaEvents = Array.isArray(options.allowedMetaEvents) && options.allowedMetaEvents.length > 0
+    ? options.allowedMetaEvents
+    : ["QualifiedLead", "Purchase"];
 
   let metaCfg: any = null;
   try {
@@ -701,7 +714,9 @@ export async function executeBulkAnalyzeChunk(
           metaEventName = "Lead";
         }
 
-        if (sendMeta && metaEventName) {
+        const isEventAllowed = Boolean(metaEventName && allowedMetaEvents.includes(metaEventName));
+
+        if (sendMeta && isEventAllowed && metaEventName) {
           if (metaCfg?.ativo && metaCfg?.access_token) {
             try {
               const { sendMetaConversionForLead } = await import("@/lib/meta-capi.server");
@@ -709,10 +724,13 @@ export async function executeBulkAnalyzeChunk(
                 companyId,
                 cardId: card.id,
                 eventName: metaEventName,
-                value: analysis.result.valor_sugerido || card.valor || null,
+                value: includeValues ? (analysis.result.valor_sugerido || card.valor || null) : null,
                 currency: metaCfg.currency || "USD",
                 triggerSource: "bulk_offline_reanalysis",
                 forceSend: true,
+                includeProductNames,
+                includeValues,
+                includeCustomerNames,
               });
               if (capiRes.ok) metaSent = true;
             } catch (e: any) {

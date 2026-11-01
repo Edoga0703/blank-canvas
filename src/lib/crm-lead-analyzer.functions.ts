@@ -110,10 +110,22 @@ export const getStageCardsForBulkFn = createServerFn({ method: "POST" })
 
 export const processBulkAnalyzeChunkFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { cardIds: string[]; sendMetaEvents?: boolean; autoMove?: boolean }) => ({
+  .inputValidator((d: {
+    cardIds: string[];
+    sendMetaEvents?: boolean;
+    autoMove?: boolean;
+    includeProductNames?: boolean;
+    includeValues?: boolean;
+    includeCustomerNames?: boolean;
+    allowedMetaEvents?: string[];
+  }) => ({
     cardIds: Array.isArray(d?.cardIds) ? d.cardIds.map(String) : [],
     sendMetaEvents: d?.sendMetaEvents !== false,
     autoMove: d?.autoMove !== false,
+    includeProductNames: Boolean(d?.includeProductNames),
+    includeValues: d?.includeValues !== false,
+    includeCustomerNames: d?.includeCustomerNames !== false,
+    allowedMetaEvents: Array.isArray(d?.allowedMetaEvents) ? d.allowedMetaEvents.map(String) : ["QualifiedLead", "Purchase"],
   }))
   .handler(async ({ context, data }) => {
     const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
@@ -121,5 +133,9 @@ export const processBulkAnalyzeChunkFn = createServerFn({ method: "POST" })
     return executeBulkAnalyzeChunk(companyId, data.cardIds, {
       sendMetaEvents: data.sendMetaEvents,
       autoMove: data.autoMove,
+      includeProductNames: data.includeProductNames,
+      includeValues: data.includeValues,
+      includeCustomerNames: data.includeCustomerNames,
+      allowedMetaEvents: data.allowedMetaEvents,
     });
   });

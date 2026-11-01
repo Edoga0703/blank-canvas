@@ -53,6 +53,14 @@ export function CrmBulkAnalyzerDialog({
   const [sendMetaEvents, setSendMetaEvents] = useState(true);
   const [forceAll, setForceAll] = useState(true);
 
+  // Opciones de privacidad y granularidad de Meta CAPI
+  const [includeProductNames, setIncludeProductNames] = useState(false); // Por defecto falso por privacidad comercial
+  const [includeValues, setIncludeValues] = useState(true);
+  const [includeCustomerNames, setIncludeCustomerNames] = useState(true);
+  const [eventPurchase, setEventPurchase] = useState(true);
+  const [eventQualified, setEventQualified] = useState(true);
+  const [eventLead, setEventLead] = useState(false);
+
   // Estado de ejecución
   const [status, setStatus] = useState<"idle" | "running" | "paused" | "completed">("idle");
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -128,11 +136,20 @@ export function CrmBulkAnalyzerDialog({
       const chunkIds = chunk.map((c) => c.id);
 
       try {
+        const allowedMetaEvents: string[] = [];
+        if (eventPurchase) allowedMetaEvents.push("Purchase");
+        if (eventQualified) allowedMetaEvents.push("QualifiedLead");
+        if (eventLead) allowedMetaEvents.push("Lead");
+
         const res = await processChunkFn({
           data: {
             cardIds: chunkIds,
             sendMetaEvents,
             autoMove,
+            includeProductNames,
+            includeValues,
+            includeCustomerNames,
+            allowedMetaEvents,
           },
         });
 
@@ -286,11 +303,90 @@ export function CrmBulkAnalyzerDialog({
                     <Badge variant="secondary" className="text-[9px] px-1 py-0 uppercase">Recomendado</Badge>
                   </span>
                   <span className="text-[11px] text-muted-foreground block">
-                    Detecta intención positiva o calificación (QualifiedLead) y ventas/clientes activos (Purchase) con datos SHA-256 para optimizar audiencias de Meta Ads.
+                    Envía conversiones a Meta para entrenar el Pixel y bajar el CAC de tus campañas de anuncios.
                   </span>
                 </div>
                 <Switch checked={sendMetaEvents} onCheckedChange={setSendMetaEvents} />
               </div>
+
+              {sendMetaEvents && (
+                <div className="ml-2 pl-3 border-l-2 border-primary/30 py-1 space-y-2.5 bg-primary/5 rounded-r-lg p-2.5 text-xs">
+                  <span className="text-[11px] font-bold text-primary uppercase tracking-wide flex items-center gap-1">
+                    🔒 Control de Privacidad de Datos hacia Meta
+                  </span>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="space-y-0.5">
+                      <span className="font-medium text-foreground block text-[11.5px]">
+                        Enviar nombres de productos del catálogo (content_name)
+                      </span>
+                      <span className="text-[10.5px] text-muted-foreground block">
+                        Si lo desactivas, Meta nunca sabrá qué cuenta/servicio exacto se vendió o cotizó.
+                      </span>
+                    </div>
+                    <Switch checked={includeProductNames} onCheckedChange={setIncludeProductNames} />
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 border-t border-border/40 pt-2">
+                    <div className="space-y-0.5">
+                      <span className="font-medium text-foreground block text-[11.5px]">
+                        Enviar montos y valores monetarios (value y USD)
+                      </span>
+                      <span className="text-[10.5px] text-muted-foreground block">
+                        Envía el valor económico del pedido para optimizar por ROAS o volumen de compra.
+                      </span>
+                    </div>
+                    <Switch checked={includeValues} onCheckedChange={setIncludeValues} />
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 border-t border-border/40 pt-2">
+                    <div className="space-y-0.5">
+                      <span className="font-medium text-foreground block text-[11.5px]">
+                        Enviar nombres del cliente hasheados (fn y ln)
+                      </span>
+                      <span className="text-[10.5px] text-muted-foreground block">
+                        Si lo desactivas, Meta solo hará el match con el teléfono (ph) en SHA-256.
+                      </span>
+                    </div>
+                    <Switch checked={includeCustomerNames} onCheckedChange={setIncludeCustomerNames} />
+                  </div>
+
+                  <div className="border-t border-border/40 pt-2 space-y-1.5">
+                    <span className="text-[10.5px] font-semibold text-foreground block">
+                      Tipos de eventos a despachar:
+                    </span>
+                    <div className="flex flex-wrap gap-3 text-[11px]">
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={eventPurchase}
+                          onChange={(e) => setEventPurchase(e.target.checked)}
+                          className="rounded text-primary focus:ring-primary size-3.5"
+                        />
+                        <span>🏆 Purchase (Ventas)</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={eventQualified}
+                          onChange={(e) => setEventQualified(e.target.checked)}
+                          className="rounded text-primary focus:ring-primary size-3.5"
+                        />
+                        <span>⭐ QualifiedLead (Calificados)</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={eventLead}
+                          onChange={(e) => setEventLead(e.target.checked)}
+                          className="rounded text-primary focus:ring-primary size-3.5"
+                        />
+                        <span>👤 Lead (Cualquier contacto)</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="border-t border-border/60 pt-2.5 flex items-center justify-between gap-3">
                 <div className="space-y-0.5">
