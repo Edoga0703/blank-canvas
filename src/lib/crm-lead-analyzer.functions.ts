@@ -93,3 +93,33 @@ export const syncPendingLeadsAnalysis = createServerFn({ method: "POST" })
     const { analyzePendingCompanyLeads } = await import("./crm-lead-analyzer.server");
     return await analyzePendingCompanyLeads(companyId, data?.limit ?? 6);
   });
+
+
+export const getStageCardsForBulkFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { stageId?: string | null; pipelineId?: string | null; forceAll?: boolean }) => ({
+    stageId: d?.stageId ? String(d.stageId).trim() : null,
+    pipelineId: d?.pipelineId ? String(d.pipelineId).trim() : null,
+    forceAll: Boolean(d?.forceAll),
+  }))
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
+    const { getCardsForBulkAnalysis } = await import("./crm-lead-analyzer.server");
+    return getCardsForBulkAnalysis(companyId, data);
+  });
+
+export const processBulkAnalyzeChunkFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { cardIds: string[]; sendMetaEvents?: boolean; autoMove?: boolean }) => ({
+    cardIds: Array.isArray(d?.cardIds) ? d.cardIds.map(String) : [],
+    sendMetaEvents: d?.sendMetaEvents !== false,
+    autoMove: d?.autoMove !== false,
+  }))
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
+    const { executeBulkAnalyzeChunk } = await import("./crm-lead-analyzer.server");
+    return executeBulkAnalyzeChunk(companyId, data.cardIds, {
+      sendMetaEvents: data.sendMetaEvents,
+      autoMove: data.autoMove,
+    });
+  });

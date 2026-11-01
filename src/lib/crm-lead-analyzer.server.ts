@@ -520,3 +520,260 @@ export async function analyzePendingCompanyLeads(
     return { scanned: 0, analyzed: 0 };
   }
 }
+
+
+export type BulkCardItem = {
+  id: string;
+  nome: string | null;
+  numero: string;
+  stage_id: string;
+  stage_nome?: string;
+  hasPreviousAnalysis: boolean;
+};
+
+export async function getCardsForBulkAnalysis(
+  companyId: string,
+  input: { stageId?: string | null; pipelineId?: string | null; forceAll?: boolean },
+): Promise<{ cards: BulkCardItem[]; total: number; stageName?: string }> {
+  let query = (supabaseAdmin as any)
+    .from("crm_cards")
+    .select("id, nome, numero, stage_id, campos_extras, ultima_em")
+    .eq("company_id", companyId)
+    .or("tipo_contato.is.null,tipo_contato.neq.interno");
+
+  if (input.stageId) {
+    query = query.eq("stage_id", input.stageId);
+  } else if (input.pipelineId) {
+    query = query.eq("pipeline_id", input.pipelineId);
+  }
+
+  query = query.order("ultima_em", { ascending: false, nullsFirst: false });
+
+  const { data: cards, error } = await query;
+  if (error || !cards) return { cards: [], total: 0 };
+
+  let stageName: string | undefined;
+  if (input.stageId) {
+    const { data: st } = await (supabaseAdmin as any)
+      .from("crm_stage")
+      .select("nome")
+      .eq("id", input.stageId)
+      .maybeSingle();
+    stageName = st?.nome;
+  }
+
+  const items: BulkCardItem[] = cards.map((c: any) => {
+    const extras = c.campos_extras && typeof c.campos_extras === "object" ? c.campos_extras : {};
+    const hasDiag = Boolean(extras.ultimo_diagnostico_ia || (c as any).ultimo_analise_ia_em);
+    return {
+      id: c.id,
+      nome: c.nome,
+      numero: c.numero,
+      stage_id: c.stage_id,
+      stage_nome: stageName,
+      hasPreviousAnalysis: hasDiag,
+    };
+  });
+
+  return { cards: items, total: items.length, stageName };
+}
+
+export type BulkChunkResultItem = {
+  cardId: string;
+  leadName: string;
+  ok: boolean;
+  moved: boolean;
+  fromStageName?: string;
+  toStageName?: string;
+  resumo?: string;
+  intencao?: string;
+  calificado?: boolean;
+  metaEventSent?: string | null;
+  metaEventQueued?: string | null;
+  error?: string;
+};
+
+export async function executeBulkAnalyzeChunk(
+  companyId: string,
+  cardIds: string[],
+  options: { sendMetaEvents?: boolean; autoMove?: boolean } = {},
+): Promise<{
+  processed: number;
+  movedCount: number;
+  metaSentCount: number;
+  results: BulkChunkResultItem[];
+}> {
+  const sendMeta = options.sendMetaEvents !== false;
+  const autoMove = options.autoMove !== false;
+
+  let metaCfg: any = null;
+  try {
+    const { getMetaCapiConfig } = await import("@/lib/meta-capi.server");
+    metaCfg = await getMetaCapiConfig(companyId);
+  } catch (e) {
+    console.warn("[bulkAnalyze] getMetaCapiConfig error:", e);
+  }
+
+  const results: BulkChunkResultItem[] = [];
+  let movedCount = 0;
+  let metaSentCount = 0;
+
+  const CONCURRENCY = 4;
+  for (let i = 0; i < cardIds.length; i += CONCURRENCY) {
+    const slice = cardIds.slice(i, i + CONCURRENCY);
+    const chunkPromises = slice.map(async (cid) => {
+      try {
+        const { data: card } = await (supabaseAdmin as any)
+          .from("crm_cards")
+          .select("id, nome, numero, stage_id, valor, item_nome, owner_id, campos_extras, canal_chat")
+          .eq("id", cid)
+          .eq("company_id", companyId)
+          .maybeSingle();
+
+        if (!card) {
+          return { cardId: cid, leadName: "Desconocido", ok: false, moved: false, error: "Lead no encontrado" };
+        }
+
+        const leadDisplayName = card.nome || card.numero;
+
+        const analysis = await analyzeLeadInternal(companyId, card.id);
+        if (!analysis.ok || !analysis.result) {
+          return {
+            cardId: card.id,
+            leadName: leadDisplayName,
+            ok: false,
+            moved: false,
+            error: analysis.error || "No se pudo clasificar el lead",
+          };
+        }
+
+        let didMove = false;
+        let destStageName = analysis.result.etapa_sugerida_nome;
+        const currentStageName = analysis.currentStage?.nome || "";
+
+        if (autoMove && analysis.result.etapa_sugerida_id !== card.stage_id) {
+          if (!analysis.suggestedStageBlocked) {
+            const { data: destStage } = await (supabaseAdmin as any)
+              .from("crm_stage")
+              .select("id, nome, modo_atendimento")
+              .eq("id", analysis.result.etapa_sugerida_id)
+              .maybeSingle();
+
+            const extra: Record<string, any> = {};
+            if (!card.owner_id && destStage?.modo_atendimento === "manual") {
+              const assignedOwner = await pickLeadOwner(supabaseAdmin, companyId, analysis.result.etapa_sugerida_id);
+              if (assignedOwner) extra.owner_id = assignedOwner;
+            }
+
+            await moveCardToStage(supabaseAdmin, card.id, analysis.result.etapa_sugerida_id, extra);
+            didMove = true;
+            destStageName = destStage?.nome || destStageName;
+
+            try {
+              await (supabaseAdmin as any).from("lead_evento").insert({
+                company_id: companyId,
+                card_id: card.id,
+                tipo: "mudanca_etapa",
+                descricao: `Reanálisis Masivo: Movido a "${destStageName}" por IA (${analysis.result.justificativa.slice(0, 140)})`,
+              });
+            } catch {}
+          } else {
+            try {
+              await (supabaseAdmin as any).from("lead_evento").insert({
+                company_id: companyId,
+                card_id: card.id,
+                tipo: "atualizacao",
+                descricao: `Reanálisis Masivo: IA sugiere mover a "${destStageName}" (etapa bloqueada para confirmación humana)`,
+              });
+            } catch {}
+          }
+        }
+
+        let metaEventName: string | null = null;
+        let metaSent = false;
+
+        const destLower = (destStageName || "").toLowerCase();
+        if (destLower.includes("ganado") || destLower.includes("cliente activo") || destLower.includes("pago enviado")) {
+          metaEventName = "Purchase";
+        } else if (analysis.result.calificado || analysis.result.intencao === "POSITIVA" || destLower.includes("seguimiento") || destLower.includes("cotización") || destLower.includes("cotizacion")) {
+          metaEventName = "QualifiedLead";
+        } else {
+          metaEventName = "Lead";
+        }
+
+        if (sendMeta && metaEventName) {
+          if (metaCfg?.ativo && metaCfg?.access_token) {
+            try {
+              const { sendMetaConversionForLead } = await import("@/lib/meta-capi.server");
+              const capiRes = await sendMetaConversionForLead({
+                companyId,
+                cardId: card.id,
+                eventName: metaEventName,
+                value: analysis.result.valor_sugerido || card.valor || null,
+                currency: metaCfg.currency || "USD",
+                triggerSource: "bulk_offline_reanalysis",
+                forceSend: true,
+              });
+              if (capiRes.ok) metaSent = true;
+            } catch (e: any) {
+              console.warn("[bulkAnalyze.metaCapi] Error:", e?.message);
+            }
+          }
+
+          try {
+            const freshExtras = (card.campos_extras as Record<string, any>) || {};
+            await (supabaseAdmin as any).from("crm_cards").update({
+              campos_extras: {
+                ...freshExtras,
+                meta_offline_event: {
+                  event_name: metaEventName,
+                  sent: metaSent,
+                  at: new Date().toISOString(),
+                  intencao: analysis.result.intencao,
+                  calificado: analysis.result.calificado,
+                  valor: analysis.result.valor_sugerido || card.valor || null,
+                },
+              },
+            }).eq("id", card.id);
+          } catch {}
+        }
+
+        return {
+          cardId: card.id,
+          leadName: leadDisplayName,
+          ok: true,
+          moved: didMove,
+          fromStageName: currentStageName,
+          toStageName: destStageName,
+          resumo: analysis.result.resumo,
+          intencao: analysis.result.intencao,
+          calificado: analysis.result.calificado,
+          metaEventSent: metaSent ? metaEventName : null,
+          metaEventQueued: !metaSent && metaEventName ? metaEventName : null,
+        };
+      } catch (err: any) {
+        return {
+          cardId: cid,
+          leadName: "Lead",
+          ok: false,
+          moved: false,
+          error: err?.message || String(err),
+        };
+      }
+    });
+
+    const chunkResults = await Promise.all(chunkPromises);
+    for (const r of chunkResults) {
+      if (r.moved) movedCount++;
+      if (r.metaEventSent) metaSentCount++;
+      results.push(r);
+    }
+  }
+
+  return {
+    processed: results.length,
+    movedCount,
+    metaSentCount,
+    results,
+  };
+}

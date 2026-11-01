@@ -41,6 +41,7 @@ import { useFeatureEnabled } from "@/hooks/use-feature-flags";
 import { resolveStageAiMeta, packStageAiMeta, DEFAULT_CRM_MASTER_PROMPT } from "@/lib/crm-stage-meta";
 import { applyStageMovement, syncPendingLeadsAnalysis } from "@/lib/crm-lead-analyzer.functions";
 import { CrmCopilotSheet } from "@/components/crm/crm-copilot-sheet";
+import { CrmBulkAnalyzerDialog } from "@/components/crm/crm-bulk-analyzer-dialog";
 import { useLanguage, translateDefaultStageName, translateDefaultPipelineName } from "@/lib/i18n/context";
 
 
@@ -117,6 +118,8 @@ function KanbanPage() {
   const [saleSelectedItemId, setSaleSelectedItemId] = useState<string>("");
   const [saleAvailableItems, setSaleAvailableItems] = useState<any[]>([]);
   const [saleSaving, setSaleSaving] = useState(false);
+  const [bulkAnalyzerOpen, setBulkAnalyzerOpen] = useState(false);
+  const [bulkStage, setBulkStage] = useState<{ id: string; nome: string } | null>(null);
   const [lossValor, setLossValor] = useState("");
   const [lossMotivo, setLossMotivo] = useState("");
   const [lossAgendarRetorno, setLossAgendarRetorno] = useState(false);
@@ -846,6 +849,22 @@ function KanbanPage() {
           </DropdownMenu>
         )}
 
+        {/* Reanálisis masivo IA & Meta CAPI */}
+        <Button
+          size="sm"
+          variant="outline"
+          title="Reanálisis masivo con IA y tracking Meta"
+          className="size-8 p-0 shrink-0 sm:size-auto sm:h-9 sm:px-3 rounded-full text-[13px] border-primary/30 text-primary hover:bg-primary/5 font-semibold"
+          disabled={!activePipelineId || stages.length === 0}
+          onClick={() => {
+            const nuevoContactoStage = stages.find((s) => s.nome.toLowerCase().includes("nuevo"));
+            setBulkStage(nuevoContactoStage ? { id: nuevoContactoStage.id, nome: nuevoContactoStage.nome } : null);
+            setBulkAnalyzerOpen(true);
+          }}
+        >
+          <Sparkles className="size-4 sm:mr-1.5 text-primary" /> <span className="hidden sm:inline">Reanálisis IA & Meta</span>
+        </Button>
+
         {/* Adicionar lead */}
         <Button
           size="sm"
@@ -1068,6 +1087,10 @@ function KanbanPage() {
               onSetTipo={(t) => setStageTipo(col.id, t)}
               onLimpar={() => setLimparStage(col)}
               onRetorno={() => setRetornoStage(col)}
+              onReanalisar={() => {
+                setBulkStage({ id: col.id, nome: col.nome });
+                setBulkAnalyzerOpen(true);
+              }}
               onOpenCopilot={() => {
                 setCrmCopilotPrompt(`Quiero revisar, optimizar y entrenar las reglas de IA y los criterios de entrada para la etapa "${col.nome}". ¿Qué sugerencias tienes según las conversaciones de los leads?`);
                 setCrmCopilotOpen(true);
@@ -1145,6 +1168,17 @@ function KanbanPage() {
           setLimparStage(null);
           toast.success(dias > 0 ? `Leads somem da coluna ${dias} dias após entrarem nela` : "Limpeza automática desligada");
           await loadAll(companyId);
+        }}
+      />
+
+      <CrmBulkAnalyzerDialog
+        open={bulkAnalyzerOpen}
+        onOpenChange={setBulkAnalyzerOpen}
+        stageId={bulkStage?.id}
+        stageName={bulkStage?.nome}
+        pipelineId={activePipelineId}
+        onCompleted={() => {
+          if (companyId) void loadAll(companyId);
         }}
       />
 
@@ -1609,8 +1643,8 @@ function RotaRetornoDialog({ stage, allStages, pipelines, members, onClose, onSa
 }
 
 
-function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete, onAutomacao, onSetTipo, onLimpar, onRetorno, allowAutomacao, onAdd, isDefault, isEmpty, onOpenCopilot }:
-  { stage: KanbanStage; count: number; total?: number; onToggleValor?: (v: boolean) => void; children: React.ReactNode; onEdit: () => void; onDelete: () => void; onAutomacao: () => void; onSetTipo: (t: "normal" | "ganho" | "perda" | "formulario" | "sem-formulario") => void; onLimpar?: () => void; onRetorno?: () => void; allowAutomacao: boolean; onAdd: () => void; isDefault?: boolean; isEmpty: boolean; onOpenCopilot?: () => void }) {
+function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete, onAutomacao, onSetTipo, onLimpar, onRetorno, allowAutomacao, onAdd, isDefault, isEmpty, onOpenCopilot, onReanalisar }:
+  { stage: KanbanStage; count: number; total?: number; onToggleValor?: (v: boolean) => void; children: React.ReactNode; onEdit: () => void; onDelete: () => void; onAutomacao: () => void; onSetTipo: (t: "normal" | "ganho" | "perda" | "formulario" | "sem-formulario") => void; onLimpar?: () => void; onRetorno?: () => void; allowAutomacao: boolean; onAdd: () => void; isDefault?: boolean; isEmpty: boolean; onOpenCopilot?: () => void; onReanalisar?: () => void }) {
   const { setNodeRef: setColRef, isOver } = useDroppable({ id: `col:${stage.id}` });
   const { attributes, listeners, setNodeRef: setHandleRef } = useDraggable({ id: `stage:${stage.id}` });
   const { t, translateDefaultStageName } = useLanguage();
@@ -1651,6 +1685,12 @@ function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete
           <DropdownMenuContent align="end">
             {allowAutomacao && <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setTimeout(onEdit, 0); }}><Pencil className="size-3.5 mr-2" />Renomear / cor</DropdownMenuItem>}
             {allowAutomacao && <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setTimeout(onAutomacao, 0); }}><Zap className="size-3.5 mr-2" />Automação</DropdownMenuItem>}
+            {allowAutomacao && onReanalisar && (
+              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setTimeout(onReanalisar, 0); }}>
+                <Sparkles className="size-3.5 mr-2 text-primary" />
+                Re-analizar columna ({count})
+              </DropdownMenuItem>
+            )}
             {allowAutomacao && onOpenCopilot && (
               <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setTimeout(onOpenCopilot, 0); }}>
                 <Sparkles className="size-3.5 mr-2 text-blue-600" />
