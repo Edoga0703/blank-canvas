@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-31T23:32:47.429806+00:00",
+  "generated_at": "2026-11-01T17:48:00.339775+00:00",
   "files": [
     {
       "path": "webhooks_security.html",
@@ -43,7 +43,7 @@
     },
     {
       "path": "vite.config.ts",
-      "bytes": 4635
+      "bytes": 4905
     },
     {
       "path": "drizzle.config.ts",
@@ -795,7 +795,7 @@
     },
     {
       "path": "src/server/connectionKeyCrypto.ts",
-      "bytes": 974
+      "bytes": 996
     },
     {
       "path": "src/server/appUserConnections.server.ts",
@@ -991,7 +991,7 @@
     },
     {
       "path": "src/lib/provider-monitor.server.ts",
-      "bytes": 6229
+      "bytes": 6293
     },
     {
       "path": "src/lib/meta-message-media.server.ts",
@@ -1011,7 +1011,7 @@
     },
     {
       "path": "src/lib/meta-config.server.ts",
-      "bytes": 2092
+      "bytes": 2225
     },
     {
       "path": "src/lib/comercial.functions.ts",
@@ -1263,7 +1263,7 @@
     },
     {
       "path": "src/lib/meta-oauth.server.ts",
-      "bytes": 10326
+      "bytes": 10751
     },
     {
       "path": "src/lib/handoff.functions.ts",
@@ -1311,7 +1311,7 @@
     },
     {
       "path": "src/lib/system-health.functions.ts",
-      "bytes": 11408
+      "bytes": 11472
     },
     {
       "path": "src/lib/wa-interactive.ts",
@@ -1475,7 +1475,7 @@
     },
     {
       "path": "src/lib/whatsapp.functions.ts",
-      "bytes": 46549
+      "bytes": 46613
     },
     {
       "path": "src/lib/session-middleware.ts",
@@ -1519,7 +1519,7 @@
     },
     {
       "path": "src/lib/dapi-test.functions.ts",
-      "bytes": 2713
+      "bytes": 2777
     },
     {
       "path": "src/lib/comercial-export.ts",
@@ -1819,7 +1819,7 @@
     },
     {
       "path": "src/lib/storage/r2.server.ts",
-      "bytes": 9967
+      "bytes": 11055
     },
     {
       "path": "src/lib/storage/r2.functions.ts",
@@ -2919,7 +2919,7 @@
     },
     {
       "path": "src/routes/api/public/meta-leads-webhook.ts",
-      "bytes": 4248
+      "bytes": 4387
     },
     {
       "path": "src/routes/api/public/ai-health.ts",
@@ -2955,7 +2955,7 @@
     },
     {
       "path": "src/routes/api/public/chat-media.ts",
-      "bytes": 12748
+      "bytes": 12820
     },
     {
       "path": "src/routes/api/public/billing/webhook.ts",
