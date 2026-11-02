@@ -1,3 +1,4 @@
+import { FormattedMessageText } from "@/components/chat/formatted-message-text";
 import { useState, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -172,7 +173,7 @@ export function LeadAiAnalyzerDialog({
                 <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   {t("crm.executive_summary", undefined, "Resumen de la Negociación")}
                 </span>
-                <p className="text-sm text-foreground leading-relaxed">{result.resumo}</p>
+                <FormattedMessageText text={result.resumo} className="text-sm text-foreground leading-relaxed" />
               </div>
 
               {/* Detección de Catálogo y Valor */}
@@ -230,9 +231,9 @@ export function LeadAiAnalyzerDialog({
 
                 <div className="space-y-1 text-xs">
                   <span className="font-semibold text-muted-foreground">{t("crm.justification", undefined, "Justificación")}:</span>
-                  <p className="text-muted-foreground leading-relaxed pl-2 border-l-2 border-primary/40">
-                    {result.justificativa}
-                  </p>
+                  <div className="pl-2 border-l-2 border-primary/40">
+                    <FormattedMessageText text={result.justificativa} className="text-xs text-muted-foreground leading-relaxed" />
+                  </div>
                 </div>
 
                 {suggestedBlocked && (
@@ -255,9 +256,7 @@ export function LeadAiAnalyzerDialog({
                     <Lightbulb className="size-4" />
                     <span>{t("crm.pipeline_training_suggestion", undefined, "Sugerencia para mejorar las reglas de tu embudo")}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {result.sugestao_treinamento}
-                  </p>
+                  <FormattedMessageText text={result.sugestao_treinamento} className="text-xs text-muted-foreground leading-relaxed" />
                   {onOpenCopilotWithPrompt && (
                     <div className="pt-1 flex justify-end">
                       <Button

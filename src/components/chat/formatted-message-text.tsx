@@ -95,8 +95,8 @@ function parseBlocks(raw: string): {
       continue;
     }
 
-    // Horizontal divider: ---, ***, ___
-    if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
+    // Horizontal divider: --, ---, ***, ___
+    if (/^(?:-{2,}|\*{3,}|_{3,})$/.test(trimmed)) {
       blocks.push({ type: "divider", rawText: line });
       continue;
     }
@@ -215,6 +215,27 @@ function tokenizeInline(text: string): InlineToken[] {
             tokens: parseFormatting(`(${inner})`),
           });
           remaining = remaining.slice(closeIdx + 2);
+          idx = 0;
+          continue;
+        }
+      }
+
+      // 1.8 Bold + Italic: ***...***
+      if (remaining.startsWith("***", idx)) {
+        const closeIdx = remaining.indexOf("***", idx + 3);
+        if (closeIdx !== -1) {
+          if (idx > 0) tokens.push({ type: "text", content: remaining.slice(0, idx) });
+          const inner = remaining.slice(idx + 3, closeIdx);
+          tokens.push({
+            type: "bold",
+            content: inner,
+            tokens: [{
+              type: "italic",
+              content: inner,
+              tokens: parseFormatting(inner),
+            }],
+          });
+          remaining = remaining.slice(closeIdx + 3);
           idx = 0;
           continue;
         }
@@ -513,8 +534,10 @@ export function FormattedMessageText({ text, isOut, className }: FormattedMessag
             <blockquote
               key={idx}
               className={cn(
-                "border-l-2 pl-2.5 my-1.5 italic opacity-90",
-                isOut ? "border-white/40" : "border-[color:var(--brand)]",
+                "border-l-2 pl-3 py-1 my-2 italic rounded-r-md text-inherit",
+                isOut
+                  ? "border-white/40 bg-white/10 text-white"
+                  : "border-primary/60 bg-primary/5 text-foreground/90",
               )}
             >
               <RenderInline tokens={tokens} isOut={isOut} />

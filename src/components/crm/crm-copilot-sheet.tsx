@@ -1,3 +1,4 @@
+import { FormattedMessageText } from "@/components/chat/formatted-message-text";
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
@@ -290,7 +291,14 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
                     : "bg-muted/60 text-foreground border border-border/60 rounded-bl-xs"
                 )}
               >
-                <div className="whitespace-pre-wrap">{msg.content}</div>
+                <FormattedMessageText
+                  text={msg.content}
+                  isOut={msg.role === "user"}
+                  className={cn(
+                    "text-xs leading-relaxed",
+                    msg.role === "user" ? "text-primary-foreground" : "text-foreground"
+                  )}
+                />
 
                 {/* Acciones propuestas por el Copilot */}
                 {msg.proposals && msg.proposals.length > 0 && (

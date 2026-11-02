@@ -399,9 +399,10 @@ export function LeadDetailsPanel({
                   {diag.intencao || "AUDITORÍA"}
                 </span>
               </div>
-              <p className="text-xs text-foreground/80 leading-relaxed">
-                {diag.justificativa || diag.resumo}
-              </p>
+              <FormattedMessageText
+                text={diag.justificativa || diag.resumo}
+                className="text-xs text-foreground/80 leading-relaxed"
+              />
               <div className="pt-1 flex items-center justify-between gap-2">
                 <span className="text-xs font-medium text-foreground">
                   ➔ {diag.etapa_sugerida_nome}
