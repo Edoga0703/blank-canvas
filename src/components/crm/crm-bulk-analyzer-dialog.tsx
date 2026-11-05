@@ -24,9 +24,10 @@ import {
   ShieldCheck,
   Layers,
   Filter,
+  Cloud,
 } from "lucide-react";
 import { toast } from "sonner";
-import { getStageCardsForBulkFn, processBulkAnalyzeChunkFn } from "@/lib/crm-lead-analyzer.functions";
+import { getStageCardsForBulkFn, processBulkAnalyzeChunkFn, startBackgroundReanalysisFn } from "@/lib/crm-lead-analyzer.functions";
 import type { BulkCardItem, BulkChunkResultItem } from "@/lib/crm-lead-analyzer.server";
 import { useLanguage } from "@/lib/i18n/context";
 
@@ -59,6 +60,8 @@ export function CrmBulkAnalyzerDialog({
   const { t } = useLanguage();
   const getCardsFn = useServerFn(getStageCardsForBulkFn);
   const processChunkFn = useServerFn(processBulkAnalyzeChunkFn);
+  const startBackgroundFn = useServerFn(startBackgroundReanalysisFn);
+  const [startingServerWorker, setStartingServerWorker] = useState(false);
 
   // Alcance del análisis: "stage" (una sola etapa) o "pipeline" (todas las etapas)
   const [targetScope, setTargetScope] = useState<"stage" | "pipeline">(initialStageId ? "stage" : "pipeline");
@@ -146,6 +149,41 @@ export function CrmBulkAnalyzerDialog({
   }
 
   // Iniciar proceso
+  async function handleStartOnServer() {
+    if (cardPool.length === 0) return;
+    setStartingServerWorker(true);
+    try {
+      const allowedMetaEvents: string[] = [];
+      if (eventPurchase) allowedMetaEvents.push("Purchase");
+      if (eventQualified) allowedMetaEvents.push("QualifiedLead");
+      if (eventLead) allowedMetaEvents.push("Lead");
+
+      const activeStageId = targetScope === "stage" ? selectedStageId : null;
+      const res = await startBackgroundFn({
+        data: {
+          stageId: activeStageId,
+          pipelineId: targetScope === "pipeline" ? pipelineId : null,
+          forceAll,
+          sendMetaEvents,
+          autoMove,
+          allowedMetaEvents,
+        },
+      });
+
+      if (res.ok) {
+        toast.success(res.message, { duration: 6000 });
+        onOpenChange(false);
+        if (onCompleted) onCompleted();
+      } else {
+        toast.error(res.message || "No se pudo iniciar la tarea en segundo plano");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Error al comunicarse con el servidor");
+    } finally {
+      setStartingServerWorker(false);
+    }
+  }
+
   async function handleStart() {
     if (cardPool.length === 0) return;
     setStatus("running");
@@ -663,12 +701,23 @@ export function CrmBulkAnalyzerDialog({
                 Cancelar
               </Button>
               <Button
+                variant="outline"
+                onClick={handleStartOnServer}
+                disabled={loadingCards || cardPool.length === 0 || startingServerWorker}
+                className="gap-2 font-bold border-primary/40 text-primary hover:bg-primary/5"
+                title="El servidor ejecutará el análisis en la nube de forma autónoma. Puedes cerrar esta ventana inmediatamente."
+              >
+                {startingServerWorker ? <Loader2 className="size-4 animate-spin" /> : <Cloud className="size-4" />}
+                Iniciar en Servidor (Subtarea)
+              </Button>
+              <Button
                 onClick={handleStart}
-                disabled={loadingCards || cardPool.length === 0}
+                disabled={loadingCards || cardPool.length === 0 || startingServerWorker}
                 className="gap-2 font-bold"
+                title="Supervisar el proceso en vivo en esta ventana"
               >
                 <Sparkles className="size-4" />
-                Iniciar Reanálisis ({cardPool.length} leads)
+                Iniciar en Navegador ({cardPool.length} leads)
               </Button>
             </>
           )}

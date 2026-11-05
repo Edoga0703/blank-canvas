@@ -139,3 +139,34 @@ export const processBulkAnalyzeChunkFn = createServerFn({ method: "POST" })
       allowedMetaEvents: data.allowedMetaEvents,
     });
   });
+export const startBackgroundReanalysisFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: {
+    stageId?: string | null;
+    pipelineId?: string | null;
+    forceAll?: boolean;
+    sendMetaEvents?: boolean;
+    autoMove?: boolean;
+    allowedMetaEvents?: string[];
+  }) => d)
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
+    const { startBackgroundReanalysis } = await import("./crm-analysis-worker.server");
+    return startBackgroundReanalysis(companyId, data);
+  });
+
+export const pauseBackgroundReanalysisFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
+    const { pauseBackgroundReanalysis } = await import("./crm-analysis-worker.server");
+    return pauseBackgroundReanalysis(companyId);
+  });
+
+export const getBackgroundReanalysisStatusFn = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
+    const { getBackgroundReanalysisStatus } = await import("./crm-analysis-worker.server");
+    return getBackgroundReanalysisStatus(companyId);
+  });

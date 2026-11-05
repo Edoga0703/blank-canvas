@@ -22,7 +22,7 @@ import {
   Plus, MoreHorizontal, Sparkles, Pencil, Trash2, Palette, Zap, Clock, ChevronDown, Lock,
   Users, Loader2, Wand2, Search, SlidersHorizontal, RefreshCw, User as UserIcon,
   TrendingUp, MessageSquare, ArrowRightLeft, Columns3, Calendar, Bot, Star, Coins, CalendarPlus, UserPlus, Eye, EyeOff, Forward,
-  Upload, X, FileText, Image as ImageIcon, Video, Mic, Target
+  Upload, X, FileText, Image as ImageIcon, Video, Mic, Target, Pause
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { generateAutomacaoMessage } from "@/lib/automacao-ai.functions";
@@ -39,7 +39,7 @@ import { QuickScheduleDialog } from "@/components/agenda/quick-schedule-dialog";
 import { EncaminharDialog } from "@/components/chat/encaminhar-dialog";
 import { useFeatureEnabled } from "@/hooks/use-feature-flags";
 import { resolveStageAiMeta, packStageAiMeta, DEFAULT_CRM_MASTER_PROMPT } from "@/lib/crm-stage-meta";
-import { applyStageMovement, syncPendingLeadsAnalysis } from "@/lib/crm-lead-analyzer.functions";
+import { applyStageMovement, syncPendingLeadsAnalysis, getBackgroundReanalysisStatusFn, pauseBackgroundReanalysisFn } from "@/lib/crm-lead-analyzer.functions";
 import { CrmCopilotSheet } from "@/components/crm/crm-copilot-sheet";
 import { CrmBulkAnalyzerDialog } from "@/components/crm/crm-bulk-analyzer-dialog";
 import { useLanguage, translateDefaultStageName, translateDefaultPipelineName } from "@/lib/i18n/context";
@@ -142,6 +142,9 @@ function KanbanPage() {
   const registerSaleFn = useServerFn(registerSale);
   const moveStageServerFn = useServerFn(applyStageMovement);
   const syncPendingAnalysisFn = useServerFn(syncPendingLeadsAnalysis);
+  const getWorkerStatusFn = useServerFn(getBackgroundReanalysisStatusFn);
+  const pauseWorkerFn = useServerFn(pauseBackgroundReanalysisFn);
+  const [serverWorkerStatus, setServerWorkerStatus] = useState<any>(null);
   const listProdutosFn = useServerFn(listProdutos);
   const listServicosFn = useServerFn(listServicos);
 
@@ -228,6 +231,33 @@ function KanbanPage() {
         .catch(() => null);
     }
   }
+
+  // Monitoreo del Worker Autónomo en Servidor
+  useEffect(() => {
+    if (!companyId) return;
+    let timer: any = null;
+    let isMounted = true;
+
+    const checkWorkerStatus = async () => {
+      try {
+        const s = await getWorkerStatusFn();
+        if (!isMounted) return;
+        setServerWorkerStatus(s);
+        if (s?.status === "running") {
+          timer = setTimeout(checkWorkerStatus, 5000);
+        } else if (s?.status === "completed" && serverWorkerStatus?.status === "running") {
+          toast.success("Subtarea en servidor completada exitosamente.");
+          void loadAll(companyId, true);
+        }
+      } catch {}
+    };
+
+    void checkWorkerStatus();
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [companyId]);
 
   useEffect(() => {
     if (!companyId) return;
@@ -862,6 +892,28 @@ function KanbanPage() {
 
             </DropdownMenuContent>
           </DropdownMenu>
+        )}
+
+        {/* Píldora de estado de Subtarea en Servidor */}
+        {serverWorkerStatus?.status === "running" && (
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold animate-pulse shadow-sm">
+            <Loader2 className="size-3.5 animate-spin text-blue-600" />
+            <span className="hidden sm:inline">Subtarea Servidor:</span>
+            <span>{serverWorkerStatus.processed}/{serverWorkerStatus.total} ({Math.round((serverWorkerStatus.processed / (serverWorkerStatus.total || 1)) * 100)}%)</span>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-4 p-0 text-blue-600 hover:bg-blue-100 rounded-full ml-0.5"
+              title="Pausar subtarea en servidor"
+              onClick={async () => {
+                await pauseWorkerFn();
+                toast.info("Subtarea en servidor pausada.");
+                setServerWorkerStatus((prev: any) => prev ? { ...prev, status: "paused" } : null);
+              }}
+            >
+              <Pause className="size-3" />
+            </Button>
+          </div>
         )}
 
         {/* Reanálisis masivo IA & Meta CAPI */}

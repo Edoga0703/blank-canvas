@@ -23,6 +23,11 @@ Capiconversa CRM centraliza la comunicación con clientes, la gestión de prospe
 - **Motor Triad Autónomo (Cero Dependencia de Crons Externos):**
   - Barrido oportunista acoplado a la ingesta simétrica de mensajes (entrantes y salientes).
   - Barrido pasivo en Kanban ampliado a 15 leads por visita de usuario con procesamiento no bloqueante.
+- **Subtarea Autónoma en Servidor (Background Worker Desacoplado):**
+  - Opción de lanzar el análisis masivo como worker autónomo en el servidor (`crm-analysis-worker.server.ts`), permitiendo cerrar el navegador o apagar la PC inmediatamente.
+  - Cerrojo Distribuido (*Distributed Mutex Lock* con TTL) para evitar colisiones duales.
+  - Blindajes atómicos: *Optimistic Timestamp Guard* (aborta si entra un WhatsApp nuevo mid-flight) y *Stage Version Lock* (cede el paso ante arrastre manual de asesores).
+  - Píldora de progreso en vivo en la cabecera del Kanban con porcentaje y botón de pausa.
 
 ---
 
