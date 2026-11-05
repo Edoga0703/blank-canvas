@@ -145,7 +145,7 @@ function KanbanPage() {
   const listProdutosFn = useServerFn(listProdutos);
   const listServicosFn = useServerFn(listServicos);
 
-  async function loadAll(cid: string) {
+  async function loadAll(cid: string, skipAutoAudit = false) {
     void loadPauses(cid);
     const [
       { data: pipes }, { data: st }, { data: cd }, { data: mem }, { data: ags }, { data: qs },
@@ -217,11 +217,12 @@ function KanbanPage() {
       if (!ex.ultimo_diagnostico_ia || !lastAnaliseStr) return true;
       return ultimaMs > new Date(lastAnaliseStr).getTime();
     });
-    if (needsAutoAudit) {
+    if (needsAutoAudit && !skipAutoAudit) {
       void syncPendingAnalysisFn({ data: { limit: 15 } })
         .then((res: any) => {
           if (res?.analyzed > 0) {
-            void loadAll(cid);
+            // Recarga silenciosa de cards con skipAutoAudit=true para evitar bucles recursivos continuos
+            void loadAll(cid, true);
           }
         })
         .catch(() => null);

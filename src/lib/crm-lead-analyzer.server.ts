@@ -34,11 +34,14 @@ export function isLeadEligibleForInactivityAnalysis(
     ultima_em?: string | null;
     campos_extras?: any;
     ultimo_analise_ia_em?: string | null;
+    created_at?: string | null;
+    updated_at?: string | null;
   },
   nowMs: number = Date.now(),
 ): boolean {
-  if (!card.ultima_em) return false;
-  const ultimaEmMs = new Date(card.ultima_em).getTime();
+  const timestamp = card.ultima_em || (card as any).updated_at || (card as any).created_at;
+  if (!timestamp) return false;
+  const ultimaEmMs = new Date(timestamp).getTime();
   if (isNaN(ultimaEmMs)) return false;
 
   // 1. Debe haber al menos 30 minutos de silencio continuo
@@ -474,6 +477,8 @@ export async function checkAndAnalyzeLeadCooldown(
     const now = Date.now();
     const eligible = isLeadEligibleForInactivityAnalysis(card, now);
     if (!eligible) {
+      // El chat está en curso; aprovechamos el pulso para drenar 1 lead histórico inactivo
+      void sweepOpportunisticInactiveLeads(companyId, 1);
       return {
         triggered: false,
         scheduled: false,
