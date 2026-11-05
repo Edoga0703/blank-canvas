@@ -204,13 +204,27 @@ function KanbanPage() {
       queues: (qs ?? []) as DistQueue[],
     };
 
+    const nowMs = Date.now();
+    const thirtyMinMs = 30 * 60 * 1000;
     const needsAutoAudit = ((cd ?? []) as any[]).some((c) => {
+      if (!c.ultima_em) return false;
+      const ultimaMs = new Date(c.ultima_em).getTime();
+      const silenceMs = nowMs - ultimaMs;
+      if (silenceMs < thirtyMinMs) return false; // Conversación activa o reciente
+
       const ex = c.campos_extras || {};
-      if (!ex.ultimo_diagnostico_ia || !ex.ultimo_analise_ia_em) return true;
-      return c.ultima_em && new Date(c.ultima_em).getTime() > new Date(ex.ultimo_analise_ia_em).getTime() + 30_000;
+      const lastAnaliseStr = (c as any).ultimo_analise_ia_em || ex.ultimo_analise_ia_em;
+      if (!ex.ultimo_diagnostico_ia || !lastAnaliseStr) return true;
+      return ultimaMs > new Date(lastAnaliseStr).getTime();
     });
     if (needsAutoAudit) {
-      void syncPendingAnalysisFn({ data: { limit: 5 } }).catch(() => null);
+      void syncPendingAnalysisFn({ data: { limit: 15 } })
+        .then((res: any) => {
+          if (res?.analyzed > 0) {
+            void loadAll(cid);
+          }
+        })
+        .catch(() => null);
     }
   }
 

@@ -1,6 +1,7 @@
 // src/lib/crm-lead-analyzer.server.ts
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { lovableAiChat, type ChatMsg } from "@/lib/lovable-ai.server";
+import { globalAiLimiter } from "./ai-limiter.server";
 import { moveCardToStage, pickLeadOwner } from "@/lib/crm-engine.server";
 import {
   resolveStageAiMeta,
@@ -26,9 +27,44 @@ export { analyzeLeadNow, applyStageMovement } from "./crm-lead-analyzer.function
 const pendingCooldownTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const runningLeadLocks = new Set<string>();
 
+export const INACTIVITY_WINDOW_MS = 30 * 60 * 1000; // 30 minutos de inactividad de conversación
+
+export function isLeadEligibleForInactivityAnalysis(
+  card: {
+    ultima_em?: string | null;
+    campos_extras?: any;
+    ultimo_analise_ia_em?: string | null;
+  },
+  nowMs: number = Date.now(),
+): boolean {
+  if (!card.ultima_em) return false;
+  const ultimaEmMs = new Date(card.ultima_em).getTime();
+  if (isNaN(ultimaEmMs)) return false;
+
+  // 1. Debe haber al menos 30 minutos de silencio continuo
+  const silenceElapsedMs = nowMs - ultimaEmMs;
+  if (silenceElapsedMs < INACTIVITY_WINDOW_MS) {
+    return false; // Chat activo o interacción reciente
+  }
+
+  // 2. Verificar cuándo fue el último análisis realizado
+  const extras = card.campos_extras && typeof card.campos_extras === "object" ? card.campos_extras : {};
+  const lastAnaliseStr = (card as any).ultimo_analise_ia_em || extras.ultimo_analise_ia_em;
+  if (!lastAnaliseStr) {
+    return true; // Nunca analizado y ya tiene >= 30m inactivo -> Elegible
+  }
+
+  const lastAnaliseMs = new Date(lastAnaliseStr).getTime();
+  if (isNaN(lastAnaliseMs)) return true;
+
+  // 3. Hubo interacción posterior al último análisis
+  return ultimaEmMs > lastAnaliseMs;
+}
+
 export async function analyzeLeadInternal(
   companyId: string,
   cardId: string,
+  priority: 1 | 2 | 3 = 1,
 ): Promise<{
   ok: boolean;
   result: LeadAnalysisResult | null;
@@ -241,10 +277,14 @@ Responde OBLIGATORIAMENTE con un único bloque JSON válido con el siguiente for
 
   let rawAiOutput = "";
   try {
-    rawAiOutput = await lovableAiChat(chatMessages, {
-      provider: activeAgent?.ai_provider || "gemini",
-      model: activeAgent?.ai_model || "google/gemini-2.5-flash",
-    });
+    rawAiOutput = await globalAiLimiter.schedule(
+      () =>
+        lovableAiChat(chatMessages, {
+          provider: activeAgent?.ai_provider || "gemini",
+          model: activeAgent?.ai_model || "google/gemini-2.5-flash",
+        }),
+      priority,
+    );
   } catch (err: any) {
     return {
       ok: false,
@@ -346,7 +386,11 @@ Responde OBLIGATORIAMENTE con un único bloque JSON válido con el siguiente for
 /**
  * Ejecuta el análisis de un lead e impacta el movimiento automático si corresponde.
  */
-async function executeAutoLeadAnalysisAndMove(companyId: string, cardId: string): Promise<{ triggered: boolean; reason?: string }> {
+async function executeAutoLeadAnalysisAndMove(
+  companyId: string,
+  cardId: string,
+  priority: 1 | 2 | 3 = 2,
+): Promise<{ triggered: boolean; reason?: string }> {
   const lockKey = `${companyId}:${cardId}`;
   if (runningLeadLocks.has(lockKey)) {
     return { triggered: false, reason: "already_running" };
@@ -363,7 +407,7 @@ async function executeAutoLeadAnalysisAndMove(companyId: string, cardId: string)
 
     if (!card) return { triggered: false, reason: "card_not_found" };
 
-    const analysis = await analyzeLeadInternal(companyId, card.id);
+    const analysis = await analyzeLeadInternal(companyId, card.id, priority);
     if (analysis.ok && analysis.result && analysis.result.etapa_sugerida_id !== card.stage_id) {
       if (!analysis.suggestedStageBlocked) {
         const { data: destStage } = await supabaseAdmin
@@ -416,9 +460,9 @@ export async function checkAndAnalyzeLeadCooldown(
 ): Promise<{ triggered: boolean; scheduled?: boolean; reason?: string }> {
   try {
     const cleanNum = String(numero || "").replace(/\D/g, "");
-    const { data: card } = await supabaseAdmin
+    const { data: card } = await (supabaseAdmin as any)
       .from("crm_cards")
-      .select("id, stage_id, owner_id, campos_extras, updated_at")
+      .select("id, stage_id, owner_id, campos_extras, updated_at, ultima_em")
       .eq("company_id", companyId)
       .in("numero", cleanNum && cleanNum !== numero ? [numero, cleanNum] : [numero])
       .order("updated_at", { ascending: false })
@@ -427,41 +471,17 @@ export async function checkAndAnalyzeLeadCooldown(
 
     if (!card) return { triggered: false, reason: "card_not_found" };
 
-    const extras = (card.campos_extras as Record<string, any>) || {};
-    const rawLast = (card as any).ultimo_analise_ia_em || extras.ultimo_analise_ia_em;
-    const ultimoAnalise = rawLast ? new Date(rawLast).getTime() : 0;
     const now = Date.now();
-    const cooldownMs = 25 * 1000; // 25 segundos entre análisis del mismo lead
-
-    const timerKey = `${companyId}:${card.id}`;
-
-    if (ultimoAnalise && now - ultimoAnalise < cooldownMs) {
-      const remainingMs = Math.max(2000, cooldownMs - (now - ultimoAnalise) + 500);
-      // Encolar ejecución diferida para que el último mensaje de una ráfaga NUNCA se pierda
-      if (!pendingCooldownTimers.has(timerKey)) {
-        const timer = setTimeout(() => {
-          pendingCooldownTimers.delete(timerKey);
-          void executeAutoLeadAnalysisAndMove(companyId, card.id).catch((e) =>
-            console.warn("[crm-lead-analyzer] deferred analysis error:", e?.message),
-          );
-        }, remainingMs);
-        pendingCooldownTimers.set(timerKey, timer);
-      }
+    const eligible = isLeadEligibleForInactivityAnalysis(card, now);
+    if (!eligible) {
       return {
         triggered: false,
-        scheduled: true,
-        reason: `cooldown_scheduled_in_${Math.round(remainingMs / 1000)}s`,
+        scheduled: false,
+        reason: "waiting_for_30m_inactivity",
       };
     }
 
-    // Si había un timer pendiente, limpiarlo porque vamos a ejecutar ahora mismo
-    const existingTimer = pendingCooldownTimers.get(timerKey);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
-      pendingCooldownTimers.delete(timerKey);
-    }
-
-    return await executeAutoLeadAnalysisAndMove(companyId, card.id);
+    return await executeAutoLeadAnalysisAndMove(companyId, card.id, 2);
   } catch (err: any) {
     console.warn("[crm-lead-analyzer] checkAndAnalyzeLeadCooldown failed:", err?.message);
     return { triggered: false, reason: err?.message };
@@ -469,55 +489,81 @@ export async function checkAndAnalyzeLeadCooldown(
 }
 
 /**
- * Barrido automático de leads pendientes de análisis o con actividad nueva posterior al último análisis.
- * Se ejecuta al abrir el Kanban y en el cron del servidor para garantizar que el 100% de los leads estén analizados.
+ * Barrido automático de leads pendientes con inactividad >= 30 minutos.
+ * Usa un pool con semáforo global para balancear velocidad sin saturar Drael ni generar 429.
  */
 export async function analyzePendingCompanyLeads(
   companyId?: string | null,
-  limit: number = 8,
+  limit: number = 15,
 ): Promise<{ scanned: number; analyzed: number }> {
   try {
-    let query = supabaseAdmin
+    let query = (supabaseAdmin as any)
       .from("crm_cards")
-      .select("id, company_id, numero, ultima_em, campos_extras")
+      .select("id, company_id, numero, ultima_em, campos_extras, stage_id")
       .or("tipo_contato.is.null,tipo_contato.neq.interno")
       .order("ultima_em", { ascending: false })
-      .limit(120);
+      .limit(150);
 
     if (companyId) {
       query = query.eq("company_id", companyId);
     }
 
-    const { data: cards } = await query;
-    if (!cards || cards.length === 0) return { scanned: 0, analyzed: 0 };
+    const { data: cards, error } = await query;
+    if (error || !cards || cards.length === 0) return { scanned: 0, analyzed: 0 };
 
-    const candidates = cards.filter((c: any) => {
-      const extras = c.campos_extras && typeof c.campos_extras === "object" ? c.campos_extras : {};
-      const lastAnaliseStr = (c as any).ultimo_analise_ia_em || extras.ultimo_analise_ia_em;
-      const hasDiag = Boolean(extras.ultimo_diagnostico_ia);
-      if (!hasDiag || !lastAnaliseStr) return true;
-      const lastAnaliseMs = new Date(lastAnaliseStr).getTime();
-      const ultimaEmMs = c.ultima_em ? new Date(c.ultima_em).getTime() : 0;
-      // Si hubo actividad más de 30 segundos después del último análisis, re-analizar
-      return ultimaEmMs > lastAnaliseMs + 30_000;
-    });
+    const nowMs = Date.now();
+    const candidates = cards.filter((c: any) => isLeadEligibleForInactivityAnalysis(c, nowMs));
 
-    const batch = candidates.slice(0, Math.max(1, Math.min(limit, 20)));
+    const batch = candidates.slice(0, Math.max(1, Math.min(limit, 25)));
     let analyzedCount = 0;
 
-    for (const item of batch) {
-      try {
-        const res = await executeAutoLeadAnalysisAndMove(item.company_id, item.id);
-        if (res.triggered) analyzedCount++;
-      } catch (e: any) {
-        console.warn("[analyzePendingCompanyLeads] item error:", e?.message);
+    const CHUNK_SIZE = 2;
+    for (let i = 0; i < batch.length; i += CHUNK_SIZE) {
+      const chunk = batch.slice(i, i + CHUNK_SIZE);
+      const results = await Promise.allSettled(
+        chunk.map((item: any) => executeAutoLeadAnalysisAndMove(item.company_id, item.id, 2))
+      );
+
+      for (const res of results) {
+        if (res.status === "fulfilled" && res.value.triggered) {
+          analyzedCount++;
+        }
       }
+      await new Promise((r) => setTimeout(r, 200));
     }
 
     return { scanned: candidates.length, analyzed: analyzedCount };
   } catch (err: any) {
     console.warn("[analyzePendingCompanyLeads] failed:", err?.message);
     return { scanned: 0, analyzed: 0 };
+  }
+}
+
+/**
+ * Disparador oportunista: Al llegar o salir un mensaje en ingest, audita en segundo plano 1 o 2 leads
+ * que ya tengan >= 30m inactivos, manteniendo el embudo drenado continuamente sin depender de crons externos.
+ */
+export async function sweepOpportunisticInactiveLeads(companyId: string, limit: number = 2): Promise<void> {
+  try {
+    const thirtyMinAgo = new Date(Date.now() - INACTIVITY_WINDOW_MS).toISOString();
+    const { data: candidates } = await (supabaseAdmin as any)
+      .from("crm_cards")
+      .select("id, company_id, ultima_em, campos_extras")
+      .eq("company_id", companyId)
+      .lte("ultima_em", thirtyMinAgo)
+      .order("ultima_em", { ascending: false })
+      .limit(limit * 3);
+
+    if (!candidates || candidates.length === 0) return;
+
+    const nowMs = Date.now();
+    const eligible = candidates.filter((c: any) => isLeadEligibleForInactivityAnalysis(c, nowMs)).slice(0, limit);
+
+    for (const item of eligible) {
+      void executeAutoLeadAnalysisAndMove(item.company_id, item.id, 2).catch(() => null);
+    }
+  } catch {
+    // Best effort en segundo plano
   }
 }
 
@@ -638,7 +684,9 @@ export async function executeBulkAnalyzeChunk(
   let movedCount = 0;
   let metaSentCount = 0;
 
-  const CONCURRENCY = 4;
+  // Máximo 2 llamadas simultáneas para Reanálisis Masivo:
+  // Garantiza que Drael (límite 4) nunca se sature y conviva pacíficamente con chats y barridos
+  const CONCURRENCY = 2;
   for (let i = 0; i < cardIds.length; i += CONCURRENCY) {
     const slice = cardIds.slice(i, i + CONCURRENCY);
     const chunkPromises = slice.map(async (cid) => {
@@ -656,7 +704,8 @@ export async function executeBulkAnalyzeChunk(
 
         const leadDisplayName = card.nome || card.numero;
 
-        const analysis = await analyzeLeadInternal(companyId, card.id);
+        // Se programa con prioridad 3 (Baja / Proceso masivo en lote)
+        const analysis = await analyzeLeadInternal(companyId, card.id, 3);
         if (!analysis.ok || !analysis.result) {
           return {
             cardId: card.id,

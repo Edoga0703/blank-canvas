@@ -458,6 +458,13 @@ async function persistMessage(
         } catch (trackErr: any) {
           console.warn("[ingest.tracking] Error al extraer rastreo de anuncio:", trackErr?.message);
         }
+
+        // Latido orgánico: al recibir un mensaje, drena en segundo plano 1 o 2 leads que cumplieron 30m de silencio
+        void import("@/lib/crm-lead-analyzer.server")
+          .then(({ sweepOpportunisticInactiveLeads }) =>
+            sweepOpportunisticInactiveLeads(connection.company_id, 2),
+          )
+          .catch(() => null);
       }
 
       if (currentCard && !currentCard.owner_id) {
@@ -522,8 +529,8 @@ async function persistMessage(
         .eq("numero", event.phone);
 
       void import("@/lib/crm-lead-analyzer.server")
-        .then(({ checkAndAnalyzeLeadCooldown }) =>
-          checkAndAnalyzeLeadCooldown(connection.company_id, event.phone),
+        .then(({ sweepOpportunisticInactiveLeads }) =>
+          sweepOpportunisticInactiveLeads(connection.company_id, 2),
         )
         .catch(() => null);
     } catch (outErr: any) {

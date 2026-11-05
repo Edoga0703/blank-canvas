@@ -146,7 +146,7 @@ async function openAiChat(
   baseUrl = "https://api.openai.com/v1",
 ): Promise<string> {
   const url = `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
-  const isDrael = baseUrl.includes("drael.sh");
+  const isDrael = baseUrl.includes("drael.sh") || key.startsWith("dk-");
   const payload: Record<string, any> = {
     model,
     messages,
@@ -157,20 +157,59 @@ async function openAiChat(
   if (isDrael) {
     payload.tools = []; // Evita activar herramientas implícitas en Drael
   }
-  const res = await fetchJson(url, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  }, 25_000);
-  if (!res.ok) {
-    const t = await res.text();
-    const providerName = isDrael ? "Drael" : "OpenAI";
-    throw new Error(`${providerName}: ${res.status} ${t.slice(0, 200)}`);
+
+  const MAX_RETRIES = 3;
+  let lastError: Error | null = null;
+  const providerName = isDrael ? "Drael" : "OpenAI";
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const res = await fetchJson(url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }, 25_000);
+
+      if (res.status === 429 || res.status >= 500) {
+        const retryHeader = res.headers.get("retry-after");
+        const delayMs = retryHeader
+          ? parseInt(retryHeader, 10) * 1000
+          : (Math.pow(2, attempt) * 800) + Math.floor(Math.random() * 400);
+
+        console.warn(`[AI RateLimit] ${providerName} retornó ${res.status}. Reintento ${attempt}/${MAX_RETRIES} en ${delayMs}ms...`);
+        lastError = new Error(`${providerName}: ${res.status} (límite de velocidad o sobrecarga temporal)`);
+
+        if (attempt < MAX_RETRIES) {
+          await sleep(delayMs);
+          continue;
+        }
+        throw lastError;
+      }
+
+      if (!res.ok) {
+        const t = await res.text().catch(() => "");
+        throw new Error(`${providerName}: ${res.status} ${t.slice(0, 200)}`);
+      }
+
+      const data = await res.json();
+      const choice = data?.choices?.[0]?.message;
+      const content = choice?.content?.toString().trim() || "";
+      if (!content && attempt < MAX_RETRIES) {
+        await sleep(500 * attempt);
+        continue;
+      }
+      return content;
+    } catch (err: any) {
+      lastError = err;
+      const isRecoverable = /429|500|502|503|504|timeout|aborted|fetch failed/i.test(String(err?.message));
+      if (!isRecoverable || attempt === MAX_RETRIES) break;
+      const backoffMs = 1000 * attempt + Math.floor(Math.random() * 500);
+      console.warn(`[AI Retrying] ${providerName} error recuperable (${err?.message}). Esperando ${backoffMs}ms...`);
+      await sleep(backoffMs);
+    }
   }
-  const data = await res.json();
-  const choice = data?.choices?.[0]?.message;
-  // NUNCA devolver reasoning_content para no filtrar cadena de pensamiento interna al cliente
-  return choice?.content?.toString().trim() || "";
+
+  throw lastError ?? new Error(`Fallo desconocido al conectar con ${providerName}.`);
 }
 
 async function anthropicChat(key: string, model: string, messages: ChatMsg[]): Promise<string> {

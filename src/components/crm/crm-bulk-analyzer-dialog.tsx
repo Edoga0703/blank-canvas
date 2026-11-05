@@ -155,7 +155,7 @@ export function CrmBulkAnalyzerDialog({
     setStats({ analyzed: 0, moved: 0, metaEvents: 0, purchases: 0, errors: 0 });
     setRecentLogs([]);
 
-    const CHUNK_SIZE = 5;
+    const CHUNK_SIZE = 4;
     const allCards = [...cardPool];
     let localStats = { analyzed: 0, moved: 0, metaEvents: 0, purchases: 0, errors: 0 };
 
@@ -190,6 +190,9 @@ export function CrmBulkAnalyzerDialog({
         localStats.analyzed += res.processed;
         localStats.moved += res.movedCount;
         localStats.metaEvents += res.metaSentCount;
+
+        // Pausa de 350ms entre lotes para suavizar la UI y evitar saturación en Drael
+        await new Promise((r) => setTimeout(r, 350));
 
         for (const item of res.results) {
           if (!item.ok) localStats.errors++;

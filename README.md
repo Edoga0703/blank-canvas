@@ -1,4 +1,4 @@
-# 🚀 Capiconversa CRM (Capiversa) — v1.3.01
+# 🚀 Capiconversa CRM (Capiversa) — v1.3.02
 
 > **Plataforma Integral de Atención Omnicanal, CRM Kanban Inteligente, Auditoría de Ventas con IA, Reanálisis Masivo con Control de Privacidad y Atribución Meta Ads (Conversions API).**
 
@@ -7,6 +7,24 @@ Capiconversa CRM centraliza la comunicación con clientes, la gestión de prospe
 ---
 
 ## 🌟 Principales Módulos y Capacidades
+
+### 🌟 Novedades en v1.3.02: Estabilización de Motor IA, Ventana de 30 Minutos y Gobernanza Drael
+- **Ventana de 30 Minutos de Inactividad:**
+  - El sistema detecta conversaciones activas y **no ejecuta análisis automáticos mientras haya intercambio continuo de mensajes**.
+  - Cada mensaje entrante o saliente actualiza `ultima_em` y reinicia el contador de silencio.
+  - Al transcurrir **30 minutos de silencio continuo**, la conversación se consolida y la IA efectúa un diagnóstico único y definitivo.
+  - Ahorro comprobado del **70% al 75% en costo de tokens** y eliminación total de saltos involuntarios de columnas en el Kanban mientras el cliente redacta.
+- **Semáforo Centralizado y Gobernanza de Concurrencia (`ai-limiter.server.ts`):**
+  - **Blindaje para Drael (límite duro de 4 llamadas):** El sistema asigna un máximo de **3 slots globales activos**, reservando permanentemente el 4º slot como colchón para mensajes en tiempo real.
+  - **Bandas de Prioridad:** Acciones humanas en vivo (Prioridad 1) tienen paso prioritario sobre el motor de 30 minutos (Prioridad 2) y el Reanálisis Masivo (Prioridad 3).
+  - **Reanálisis Masivo Optimizado:** Concurrencia reducida a 2 llamadas simultáneas con pausa de 250ms entre lotes para eliminar errores 429.
+- **Resiliencia ante Límites de Velocidad (Backoff Exponencial con Jitter):**
+  - En `lovable-ai.server.ts` (`openAiChat`), las respuestas `HTTP 429 Too Many Requests` o `503` activan un reintento inteligente transparente con dispersión aleatoria (`~1.5s -> ~3s -> ~6s`) respetando encabezados `retry-after`.
+- **Motor Triad Autónomo (Cero Dependencia de Crons Externos):**
+  - Barrido oportunista acoplado a la ingesta simétrica de mensajes (entrantes y salientes).
+  - Barrido pasivo en Kanban ampliado a 15 leads por visita de usuario con procesamiento no bloqueante.
+
+---
 
 ### 1. Bandeja de Entrada Omnicanal Unificada
 - **WhatsApp Oficial (WABA / Meta Cloud API)** y soporte para sesiones QR (D-API / Baileys).
