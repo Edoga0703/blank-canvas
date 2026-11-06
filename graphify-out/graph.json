@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-06T17:26:21.880448+00:00",
+  "generated_at": "2026-11-06T19:51:09.844333+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -1943,7 +1943,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 161681
+      "bytes": 169816
     },
     {
       "path": "src/routes/app/respostas-rapidas.tsx",
@@ -2627,7 +2627,7 @@
     },
     {
       "path": "src/components/crm/lead-drawer.tsx",
-      "bytes": 79995
+      "bytes": 80037
     },
     {
       "path": "src/components/crm/olist-pedidos-tab.tsx",
@@ -2639,7 +2639,7 @@
     },
     {
       "path": "src/components/crm/lead-ai-analyzer-dialog.tsx",
-      "bytes": 16650
+      "bytes": 16618
     },
     {
       "path": "src/components/content/meta-content-center.tsx",
@@ -11190,6 +11190,10 @@
     {
       "source": "src/routes/app/crm.tsx",
       "target": "@/components/ui/dialog"
+    },
+    {
+      "source": "src/routes/app/crm.tsx",
+      "target": "@/components/ui/alert-dialog"
     },
     {
       "source": "src/routes/app/crm.tsx",
