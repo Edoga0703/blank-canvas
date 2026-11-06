@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-06T14:09:48.772546+00:00",
+  "generated_at": "2026-11-06T17:03:42.807974+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -695,7 +695,7 @@
     },
     {
       "path": "src/lib/crm-copilot.functions.ts",
-      "bytes": 24110
+      "bytes": 30382
     },
     {
       "path": "src/lib/meta-capi.functions.ts",
@@ -823,7 +823,7 @@
     },
     {
       "path": "src/lib/crm-stage-meta.ts",
-      "bytes": 8057
+      "bytes": 7483
     },
     {
       "path": "src/lib/integracoes.functions.ts",
@@ -855,7 +855,7 @@
     },
     {
       "path": "src/lib/crm-copilot.server.ts",
-      "bytes": 19347
+      "bytes": 29359
     },
     {
       "path": "src/lib/session-middleware.ts",
@@ -2623,7 +2623,7 @@
     },
     {
       "path": "src/components/crm/crm-copilot-sheet.tsx",
-      "bytes": 23054
+      "bytes": 27134
     },
     {
       "path": "src/components/crm/lead-drawer.tsx",
@@ -4078,6 +4078,10 @@
     {
       "source": "src/lib/crm-copilot.functions.ts",
       "target": "./ai-limiter.server"
+    },
+    {
+      "source": "src/lib/crm-copilot.functions.ts",
+      "target": "./agent-sandbox.server"
     },
     {
       "source": "src/lib/meta-capi.functions.ts",
