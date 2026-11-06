@@ -221,6 +221,14 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
     const pending = msg.proposals.filter((p) => p.status !== "applied");
     if (pending.length === 0) return;
 
+    const hasDestructive = pending.some((p) => p.type === "delete_stage" || p.type === "delete_pipeline");
+    if (hasDestructive) {
+      const confirmed = window.confirm(
+        "⚠️ ATENCIÓN:\n\nLa lista de acciones incluye la eliminación de una etapa o embudo.\n¿Estás seguro de que deseas aplicar todos los cambios incluyendo las eliminaciones?"
+      );
+      if (!confirmed) return;
+    }
+
     setExecutingAllIdx(mIdx);
     try {
       const res = await execAllActions({

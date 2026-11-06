@@ -653,7 +653,13 @@ export async function executeCrmCopilotActionInternal(
 
     if (pipeErr || !newPipe) throw new Error(`Error al crear el nuevo embudo: ${pipeErr?.message || "Desconocido"}`);
 
-    const initialStages = Array.isArray(action.payload?.stages) ? action.payload.stages : [];
+    const initialStages = Array.isArray(action.payload?.stages) && action.payload.stages.length > 0
+      ? action.payload.stages
+      : [
+          { nome: "Primer Contacto", tipo: "normal", criterio_ia: "Contacto inicial o consulta de prospecto.", bloqueada_para_ia: false },
+          { nome: "En Seguimiento", tipo: "normal", criterio_ia: "Prospecto interesado con propuesta enviada.", bloqueada_para_ia: false },
+          { nome: "Ganado", tipo: "ganho", criterio_ia: "Venta concretada o servicio activado.", bloqueada_para_ia: true }
+        ];
     let createdStagesCount = 0;
 
     for (let i = 0; i < initialStages.length; i++) {
@@ -765,6 +771,10 @@ export async function executeCrmCopilotActionInternal(
 
     const targetPipe = allPipes.find((p: any) => p.id === rawPipeId);
     if (!targetPipe) throw new Error("Embudo no encontrado.");
+
+    if (targetPipe.sistema) {
+      throw new Error("No se puede eliminar un embudo de sistema protegido.");
+    }
 
     const { data: stagesOfPipe } = await adminSupabase
       .from("crm_stage")
