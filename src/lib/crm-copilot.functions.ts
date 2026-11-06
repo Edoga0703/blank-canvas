@@ -13,6 +13,7 @@ import {
 import { lovableAiChat, type ChatMsg } from "./lovable-ai.server";
 import { moveCardToStage, pickLeadOwner } from "./crm-engine.server";
 import { extractCleanStageName, resolveStageAiMeta, packStageAiMeta } from "./crm-stage-meta";
+import { aiConcurrencyLimiter } from "./ai-limiter.server";
 
 export interface CrmCopilotChatMessage {
   role: "user" | "assistant";
@@ -110,12 +111,26 @@ export async function executeCrmCopilotActionInternal(
       meta_conversion_event: currentMeta.meta_conversion_event || undefined,
     });
 
-    const { error: upErr } = await adminSupabase
+    const patchStage: Record<string, any> = {
+      mensagem_prompt: packedPrompt,
+      criterio_ia: criterioIa || null,
+      bloqueada_para_ia: bloqueadaParaIa,
+    };
+
+    let { error: upErr } = await adminSupabase
       .from("crm_stage")
-      .update({
-        mensagem_prompt: packedPrompt,
-      })
+      .update(patchStage)
       .eq("id", stage.id);
+
+    if (upErr) {
+      delete patchStage.criterio_ia;
+      delete patchStage.bloqueada_para_ia;
+      const retry = await adminSupabase
+        .from("crm_stage")
+        .update(patchStage)
+        .eq("id", stage.id);
+      upErr = retry.error;
+    }
 
     if (upErr) throw new Error(`Error al actualizar criterios: ${upErr.message}`);
 
@@ -200,14 +215,24 @@ export async function executeCrmCopilotActionInternal(
         mensagem_prompt: currentMeta.mensagem_prompt || "",
       });
 
-      await adminSupabase
+      const patchExisting: Record<string, any> = {
+        mensagem_prompt: packedPrompt,
+        cor,
+        tipo,
+        criterio_ia: criterioIa || currentMeta.criterio_ia || null,
+        bloqueada_para_ia: bloqueadaParaIa,
+      };
+
+      let { error: errEx } = await adminSupabase
         .from("crm_stage")
-        .update({
-          mensagem_prompt: packedPrompt,
-          cor,
-          tipo,
-        })
+        .update(patchExisting)
         .eq("id", existingStage.id);
+
+      if (errEx) {
+        delete patchExisting.criterio_ia;
+        delete patchExisting.bloqueada_para_ia;
+        await adminSupabase.from("crm_stage").update(patchExisting).eq("id", existingStage.id);
+      }
 
       return {
         ok: true,
@@ -230,20 +255,36 @@ export async function executeCrmCopilotActionInternal(
       mensagem_prompt: "",
     });
 
-    const { data: newStage, error: insErr } = await adminSupabase
+    const insertPayload: Record<string, any> = {
+      company_id: companyId,
+      pipeline_id: pipelineId,
+      nome,
+      cor,
+      tipo,
+      ordem: nextOrder,
+      mensagem_prompt: packedPrompt,
+      modo_atendimento: "auto",
+      criterio_ia: criterioIa || null,
+      bloqueada_para_ia: bloqueadaParaIa,
+    };
+
+    let { data: newStage, error: insErr } = await adminSupabase
       .from("crm_stage")
-      .insert({
-        company_id: companyId,
-        pipeline_id: pipelineId,
-        nome,
-        cor,
-        tipo,
-        ordem: nextOrder,
-        mensagem_prompt: packedPrompt,
-        modo_atendimento: "auto",
-      })
+      .insert(insertPayload)
       .select("id, nome")
       .maybeSingle();
+
+    if (insErr) {
+      delete insertPayload.criterio_ia;
+      delete insertPayload.bloqueada_para_ia;
+      const retry = await adminSupabase
+        .from("crm_stage")
+        .insert(insertPayload)
+        .select("id, nome")
+        .maybeSingle();
+      newStage = retry.data;
+      insErr = retry.error;
+    }
 
     if (insErr || !newStage) throw new Error(`Error al crear la etapa: ${insErr?.message || "Desconocido"}`);
 
@@ -628,12 +669,14 @@ export const askCrmCopilot = createServerFn({ method: "POST" })
       if (agent?.ai_model) model = agent.ai_model;
     }
 
-    const rawOutput = await lovableAiChat(
-      [
-        { role: "system", content: systemPrompt },
-        ...historyMsgs,
-      ],
-      { provider, model }
+    const rawOutput = await aiConcurrencyLimiter.enqueue(1, () =>
+      lovableAiChat(
+        [
+          { role: "system", content: systemPrompt },
+          ...historyMsgs,
+        ],
+        { provider, model }
+      )
     );
 
     const parsed = parseCrmCopilotOutput(rawOutput);

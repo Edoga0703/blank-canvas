@@ -238,6 +238,12 @@ Estás en el modo "Arquitectura de Embudo y Configuración General".
 `;
   }
 
+  const rawPipePrompt = (pipe as any)?.crm_master_prompt;
+  const masterPromptText =
+    rawPipePrompt && String(rawPipePrompt).trim().length > 0
+      ? String(rawPipePrompt).trim()
+      : DEFAULT_CRM_MASTER_PROMPT;
+
   return `Eres el "CRM Pipeline & Leads Copilot", el Consultor Senior de Sales Operations, Arquitecto de Embudos de Venta y Gerente Autónomo del CRM dentro de Capiconversa.
 
 CONTEXTO DE TU ENTORNO:
@@ -253,7 +259,7 @@ ${rulesSummary}
 EMBUDO ACTUAL:
 - Nombre: "${pipe.nome || "Atención y ventas"}" (ID: "${pipe.id || ""}")
 - Prompt Maestro del Embudo:
-${DEFAULT_CRM_MASTER_PROMPT}
+${masterPromptText}
 
 ETAPAS ACTUALES Y SUS CRITERIOS:
 ${stagesSummary}
