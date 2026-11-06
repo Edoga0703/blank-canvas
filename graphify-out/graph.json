@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-06T17:03:42.807974+00:00",
+  "generated_at": "2026-11-06T17:26:21.880448+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -695,7 +695,7 @@
     },
     {
       "path": "src/lib/crm-copilot.functions.ts",
-      "bytes": 30382
+      "bytes": 30957
     },
     {
       "path": "src/lib/meta-capi.functions.ts",
@@ -2623,7 +2623,7 @@
     },
     {
       "path": "src/components/crm/crm-copilot-sheet.tsx",
-      "bytes": 27134
+      "bytes": 27539
     },
     {
       "path": "src/components/crm/lead-drawer.tsx",
