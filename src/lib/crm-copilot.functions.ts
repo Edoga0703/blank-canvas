@@ -13,7 +13,7 @@ import {
 import { lovableAiChat, type ChatMsg } from "./lovable-ai.server";
 import { moveCardToStage, pickLeadOwner } from "./crm-engine.server";
 import { extractCleanStageName, resolveStageAiMeta, packStageAiMeta } from "./crm-stage-meta";
-import { aiConcurrencyLimiter } from "./ai-limiter.server";
+import { globalAiLimiter } from "./ai-limiter.server";
 
 export interface CrmCopilotChatMessage {
   role: "user" | "assistant";
@@ -669,14 +669,16 @@ export const askCrmCopilot = createServerFn({ method: "POST" })
       if (agent?.ai_model) model = agent.ai_model;
     }
 
-    const rawOutput = await aiConcurrencyLimiter.enqueue(1, () =>
-      lovableAiChat(
-        [
-          { role: "system", content: systemPrompt },
-          ...historyMsgs,
-        ],
-        { provider, model }
-      )
+    const rawOutput = await globalAiLimiter.schedule(
+      () =>
+        lovableAiChat(
+          [
+            { role: "system", content: systemPrompt },
+            ...historyMsgs,
+          ],
+          { provider, model }
+        ),
+      1
     );
 
     const parsed = parseCrmCopilotOutput(rawOutput);
