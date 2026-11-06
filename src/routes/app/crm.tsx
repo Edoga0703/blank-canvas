@@ -12,6 +12,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -102,6 +112,9 @@ function KanbanPage() {
   const [adding, setAdding] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [crmCopilotOpen, setCrmCopilotOpen] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(!crmCache || crmCache.cid !== companyId);
+  const [stageToDelete, setStageToDelete] = useState<KanbanStage | null>(null);
+  const [pipelineToDelete, setPipelineToDelete] = useState<Pipeline | null>(null);
   const [crmCopilotPrompt, setCrmCopilotPrompt] = useState<string | null>(null);
   const [automacaoStage, setAutomacaoStage] = useState<KanbanStage | null>(null);
   const [limparStage, setLimparStage] = useState<KanbanStage | null>(null);
@@ -149,6 +162,7 @@ function KanbanPage() {
   const listServicosFn = useServerFn(listServicos);
 
   async function loadAll(cid: string, skipAutoAudit = false) {
+    try {
     void loadPauses(cid);
     const [
       { data: pipes }, { data: st }, { data: cd }, { data: mem }, { data: ags }, { data: qs },
@@ -229,6 +243,9 @@ function KanbanPage() {
           }
         })
         .catch(() => null);
+    }
+    } finally {
+      setInitialLoading(false);
     }
   }
 
@@ -511,7 +528,7 @@ function KanbanPage() {
 
       await supabase.from("lead_evento").insert({
         company_id: companyId, card_id: pendingSale.cardId, tipo: "venda",
-        descricao: `Venda registrada: R$ ${valorNum.toFixed(2).replace(".", ",")}`,
+        descricao: `Venta registrada: ${formatCurrency(valorNum)}`,
       });
 
       // Disparar reglas de etapa en servidor (CAPI Purchase, pipeline destino, etc.)
@@ -577,7 +594,7 @@ function KanbanPage() {
 
       await supabase.from("lead_evento").insert({
         company_id: companyId, card_id: pendingLoss.cardId, tipo: "perda",
-        descricao: `Negócio perdido: R$ ${valorNum.toFixed(2).replace(".", ",")} ${lossMotivo ? `- Motivo: ${lossMotivo}` : ""}`,
+        descricao: `Negocio perdido: ${formatCurrency(valorNum)} ${lossMotivo ? `- Motivo: ${lossMotivo}` : ""}`,
       });
 
       if (lossAgendarRetorno && lossReturnDate && lossReturnStage) {
@@ -621,13 +638,30 @@ function KanbanPage() {
     const { error } = await supabase.from("crm_stage").update(patch).eq("id", id);
     if (error) toast.error(error.message);
   }
-  async function deleteStage(id: string) {
-    if (stages.length <= 1) return toast.error("Mantenha ao menos uma etapa");
-    const first = stages.find((s) => s.id !== id);
+  async function confirmDeleteStage(stage: KanbanStage) {
+    if (stages.length <= 1) return toast.error("Debes mantener al menos una etapa en el embudo");
+    const first = stages.find((s) => s.id !== stage.id);
     if (!first) return;
-    await supabase.from("crm_cards").update({ stage_id: first.id, status: first.nome, pipeline_id: first.pipeline_id ?? activePipelineId }).eq("stage_id", id);
-    const { error } = await supabase.from("crm_stage").delete().eq("id", id);
-    if (error) toast.error(error.message); else toast.success("Etapa removida");
+    const cardsInThisStage = allCards.filter((card) => card.stage_id === stage.id).length;
+    const { error: moveErr } = await supabase.from("crm_cards").update({
+      stage_id: first.id,
+      status: first.nome,
+      pipeline_id: first.pipeline_id ?? activePipelineId,
+    }).eq("stage_id", stage.id);
+    if (moveErr) return toast.error(`Error al reasignar tarjetas: ${moveErr.message}`);
+    const { error } = await supabase.from("crm_stage").delete().eq("id", stage.id);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success(cardsInThisStage > 0
+        ? `Etapa eliminada. Se movieron ${cardsInThisStage} tarjeta(s) a "${first.nome}".`
+        : "Etapa eliminada correctamente");
+      await loadAll(companyId);
+    }
+  }
+  async function deleteStage(id: string) {
+    const s = stages.find((x) => x.id === id);
+    if (s) setStageToDelete(s);
   }
   async function reorderStages(orderedIds: string[]) {
     await Promise.all(orderedIds.map((sid, i) => supabase.from("crm_stage").update({ ordem: i }).eq("id", sid)));
@@ -726,12 +760,20 @@ function KanbanPage() {
 
   async function deletePipeline(id: string) {
     const pipe = pipelines.find((p) => p.id === id);
-    if (!pipe || pipe.sistema) return toast.error("Este funil é do sistema e não pode ser excluído");
-    if (!confirm(`Excluir funil "${pipe.nome}"? Cards deste funil ficarão sem funil.`)) return;
+    if (!pipe) return;
+    if (pipe.sistema) return toast.error("Este embudo es del sistema y está protegido contra eliminación.");
+    const cardsInPipe = allCards.filter((card) => card.pipeline_id === id).length;
+    if (cardsInPipe > 0) {
+      return toast.error(`No puedes eliminar el embudo "${pipe.nome}" porque contiene ${cardsInPipe} oportunidad(es) activa(s). Reasígnalas primero.`);
+    }
+    setPipelineToDelete(pipe);
+  }
+
+  async function executeDeletePipeline(id: string) {
     await supabase.from("crm_stage").delete().eq("pipeline_id", id);
     const { error } = await supabase.from("crm_pipeline").delete().eq("id", id);
     if (error) return toast.error(error.message);
-    toast.success("Funil excluído");
+    toast.success("Embudo eliminado exitosamente");
     setActivePipelineId(pipelines.find((p) => p.id !== id)?.id ?? null);
     await loadAll(companyId);
   }
@@ -1104,6 +1146,62 @@ function KanbanPage() {
 
 
 
+      {initialLoading ? (
+        <div className="flex flex-1 min-h-0 gap-3.5 overflow-x-auto p-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex flex-col w-[85vw] max-w-[320px] sm:w-[320px] shrink-0 rounded-2xl border border-[color:var(--hairline)] bg-[color:var(--panel-2)]/60 p-3.5 gap-3 animate-pulse">
+              <div className="flex items-center justify-between pb-2 border-b border-[color:var(--hairline)]">
+                <div className="flex items-center gap-2">
+                  <div className="size-3 rounded-full bg-muted" />
+                  <div className="h-4 w-28 bg-muted rounded" />
+                </div>
+                <div className="h-5 w-7 bg-muted rounded-full" />
+              </div>
+              <div className="space-y-2.5 flex-1">
+                <div className="h-24 bg-card/80 border border-border/60 rounded-xl" />
+                <div className="h-24 bg-card/80 border border-border/60 rounded-xl" />
+                <div className="h-24 bg-card/80 border border-border/60 rounded-xl" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : stages.length === 0 ? (
+        <div className="flex flex-1 min-h-0 items-center justify-center p-6">
+          <div className="flex flex-col items-center max-w-md text-center p-8 rounded-2xl border border-dashed border-[color:var(--hairline)] bg-card shadow-sm">
+            <div className="grid place-items-center size-14 rounded-2xl bg-primary/10 text-primary mb-4">
+              <Columns3 className="size-7" />
+            </div>
+            <h3 className="text-base sm:text-lg font-bold text-foreground">
+              Este embudo aún no tiene etapas
+            </h3>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 mb-6">
+              Crea tus etapas manualmente para organizar a tus leads o deja que el Copilot IA analista las diseñe y configure por ti.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full justify-center">
+              {canGerenciarEtapas && (
+                <Button
+                  onClick={() => setNewStageOpen(true)}
+                  className="w-full sm:w-auto rounded-full bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-primary-foreground font-medium text-xs sm:text-sm"
+                >
+                  <Plus className="size-4 mr-1.5" />
+                  Crear primera etapa
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCrmCopilotPrompt("Quiero estructurar y diseñar las etapas ideales para este embudo...");
+                  setCrmCopilotOpen(true);
+                }}
+                className="w-full sm:w-auto rounded-full border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 font-medium text-xs sm:text-sm"
+              >
+                <Sparkles className="size-4 mr-1.5 text-blue-600 dark:text-blue-400" />
+                Diseñar con Copilot IA
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : (
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -1184,6 +1282,7 @@ function KanbanPage() {
           {activeCard ? <div className="w-[85vw] max-w-[300px] sm:w-[300px] pointer-events-none"><CardBody card={activeCard} pauses={pauses} members={members} dragging /></div> : null}
         </DragOverlay>
       </DndContext>
+      )}
 
       <Sheet open={!!movingCard} onOpenChange={(o) => !o && setMovingCard(null)}>
         <SheetContent side="bottom" className="lg:hidden rounded-t-2xl max-h-[80vh] overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
@@ -1265,11 +1364,72 @@ function KanbanPage() {
           const { error } = await supabase.from("crm_stage").update(patch as any).eq("id", id);
           if (error) { toast.error(error.message); return; }
           setRetornoStage(null);
-          toast.success("Rota de retorno salva");
+          toast.success("Ruta de retorno guardada");
           await loadAll(companyId);
         }}
       />
 
+
+            {/* Diálogo de confirmación para eliminar etapa */}
+      <AlertDialog open={!!stageToDelete} onOpenChange={(o) => !o && setStageToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar etapa "{stageToDelete?.nome}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {(() => {
+                const count = allCards.filter(c => c.stage_id === stageToDelete?.id).length;
+                const dest = stages.find(s => s.id !== stageToDelete?.id)?.nome ?? "la primera etapa";
+                if (count > 0) {
+                  return `Esta etapa contiene ${count} tarjeta(s). Si continúas, todas las tarjetas se moverán automáticamente a la etapa "${dest}". Esta acción no se puede deshacer.`;
+                }
+                return "Esta etapa está vacía y será eliminada permanentemente del embudo.";
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setStageToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (stageToDelete) {
+                  const s = stageToDelete;
+                  setStageToDelete(null);
+                  await confirmDeleteStage(s);
+                }
+              }}
+            >
+              Eliminar etapa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Diálogo de confirmación para eliminar embudo */}
+      <AlertDialog open={!!pipelineToDelete} onOpenChange={(o) => !o && setPipelineToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar embudo "{pipelineToDelete?.nome}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará el embudo y sus columnas. Asegúrate de que no haya configuraciones dependientes. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPipelineToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (pipelineToDelete) {
+                  const pId = pipelineToDelete.id;
+                  setPipelineToDelete(null);
+                  await executeDeletePipeline(pId);
+                }
+              }}
+            >
+              Eliminar embudo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <PipelineDialog
         state={pipelineDialog}
@@ -1297,18 +1457,18 @@ function KanbanPage() {
       <Dialog open={!!pendingSale} onOpenChange={(o) => { if (!o && !saleSaving) { setPendingSale(null); setSaleValor(""); setSaleDescricao(""); setSaleOwnerId(""); } }}>
         <DialogContent className="sm:max-w-[460px]">
           <DialogHeader>
-            <DialogTitle>Registrar Venda (Ganho)</DialogTitle>
+            <DialogTitle>Registrar Venta (Ganado)</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <p className="text-sm text-muted-foreground">
-              Você está movendo <span className="font-medium text-foreground">{pendingSale?.cardNome ?? "este lead"}</span> para uma etapa de <span className="font-medium text-foreground">Ganho</span>.
+              Estás moviendo <span className="font-medium text-foreground">{pendingSale?.cardNome ?? "este lead"}</span> a una etapa de <span className="font-medium text-foreground font-semibold text-emerald-600">Ganado</span>.
             </p>
 
             <div className="space-y-1.5">
-              <Label>Vendedor responsável</Label>
+              <Label>Vendedor responsable</Label>
               <Select value={saleOwnerId} onValueChange={setSaleOwnerId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione o vendedor..." />
+                  <SelectValue placeholder="Selecciona el vendedor..." />
                 </SelectTrigger>
                 <SelectContent>
                   {members.map((m) => (
@@ -1322,26 +1482,26 @@ function KanbanPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Tipo de Item</Label>
+                <Label>Tipo de Artículo</Label>
                 <Select value={saleItemTipo} onValueChange={(v: any) => { setSaleItemTipo(v); setSaleSelectedItemId(""); void loadSaleItems(v); }}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="produto">Produto</SelectItem>
-                    <SelectItem value="servico">Serviço</SelectItem>
+                    <SelectItem value="produto">Producto</SelectItem>
+                    <SelectItem value="servico">Servicio</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Item Vendido</Label>
+                <Label>Artículo Vendido</Label>
                 <Select value={saleSelectedItemId} onValueChange={(v) => {
                   setSaleSelectedItemId(v);
                   const item = saleAvailableItems.find(i => i.id === v);
                   if (item) setSaleValor(String(item.preco));
                 }}>
                   <SelectTrigger>
-                    <SelectValue placeholder={`Escolha o ${saleItemTipo}...`} />
+                    <SelectValue placeholder={`Elige el ${saleItemTipo === "produto" ? "producto" : "servicio"}...`} />
                   </SelectTrigger>
                   <SelectContent>
                     {saleAvailableItems.map((i) => (
@@ -1353,8 +1513,8 @@ function KanbanPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Observações (opcional)</Label>
-              <Input placeholder="Detalhes adicionais da venda..." value={saleDescricao} onChange={e => setSaleDescricao(e.target.value)} />
+              <Label>Observaciones (opcional)</Label>
+              <Input placeholder="Detalles adicionales de la venta..." value={saleDescricao} onChange={e => setSaleDescricao(e.target.value)} />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -1375,36 +1535,36 @@ function KanbanPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Método</Label>
+                <Label>Método de Pago</Label>
                 <Select value={saleMetodo} onValueChange={setSaleMetodo}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Pix">Pix</SelectItem>
-                    <SelectItem value="Cartão de Crédito">Cartão de Crédito</SelectItem>
+                    <SelectItem value="Cartão de Crédito">Tarjeta de Crédito</SelectItem>
                     <SelectItem value="Boleto">Boleto</SelectItem>
-                    <SelectItem value="Transferência">Transferência</SelectItem>
-                    <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                    <SelectItem value="Outro">Outro</SelectItem>
+                    <SelectItem value="Transferência">Transferencia</SelectItem>
+                    <SelectItem value="Dinheiro">Efectivo</SelectItem>
+                    <SelectItem value="Outro">Otro</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label>Valor Total (R$)</Label>
+              <Label>Valor Total ($)</Label>
               <Input type="number" step="0.01" placeholder="0,00" value={saleValor} onChange={(e) => setSaleValor(e.target.value)} />
             </div>
             
             <p className="text-[10px] text-muted-foreground">
-              💡 O card permanece no funil atual. O mesmo lead pode registrar novas vendas movendo o card entre etapas novamente.
+              💡 La tarjeta permanece en el embudo actual. El mismo lead puede registrar nuevas ventas moviéndose entre etapas.
             </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setPendingSale(null); setSaleValor(""); setSaleDescricao(""); setSaleOwnerId(""); }} disabled={saleSaving}>Cancelar</Button>
             <Button onClick={confirmSale} disabled={saleSaving}>
-              {saleSaving ? "Salvando..." : "Confirmar Venda"}
+              {saleSaving ? "Guardando..." : "Confirmar Venta"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1440,15 +1600,15 @@ function KanbanPage() {
       <Dialog open={!!pendingLoss} onOpenChange={(o) => { if (!o && !lossSaving) setPendingLoss(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Registrar perda</DialogTitle>
+            <DialogTitle>Registrar Pérdida</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground">
-              Você está movendo <span className="font-medium text-foreground">{pendingLoss?.cardNome ?? "este lead"}</span> para uma etapa de <span className="font-medium text-foreground">Perda</span>.
+              Estás moviendo <span className="font-medium text-foreground">{pendingLoss?.cardNome ?? "este lead"}</span> a una etapa de <span className="font-medium text-foreground font-semibold text-rose-600">Pérdida</span>.
             </p>
             
             <div className="space-y-2">
-              <Label htmlFor="loss-valor">Valor da negociação perdida (R$)</Label>
+              <Label htmlFor="loss-valor">Valor de la negociación perdida ($)</Label>
               <Input
                 id="loss-valor"
                 inputMode="decimal"
@@ -1460,10 +1620,10 @@ function KanbanPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="loss-motivo">Motivo da perda (opcional)</Label>
+              <Label htmlFor="loss-motivo">Motivo de la pérdida (opcional)</Label>
               <Input
                 id="loss-motivo"
-                placeholder="Ex: Preço alto, já comprou com concorrente..."
+                placeholder="Ej: Precio alto, compró con la competencia, sin presupuesto..."
                 value={lossMotivo}
                 onChange={(e) => setLossMotivo(e.target.value)}
               />
@@ -1473,7 +1633,7 @@ function KanbanPage() {
               <div className="flex items-center justify-between">
                 <Label className="text-[13px] font-semibold text-foreground flex items-center gap-1.5 cursor-pointer" htmlFor="loss-agendar">
                   <Calendar className="size-3.5 text-muted-foreground" />
-                  Agendar retorno automático?
+                  ¿Programar contacto de retorno automático?
                 </Label>
                 <Switch id="loss-agendar" checked={lossAgendarRetorno} onCheckedChange={setLossAgendarRetorno} />
               </div>
@@ -1481,7 +1641,7 @@ function KanbanPage() {
               {lossAgendarRetorno && (
                 <div className="space-y-3 animate-in fade-in slide-in-from-top-1">
                   <div className="space-y-1.5">
-                    <Label htmlFor="loss-date" className="text-[11px] uppercase text-muted-foreground">Quando?</Label>
+                    <Label htmlFor="loss-date" className="text-[11px] uppercase text-muted-foreground">¿Cuándo?</Label>
                     <Input
                       id="loss-date"
                       type="datetime-local"
@@ -1492,10 +1652,10 @@ function KanbanPage() {
                   </div>
                   
                   <div className="space-y-1.5">
-                    <Label htmlFor="loss-stage" className="text-[11px] uppercase text-muted-foreground">Mover para qual etapa?</Label>
+                    <Label htmlFor="loss-stage" className="text-[11px] uppercase text-muted-foreground">¿Mover a cuál etapa?</Label>
                     <Select value={lossReturnStage} onValueChange={setLossReturnStage}>
                       <SelectTrigger id="loss-stage" className="h-9">
-                        <SelectValue placeholder="Selecione a etapa de retorno..." />
+                        <SelectValue placeholder="Selecciona la etapa de retorno..." />
                       </SelectTrigger>
                       <SelectContent>
                         {stages.filter(s => s.tipo !== "perda" && s.tipo !== "ganho").map((s) => (
@@ -1512,14 +1672,14 @@ function KanbanPage() {
 
             <div className="space-y-1.5 pt-2 border-t border-border/50">
               <Label htmlFor="loss-retorno" className="text-[13px] font-semibold text-foreground">
-                Se o lead voltar a falar, mover para
+                Si el lead vuelve a escribir, mover a:
               </Label>
               <Select value={lossRetornoStage || "_none"} onValueChange={(v) => setLossRetornoStage(v === "_none" ? "" : v)}>
                 <SelectTrigger id="loss-retorno" className="h-9">
-                  <SelectValue placeholder="Usar a rota configurada na etapa" />
+                  <SelectValue placeholder="Usar la ruta configurada en la etapa" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="_none">Usar a rota configurada na etapa</SelectItem>
+                  <SelectItem value="_none">Usar la ruta configurada en la etapa</SelectItem>
                   {allStages.filter((s) => s.tipo !== "perda" && s.tipo !== "ganho").map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.nome}{s.pipeline_id !== activePipelineId ? ` (${pipelines.find(p => p.id === s.pipeline_id)?.nome ?? "outro funil"})` : ""}
@@ -1539,7 +1699,7 @@ function KanbanPage() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setPendingLoss(null)} disabled={lossSaving}>Cancelar</Button>
             <Button variant="destructive" onClick={confirmLoss} disabled={lossSaving}>
-              {lossSaving ? "Salvando..." : "Confirmar Perda"}
+              {lossSaving ? "Guardando..." : "Confirmar Pérdida"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1559,7 +1719,7 @@ function LimparColunaDialog({ stage, onClose, onSave }:
     <Dialog open={!!stage} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Limpar coluna {stage?.nome ?? ""}</DialogTitle>
+          <DialogTitle>Limpiar columna {stage?.nome ?? ""}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <p className="text-[12px] text-muted-foreground">
@@ -1719,7 +1879,7 @@ function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete
   { stage: KanbanStage; count: number; total?: number; onToggleValor?: (v: boolean) => void; children: React.ReactNode; onEdit: () => void; onDelete: () => void; onAutomacao: () => void; onSetTipo: (t: "normal" | "ganho" | "perda" | "formulario" | "sem-formulario") => void; onLimpar?: () => void; onRetorno?: () => void; allowAutomacao: boolean; onAdd: () => void; isDefault?: boolean; isEmpty: boolean; onOpenCopilot?: () => void; onReanalisar?: () => void }) {
   const { setNodeRef: setColRef, isOver } = useDroppable({ id: `col:${stage.id}` });
   const { attributes, listeners, setNodeRef: setHandleRef } = useDraggable({ id: `stage:${stage.id}` });
-  const { t, translateDefaultStageName } = useLanguage();
+  const { t, translateDefaultStageName, formatCurrency } = useLanguage();
   const tipo = (stage as any).tipo ?? "normal";
   const entradaForm = !!(stage as any).entrada_formulario;
   const mostrarValor = (stage as any).mostrar_valor !== false;
@@ -1755,12 +1915,12 @@ function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {allowAutomacao && <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setTimeout(onEdit, 0); }}><Pencil className="size-3.5 mr-2" />Renomear / cor</DropdownMenuItem>}
-            {allowAutomacao && <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setTimeout(onAutomacao, 0); }}><Zap className="size-3.5 mr-2" />Automação</DropdownMenuItem>}
+            {allowAutomacao && <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setTimeout(onEdit, 0); }}><Pencil className="size-3.5 mr-2" />{t("crm.rename_color", undefined, "Renombrar / Color")}</DropdownMenuItem>}
+            {allowAutomacao && <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setTimeout(onAutomacao, 0); }}><Zap className="size-3.5 mr-2" />{t("crm.automation", undefined, "Automatización")}</DropdownMenuItem>}
             {allowAutomacao && onReanalisar && (
               <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setTimeout(onReanalisar, 0); }}>
                 <Sparkles className="size-3.5 mr-2 text-primary" />
-                Re-analizar columna ({count})
+                {t("crm.reanalyze_column", undefined, "Re-analizar columna")} ({count})
               </DropdownMenuItem>
             )}
             {allowAutomacao && onOpenCopilot && (
@@ -1771,10 +1931,10 @@ function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete
             )}
             {onToggleValor && (
               <DropdownMenuItem onClick={() => onToggleValor(!mostrarValor)}>
-                <Coins className="size-3.5 mr-2" />{mostrarValor ? "Ocultar valor total" : "Mostrar valor total"}
+                <Coins className="size-3.5 mr-2" />{mostrarValor ? t("crm.hide_total_value", undefined, "Ocultar valor total") : t("crm.show_total_value", undefined, "Mostrar valor total")}
               </DropdownMenuItem>
             )}
-            {allowAutomacao && tipo !== "ganho" && <DropdownMenuItem onClick={() => onSetTipo("ganho")}>🏆 Marcar como Ganho</DropdownMenuItem>}
+            {allowAutomacao && tipo !== "ganho" && <DropdownMenuItem onClick={() => onSetTipo("ganho")}>🏆 {t("crm.mark_as_won", undefined, "Marcar como Ganado")}</DropdownMenuItem>}
             {allowAutomacao && tipo === "perda" && onRetorno && (
               <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setTimeout(onRetorno, 0); }}>
                 <RefreshCw className="size-3.5 mr-2" />Rota de retorno
@@ -1785,11 +1945,11 @@ function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete
                 <Trash2 className="size-3.5 mr-2" />Limpar coluna
               </DropdownMenuItem>
             )}
-            {allowAutomacao && tipo !== "perda" && <DropdownMenuItem onClick={() => onSetTipo("perda")}>❌ Marcar como Perda</DropdownMenuItem>}
-            {allowAutomacao && tipo === "normal" && !entradaForm && <DropdownMenuItem onClick={() => onSetTipo("formulario")}>📝 Marcar como Formulário</DropdownMenuItem>}
-            {allowAutomacao && entradaForm && <DropdownMenuItem onClick={() => onSetTipo("sem-formulario")}>📝 Remover marcação de Formulário</DropdownMenuItem>}
-            {allowAutomacao && tipo !== "normal" && <DropdownMenuItem onClick={() => onSetTipo("normal")}>↺ Voltar a Normal</DropdownMenuItem>}
-            {allowAutomacao && <DropdownMenuItem onClick={onDelete} className="text-destructive"><Trash2 className="size-3.5 mr-2" />Excluir</DropdownMenuItem>}
+            {allowAutomacao && tipo !== "perda" && <DropdownMenuItem onClick={() => onSetTipo("perda")}>❌ {t("crm.mark_as_lost", undefined, "Marcar como Pérdida")}</DropdownMenuItem>}
+            {allowAutomacao && tipo === "normal" && !entradaForm && <DropdownMenuItem onClick={() => onSetTipo("formulario")}>📝 {t("crm.mark_as_form", undefined, "Marcar como Formulario")}</DropdownMenuItem>}
+            {allowAutomacao && entradaForm && <DropdownMenuItem onClick={() => onSetTipo("sem-formulario")}>📝 {t("crm.remove_form_mark", undefined, "Quitar marca de Formulario")}</DropdownMenuItem>}
+            {allowAutomacao && tipo !== "normal" && <DropdownMenuItem onClick={() => onSetTipo("normal")}>↺ {t("crm.back_to_normal", undefined, "Volver a Normal")}</DropdownMenuItem>}
+            {allowAutomacao && <DropdownMenuItem onClick={onDelete} className="text-destructive"><Trash2 className="size-3.5 mr-2" />{t("crm.delete_stage", undefined, "Eliminar etapa")}</DropdownMenuItem>}
           </DropdownMenuContent>
         </DropdownMenu>
         </div>
@@ -1797,7 +1957,7 @@ function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete
           <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[#22B85F]/12 px-2.5 py-1.5">
             <Coins className="size-3.5 text-[#159A4C] shrink-0" />
             <span className="font-display text-[15px] font-extrabold leading-none tabular-nums text-[#159A4C]">
-              {(total ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
+              {formatCurrency(total ?? 0)}
             </span>
           </div>
         )}
@@ -1810,7 +1970,7 @@ function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete
             <span className="grid place-items-center size-10 rounded-full bg-[color:var(--panel-2)] text-muted-foreground">
               <UserIcon className="size-5" />
             </span>
-            <span className="text-[12px] text-muted-foreground">Nenhum contato</span>
+            <span className="text-[12px] text-muted-foreground">{t("crm.no_contacts", undefined, "Sin contactos")}</span>
           </div>
         )}
       </div>
@@ -1818,7 +1978,7 @@ function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete
         onClick={onAdd}
         onPointerDown={(e) => e.stopPropagation()}
         className="flex items-center justify-center gap-1.5 text-[12px] text-muted-foreground hover:text-[var(--brand)] hover:bg-[var(--brand-soft)]/40 border-t border-[color:var(--hairline)] py-2.5 rounded-b-lg transition-colors">
-        <Plus className="size-3.5" /> Nova oportunidade
+        <Plus className="size-3.5" /> {t("crm.new_opportunity", undefined, "Nueva oportunidad")}
       </button>
 
     </div>
@@ -1848,7 +2008,7 @@ function KCard({ card, pauses, members, onClick, onMove, slaHoras }: { card: Lea
 
 
 function CardBody({ card, pauses, members, dragging, onMove, iaActive, slaHoras }: { card: LeadCard; pauses: Record<string, boolean>; members: Member[]; dragging?: boolean; onMove?: () => void; iaActive?: boolean; slaHoras?: number | null }) {
-  const { t } = useLanguage();
+  const { t, formatCurrency, formatDate, formatTime } = useLanguage();
   const time = new Date(card.ultima_em);
   const navigate = useNavigate();
   const owner = members.find((m) => m.user_id === (card as any).owner_id);
@@ -1900,7 +2060,7 @@ function CardBody({ card, pauses, members, dragging, onMove, iaActive, slaHoras 
         </div>
         {temValor && (
           <span className="shrink-0 font-display font-bold text-[13px] text-[var(--brand-text)] tabular-nums leading-tight">
-            R$ {Number(card.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            {formatCurrency(Number(card.valor))}
           </span>
         )}
       </div>
@@ -2029,7 +2189,7 @@ function CardBody({ card, pauses, members, dragging, onMove, iaActive, slaHoras 
           {iaOn ? "Agente IA" : (owner?.nome || "Humano")}
         </span>
         <span className="text-[10.5px] text-muted-foreground tabular-nums truncate leading-tight shrink-0">
-          {time.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} • {time.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+          {formatDate(time, { day: "2-digit", month: "short" })} • {formatTime(time, { hour: "2-digit", minute: "2-digit" })}
         </span>
         {iaActive && <Bot className="size-3.5 text-[var(--brand)] shrink-0" />}
       </div>
@@ -2073,23 +2233,23 @@ function StageDialog({ open, onClose, onSave, initial }:
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
-        <DialogHeader><DialogTitle>{initial ? "Editar etapa" : "Nova etapa"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{initial ? "Editar etapa" : "Nueva etapa"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div><Label>Nome</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} autoFocus /></div>
+          <div><Label>Nombre de la etapa</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} autoFocus /></div>
           <div>
-            <Label className="flex items-center gap-1.5"><Clock className="size-3.5" />Prazo de atendimento (horas)</Label>
+            <Label className="flex items-center gap-1.5"><Clock className="size-3.5" />Plazo máximo de atención (SLA en horas)</Label>
             <Input
-              type="number" min={0} placeholder="Sem prazo"
+              type="number" min={0} placeholder="Sin límite de tiempo"
               value={sla}
               onChange={(e) => setSla(e.target.value)}
               className="mt-1"
             />
             <p className="text-[11px] text-muted-foreground mt-1">
-              Opcional. Cards parados nesta etapa além do prazo aparecem marcados como atrasados.
+              Opcional. Los leads que permanezcan en esta etapa más tiempo del fijado se marcarán como retrasados.
             </p>
           </div>
           <div>
-            <Label className="flex items-center gap-1.5"><Palette className="size-3.5" />Cor</Label>
+            <Label className="flex items-center gap-1.5"><Palette className="size-3.5" />Color distintivo</Label>
             <div className="flex flex-wrap gap-2 mt-2">
               {STAGE_COLORS.map((c) => (
                 <button key={c} onClick={() => setCor(c)}
@@ -2146,9 +2306,9 @@ function AddFromWhatsappDialog({ open, onClose, companyId, userId, pipelineId, f
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>Conversas recentes do WhatsApp</DialogTitle></DialogHeader>
-        {loading ? <div className="text-sm text-muted-foreground py-6 text-center">Carregando…</div>
-          : convs.length === 0 ? <div className="text-sm text-muted-foreground py-6 text-center">Nenhuma conversa nova.</div>
+        <DialogHeader><DialogTitle>Conversaciones recientes de WhatsApp</DialogTitle></DialogHeader>
+        {loading ? <div className="text-sm text-muted-foreground py-6 text-center">Cargando conversaciones…</div>
+          : convs.length === 0 ? <div className="text-sm text-muted-foreground py-6 text-center">No hay conversaciones nuevas por agregar.</div>
           : (
             <ul className="max-h-80 overflow-auto divide-y divide-[var(--border)]">
               {convs.map((c) => (
@@ -2158,7 +2318,7 @@ function AddFromWhatsappDialog({ open, onClose, companyId, userId, pipelineId, f
                     <div className="text-sm font-medium truncate">{c.contato_nome || c.numero}</div>
                     <div className="text-xs text-muted-foreground truncate">{c.texto}</div>
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => add(c)}>Adicionar</Button>
+                  <Button size="sm" variant="outline" onClick={() => add(c)}>Agregar lead</Button>
                 </li>
               ))}
             </ul>
@@ -2562,7 +2722,7 @@ function AutomacaoDialog({ companyId, stage, stages, allStages, pipelines, agent
     }
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success("Automação salva");
+    toast.success("Automatización guardada");
     onSaved();
   }
 
@@ -3080,7 +3240,7 @@ function PipelineDialog({ state, queues, agents, onClose, onCreate, onRename }: 
             <Input value={nome} onChange={(e) => setNome(e.target.value)} autoFocus placeholder="Ex.: Parcerias, Recuperação, Suporte…" />
             {!isEdit && (
               <p className="text-xs text-muted-foreground">
-                Funis personalizados não têm automação de mensagens/IA. Use os funis do sistema (Comercial, Follow-up, Pós-venda) para automações.
+                Cada embudo cuenta con su propio Analista IA independiente, reglas de etapa y seguimiento automatizado.
               </p>
             )}
           </div>

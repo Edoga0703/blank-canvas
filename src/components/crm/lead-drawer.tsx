@@ -121,7 +121,7 @@ export function LeadDetailsPanel({
   companyId: string; onChanged: () => void; hideConversation?: boolean;
   onDeleted?: () => void; operationalMode?: boolean;
 }) {
-  const { t, formatDate, formatTime, formatCurrency, translateDefaultStageName, translateDefaultPipelineName, localeCode } = useLanguage();
+  const { t, formatDate, formatTime, formatCurrency, translateDefaultStageName, translateDefaultPipelineName, localeCode, language } = useLanguage();
   const [local, setLocal] = useState<LeadCard & { pipeline_id?: string | null }>(card as any);
   const [encaminharOpen, setEncaminharOpen] = useState(false);
   const chatActionFn = useServerFn(handleChatAction);
@@ -271,7 +271,7 @@ export function LeadDetailsPanel({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      {/* Valor da oportunidade + Funil / Etapa */}
+      {/* Valor de la oportunidad + Funil / Etapa */}
       <div className={`grid gap-2.5 ${operationalMode ? "" : "sm:grid-cols-2"}`}>
         {!operationalMode && <div className="flex items-center gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-2">
           <span className="grid size-8 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
@@ -280,7 +280,7 @@ export function LeadDetailsPanel({
           <div className="min-w-0 flex-1">
             <div className="text-[10px] leading-tight text-muted-foreground">Valor da oportunidade</div>
             <div className="flex items-center gap-1">
-              <span className="text-[13px] font-bold">R$</span>
+              <span className="text-[13px] font-bold">{language === "pt" ? "R$" : "$"}</span>
               <input
                 type="text"
                 inputMode="decimal"

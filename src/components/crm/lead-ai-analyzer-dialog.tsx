@@ -31,7 +31,7 @@ export function LeadAiAnalyzerDialog({
   onStageChanged?: (newStageId: string) => void;
   onOpenCopilotWithPrompt?: (prompt: string) => void;
 }) {
-  const { t, formatDate, formatTime } = useLanguage();
+  const { t, formatDate, formatTime, formatCurrency } = useLanguage();
   const analyzeFn = useServerFn(analyzeLeadNow);
   const moveFn = useServerFn(applyStageMovement);
 
@@ -194,7 +194,7 @@ export function LeadAiAnalyzerDialog({
                   </div>
                   {result.valor_sugerido && result.valor_sugerido > 0 && (
                     <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold text-xs shrink-0">
-                      {result.valor_sugerido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      {formatCurrency(result.valor_sugerido)}
                     </Badge>
                   )}
                 </div>
