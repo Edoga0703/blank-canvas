@@ -620,6 +620,194 @@ export async function executeCrmCopilotActionInternal(
     };
   }
 
+  
+  // 8. Crear un nuevo embudo independiente con su Analista y etapas iniciales
+  if (action.type === "create_pipeline") {
+    const nome = String(action.payload?.nome || action.payload?.name || "Nuevo Embudo").trim();
+    const crmMasterPrompt = String(
+      action.payload?.crm_master_prompt || action.payload?.master_prompt || ""
+    ).trim();
+
+    const { data: lastPipe } = await adminSupabase
+      .from("crm_pipeline")
+      .select("ordem")
+      .eq("company_id", companyId)
+      .order("ordem", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const nextOrder = (lastPipe?.ordem ?? 0) + 1;
+
+    const { data: newPipe, error: pipeErr } = await adminSupabase
+      .from("crm_pipeline")
+      .insert({
+        company_id: companyId,
+        nome,
+        tipo: "vendas",
+        ordem: nextOrder,
+        sistema: false,
+        crm_master_prompt: crmMasterPrompt || null,
+      })
+      .select("id, nome")
+      .single();
+
+    if (pipeErr || !newPipe) throw new Error(`Error al crear el nuevo embudo: ${pipeErr?.message || "Desconocido"}`);
+
+    const initialStages = Array.isArray(action.payload?.stages) ? action.payload.stages : [];
+    let createdStagesCount = 0;
+
+    for (let i = 0; i < initialStages.length; i++) {
+      const st = initialStages[i];
+      const stName = String(st?.nome || st?.name || `Etapa ${i + 1}`).trim();
+      const criterioIa = String(st?.criterio_ia || st?.criterio || "").trim();
+      const bloqueadaParaIa = Boolean(st?.bloqueada_para_ia || st?.bloqueadaParaIa || false);
+
+      const packedPrompt = packStageAiMeta({
+        criterio_ia: criterioIa,
+        bloqueada_para_ia: bloqueadaParaIa,
+        mensagem_prompt: "",
+      });
+
+      await adminSupabase.from("crm_stage").insert({
+        company_id: companyId,
+        pipeline_id: newPipe.id,
+        nome: stName,
+        ordem: i,
+        tipo: st?.tipo || "normal",
+        cor: st?.cor || "#60A5FA",
+        modo_atendimento: "auto",
+        mensagem_prompt: packedPrompt,
+        criterio_ia: criterioIa || null,
+        bloqueada_para_ia: bloqueadaParaIa,
+      });
+      createdStagesCount++;
+    }
+
+    await adminSupabase.from("audit_log").insert({
+      company_id: companyId,
+      user_id: userId,
+      acao: "crm_copilot_create_pipeline",
+      detalhes: {
+        pipeline_id: newPipe.id,
+        pipeline_name: newPipe.nome,
+        stages_created: createdStagesCount,
+        applied_at: new Date().toISOString(),
+      },
+    });
+
+    return {
+      ok: true,
+      message: `Nuevo embudo "${newPipe.nome}" creado exitosamente${createdStagesCount > 0 ? ` con ${createdStagesCount} etapas iniciales` : ""}.`,
+    };
+  }
+
+  // 9. Reorganizar orden secuencial de las etapas
+  if (action.type === "reorder_stages") {
+    const stagesList = Array.isArray(action.payload?.stages) ? action.payload.stages : [];
+    if (stagesList.length === 0) throw new Error("No se especificaron etapas para reordenar.");
+
+    for (const item of stagesList) {
+      if (item?.id && typeof item.ordem === "number") {
+        await adminSupabase
+          .from("crm_stage")
+          .update({ ordem: item.ordem })
+          .eq("id", item.id)
+          .eq("company_id", companyId);
+      }
+    }
+
+    await adminSupabase.from("audit_log").insert({
+      company_id: companyId,
+      user_id: userId,
+      acao: "crm_copilot_reorder_stages",
+      detalhes: {
+        stages_count: stagesList.length,
+        applied_at: new Date().toISOString(),
+      },
+    });
+
+    return {
+      ok: true,
+      message: "Orden de las etapas actualizado exitosamente en el embudo.",
+    };
+  }
+
+  // 10. Probar API externa en Sandbox para validación de embudo
+  if (action.type === "test_webhook") {
+    const url = String(action.payload?.url || "").trim();
+    if (!url) throw new Error("URL requerida para prueba en sandbox.");
+    const { testExternalWebhook } = await import("./agent-sandbox.server");
+    const result = await testExternalWebhook({
+      url,
+      method: action.payload?.method || "POST",
+      headers: action.payload?.headers,
+      body: action.payload?.body,
+    });
+    return {
+      ok: result.ok,
+      message: `Prueba en Sandbox ejecutada: HTTP ${result.status} (${result.latencyMs}ms).`,
+    };
+  }
+
+  // 11. Eliminar embudo de forma protegida (anti-destrucción)
+  if (action.type === "delete_pipeline") {
+    const rawPipeId = String(action.payload?.pipelineId || action.payload?.id || "").trim();
+    if (!rawPipeId) throw new Error("ID del embudo requerido para eliminar.");
+
+    const { data: allPipes } = await adminSupabase
+      .from("crm_pipeline")
+      .select("id, nome")
+      .eq("company_id", companyId);
+
+    if (!allPipes || allPipes.length <= 1) {
+      throw new Error("No puedes eliminar el único embudo del negocio.");
+    }
+
+    const targetPipe = allPipes.find((p: any) => p.id === rawPipeId);
+    if (!targetPipe) throw new Error("Embudo no encontrado.");
+
+    const { data: stagesOfPipe } = await adminSupabase
+      .from("crm_stage")
+      .select("id")
+      .eq("pipeline_id", rawPipeId)
+      .eq("company_id", companyId);
+
+    const stageIds = (stagesOfPipe || []).map((s: any) => s.id);
+    if (stageIds.length > 0) {
+      const { data: cardsInPipe } = await adminSupabase
+        .from("crm_cards")
+        .select("id")
+        .in("stage_id", stageIds)
+        .eq("company_id", companyId);
+
+      if (cardsInPipe && cardsInPipe.length > 0) {
+        throw new Error(
+          `No se puede eliminar el embudo "${targetPipe.nome}" porque contiene ${cardsInPipe.length} tarjetas activas. Mueve primero los leads a otro embudo.`
+        );
+      }
+
+      await adminSupabase.from("crm_stage").delete().in("id", stageIds).eq("company_id", companyId);
+    }
+
+    await adminSupabase.from("crm_pipeline").delete().eq("id", rawPipeId).eq("company_id", companyId);
+
+    await adminSupabase.from("audit_log").insert({
+      company_id: companyId,
+      user_id: userId,
+      acao: "crm_copilot_delete_pipeline",
+      detalhes: {
+        pipeline_id: rawPipeId,
+        pipeline_name: targetPipe.nome,
+        applied_at: new Date().toISOString(),
+      },
+    });
+
+    return {
+      ok: true,
+      message: `Embudo "${targetPipe.nome}" eliminado exitosamente de forma segura.`,
+    };
+  }
+
   throw new Error(`Tipo de acción "${action.type}" no soportado.`);
 }
 

@@ -41,6 +41,10 @@ import {
   Zap,
   Edit3,
   Trash2,
+  FolderPlus,
+  ArrowUpDown,
+  Terminal,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/context";
@@ -157,6 +161,20 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
   ) {
     const key = `${mIdx}-${pIdx}`;
     setExecutingIdx(key);
+
+    
+    // Confirmación de seguridad estricta para acciones destructivas
+    if (action.type === "delete_stage" || action.type === "delete_pipeline") {
+      const isPipe = action.type === "delete_pipeline";
+      const name = isPipe ? (action.payload?.nome || action.payload?.name || "este embudo") : (action.payload?.stageName || action.payload?.stageId || "esta etapa");
+      const confirmed = window.confirm(
+        `⚠️ CONFIRMACIÓN DE SEGURIDAD:\n\n¿Estás seguro de que deseas eliminar ${name}?\nEsta acción no se puede deshacer.`
+      );
+      if (!confirmed) {
+        setExecutingIdx(null);
+        return;
+      }
+    }
 
     const safeAction: CrmCopilotActionProposal = {
       ...action,
@@ -333,6 +351,10 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
                               {prop.type === "move_lead" && <ArrowRight className="h-3.5 w-3.5" />}
                               {prop.type === "rename_stage" && <Edit3 className="h-3.5 w-3.5" />}
                               {prop.type === "delete_stage" && <Trash2 className="h-3.5 w-3.5 text-red-500" />}
+                              {prop.type === "delete_pipeline" && <Trash2 className="h-3.5 w-3.5 text-red-500" />}
+                              {prop.type === "create_pipeline" && <FolderPlus className="h-3.5 w-3.5 text-blue-500" />}
+                              {prop.type === "reorder_stages" && <ArrowUpDown className="h-3.5 w-3.5 text-indigo-500" />}
+                              {prop.type === "test_webhook" && <Terminal className="h-3.5 w-3.5 text-amber-500" />}
                               <span>{prop.title}</span>
                             </div>
 
@@ -402,6 +424,49 @@ ${leadName ? `\nActualmente estamos revisando el caso del lead **${leadName}**.`
                           {prop.type === "delete_stage" && (
                             <div className="rounded-md bg-background/80 p-2 font-mono text-[11px] border border-border/60 text-red-600">
                               <span>Eliminar etapa: <b>{prop.payload?.stageName || prop.payload?.stageId}</b></span>
+                            </div>
+                          )}
+
+                          
+                          {prop.type === "create_pipeline" && (
+                            <div className="rounded-md bg-background/80 p-2 font-mono text-[11px] border border-border/60 space-y-1">
+                              <div className="flex items-center gap-2">
+                                <FolderPlus className="size-3 text-blue-500" />
+                                <b>{prop.payload?.nome || "Nuevo Embudo"}</b>
+                              </div>
+                              {prop.payload?.crm_master_prompt && (
+                                <p className="text-muted-foreground text-[10.5px] line-clamp-2">
+                                  {prop.payload.crm_master_prompt}
+                                </p>
+                              )}
+                              {Array.isArray(prop.payload?.stages) && prop.payload.stages.length > 0 && (
+                                <div className="text-[10px] text-muted-foreground pt-1">
+                                  Etapas iniciales: {prop.payload.stages.map((s: any) => s.nome || s.name).join(" → ")}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {prop.type === "delete_pipeline" && (
+                            <div className="rounded-md bg-red-500/10 p-2 font-mono text-[11px] border border-red-500/30 text-red-600 dark:text-red-400 space-y-1">
+                              <div className="flex items-center gap-1.5 font-bold">
+                                <AlertCircle className="size-3.5" />
+                                <span>Eliminación destructiva de embudo</span>
+                              </div>
+                              <p className="text-[10.5px]">Se eliminará el embudo y sus etapas. Las tarjetas deben ser reubicadas primero.</p>
+                            </div>
+                          )}
+
+                          {prop.type === "reorder_stages" && (
+                            <div className="rounded-md bg-background/80 p-2 font-mono text-[11px] border border-border/60 text-muted-foreground">
+                              <span>Reorganización secuencial de {prop.payload?.stages?.length || 0} columnas del embudo.</span>
+                            </div>
+                          )}
+
+                          {prop.type === "test_webhook" && (
+                            <div className="rounded-md bg-background/80 p-2 font-mono text-[11px] border border-border/60 space-y-1">
+                              <span className="text-[10px] uppercase font-bold text-muted-foreground block">Endpoint a probar en Sandbox:</span>
+                              <div className="text-foreground text-[10.5px] truncate">{prop.payload?.method || "POST"} {prop.payload?.url}</div>
                             </div>
                           )}
 
