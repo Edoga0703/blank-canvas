@@ -13,6 +13,7 @@ import { useLanguage } from "@/lib/i18n/context";
 import { toast } from "sonner";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { LeadDrawer, type LeadCard, type Stage, type Member } from "@/components/crm/lead-drawer";
+import { ContactsImportDialog } from "@/components/crm/contacts-import-dialog";
 import { Plus, Upload, Search, Filter, MoreVertical, ShieldOff, Shield, Users, UserCheck, UserX, ChevronsUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, MessageSquare } from "lucide-react";
 import Papa from "papaparse";
 import {
@@ -72,6 +73,7 @@ function ContatosPage() {
 
   const [active, setActive] = useState<LeadCard | null>(null);
   const [newOpen, setNewOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [novoNome, setNovoNome] = useState("");
   const [novoNumero, setNovoNumero] = useState("");
   const [loading, setLoading] = useState(false);
@@ -495,28 +497,9 @@ function ContatosPage() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 sm:h-10 flex-1 sm:flex-none">
-                <Upload className="size-4 sm:mr-2" /> <span className="ml-2 sm:ml-0">Importar</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-72">
-              <DropdownMenuItem onClick={baixarModelo}>
-                <div>
-                  <div className="font-medium">Baixar modelo de planilha</div>
-                  <div className="text-[11px] text-muted-foreground">Colunas nome, telefone e email — preencha e importe</div>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => fileRef.current?.click()}>
-                <div>
-                  <div className="font-medium">Enviar planilha preenchida</div>
-                  <div className="text-[11px] text-muted-foreground">Arquivo CSV com os contatos</div>
-                </div>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button variant="outline" size="sm" className="h-9 sm:h-10 flex-1 sm:flex-none" onClick={() => setImportOpen(true)}>
+            <Upload className="size-4 sm:mr-2" /> <span className="ml-2 sm:ml-0">Importar / Sincronizar</span>
+          </Button>
           <Button size="sm" className="h-9 sm:h-10 flex-1 sm:flex-none" onClick={() => setNewOpen(true)}>
             <Plus className="size-4 sm:mr-2" /> <span className="ml-2 sm:ml-0">Novo contato</span>
           </Button>
@@ -689,6 +672,14 @@ function ContatosPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ContactsImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onSuccess={async () => {
+          await Promise.all([loadPage(), plan.refresh()]);
+        }}
+      />
     </div>
   );
 }

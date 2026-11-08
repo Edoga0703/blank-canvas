@@ -63,20 +63,22 @@ export const Route = createFileRoute("/api/public/google-callback")({
         }
 
 
+        const redirectTarget = v.redirectTo || "/app/agendamentos";
         return new Response(
-          `<!doctype html><meta charset="utf-8"><title>Google conectado</title>
+          `<!doctype html><meta charset="utf-8"><title>Google Conectado</title>
 <body style="font-family:system-ui;background:#081410;color:#e5f3ea;display:grid;place-items:center;min-height:100vh;margin:0">
 <div style="text-align:center;padding:24px">
-<h1>✅ Google Agenda conectado${email ? ` (${email})` : ""}</h1>
-<p>deu certo porem aparece depois de selecionar a conta</p>
+<h1>✅ Google conectado${email ? ` (${email})` : ""}</h1>
+<p>Cuenta conectada exitosamente. Redirigiendo...</p>
 <script>
   setTimeout(() => {
     if (window.opener) {
+      window.opener.postMessage({ type: "GOOGLE_AUTH_SUCCESS" }, "*");
       window.close();
     } else {
-      location.href = "/app/agendamentos";
+      location.href = "${redirectTarget}";
     }
-  }, 2000);
+  }, 1200);
 </script>
 </div></body>`,
           { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } },

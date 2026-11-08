@@ -6,7 +6,7 @@ export function signState(payload: string) {
   return `${payload}.${sig}`;
 }
 
-export function verifyState(state: string): { companyId: string } | null {
+export function verifyState(state: string): { companyId: string; redirectTo?: string } | null {
   const parts = state.split(".");
   if (parts.length !== 2) return null;
   const [payload, sig] = parts;
@@ -16,7 +16,7 @@ export function verifyState(state: string): { companyId: string } | null {
   try {
     const obj = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
     if (!obj.companyId) return null;
-    return { companyId: obj.companyId as string };
+    return { companyId: obj.companyId as string, redirectTo: obj.redirectTo as string | undefined };
   } catch {
     return null;
   }
@@ -408,4 +408,84 @@ export async function ensureMeetLink(
     null;
   if (!link) return { ok: false, error: "O Google não retornou o link do Meet para esta conta." };
   return { ok: true, link, eventId: ev.id as string, calendarId };
+}
+
+export async function fetchGoogleContacts(
+  admin: any,
+  companyId: string,
+): Promise<{
+  ok: boolean;
+  contacts?: Array<{ nome: string; numero: string; email?: string | null }>;
+  totalFound?: number;
+  error?: string;
+  needsScope?: boolean;
+}> {
+  const auth = await getValidAccessToken(admin, companyId);
+  if (!auth?.gi?.conectado || !auth.token) {
+    return { ok: false, error: "Cuenta de Google no conectada. Conéctala para sincronizar tus contactos." };
+  }
+
+  const rawContacts: Array<{ nome: string; numero: string; email?: string | null }> = [];
+  let pageToken = "";
+  let hasMore = true;
+  let pages = 0;
+
+  try {
+    while (hasMore && pages < 10) {
+      pages++;
+      const url = new URL("https://people.googleapis.com/v1/people/me/connections");
+      url.searchParams.set("personFields", "names,phoneNumbers,emailAddresses");
+      url.searchParams.set("pageSize", "1000");
+      if (pageToken) url.searchParams.set("pageToken", pageToken);
+
+      const res = await fetch(url.toString(), {
+        headers: {
+          Authorization: `Bearer ${auth.token}`,
+          Accept: "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          const errBody = await res.json().catch(() => ({}));
+          const msg = errBody?.error?.message || "";
+          return {
+            ok: false,
+            needsScope: true,
+            error: `Permiso insuficiente en Google: ${msg || "Por favor autorice el acceso a contactos de Google."}`,
+          };
+        }
+        return { ok: false, error: `Error al consultar Google People API: ${res.status}` };
+      }
+
+      const data = await res.json();
+      const connections = data.connections || [];
+
+      for (const person of connections) {
+        const names = person.names || [];
+        const displayName =
+          names[0]?.displayName ||
+          [names[0]?.givenName, names[0]?.familyName].filter(Boolean).join(" ");
+        const emails = (person.emailAddresses || []).map((e: any) => e.value).filter(Boolean);
+        const email = emails[0] || null;
+        const phones = (person.phoneNumbers || []).map((p: any) => p.value).filter(Boolean);
+
+        for (const phone of phones) {
+          rawContacts.push({
+            nome: displayName || `Contacto ${String(phone).slice(-4)}`,
+            numero: phone,
+            email,
+          });
+        }
+      }
+
+      pageToken = data.nextPageToken || "";
+      hasMore = !!pageToken && connections.length > 0;
+    }
+
+    return { ok: true, contacts: rawContacts, totalFound: rawContacts.length };
+  } catch (err: any) {
+    console.error("[google-contacts] error fetching contacts:", err);
+    return { ok: false, error: err?.message || "Error al sincronizar con Google Contacts" };
+  }
 }

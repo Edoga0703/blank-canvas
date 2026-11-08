@@ -16,10 +16,11 @@ async function buildOrigin() {
 
 export const startGoogleOAuth = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((d?: { intent?: "calendar" | "contacts" | "all"; redirectTo?: string }) => d)
+  .handler(async ({ context, data }) => {
     const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
     if (!clientId || (!process.env.GOOGLE_OAUTH_CLIENT_SECRET && !process.env.GOOGLE_CLIENT_SECRET)) {
-      return { ok: false as const, error: "Google OAuth não configurado. Peça ao administrador para definir GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET." };
+      return { ok: false as const, error: "Google OAuth no configurado. Se requieren GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET." };
     }
     const { supabase, userId } = context;
     const { data: cu } = await supabase
@@ -27,16 +28,20 @@ export const startGoogleOAuth = createServerFn({ method: "POST" })
       .order("created_at", { ascending: true }).limit(1).maybeSingle();
     if (!cu) return { ok: false as const, error: "Sem empresa." };
 
-    const { getCompanyPlan } = await import("@/lib/plan-limits.server");
-    const { featuresFor, PLAN_LABEL } = await import("@/lib/plan-features");
-    const plan = await getCompanyPlan(cu.company_id);
-    if (!featuresFor(plan.slug).googleCalendar) {
-      return { ok: false as const, error: `Google Agenda não está incluso no plano ${PLAN_LABEL[plan.slug]}. Faça upgrade para Pro.` };
+    const isContacts = data?.intent === "contacts";
+    if (!isContacts) {
+      const { getCompanyPlan } = await import("@/lib/plan-limits.server");
+      const { featuresFor, PLAN_LABEL } = await import("@/lib/plan-features");
+      const plan = await getCompanyPlan(cu.company_id);
+      if (!featuresFor(plan.slug).googleCalendar) {
+        return { ok: false as const, error: `Google Agenda no está incluido en el plan ${PLAN_LABEL[plan.slug]}. Actualice a Pro.` };
+      }
     }
 
     const origin = await buildOrigin();
     const redirectUri = `${origin}/api/public/google-callback`;
-    const payload = Buffer.from(JSON.stringify({ companyId: cu.company_id, t: Date.now() })).toString("base64url");
+    const redirectTo = data?.redirectTo || (isContacts ? "/app/contatos" : "/app/agendamentos");
+    const payload = Buffer.from(JSON.stringify({ companyId: cu.company_id, t: Date.now(), redirectTo })).toString("base64url");
     const { signState } = await import("@/lib/google.server");
     const state = signState(payload);
     const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
@@ -46,7 +51,17 @@ export const startGoogleOAuth = createServerFn({ method: "POST" })
     url.searchParams.set("access_type", "offline");
     url.searchParams.set("prompt", "consent");
     url.searchParams.set("include_granted_scopes", "true");
-    url.searchParams.set("scope", "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email");
+
+    let scope = "https://www.googleapis.com/auth/userinfo.email";
+    if (isContacts) {
+      scope += " https://www.googleapis.com/auth/contacts.readonly";
+    } else if (data?.intent === "all") {
+      scope += " https://www.googleapis.com/auth/contacts.readonly https://www.googleapis.com/auth/calendar.events";
+    } else {
+      scope += " https://www.googleapis.com/auth/calendar.events";
+    }
+
+    url.searchParams.set("scope", scope);
     url.searchParams.set("state", state);
     return { ok: true as const, url: url.toString() };
   });
