@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-08T23:39:27.878897+00:00",
+  "generated_at": "2026-11-08T23:45:19.021606+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -743,7 +743,7 @@
     },
     {
       "path": "src/lib/google.functions.ts",
-      "bytes": 15848
+      "bytes": 16008
     },
     {
       "path": "src/lib/addons.functions.ts",
@@ -2007,7 +2007,7 @@
     },
     {
       "path": "src/routes/api/public/google-callback.ts",
-      "bytes": 3794
+      "bytes": 4051
     },
     {
       "path": "src/routes/api/public/meta-webhook.ts",
