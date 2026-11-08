@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-06T19:51:09.844333+00:00",
+  "generated_at": "2026-11-08T23:39:27.878897+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -743,11 +743,15 @@
     },
     {
       "path": "src/lib/google.functions.ts",
-      "bytes": 15263
+      "bytes": 15848
     },
     {
       "path": "src/lib/addons.functions.ts",
       "bytes": 9081
+    },
+    {
+      "path": "src/lib/crm-contacts-import.server.ts",
+      "bytes": 11145
     },
     {
       "path": "src/lib/wa-interactive.ts",
@@ -852,6 +856,10 @@
     {
       "path": "src/lib/meta-leads.server.ts",
       "bytes": 5375
+    },
+    {
+      "path": "src/lib/crm-contacts-import.functions.ts",
+      "bytes": 5780
     },
     {
       "path": "src/lib/crm-copilot.server.ts",
@@ -1231,7 +1239,7 @@
     },
     {
       "path": "src/lib/google.server.ts",
-      "bytes": 16222
+      "bytes": 19084
     },
     {
       "path": "src/lib/plan.functions.ts",
@@ -1899,7 +1907,7 @@
     },
     {
       "path": "src/routes/app/contatos.tsx",
-      "bytes": 38842
+      "bytes": 38274
     },
     {
       "path": "src/routes/app/automacoes.index.tsx",
@@ -1999,7 +2007,7 @@
     },
     {
       "path": "src/routes/api/public/google-callback.ts",
-      "bytes": 3668
+      "bytes": 3794
     },
     {
       "path": "src/routes/api/public/meta-webhook.ts",
@@ -2616,6 +2624,10 @@
     {
       "path": "src/components/templates/template-form-dialog.tsx",
       "bytes": 9732
+    },
+    {
+      "path": "src/components/crm/contacts-import-dialog.tsx",
+      "bytes": 27882
     },
     {
       "path": "src/components/crm/lead-ad-referral-card.tsx",
@@ -4540,6 +4552,10 @@
       "target": "@/integrations/supabase/client.server"
     },
     {
+      "source": "src/lib/crm-contacts-import.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
       "source": "src/lib/signup-welcome.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -5082,6 +5098,34 @@
     {
       "source": "src/lib/meta-leads.server.ts",
       "target": "@/lib/meta.server"
+    },
+    {
+      "source": "src/lib/crm-contacts-import.functions.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/crm-contacts-import.functions.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/crm-contacts-import.functions.ts",
+      "target": "@/lib/company-cache"
+    },
+    {
+      "source": "src/lib/crm-contacts-import.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/crm-contacts-import.functions.ts",
+      "target": "./crm-contacts-import.server"
+    },
+    {
+      "source": "src/lib/crm-contacts-import.functions.ts",
+      "target": "@/lib/plan-limits.server"
+    },
+    {
+      "source": "src/lib/crm-contacts-import.functions.ts",
+      "target": "@/lib/google.server"
     },
     {
       "source": "src/lib/crm-copilot.server.ts",
@@ -10645,6 +10689,10 @@
     },
     {
       "source": "src/routes/app/contatos.tsx",
+      "target": "@/components/crm/contacts-import-dialog"
+    },
+    {
+      "source": "src/routes/app/contatos.tsx",
       "target": "lucide-react"
     },
     {
@@ -15102,6 +15150,70 @@
     {
       "source": "src/components/templates/template-form-dialog.tsx",
       "target": "@/lib/hsm-templates.functions"
+    },
+    {
+      "source": "src/components/crm/contacts-import-dialog.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/components/crm/contacts-import-dialog.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/components/crm/contacts-import-dialog.tsx",
+      "target": "papaparse"
+    },
+    {
+      "source": "src/components/crm/contacts-import-dialog.tsx",
+      "target": "sonner"
+    },
+    {
+      "source": "src/components/crm/contacts-import-dialog.tsx",
+      "target": "@/components/ui/dialog"
+    },
+    {
+      "source": "src/components/crm/contacts-import-dialog.tsx",
+      "target": "@/components/ui/tabs"
+    },
+    {
+      "source": "src/components/crm/contacts-import-dialog.tsx",
+      "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/components/crm/contacts-import-dialog.tsx",
+      "target": "@/components/ui/label"
+    },
+    {
+      "source": "src/components/crm/contacts-import-dialog.tsx",
+      "target": "@/components/ui/select"
+    },
+    {
+      "source": "src/components/crm/contacts-import-dialog.tsx",
+      "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/components/crm/contacts-import-dialog.tsx",
+      "target": "@/components/ui/scroll-area"
+    },
+    {
+      "source": "src/components/crm/contacts-import-dialog.tsx",
+      "target": "lucide-react"
+    },
+    {
+      "source": "src/components/crm/contacts-import-dialog.tsx",
+      "target": "@/lib/crm-contacts-import.functions"
+    },
+    {
+      "source": "src/components/crm/contacts-import-dialog.tsx",
+      "target": "@/lib/google.functions"
+    },
+    {
+      "source": "src/components/crm/contacts-import-dialog.tsx",
+      "target": "@/lib/crm-contacts-import.server"
+    },
+    {
+      "source": "src/components/crm/contacts-import-dialog.tsx",
+      "target": "exceljs"
     },
     {
       "source": "src/components/crm/lead-ad-referral-card.tsx",
