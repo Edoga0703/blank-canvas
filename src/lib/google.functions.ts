@@ -2,15 +2,19 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 async function buildOrigin() {
+  const envUrl = process.env.PUBLIC_APP_URL || process.env.APP_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/+$/, "");
+  }
   const { getRequest } = await import("@tanstack/react-start/server");
   const req = getRequest();
   const u = new URL(req.url);
-  // No preview domain, use the official one
   if (u.host.includes("metrixcrm.com.br")) {
     return "https://metrixcrm.com.br";
   }
-  // If it's localhost or anything else (like lovable.app previews), use the current host
-  return `${u.protocol}//${u.host}`;
+  const proto = req.headers.get("x-forwarded-proto") || u.protocol.replace(":", "");
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || u.host;
+  return `${proto}://${host}`;
 }
 
 
