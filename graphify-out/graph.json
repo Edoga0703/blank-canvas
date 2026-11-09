@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-09T00:51:44.801859+00:00",
+  "generated_at": "2026-11-09T01:19:24.666116+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -1859,7 +1859,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 196003
+      "bytes": 196005
     },
     {
       "path": "src/routes/app/configuracoes.tsx",
@@ -2639,7 +2639,7 @@
     },
     {
       "path": "src/components/crm/lead-drawer.tsx",
-      "bytes": 80037
+      "bytes": 86478
     },
     {
       "path": "src/components/crm/olist-pedidos-tab.tsx",
