@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-09T00:11:08.749064+00:00",
+  "generated_at": "2026-11-09T00:51:44.801859+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -751,7 +751,7 @@
     },
     {
       "path": "src/lib/crm-contacts-import.server.ts",
-      "bytes": 11145
+      "bytes": 11100
     },
     {
       "path": "src/lib/wa-interactive.ts",
@@ -911,7 +911,7 @@
     },
     {
       "path": "src/lib/crm-engine.server.ts",
-      "bytes": 19796
+      "bytes": 20309
     },
     {
       "path": "src/lib/company-reset.functions.ts",
@@ -1951,7 +1951,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 169816
+      "bytes": 170430
     },
     {
       "path": "src/routes/app/respostas-rapidas.tsx",
@@ -2627,7 +2627,7 @@
     },
     {
       "path": "src/components/crm/contacts-import-dialog.tsx",
-      "bytes": 29506
+      "bytes": 29544
     },
     {
       "path": "src/components/crm/lead-ad-referral-card.tsx",
