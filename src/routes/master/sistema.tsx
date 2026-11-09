@@ -420,7 +420,7 @@ function SistemaPage() {
               <datalist id="ai-models">
                 <option value="google/gemini-2.5-flash" />
                 <option value="google/gemini-2.5-flash-lite" />
-                <option value="google/gemini-2.0-flash-exp" />
+                <option value="google/gemini-1.5-flash" />
                 <option value="drael-v1" />
                 <option value="drael-fast" />
                 <option value="gpt-4o-mini" />

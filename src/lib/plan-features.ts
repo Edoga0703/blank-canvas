@@ -2,7 +2,7 @@
 // Os limites numéricos vivem na tabela `plan` (limite_*); este arquivo cobre
 // features booleanas que o front precisa ler para esconder/bloquear UI.
 
-export type PlanSlug = "starter" | "pro" | "business" | "cortesia";
+export type PlanSlug = "starter" | "pro" | "business" | "cortesia" | "enterprise";
 
 export type PlanFeatures = {
   providersIA: Array<"gemini" | "openai" | "anthropic" | "drael">;
@@ -51,6 +51,15 @@ export const PLAN_FEATURES: Record<PlanSlug, PlanFeatures> = {
     suportePrioritario: true,
     financeiro: true,
   },
+  enterprise: {
+    providersIA: ["gemini", "openai", "anthropic", "drael"],
+    googleCalendar: true,
+    automacoes: true,
+    apiWebhooks: true,
+    relatoriosAvancados: true,
+    suportePrioritario: true,
+    financeiro: true,
+  },
 };
 
 export const PLAN_LABEL: Record<PlanSlug, string> = {
@@ -58,11 +67,14 @@ export const PLAN_LABEL: Record<PlanSlug, string> = {
   pro: "Pro",
   business: "Business",
   cortesia: "Cortesia Master",
+  enterprise: "Enterprise / Master",
 };
 
 export function normalizePlanSlug(slug?: string | null): PlanSlug {
   const s = String(slug || "").toLowerCase();
-  if (s === "pro" || s === "business" || s === "starter" || s === "cortesia") return s as PlanSlug;
+  if (s === "enterprise" || s === "master") return "enterprise";
+  if (s === "cortesia") return "cortesia";
+  if (s === "pro" || s === "business" || s === "starter") return s as PlanSlug;
   return "starter";
 }
 
@@ -71,6 +83,17 @@ export function featuresFor(slug?: string | null): PlanFeatures {
 }
 
 export function allowsProvider(slug: string | null | undefined, provider: string): boolean {
+  if (
+    !slug ||
+    slug === "undefined" ||
+    slug === "enterprise" ||
+    slug === "cortesia" ||
+    slug === "pro" ||
+    slug === "business" ||
+    slug === "master"
+  ) {
+    return true; // Acceso total irrestrito para planes Pro, Business, Cortesia y Enterprise
+  }
   const f = featuresFor(slug);
   return f.providersIA.includes(provider as any);
 }

@@ -77,7 +77,7 @@ function AgentePage() {
 
   const [activeTab, setActiveTab] = useState<string>(searchTab || "conhecimento");
   const [aiProvider, setAiProvider] = useState("gemini");
-  const [aiModel, setAiModel] = useState("google/gemini-2.0-flash-exp");
+  const [aiModel, setAiModel] = useState("google/gemini-2.5-flash");
   const [temperatura, setTemperatura] = useState(0.5);
   const [agendamentoAtivo, setAgendamentoAtivo] = useState(false);
   const [servicosAgendaveis, setServicosAgendaveis] = useState("");
@@ -298,7 +298,7 @@ function AgentePage() {
       setPromptPreview(buildSystemPrompt(data as any, { responderEmPartes: data.responder_em_partes ?? true, produtos: [] }));
       setLivre(composeKnowledge(data));
       setAiProvider(data.ai_provider || "gemini");
-      setAiModel(data.ai_model || "google/gemini-2.0-flash-exp");
+      setAiModel(!data.ai_model || data.ai_model === "google/gemini-2.0-flash-exp" ? "google/gemini-2.5-flash" : data.ai_model);
       setTemperatura(typeof data.temperatura === "number" ? data.temperatura : 0.5);
       setAgendamentoAtivo(Boolean(data.agendamento_ativo));
       setServicosAgendaveis(data.servicos_agendaveis || "");
@@ -312,7 +312,7 @@ function AgentePage() {
       loadSuggestions(data.id);
     } else if (data) {
       setAiProvider(data.ai_provider || "gemini");
-      setAiModel(data.ai_model || "google/gemini-2.0-flash-exp");
+      setAiModel(!data.ai_model || data.ai_model === "google/gemini-2.0-flash-exp" ? "google/gemini-2.5-flash" : data.ai_model);
       setTemperatura(typeof data.temperatura === "number" ? data.temperatura : 0.5);
       setAgendamentoAtivo(Boolean(data.agendamento_ativo));
       setServicosAgendaveis(data.servicos_agendaveis || "");
@@ -2085,7 +2085,7 @@ function AgentePage() {
                               <>
                                 <SelectItem value="google/gemini-2.5-flash">Gemini 2.5 Flash (Recomendado — Inteligente y Rápido)</SelectItem>
                                 <SelectItem value="google/gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite (Ultrarrápido y Económico)</SelectItem>
-                                <SelectItem value="google/gemini-2.0-flash-exp">Gemini 2.0 Flash</SelectItem>
+
                                 <SelectItem value="google/gemini-1.5-flash">Gemini 1.5 Flash</SelectItem>
                                 <SelectItem value="google/gemini-1.5-pro">Gemini 1.5 Pro (Razonamiento Profundo)</SelectItem>
                               </>

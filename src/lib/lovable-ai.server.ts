@@ -39,6 +39,38 @@ async function fetchJson(url: string, init: RequestInit, timeoutMs = 30_000) {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+export function sanitizeGatewayGeminiModel(model?: string): string {
+  if (!model) return "google/gemini-2.5-flash";
+  const m = model.trim();
+  // Corregir modelo experimental deprecado o inválido de versiones previas
+  if (
+    m === "google/gemini-2.0-flash-exp" ||
+    m === "gemini-2.0-flash-exp" ||
+    m === "google/gemini-2.0-flash" ||
+    m === "gemini-2.0-flash"
+  ) {
+    return "google/gemini-2.5-flash";
+  }
+  if (
+    m === "google/gemini-2.5-flash" ||
+    m === "google/gemini-2.5-flash-lite" ||
+    m === "google/gemini-1.5-flash" ||
+    m === "google/gemini-1.5-pro" ||
+    m === "google/gemini-2.5-pro"
+  ) {
+    return m;
+  }
+  if (m.startsWith("google/")) {
+    return m;
+  }
+  if (m.includes("2.5-flash-lite")) return "google/gemini-2.5-flash-lite";
+  if (m.includes("2.5-flash")) return "google/gemini-2.5-flash";
+  if (m.includes("1.5-pro")) return "google/gemini-1.5-pro";
+  if (m.includes("1.5-flash")) return "google/gemini-1.5-flash";
+  if (m.includes("flash")) return "google/gemini-2.5-flash";
+  return "google/gemini-2.5-flash";
+}
+
 export async function lovableAiChat(
   messages: ChatMsg[],
   modelOrConfig: string | AiProviderConfig = "google/gemini-2.5-flash",
@@ -91,7 +123,8 @@ export async function lovableAiChat(
   // default: Gemini via Lovable Gateway (com retry + fallback de modelo)
   const key = process.env.LOVABLE_API_KEY;
   if (!key) throw new Error("LOVABLE_API_KEY ausente.");
-  const principal = (cfg.model && cfg.model.startsWith("google/")) ? cfg.model : (globalModel && globalModel.startsWith("google/") ? globalModel : "google/gemini-2.5-flash");
+  const rawPrincipal = (cfg.model && cfg.model.startsWith("google/")) ? cfg.model : (globalModel && globalModel.startsWith("google/") ? globalModel : "google/gemini-2.5-flash");
+  const principal = sanitizeGatewayGeminiModel(rawPrincipal);
   const fallback = "google/gemini-1.5-flash";
 
   let ultimoErro: Error | null = null;
