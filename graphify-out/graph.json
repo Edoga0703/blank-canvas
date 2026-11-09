@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-09T05:29:20.575210+00:00",
+  "generated_at": "2026-11-09T05:44:18.444056+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -1975,7 +1975,7 @@
     },
     {
       "path": "src/routes/api/public/ai-health.ts",
-      "bytes": 2345
+      "bytes": 2944
     },
     {
       "path": "src/routes/api/public/google-marketing-callback.ts",
