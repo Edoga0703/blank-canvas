@@ -797,6 +797,40 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
 
     let waId: string | null = null;
     let sendError: string | null = null;
+    let finalAudio = data.audio;
+    let finalMime = data.mimetype || "audio/ogg";
+    const isAlreadyOgg =
+      finalAudio.includes("audio/ogg") ||
+      finalAudio.endsWith(".ogg") ||
+      finalAudio.includes(".ogg?");
+
+    // Si el audio proviene de grabación WebM en navegador (Chrome/Edge), intentamos remuxear a OGG Opus nativo
+    // para que WhatsApp lo trate como nota de voz PTT impecable sin errores de reproducción en móviles.
+    if (!isAlreadyOgg && (finalMime.includes("webm") || finalAudio.includes(".webm") || finalAudio.includes("audio/webm"))) {
+      try {
+        const { remuxWebmToOggOpus } = await import("./audio-remux.server");
+        let inBuf: Buffer | null = null;
+        if (finalAudio.startsWith("data:")) {
+          const raw = finalAudio.split(",")[1];
+          if (raw) inBuf = Buffer.from(raw, "base64");
+        } else if (finalAudio.startsWith("http")) {
+          const fetchRes = await fetch(finalAudio, { signal: AbortSignal.timeout(10_000) });
+          if (fetchRes.ok) {
+            inBuf = Buffer.from(await fetchRes.arrayBuffer());
+          }
+        }
+        if (inBuf && inBuf.length > 0) {
+          const oggBuf = await remuxWebmToOggOpus(inBuf);
+          if (oggBuf && oggBuf.length > 0) {
+            finalAudio = `data:audio/ogg;codecs=opus;base64,${oggBuf.toString("base64")}`;
+            finalMime = "audio/ogg; codecs=opus";
+          }
+        }
+      } catch (remuxErr: any) {
+        console.warn("[sendWhatsappAudio] Remux warning:", remuxErr?.message);
+      }
+    }
+
     try {
       const { waSendAudio } = await import("./wa-dispatch.server");
       const waInst = {
@@ -807,7 +841,7 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
         status: inst.status,
         paused: false,
       };
-      const resp: any = await waSendAudio(waInst, data.numero, data.audio);
+      const resp: any = await waSendAudio(waInst, data.numero, finalAudio);
       waId = extractWhatsappMessageId(resp);
     } catch (e: any) {
       sendError = e?.message ?? String(e);
@@ -821,7 +855,7 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
       direcao: "saida", autor: "humano",
       texto: "🎤 Áudio",
       whatsapp_message_id: waId,
-      midia_url: data.storageKey ? null : data.midiaUrl ?? null, midia_tipo: "audio", midia_mime: data.mimetype || "audio/ogg", midia_nome: null,
+      midia_url: data.storageKey ? null : data.midiaUrl ?? null, midia_tipo: "audio", midia_mime: finalMime, midia_nome: null,
       status_envio: permanentFailure ? "falha" : sendError ? "pendente" : waId ? "enviado" : "pendente",
     } as any).select("id").single();
     if (error) {

@@ -622,3 +622,43 @@ export async function metaSubscribePage(token: string, pageId: string, _options?
     return { ok: false, error: e instanceof Error ? e.message : "Falha ao assinar webhooks." };
   }
 }
+
+/** Envia reação a uma mensagem no Messenger / Instagram Direct / WhatsApp Cloud API. */
+export async function metaSendReaction(token: string, recipientId: string, messageId: string, emoji: string) {
+  const cleanToken = normalizeToken(token);
+  const cleanTo = recipientId.replace(/\D/g, "");
+  
+  if (messageId.startsWith("wamid.") || /^\d+$/.test(cleanTo)) {
+    try {
+      const json = await graph("/me/messages", cleanToken, {
+        method: "POST",
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: cleanTo,
+          type: "reaction",
+          reaction: {
+            message_id: messageId,
+            emoji: emoji || "",
+          },
+        }),
+      });
+      return { ok: true, json };
+    } catch (e: any) {
+      console.warn("[meta] erro ao enviar reação WhatsApp Cloud API:", e?.message);
+    }
+  }
+
+  // Fallback Messenger / Instagram Direct
+  const json = await graph("/me/messages", cleanToken, {
+    method: "POST",
+    body: JSON.stringify({
+      recipient: { id: recipientId },
+      message: {
+        reaction: emoji ? { action: "react", emoji } : { action: "unreact" },
+      },
+    }),
+  }).catch(() => null);
+  return { ok: true, json };
+}
+

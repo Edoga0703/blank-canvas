@@ -69,6 +69,7 @@ export async function getActiveInstanceForContact(
   companyId: string,
   numero: string,
   userId?: string,
+  instanceIdOverride?: string | null,
 ): Promise<WaInstance | null> {
   try {
     const { getInstanceForContact } = await import("@/lib/whatsapp-helpers");
@@ -78,6 +79,7 @@ export async function getActiveInstanceForContact(
       numero,
       "instance_name,instance_token,status,provider,provider_type,phone_number_id,waba_id,paused",
       userId,
+      instanceIdOverride,
     );
     if (!inst?.instance_name) return null;
 
@@ -249,8 +251,12 @@ export async function waSendAudio(inst: WaInstance, numero: string, audioBase64O
   if (inst.provider === "dapi_official") {
     await assertMetaWindowForInstance(inst, numero);
   }
+  const isOgg =
+    audioBase64OrUrl.includes("audio/ogg") ||
+    audioBase64OrUrl.endsWith(".ogg") ||
+    audioBase64OrUrl.includes(".ogg?");
   const { dapiSendAudio } = await import("./dapi.server");
-  return dapiSendAudio(inst.instance_name, numero, audioBase64OrUrl, true, inst.instance_token);
+  return dapiSendAudio(inst.instance_name, numero, audioBase64OrUrl, isOgg, inst.instance_token);
 }
 
 export async function waSendTemplate(

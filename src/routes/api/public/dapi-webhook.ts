@@ -392,29 +392,53 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
             });
           }
 
-          // 1e. Reacciones a mensajes (👍, ❤️, etc.) [Ambas]
-          if (
+          // 1e. Reacciones a mensajes (👍, ❤️, etc.) [Ambas: D-API, Baileys, Meta]
+          const isReactionEvent =
             eventName === "message.reaction" ||
+            eventName === "messages.reaction" ||
+            eventName === "message.reactions" ||
+            eventName === "messages.reactions" ||
+            eventName === "reaction" ||
+            eventName === "reactions" ||
             data.type === "reaction" ||
+            data.type === "reaction_add" ||
+            data.type === "reaction_remove" ||
             Boolean(data.reaction) ||
-            Boolean(data.message?.reactionMessage)
-          ) {
-            const reactionObj = data.reaction || data.message?.reactionMessage || data;
+            Boolean(data.message?.reactionMessage) ||
+            Boolean(data.reactionMessage);
+
+          if (isReactionEvent) {
+            const reactionObj = data.reaction || data.message?.reactionMessage || data.reactionMessage || data;
             const targetMsgId = String(
-              reactionObj.message_id ||
+              data.target_message_id ||
+                data.targetMessageId ||
+                reactionObj.message_id ||
                 reactionObj.messageId ||
                 reactionObj.key?.id ||
-                data.target_message_id ||
-                "",
+                data.key?.id ||
+                ""
             ).trim();
-            const emoji = String(reactionObj.emoji ?? reactionObj.text ?? "").trim() || null;
+
+            const rawEmoji =
+              reactionObj.emoji ??
+              reactionObj.text ??
+              data.reaction?.emoji ??
+              data.reaction?.text ??
+              data.emoji ??
+              "";
+            const emoji = String(rawEmoji || "").trim() || null;
+
             if (targetMsgId) {
+              const targetClean = targetMsgId.replace(/^wamid\./i, "");
+              const filterExpr = `whatsapp_message_id.eq.${targetMsgId},whatsapp_message_id.eq.${targetClean},whatsapp_message_id.ilike.%${targetClean}%,id.eq.${targetMsgId}`;
+
               await supabaseAdmin
                 .from("mensagens")
                 .update({ reacao: emoji } as any)
                 .eq("company_id", inst.company_id)
-                .eq("whatsapp_message_id", targetMsgId);
+                .or(filterExpr);
             }
+
             return new Response(JSON.stringify({ ok: true, event: "message.reaction" }), {
               status: 200,
               headers: { "Content-Type": "application/json" },

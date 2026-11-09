@@ -604,7 +604,7 @@ export async function dapiSendMedia(
       body.audio = targetUrl;
       body.audioUrl = targetUrl;
       body.url = targetUrl;
-      body.ptt = media.ptt ?? true;
+      body.ptt = Boolean(media.ptt);
       if (media.mime) body.mimetype = media.mime;
     } else if (media.type === "video") {
       body.video = targetUrl;
@@ -689,11 +689,14 @@ export async function dapiSendAudio(
   ptt?: boolean,
   apiKey?: string | null,
 ): Promise<{ id: string; provider: string; raw: any }> {
+  // WhatsApp mobile exige estrictamente OGG Opus para notas de voz nativas (PTT).
+  // Si el audio es WebM, MP3 o AAC, ptt: false permite que el reproductor nativo del celular
+  // lo reproduzca sin el error "Este audio no está disponible porque algo falló con el archivo de audio".
   const isOgg =
     audioBase64OrUrl.includes("audio/ogg") ||
-    audioBase64OrUrl.includes("codecs=opus") ||
-    audioBase64OrUrl.endsWith(".ogg");
-  const usePtt = ptt !== undefined ? ptt : isOgg;
+    audioBase64OrUrl.endsWith(".ogg") ||
+    audioBase64OrUrl.includes(".ogg?");
+  const usePtt = ptt !== undefined ? (ptt && isOgg) : isOgg;
   return dapiSendMedia(
     sessionId,
     to,
@@ -701,6 +704,7 @@ export async function dapiSendAudio(
       url: audioBase64OrUrl,
       type: "audio",
       ptt: usePtt,
+      mime: isOgg ? "audio/ogg; codecs=opus" : undefined,
     },
     apiKey,
   );
@@ -848,8 +852,10 @@ export async function dapiSendReaction(
   messageId: string,
   emoji: string,
   apiKey?: string | null,
+  fromMe = false,
 ): Promise<{ success: boolean; raw?: any }> {
   const cleanTo = to.includes("@g.us") ? to.trim() : to.replace(/\D/g, "");
+  const remoteJid = cleanTo.includes("@") ? cleanTo : `${cleanTo}@s.whatsapp.net`;
   const payload = {
     sessionId,
     to: cleanTo,
@@ -857,6 +863,12 @@ export async function dapiSendReaction(
     id: messageId,
     emoji: emoji || "",
     reaction: emoji || "",
+    fromMe,
+    key: {
+      remoteJid,
+      id: messageId,
+      fromMe,
+    },
   };
   const res = await dapiFetch<any>("/messages/send/reaction", {
     method: "POST",

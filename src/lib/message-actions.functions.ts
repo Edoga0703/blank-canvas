@@ -16,7 +16,7 @@ export const reactMessage = createServerFn({ method: "POST" })
 
     const { data: msg } = await supabase
       .from("mensagens")
-      .select("id,numero,direcao,whatsapp_message_id")
+      .select("id,numero,direcao,whatsapp_message_id,instance_id,provider")
       .eq("id", data.messageId)
       .eq("company_id", cid)
       .maybeSingle();
@@ -32,11 +32,16 @@ export const reactMessage = createServerFn({ method: "POST" })
     let syncedToWhatsapp = false;
     if (msg.whatsapp_message_id) {
       try {
-        const { getActiveInstanceForContact } = await import("@/lib/wa-dispatch.server");
-        const inst = await getActiveInstanceForContact(cid, msg.numero, userId);
+        const { getActiveInstanceForContact, isMetaProvider } = await import("@/lib/wa-dispatch.server");
+        const inst = await getActiveInstanceForContact(cid, msg.numero, userId, (msg as any).instance_id);
+        const fromMe = msg.direcao === "saida";
         if (inst && (inst.provider === "dapi" || inst.provider === "dapi_official")) {
           const { dapiSendReaction } = await import("@/lib/dapi.server");
-          await dapiSendReaction(inst.instance_name, msg.numero, msg.whatsapp_message_id, data.emoji || "", inst.instance_token);
+          await dapiSendReaction(inst.instance_name, msg.numero, msg.whatsapp_message_id, data.emoji || "", inst.instance_token, fromMe);
+          syncedToWhatsapp = true;
+        } else if (inst && isMetaProvider(inst.provider) && inst.instance_token) {
+          const { metaSendReaction } = await import("@/lib/meta.server");
+          await metaSendReaction(inst.instance_token, msg.numero, msg.whatsapp_message_id, data.emoji || "");
           syncedToWhatsapp = true;
         }
       } catch (syncErr) {
