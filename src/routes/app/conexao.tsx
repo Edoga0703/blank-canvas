@@ -275,7 +275,8 @@ function ConexoesPage() {
   const waInstances = instances.filter((i) => WA_KEYS.includes((i.provider ?? "dapi") as string));
   const waUsed = waInstances.length;
   const waLimit = plan.limites.instancias;
-  const canAddWa = waLimit >= 2147483647 || waUsed < waLimit;
+  const isUnlimited = waLimit >= 1000000;
+  const canAddWa = isUnlimited || waUsed < waLimit;
   const canAddChannel = (key: string) => (FREE_KEYS.includes(key) ? true : canAddWa);
   const canAdd = canAddWa;
 
@@ -536,11 +537,17 @@ function ConexoesPage() {
         </div>
 
         {!canAdd && (
-          <p className="text-xs text-muted-foreground text-center">
-            {waLimit <= 1
-              ? "Seu plano permite 1 conexão de WhatsApp."
-              : "Você atingiu o limite de conexões WhatsApp do seu plano."}
-          </p>
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-center space-y-2 max-w-md mx-auto">
+            <p className="text-sm font-semibold text-foreground">
+              Límite de conexiones alcanzado ({waUsed}/{waLimit})
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Tu plan actual incluye {waLimit} línea{waLimit === 1 ? "" : "s"}. Puedes añadir conexiones adicionales por separado o subir de plan para conectar más números.
+            </p>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => window.location.href = "/app/configuracoes"}>
+              <Plus className="size-3.5" /> Adquirir línea adicional
+            </Button>
+          </div>
         )}
           </TabsContent>
 

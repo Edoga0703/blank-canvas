@@ -160,6 +160,7 @@ interface Msg {
   whatsapp_message_id?: string | null; reply_to_id?: string | null;
   status_envio?: string | null;
   provider?: string | null;
+  instance_id?: string | null;
 }
 
 function getChannel(card?: any, lastMsg?: Msg | null): CanalChat {
@@ -170,6 +171,44 @@ function getChannel(card?: any, lastMsg?: Msg | null): CanalChat {
   if (lastMsg?.provider === "telegram") return "telegram";
   return "whatsapp";
 }
+const INSTANCE_COLORS = [
+  { border: "#10b981", bg: "#10b981", lightBg: "#ecfdf5", text: "#065f46", ring: "rgba(16,185,129,0.3)" }, // Emerald
+  { border: "#0284c7", bg: "#0284c7", lightBg: "#f0f9ff", text: "#075985", ring: "rgba(2,132,199,0.3)" },  // Sky
+  { border: "#8b5cf6", bg: "#8b5cf6", lightBg: "#f5f3ff", text: "#5b21b6", ring: "rgba(139,92,246,0.3)" }, // Violet
+  { border: "#f59e0b", bg: "#f59e0b", lightBg: "#fffbeb", text: "#92400e", ring: "rgba(245,158,11,0.3)" }, // Amber
+  { border: "#ec4899", bg: "#ec4899", lightBg: "#fdf2f8", text: "#9d174d", ring: "rgba(236,72,153,0.3)" }, // Pink
+  { border: "#14b8a6", bg: "#14b8a6", lightBg: "#f0fdfa", text: "#115e59", ring: "rgba(20,184,166,0.3)" }, // Teal
+];
+
+function getInstanceVisualMeta(
+  instanceId?: string | null,
+  provider?: string | null,
+  instancesList: Array<{ id: string; instance_name: string; display_name: string | null; provider: string; status: string; phone_number_id: string | null; numero?: string | null }> = []
+) {
+  if (provider === "meta_instagram") {
+    return { name: "Instagram", color: "#E1306C", lightBg: "#fdf2f8", text: "#9d174d", ring: "rgba(225,48,108,0.3)" };
+  }
+  if (provider === "meta_messenger") {
+    return { name: "Messenger", color: "#0084FF", lightBg: "#eff6ff", text: "#1d4ed8", ring: "rgba(0,132,255,0.3)" };
+  }
+  if (provider === "telegram") {
+    return { name: "Telegram", color: "#229ED9", lightBg: "#f0f9ff", text: "#0369a1", ring: "rgba(34,158,217,0.3)" };
+  }
+  if (!instanceId) return null;
+  const idx = instancesList.findIndex((i) => i.id === instanceId);
+  const inst = idx >= 0 ? instancesList[idx] : null;
+  const colorDef = INSTANCE_COLORS[(idx >= 0 ? idx : 0) % INSTANCE_COLORS.length] || INSTANCE_COLORS[0];
+  const name = inst?.display_name || (inst?.numero ? `+${inst.numero}` : inst?.instance_name) || `Línea ${idx + 1}`;
+  return {
+    name,
+    color: colorDef.border,
+    lightBg: colorDef.lightBg,
+    text: colorDef.text,
+    ring: colorDef.ring,
+    numero: inst?.numero,
+  };
+}
+
 
 
 
@@ -318,7 +357,8 @@ function ConversasPage() {
     }).catch(() => {});
   }, [getCsatCfgFn]);
 
-  const [instances, setInstances] = useState<Array<{ id: string; instance_name: string; display_name: string | null; provider: string; status: string; phone_number_id: string | null }>>([]);
+  const [instances, setInstances] = useState<Array<{ id: string; instance_name: string; display_name: string | null; provider: string; status: string; phone_number_id: string | null; numero?: string | null }>>([]);
+  const [overrideInstanceId, setOverrideInstanceId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!companyId) return;
@@ -326,7 +366,7 @@ function ConversasPage() {
     async function loadInstances() {
       const { data } = await supabase
         .from("whatsapp_instances")
-        .select("id,instance_name,display_name,provider,status,phone_number_id")
+        .select("id,instance_name,display_name,provider,status,phone_number_id,numero")
         .eq("company_id", companyId ?? "");
       if (alive && data) setInstances(data as any);
     }
@@ -443,6 +483,7 @@ function ConversasPage() {
   }, [msgs, readMap, active]);
 
   const [composer, setComposer] = useState("");
+  useEffect(() => { setOverrideInstanceId(null); }, [active]);
   const [drawerCard, setDrawerCard] = useState<LeadCard | null>(null);
   const [sending, setSending] = useState(false);
   const [finalizarDialogOpen, setFinalizarDialogOpen] = useState(false);
@@ -718,7 +759,7 @@ function ConversasPage() {
   // PostgREST limita 1000 linhas por request. Buscamos em páginas para manter
   // TODO o histórico da conta disponível (sem cortar conversas antigas).
   const MSG_COLS =
-    "id,numero,contato_nome,direcao,autor,texto,created_at,user_id,midia_url,midia_tipo,midia_mime,midia_nome,reacao,editado_em,deletado_em,whatsapp_message_id,reply_to_id,status_envio,provider,raw_payload";
+    "id,numero,contato_nome,direcao,autor,texto,created_at,user_id,midia_url,midia_tipo,midia_mime,midia_nome,reacao,editado_em,deletado_em,whatsapp_message_id,reply_to_id,status_envio,provider,instance_id,raw_payload";
 
   const CARD_COLS =
     "id,company_id,numero,nome,foto_url,owner_id,stage_id,canal_chat,department_id,transfer_para_user_id,transfer_de_user_id,transfer_status,tags,valor,email,campos_extras,ctwa_clid,fbclid,gclid,utm_source,utm_medium,utm_campaign,utm_content,utm_term,origem,referrer,first_page,status,ultima_em,created_at";
@@ -981,6 +1022,28 @@ function ConversasPage() {
       .sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
   }, [msgs, active]);
 
+  
+  const stickyInstance = useMemo(() => {
+    if (!active || thread.length === 0) return null;
+    for (let i = thread.length - 1; i >= 0; i--) {
+      const instId = thread[i].instance_id;
+      if (instId) {
+        const match = instances.find((inst) => inst.id === instId);
+        if (match) return match;
+      }
+    }
+    return null;
+  }, [active, thread, instances]);
+
+  const activeSendInstance = useMemo(() => {
+    if (overrideInstanceId) {
+      const match = instances.find((i) => i.id === overrideInstanceId);
+      if (match) return match;
+    }
+    if (stickyInstance) return stickyInstance;
+    return instances.find((i) => i.status === "connected" || i.status === "open") || instances[0] || null;
+  }, [overrideInstanceId, stickyInstance, instances]);
+
   const activeGroup = active ? grupos.find((g) => g.jid === active) : undefined;
   const activeConv = conversations.find((c) => c.numero === active) ?? (active ? { numero: active, nome: activeGroup?.nome ?? cards[active]?.nome ?? null, last: thread[thread.length - 1] } : null);
   const activeCard = useMemo(() => {
@@ -1223,12 +1286,14 @@ function ConversasPage() {
     if (!txt || !active || !companyId) return;
     const currentReply = replyTo;
     setSending(true);
+    const targetInstId = activeSendInstance?.id ?? null;
     const tmpId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const optimistic: Msg = {
       id: tmpId, numero: active, contato_nome: activeConv?.nome ?? null,
       direcao: "saida", autor: "humano", texto: txt,
       created_at: new Date().toISOString(), user_id: userId,
       reply_to_id: currentReply?.id ?? null,
+      instance_id: targetInstId,
     };
     setMsgs((p) => [optimistic, ...p].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)));
     setComposer("");
@@ -1238,7 +1303,7 @@ function ConversasPage() {
         await enviarGrupoFn({ data: { jid: active, texto: txt } });
         if (companyId) void refreshRecent(companyId);
       } else {
-        const result = await sendFn({ data: { numero: active, texto: txt, contatoNome: activeConv?.nome ?? null, replyToMessageId: currentReply?.id ?? null } });
+        const result = await sendFn({ data: { numero: active, texto: txt, contatoNome: activeConv?.nome ?? null, replyToMessageId: currentReply?.id ?? null, instanceId: targetInstId } });
         if (companyId) void refreshRecent(companyId);
         if (!result.ok) toast.error(result.error ?? "A mensagem não foi enviada.");
       }
@@ -2569,7 +2634,17 @@ function StageChip({ nome, cor }: { nome: string; cor: string | null }) {
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 const MORE_REACTIONS = ["👏", "🎉", "🔥", "✅", "🤔", "😍", "😡", "💯", "🙌", "🤝", "✨", "😅"];
 
-function Bubble({ m, quotedSnippet, companyId, onReply, agentTraits, agentAvatarUrl, hasUnofficialInstance }: { m: Msg; quotedSnippet?: { sender: string; text: string; id?: string | null } | null; companyId: string; onReply?: (m: Msg) => void; agentTraits?: any; agentAvatarUrl?: string; hasUnofficialInstance?: boolean }) {
+function Bubble({ m, quotedSnippet, companyId, onReply, agentTraits, agentAvatarUrl, hasUnofficialInstance, instances = [] }: {
+  m: Msg;
+  quotedSnippet?: { sender: string; text: string; id?: string | null } | null;
+  companyId: string;
+  onReply?: (m: Msg) => void;
+  agentTraits?: any;
+  agentAvatarUrl?: string;
+  hasUnofficialInstance?: boolean;
+  instances?: Array<{ id: string; instance_name: string; display_name: string | null; provider: string; status: string; phone_number_id: string | null; numero?: string | null }>;
+}) {
+  const instanceMeta = getInstanceVisualMeta(m.instance_id, m.provider, instances);
   const isOut = m.direcao === "saida";
   const ia = m.autor === "ia";
   const automacao = m.autor === "automacao";
@@ -2852,6 +2927,7 @@ function Bubble({ m, quotedSnippet, companyId, onReply, agentTraits, agentAvatar
 function Composer({
   active, activeName, templates, quickReplies, onQuickRepliesChanged, sending, onSendText, companyId, iaAtiva, onAssumir, onEncaminhar, replyTo, onCancelReply,
   ownerId, currentUserId, ownerNome, agentTraits, agentAvatarUrl, scheduleTarget, onLocalMedia, onLocalMediaFail,
+  instances = [], activeSendInstance, stickyInstance, onSelectInstance,
 }: {
   active: string;
   activeName: string | null;
@@ -2874,7 +2950,13 @@ function Composer({
   scheduleTarget: { numero: string; nome: string | null; cardId?: string };
   onLocalMedia?: (url: string, tipo: string, mime?: string | null) => string;
   onLocalMediaFail?: (id: string) => void;
+  instances?: Array<{ id: string; instance_name: string; display_name: string | null; provider: string; status: string; phone_number_id: string | null; numero?: string | null }>;
+  activeSendInstance?: { id: string; instance_name: string; display_name: string | null; provider: string; status: string; phone_number_id: string | null; numero?: string | null } | null;
+  stickyInstance?: { id: string; instance_name: string; display_name: string | null; provider: string; status: string; phone_number_id: string | null; numero?: string | null } | null;
+  onSelectInstance?: (id: string) => void;
 }) {
+  const connectedInstances = (instances || []).filter((i) => i.status === "connected" || i.status === "open" || i.provider?.startsWith("meta_") || i.provider === "telegram");
+  const activeMeta = activeSendInstance ? getInstanceVisualMeta(activeSendInstance.id, activeSendInstance.provider, instances || []) : null;
 
 
   const sendMediaFn = useServerFn(sendWhatsappMedia);
@@ -3306,7 +3388,7 @@ function Composer({
     void (async () => {
       try {
         const uploaded = await uploadToStorage(blob, ext, `audio.${ext}`, type.split(";")[0]);
-        await sendAudioFn({ data: { numero: active, contatoNome: activeName, audio: uploaded.url, midiaUrl: null, storageKey: uploaded.storageKey, mimetype: type.split(";")[0] } });
+        await sendAudioFn({ data: { numero: active, contatoNome: activeName, audio: uploaded.url, midiaUrl: null, storageKey: uploaded.storageKey, mimetype: type.split(";")[0], instanceId: activeSendInstance?.id ?? undefined } });
         // O áudio real já foi gravado no servidor: remove a prévia local
         // para não ficar duplicado (a cópia local não tem duração).
         if (tmpId) setTimeout(() => onLocalMediaFail?.(tmpId), 400);

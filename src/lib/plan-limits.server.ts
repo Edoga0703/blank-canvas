@@ -30,14 +30,35 @@ export async function getCompanyPlan(companyId: string): Promise<CompanyPlan> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
   // 1) Assinatura ativa/trialing → plano vinculado (+ extras)
-  const { data: sub } = await supabaseAdmin
-    .from("subscription")
-    .select("plan_id, status, extra_usuarios, extra_conexoes, plan:plan(slug, nome, limite_instancias, limite_mensagens, limite_usuarios, limite_contatos)")
-    .eq("company_id", companyId)
-    .in("status", ["active", "trialing", "past_due"])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const [{ data: sub }, { data: comp }] = await Promise.all([
+    supabaseAdmin
+      .from("subscription")
+      .select("plan_id, status, extra_usuarios, extra_conexoes, cortesia, plan:plan(slug, nome, limite_instancias, limite_mensagens, limite_usuarios, limite_contatos)")
+      .eq("company_id", companyId)
+      .in("status", ["active", "trialing", "past_due"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    (supabaseAdmin as any)
+      .from("company")
+      .select("id, is_master, status_cobranca")
+      .eq("id", companyId)
+      .maybeSingle(),
+  ]);
+
+  // Bypass total para Super Admin, empresa master o suscripción de cortesía
+  if (sub?.cortesia || (comp as any)?.is_master || (comp as any)?.status_cobranca === "cortesia") {
+    return {
+      slug: "enterprise" as any,
+      nome: "Super Admin (Ilimitado)",
+      limites: {
+        instancias: 9999999,
+        usuarios: 9999999,
+        contatos: 9999999,
+        mensagens: 9999999,
+      },
+    };
+  }
 
   let row: any = sub?.plan ?? null;
   let extraUsuarios = Number((sub as any)?.extra_usuarios ?? 0);
@@ -124,7 +145,18 @@ const LIMIT_MSG: Record<LimitKind, (planName: string, lim: number) => string> = 
     `Seu plano ${p} permite até ${n.toLocaleString("pt-BR")} mensagens enviadas por mês. Faça upgrade para continuar respondendo.`,
 };
 
-export async function assertWithinLimit(companyId: string, tipo: LimitKind, delta = 1): Promise<void> {
+export async function assertWithinLimit(companyId: string, tipo: LimitKind, delta = 1, userId?: string): Promise<void> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  if (userId) {
+    const { data: su } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "super_admin")
+      .maybeSingle();
+    if (su) return; // Super admin tem instâncias ilimitadas
+  }
+
   const { assertCompanyCanWrite } = await import("./billing/access.server");
   await assertCompanyCanWrite(companyId);
   const [plan, usage] = await Promise.all([getCompanyPlan(companyId), getCompanyUsage(companyId)]);

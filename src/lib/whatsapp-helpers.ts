@@ -97,9 +97,47 @@ export async function getInstanceForContact(
   supabase: any,
   companyId: string,
   numero: string,
-  columns = "instance_name,status,provider,instance_token",
+  columns = "id,instance_name,status,numero,provider,instance_token",
   userId?: string,
+  explicitInstanceId?: string | null,
 ) {
+  // 1. Instância explicitamente selecionada pelo atendente no chat
+  if (explicitInstanceId) {
+    const { data: explicitInst } = await supabase
+      .from("whatsapp_instances")
+      .select(columns)
+      .eq("id", explicitInstanceId)
+      .eq("company_id", companyId)
+      .maybeSingle();
+
+    if (explicitInst && (explicitInst.status === "connected" || explicitInst.status === "open")) {
+      return explicitInst;
+    }
+  }
+
+  // 2. Sticky Routing: busca a mesma instância por onde o contato conversou por último
+  const { data: lastMsg } = await supabase
+    .from("mensagens")
+    .select("instance_id, provider")
+    .eq("company_id", companyId)
+    .eq("numero", numero)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (lastMsg?.instance_id) {
+    const { data: stickyInst } = await supabase
+      .from("whatsapp_instances")
+      .select(columns)
+      .eq("id", lastMsg.instance_id)
+      .eq("company_id", companyId)
+      .maybeSingle();
+
+    if (stickyInst && (stickyInst.status === "connected" || stickyInst.status === "open")) {
+      return stickyInst;
+    }
+  }
+
   let { data: card } = await supabase
     .from("crm_cards")
     .select("canal_chat,canal_entrada")
@@ -113,14 +151,6 @@ export async function getInstanceForContact(
   }
 
   if (!canal || canal === "null" || canal === "undefined" || canal === "whatsapp") {
-    const { data: lastMsg } = await supabase
-      .from("mensagens")
-      .select("provider")
-      .eq("company_id", companyId)
-      .eq("numero", numero)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
     if (lastMsg?.provider === "meta_instagram") canal = "instagram";
     else if (lastMsg?.provider === "meta_messenger") canal = "messenger";
     else if (lastMsg?.provider === "telegram") canal = "telegram";
