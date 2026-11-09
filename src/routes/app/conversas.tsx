@@ -1364,7 +1364,7 @@ function ConversasPage() {
         style={{
           ["--inbox-w" as any]: `${inboxWidth}px`,
           gridTemplateColumns: typeof window !== "undefined" && window.innerWidth >= 1024
-            ? (showDetails && active ? `${window.innerWidth >= 1280 ? "196px " : ""}${inboxWidth}px minmax(0,1fr) 280px` : `${window.innerWidth >= 1280 ? "196px " : ""}${inboxWidth}px minmax(0,1fr)`)
+            ? (showDetails && active ? `${window.innerWidth >= 1280 ? "196px " : ""}${inboxWidth}px minmax(0,1fr) 340px` : `${window.innerWidth >= 1280 ? "196px " : ""}${inboxWidth}px minmax(0,1fr)`)
             : undefined,
         }}
       >
@@ -2310,7 +2310,7 @@ function ConversasPage() {
               onPointerCancel={onSheetPointerUp}
               className="flex items-center justify-between px-5 py-3 lg:py-4 border-b border-[color:var(--hairline)] touch-none lg:touch-auto"
             >
-              <h3 className="text-[11px] uppercase tracking-[0.14em] font-bold text-foreground">{activeIsGrupo ? "Detalhes do grupo" : "Detalhes do Lead"}</h3>
+              <h3 className="text-[11px] uppercase tracking-[0.14em] font-bold text-foreground">{activeIsGrupo ? "Detalles del grupo" : "Detalles del Lead"}</h3>
               <button
                 type="button"
                 onClick={() => setShowDetails(false)}

@@ -269,70 +269,59 @@ export function LeadDetailsPanel({
   const currentStage = (allStages.length ? allStages : stages).find((s) => s.id === local.stage_id);
   const owner = members.find((m) => m.user_id === local.owner_id);
 
-  return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
-      {/* Valor de la oportunidad + Funil / Etapa */}
-      <div className={`grid gap-2.5 ${operationalMode ? "" : "sm:grid-cols-2"}`}>
-        {!operationalMode && <div className="flex items-center gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-2">
-          <span className="grid size-8 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
-            <DollarSign className="size-3.5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="text-[10px] leading-tight text-muted-foreground">Valor da oportunidade</div>
-            <div className="flex items-center gap-1">
-              <span className="text-[13px] font-bold">{language === "pt" ? "R$" : "$"}</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                readOnly={!editValor}
-                value={new Intl.NumberFormat(localeCode || "es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(local.valor ?? 0))}
-                onChange={(e) => {
-                  const digits = e.target.value.replace(/\D/g, "");
-                  set("valor", digits ? Number(digits) / 100 : 0);
-                }}
-                className="w-full bg-transparent text-[15px] font-bold outline-none"
-              />
-            </div>
-          </div>
-          <button
-            type="button"
-            className={`shrink-0 ${editValor ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
-            aria-label={editValor ? "Salvar valor" : "Editar valor"}
-            onClick={async () => {
-              if (!editValor) return setEditValor(true);
-              setEditValor(false);
-              await persist({ valor: local.valor ?? 0 }, "Valor atualizado");
-            }}
-          >
-            {editValor ? <Check className="size-4" /> : <Pencil className="size-3.5" />}
-          </button>
-        </div>}
+  const [showAllFields, setShowAllFields] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
+  const hasEmail = Boolean((local.email ?? "").trim());
+  const hasEmpresa = Boolean((local.empresa ?? "").trim());
+  const hasItem = Boolean(((local as any).item_nome ?? "").trim());
+  const hasCpf = Boolean((local.cpf_cnpj ?? "").trim());
+  const hasEndereco = Boolean((local.endereco ?? "").trim());
+
+  const emptyOptionalCount = [hasEmail, hasEmpresa, hasItem, hasCpf, hasEndereco].filter((v) => !v).length;
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      {/* Resumen Comercial: Embudo / Etapa y Valor de la Oportunidad */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-2.5 space-y-2">
+        {/* Selector de Embudo / Etapa */}
         <Popover open={funilOpen} onOpenChange={setFunilOpen}>
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="flex w-full items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5 text-left hover:border-primary/40"
+              className="flex w-full items-center justify-between gap-2 rounded-lg bg-[var(--panel)] p-2 text-left border border-[var(--border)] hover:border-primary/40 transition"
             >
-              <span className="grid size-9 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
-                <Filter className="size-4" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[11px] leading-tight text-muted-foreground">Funil / Etapa</span>
-                <span className="block truncate text-sm font-semibold">
-                  {currentPipeline?.nome ?? "Funil"} • {currentStage?.nome ?? "Selecionar"}
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <span className="grid size-7 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+                  <Filter className="size-3.5" />
                 </span>
-              </span>
-              <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <span className="block text-[10px] leading-tight text-muted-foreground uppercase tracking-wide font-medium">
+                    Embudo & Etapa
+                  </span>
+                  <div className="flex items-center gap-1.5 truncate text-xs font-semibold mt-0.5">
+                    {currentStage && (
+                      <span className="size-2 rounded-full shrink-0" style={{ background: currentStage.cor || "var(--brand)" }} />
+                    )}
+                    <span className="truncate">
+                      {currentStage?.nome ? translateDefaultStageName(currentStage.nome) : "Sin etapa"}
+                    </span>
+                    <span className="text-muted-foreground/60 text-[10px] font-normal shrink-0">
+                      • {currentPipeline?.nome ? translateDefaultPipelineName(currentPipeline.nome) : "Embudo"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
             </button>
           </PopoverTrigger>
 
-          <PopoverContent align="end" className="w-72 space-y-3">
+          <PopoverContent align="end" className="w-72 space-y-3 p-3">
             {pipelines.length > 0 && (
               <div className="space-y-1.5">
-                <Label>Funil</Label>
+                <Label className="text-xs">Embudo de ventas</Label>
                 <Select value={currentPipelineId ?? ""} onValueChange={changePipeline}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar funil" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Seleccionar embudo" /></SelectTrigger>
                   <SelectContent>
                     {pipelines.map((p) => <SelectItem key={p.id} value={p.id}>{translateDefaultPipelineName(p.nome)}</SelectItem>)}
                   </SelectContent>
@@ -340,25 +329,29 @@ export function LeadDetailsPanel({
               </div>
             )}
             <div className="space-y-1.5">
-              <Label>Etapa</Label>
+              <Label className="text-xs">Etapa</Label>
               <Select value={local.stage_id ?? ""} onValueChange={(v) => set("stage_id", v)}>
-                <SelectTrigger><SelectValue placeholder="Selecionar etapa" /></SelectTrigger>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Seleccionar etapa" /></SelectTrigger>
                 <SelectContent>
                   {pipelineStages.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      <span className="inline-flex items-center gap-2"><span className="size-2 rounded-full" style={{ background: s.cor }} />{translateDefaultStageName(s.nome)}</span>
+                      <span className="inline-flex items-center gap-2">
+                        <span className="size-2 rounded-full" style={{ background: s.cor }} />
+                        {translateDefaultStageName(s.nome)}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <Button
-              className="h-9 w-full"
+              size="sm"
+              className="h-8 w-full text-xs"
               onClick={async () => {
                 if (!local.stage_id) return;
                 try {
                   await moveStageFn({ data: { cardId: local.id, stageId: local.stage_id, reason: "Cambio de etapa desde cabecera del lead" } });
-                  toast.success(t("crm.stage_updated", undefined, "Funil / etapa atualizados"));
+                  toast.success(t("crm.stage_updated", undefined, "Embudo / etapa actualizados"));
                   setFunilOpen(false);
                   onChanged();
                 } catch (err: any) {
@@ -366,22 +359,64 @@ export function LeadDetailsPanel({
                 }
               }}
             >
-              <Save className="size-4 mr-2" /> {t("crm.save_pipeline_stage", undefined, "Salvar funil / etapa")}
+              <Save className="size-3.5 mr-1.5" /> {t("crm.save_pipeline_stage", undefined, "Guardar embudo y etapa")}
             </Button>
           </PopoverContent>
         </Popover>
+
+        {/* Valor de Oportunidad */}
+        {!operationalMode && (
+          <div className="flex items-center justify-between gap-2 rounded-lg bg-[var(--panel)] px-2.5 py-1.5 border border-[var(--border)]">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <span className="grid size-7 shrink-0 place-items-center rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <DollarSign className="size-3.5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] leading-tight text-muted-foreground uppercase tracking-wide font-medium">Valor de la oportunidad</div>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <span className="text-xs font-bold text-muted-foreground">{language === "pt" ? "R$" : "$"}</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    readOnly={!editValor}
+                    value={new Intl.NumberFormat(localeCode || "es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(local.valor ?? 0))}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, "");
+                      set("valor", digits ? Number(digits) / 100 : 0);
+                    }}
+                    className={`w-full bg-transparent text-sm font-bold outline-none ${editValor ? "border-b border-primary" : ""}`}
+                  />
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              className={`grid size-7 place-items-center rounded-md shrink-0 transition ${
+                editValor ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}
+              aria-label={editValor ? "Guardar valor" : "Editar valor"}
+              onClick={async () => {
+                if (!editValor) return setEditValor(true);
+                setEditValor(false);
+                await persist({ valor: local.valor ?? 0 }, "Valor actualizado");
+              }}
+            >
+              {editValor ? <Check className="size-3.5" /> : <Pencil className="size-3" />}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Botón Auditor / Analista de Negociación con IA */}
+      {/* Botón Diagnóstico con IA */}
       <Button
         type="button"
         variant="outline"
         size="sm"
         onClick={() => setAiAnalyzerOpen(true)}
-        className="w-full h-9 rounded-lg border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary font-medium gap-2 shadow-sm transition"
+        className="w-full h-8 rounded-lg border-primary/25 bg-primary/5 hover:bg-primary/10 text-primary text-xs font-semibold gap-1.5 shadow-2xs transition"
       >
-        <Sparkles className="size-4 shrink-0" />
-        <span>{t("crm.audit_lead", undefined, "Auditar Lead con IA (Diagnóstico & Etapa)")}</span>
+        <Sparkles className="size-3.5 shrink-0" />
+        <span>{t("crm.audit_lead", undefined, "Diagnóstico con IA (Etapa & Análisis)")}</span>
       </Button>
 
       {/* Banner de recomendación de IA guardada */}
@@ -485,16 +520,58 @@ export function LeadDetailsPanel({
         onLeadMoved={onChanged}
       />
 
+      {/* Pestañas Modernas y Desplazables (Sin solapamientos) */}
       <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
-        <TabsList className={`grid ${cols} w-full shrink-0`}>
-          <TabsTrigger value="dados">{t("crm.tabs.data", undefined, "Dados")}</TabsTrigger>
-          <TabsTrigger value="midia">{t("crm.tabs.media", undefined, "Mídia")}</TabsTrigger>
-          {!hideConversation && <TabsTrigger value="conversa">{t("crm.tabs.conversation", undefined, "Conversa")}</TabsTrigger>}
-          <TabsTrigger value="jornada">{t("crm.tabs.journey", undefined, "Jornada")}</TabsTrigger>
-          <TabsTrigger value="notas">{t("crm.tabs.notes", undefined, "Notas")}</TabsTrigger>
-          <TabsTrigger value="hist">{t("crm.tabs.history", undefined, "Histórico")}</TabsTrigger>
-          {olistOn && <TabsTrigger value="pedidos">{t("crm.tabs.orders", undefined, "Pedidos")}</TabsTrigger>}
-        </TabsList>
+        <div className="border-b border-[var(--border)] pb-1.5">
+          <TabsList className="flex h-8 w-full items-center justify-start gap-1 bg-transparent p-0 overflow-x-auto scrollbar-none">
+            <TabsTrigger
+              value="dados"
+              className="h-7 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:font-semibold"
+            >
+              Datos
+            </TabsTrigger>
+            <TabsTrigger
+              value="notas"
+              className="h-7 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:font-semibold"
+            >
+              Notas
+            </TabsTrigger>
+            <TabsTrigger
+              value="midia"
+              className="h-7 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:font-semibold"
+            >
+              Multimedia
+            </TabsTrigger>
+            <TabsTrigger
+              value="jornada"
+              className="h-7 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:font-semibold"
+            >
+              Jornada
+            </TabsTrigger>
+            <TabsTrigger
+              value="hist"
+              className="h-7 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:font-semibold"
+            >
+              Historial
+            </TabsTrigger>
+            {!hideConversation && (
+              <TabsTrigger
+                value="conversa"
+                className="h-7 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:font-semibold"
+              >
+                Conversación
+              </TabsTrigger>
+            )}
+            {olistOn && (
+              <TabsTrigger
+                value="pedidos"
+                className="h-7 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:font-semibold"
+              >
+                Pedidos
+              </TabsTrigger>
+            )}
+          </TabsList>
+        </div>
 
         {olistOn && (
           <TabsContent value="pedidos" className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
@@ -502,11 +579,11 @@ export function LeadDetailsPanel({
           </TabsContent>
         )}
 
-
-        <TabsContent value="dados" className="space-y-2.5 mt-3 min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="space-y-2">
-            <SectionTitle>Classificação do contato</SectionTitle>
-            <div className="grid grid-cols-3 gap-2">
+        <TabsContent value="dados" className="space-y-3 mt-3 min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {/* Clasificación / Tipo de Contacto */}
+          <div className="space-y-1.5">
+            <SectionTitle>Tipo de contacto</SectionTitle>
+            <div className="grid grid-cols-3 gap-1.5">
               {CLASSIFICACOES.map(({ value, label, icon: Icon }) => {
                 const activeCls = (local.tipo_contato ?? "lead") === value;
                 return (
@@ -517,48 +594,42 @@ export function LeadDetailsPanel({
                       set("tipo_contato", value as any);
                       const patch: any = { tipo_contato: value };
                       if (value === "interno") { patch.stage_id = null; patch.pipeline_id = null; }
-                      await persist(patch, `Contato classificado como ${label}`);
+                      await persist(patch, `Contacto clasificado como ${label}`);
                       if (value === "interno") setLocal((p) => ({ ...p, stage_id: null, pipeline_id: null } as any));
                     }}
-                    className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-[10px] font-medium transition ${
+                    className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition ${
                       activeCls
-                        ? "border-primary bg-primary/10 text-primary"
+                        ? "border-primary bg-primary/10 text-primary font-semibold"
                         : "border-[var(--border)] bg-[var(--panel-2)] text-muted-foreground hover:border-primary/40"
                     }`}
                   >
                     <Icon className="size-3.5" />
-                    <span className="text-center leading-tight">{label}</span>
+                    <span className="truncate">{label}</span>
                   </button>
                 );
               })}
             </div>
             {local.tipo_contato === "interno" && (
-              <p className="text-[10px] text-muted-foreground">Contatos internos não ocupam espaço no funil de vendas.</p>
+              <p className="text-[10px] text-muted-foreground">Los contactos de agenda/internos no saturan el embudo de ventas.</p>
             )}
           </div>
 
-          <div className="space-y-2">
-            <SectionTitle>Informações do contato</SectionTitle>
+          {/* Gestión y Seguimiento Comercial */}
+          <div className="space-y-1.5">
+            <SectionTitle>Gestión comercial</SectionTitle>
             <div className="overflow-hidden rounded-lg border border-[var(--border)] divide-y divide-[var(--border)]">
-
-              <InfoRow icon={User} label="Nome" value={local.nome ?? ""} onChange={(v) => set("nome", v)} onCommit={() => persist({ nome: local.nome }, "Nome atualizado")} />
-              <InfoRow icon={Mail} label="E-mail" value={local.email ?? ""} onChange={(v) => set("email", v)} onCommit={() => persist({ email: local.email || null }, "E-mail atualizado")} />
-              <InfoRow icon={CreditCard} label="CPF/CNPJ" value={local.cpf_cnpj ?? ""} onChange={(v) => set("cpf_cnpj", v)} onCommit={() => persist({ cpf_cnpj: local.cpf_cnpj || null }, "CPF/CNPJ atualizado")} />
-              <InfoRow icon={Building2} label="Empresa" value={local.empresa ?? ""} onChange={(v) => set("empresa", v)} onCommit={() => persist({ empresa: local.empresa || null }, "Empresa atualizada")} />
-              <InfoRow icon={MapPin} label="Endereço" value={local.endereco ?? ""} onChange={(v) => set("endereco", v)} onCommit={() => persist({ endereco: local.endereco || null }, "Endereço atualizado")} />
-              <InfoRow icon={Phone} label="Telefone" value={local.numero} readOnly copy />
               <InfoRow
                 icon={UserCheck}
-                label="Dono do lead"
+                label="Asignado a"
                 value={owner?.nome || owner?.email || ""}
-                onCommit={() => persist({ owner_id: local.owner_id || null }, "Dono atualizado")}
+                onCommit={() => persist({ owner_id: local.owner_id || null }, "Responsable actualizado")}
                 editor={
                   <Select value={local.owner_id ?? "_none"} onValueChange={(v) => set("owner_id", v === "_none" ? null : v)}>
-                    <SelectTrigger className="h-8"><SelectValue placeholder="Sem dono" /></SelectTrigger>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sin asignar" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="_none">Sem dono</SelectItem>
+                      <SelectItem value="_none">Sin asignar</SelectItem>
                       {members.map((m) => (
-                        <SelectItem key={m.user_id} value={m.user_id}>{m.nome || m.email || "Usuário sem nome"}</SelectItem>
+                        <SelectItem key={m.user_id} value={m.user_id}>{m.nome || m.email || "Usuario sin nombre"}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -566,68 +637,108 @@ export function LeadDetailsPanel({
               />
               <InfoRow
                 icon={Target}
-                label="Próxima ação"
+                label="Próxima acción"
                 value={local.proxima_acao ?? ""}
-                onCommit={() => persist({ proxima_acao: local.proxima_acao || null }, "Próxima ação atualizada")}
+                onCommit={() => persist({ proxima_acao: local.proxima_acao || null }, "Próxima acción actualizada")}
                 editor={
                   <Input
                     value={local.proxima_acao ?? ""}
                     onChange={(e) => set("proxima_acao", e.target.value)}
-                    placeholder="Ex.: Enviar proposta até quinta-feira"
-                    className="h-8"
+                    placeholder="Ej.: Enviar cotización / llamar"
+                    className="h-8 text-xs"
                   />
                 }
               />
               <InfoRow
                 icon={Share2}
-                label="Origem"
+                label="Origen"
                 value={local.origem ?? ""}
-                onCommit={() => persist({ origem: local.origem || null }, "Origem atualizada")}
+                onCommit={() => persist({ origem: local.origem || null }, "Origen actualizado")}
                 editor={<OrigemPicker companyId={companyId} value={local.origem ?? ""} onChange={(v) => set("origem", v)} hideLabel />}
-              />
-              <InfoRow
-                icon={Package}
-                label="Produto / serviço"
-                value={(local as any).item_nome ?? ""}
-                onCommit={() => persist(
-                  {
-                    item_id: (local as any).item_id || null,
-                    item_tipo: (local as any).item_tipo || null,
-                    item_nome: (local as any).item_nome || null,
-                  },
-                  "Produto / serviço atualizado",
-                )}
-                editor={
-                  <Select
-                    value={(local as any).item_id ?? "_none"}
-                    onValueChange={(v) => {
-                      if (v === "_none") {
-                        setLocal((p) => ({ ...p, item_id: null, item_tipo: null, item_nome: null } as any));
-                        return;
-                      }
-                      const it = itens.find((i) => i.id === v);
-                      setLocal((p) => ({ ...p, item_id: v, item_tipo: it?.tipo ?? "produto", item_nome: it?.nome ?? null } as any));
-                    }}
-                  >
-                    <SelectTrigger className="h-8"><SelectValue placeholder="Nenhum" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="_none">Nenhum</SelectItem>
-                      {itens.map((i) => (
-                        <SelectItem key={i.id} value={i.id}>
-                          {i.nome} {i.tipo === "servico" ? "(serviço)" : "(produto)"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                }
               />
             </div>
           </div>
 
-          {/* Rastreamento e Atribuição Meta Ads / Conversions API */}
+          {/* Datos del Cliente */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <SectionTitle>Datos del cliente</SectionTitle>
+              {emptyOptionalCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllFields(!showAllFields)}
+                  className="text-[11px] text-primary hover:underline font-medium inline-flex items-center gap-0.5 pt-2"
+                >
+                  {showAllFields ? (
+                    <><span>Menos campos</span><ChevronUp className="size-3" /></>
+                  ) : (
+                    <><span>+ {emptyOptionalCount} campos</span><ChevronDown className="size-3" /></>
+                  )}
+                </button>
+              )}
+            </div>
+
+            <div className="overflow-hidden rounded-lg border border-[var(--border)] divide-y divide-[var(--border)]">
+              <InfoRow icon={Phone} label="Teléfono" value={local.numero} readOnly copy />
+              <InfoRow icon={User} label="Nombre" value={local.nome ?? ""} onChange={(v) => set("nome", v)} onCommit={() => persist({ nome: local.nome }, "Nombre actualizado")} />
+
+              {(hasEmail || showAllFields) && (
+                <InfoRow icon={Mail} label="Correo" value={local.email ?? ""} onChange={(v) => set("email", v)} onCommit={() => persist({ email: local.email || null }, "Correo actualizado")} />
+              )}
+              {(hasEmpresa || showAllFields) && (
+                <InfoRow icon={Building2} label="Empresa" value={local.empresa ?? ""} onChange={(v) => set("empresa", v)} onCommit={() => persist({ empresa: local.empresa || null }, "Empresa actualizada")} />
+              )}
+              {(hasItem || showAllFields) && (
+                <InfoRow
+                  icon={Package}
+                  label="Producto/Servicio"
+                  value={(local as any).item_nome ?? ""}
+                  onCommit={() => persist(
+                    {
+                      item_id: (local as any).item_id || null,
+                      item_tipo: (local as any).item_tipo || null,
+                      item_nome: (local as any).item_nome || null,
+                    },
+                    "Producto / servicio actualizado",
+                  )}
+                  editor={
+                    <Select
+                      value={(local as any).item_id ?? "_none"}
+                      onValueChange={(v) => {
+                        if (v === "_none") {
+                          setLocal((p) => ({ ...p, item_id: null, item_tipo: null, item_nome: null } as any));
+                          return;
+                        }
+                        const it = itens.find((i) => i.id === v);
+                        setLocal((p) => ({ ...p, item_id: v, item_tipo: it?.tipo ?? "produto", item_nome: it?.nome ?? null } as any));
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Ninguno" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">Ninguno</SelectItem>
+                        {itens.map((i) => (
+                          <SelectItem key={i.id} value={i.id}>
+                            {i.nome} {i.tipo === "servico" ? "(servicio)" : "(producto)"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  }
+                />
+              )}
+              {(hasCpf || showAllFields) && (
+                <InfoRow icon={CreditCard} label="Documento / CI" value={local.cpf_cnpj ?? ""} onChange={(v) => set("cpf_cnpj", v)} onCommit={() => persist({ cpf_cnpj: local.cpf_cnpj || null }, "Documento actualizado")} />
+              )}
+              {(hasEndereco || showAllFields) && (
+                <InfoRow icon={MapPin} label="Dirección" value={local.endereco ?? ""} onChange={(v) => set("endereco", v)} onCommit={() => persist({ endereco: local.endereco || null }, "Dirección actualizada")} />
+              )}
+            </div>
+          </div>
+
+          {/* Rastreamento y Atribución Meta Ads */}
           <LeadAdReferralCard card={local} onConversionSent={onChanged} />
 
-          {/* Sevcon: esconde a seção de respostas do formulário no detalhe do lead */}
+          {/* Respuestas de Formulario (si existen) */}
           {!operationalMode && (
             <CamposExtrasSection
               cardId={local.id}
@@ -640,6 +751,7 @@ export function LeadDetailsPanel({
             />
           )}
 
+          {/* Campos Personalizados */}
           <CamposPersonalizadosSection
             cardId={local.id}
             campos={((local as any).campos_extras?.personalizados ?? []) as RespostaExtra[]}
@@ -650,7 +762,9 @@ export function LeadDetailsPanel({
             }}
           />
 
-          <Button onClick={save} className="w-full h-9"><Save className="size-4 mr-2" />Salvar alterações</Button>
+          <Button onClick={save} className="w-full h-8.5 text-xs font-semibold">
+            <Save className="size-3.5 mr-1.5" />Guardar cambios
+          </Button>
 
           <EncaminharDialog
             open={encaminharOpen}
@@ -666,34 +780,49 @@ export function LeadDetailsPanel({
             }}
           />
 
+          {/* Opciones avanzadas y eliminación segura */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="flex items-center justify-between w-full text-[11px] text-muted-foreground hover:text-foreground py-1 transition"
+            >
+              <span>Opciones avanzadas</span>
+              <ChevronDown className={`size-3 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
+            </button>
+            {showAdvanced && (
+              <div className="mt-2 pt-2 border-t border-[var(--border)]">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                  onClick={async () => {
+                    if (!local.id) return toast.error("Lead sin identificador válido");
+                    if (!confirm(`¿Deseas eliminar la conversación de "${local.nome || local.numero}" en el sistema Capi Conversa?\n\nEsto removerá los mensajes y la tarjeta CRM de la plataforma, pero no afectará tu teléfono de WhatsApp.`)) return;
 
-          <Button
-            variant="outline"
-            className="w-full h-9 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
-            onClick={async () => {
-              if (!local.id) return toast.error("Lead sem identificador válido");
-              if (!confirm(`Deseja apagar a conversa do lead "${local.nome || local.numero}" apenas no sistema Capi Conversa?\n\nIsso removerá as mensagens e o card da lista de conversas, mas não afetará o seu celular.`)) return;
+                    const { error } = await supabase
+                      .from("mensagens")
+                      .delete()
+                      .eq("company_id", companyId)
+                      .eq("numero", local.numero);
 
-              const { error } = await supabase
-                .from("mensagens")
-                .delete()
-                .eq("company_id", companyId)
-                .eq("numero", local.numero);
+                    const { error: cardError } = await supabase
+                      .from("crm_cards")
+                      .delete()
+                      .eq("id", local.id);
 
-              const { error: cardError } = await supabase
-                .from("crm_cards")
-                .delete()
-                .eq("id", local.id);
+                    if (error || cardError) return toast.error("Error al eliminar datos: " + (error?.message || cardError?.message));
 
-              if (error || cardError) return toast.error("Erro ao apagar dados: " + (error?.message || cardError?.message));
-
-              toast.success("Conversa removida do sistema");
-              onChanged();
-              if (onDeleted) onDeleted();
-            }}
-          >
-            <Trash2 className="size-4 mr-2" /> Remover do sistema
-          </Button>
+                    toast.success("Conversación eliminada del sistema");
+                    onChanged();
+                    if (onDeleted) onDeleted();
+                  }}
+                >
+                  <Trash2 className="size-3.5 mr-1.5" /> Eliminar conversación del CRM
+                </Button>
+              </div>
+            )}
+          </div>
 
           <OrigemBlock cardId={local.id} />
         </TabsContent>
@@ -702,20 +831,19 @@ export function LeadDetailsPanel({
           <ConversationMediaTab numero={local.numero} contatoNome={local.nome} />
         </TabsContent>
 
+        {!hideConversation && (
+          <TabsContent value="conversa" className="mt-4 flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden">
+            <ConversaTab numero={local.numero} companyId={companyId} cardId={card.id} />
+          </TabsContent>
+        )}
 
-      {!hideConversation && (
-        <TabsContent value="conversa" className="mt-4 flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden">
-          <ConversaTab numero={local.numero} companyId={companyId} cardId={card.id} />
+        <TabsContent value="jornada" className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <JornadaTab cardId={local.id} />
         </TabsContent>
-      )}
 
-      <TabsContent value="jornada" className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <JornadaTab cardId={local.id} />
-      </TabsContent>
-
-      <TabsContent value="notas" className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <NotasTab cardId={local.id} companyId={companyId} />
-      </TabsContent>
+        <TabsContent value="notas" className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <NotasTab cardId={local.id} companyId={companyId} />
+        </TabsContent>
 
         <TabsContent value="hist" className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <HistTab cardId={local.id} />
@@ -754,7 +882,7 @@ function InfoRow({
       <span className="grid size-6 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
         <Icon className="size-3" />
       </span>
-      <span className="w-[68px] shrink-0 truncate text-[11px] text-muted-foreground sm:w-20">{label}</span>
+      <span className="w-[84px] shrink-0 truncate text-[11px] text-muted-foreground sm:w-24">{label}</span>
       <div className={`min-w-0 flex-1 ${editing && !readOnly ? "text-left" : "text-right"}`}>
         {editing && !readOnly ? (
           editor ?? (
@@ -1562,11 +1690,11 @@ function CamposExtrasSection({
   if (!respostas.length && !adicionando) {
     return (
       <div className="space-y-2">
-        <SectionTitle>Respostas do formulário</SectionTitle>
+        <SectionTitle>Respuestas de formularios</SectionTitle>
         <div className="rounded-lg border border-dashed border-[var(--border)] p-3 text-center">
-          <p className="text-[11px] text-muted-foreground">Nenhuma informação extra ainda.</p>
+          <p className="text-[11px] text-muted-foreground">Sin respuestas de formularios.</p>
           <Button variant="ghost" size="sm" className="mt-1 h-7 text-[11px]" onClick={() => setAdicionando(true)}>
-            <Plus className="size-3 mr-1" />Adicionar informação
+            <Plus className="size-3 mr-1" />Añadir dato
           </Button>
         </div>
       </div>
@@ -1576,7 +1704,7 @@ function CamposExtrasSection({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <SectionTitle>Respostas do formulário</SectionTitle>
+        <SectionTitle>Respuestas de formularios</SectionTitle>
         {origem && <span className="text-[10px] text-muted-foreground truncate max-w-[45%]">{origem}</span>}
       </div>
 
