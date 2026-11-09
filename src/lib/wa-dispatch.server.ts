@@ -251,12 +251,8 @@ export async function waSendAudio(inst: WaInstance, numero: string, audioBase64O
   if (inst.provider === "dapi_official") {
     await assertMetaWindowForInstance(inst, numero);
   }
-  const isOgg =
-    audioBase64OrUrl.includes("audio/ogg") ||
-    audioBase64OrUrl.endsWith(".ogg") ||
-    audioBase64OrUrl.includes(".ogg?");
   const { dapiSendAudio } = await import("./dapi.server");
-  return dapiSendAudio(inst.instance_name, numero, audioBase64OrUrl, isOgg, inst.instance_token);
+  return dapiSendAudio(inst.instance_name, numero, audioBase64OrUrl, true, inst.instance_token);
 }
 
 export async function waSendTemplate(

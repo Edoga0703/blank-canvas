@@ -3523,14 +3523,32 @@ function Composer({
       mr.stop();
     });
     stopStream();
-    const type = blob.type || "audio/webm";
-    const ext = type.includes("ogg") ? "ogg" : type.includes("mp4") ? "m4a" : "webm";
+
+    let sendBlob = blob;
+    let type = blob.type || "audio/webm";
+    let ext = type.includes("ogg") ? "ogg" : type.includes("mp4") ? "m4a" : "webm";
+
+    // Convertir WebM a Ogg Opus nativo con mediabunny en el navegador para que WhatsApp lo acepte como nota de voz nativa PTT
+    if (!type.includes("ogg")) {
+      try {
+        const { convertWebmToOggBlob } = await import("@/lib/audio-remux-browser");
+        const oggBlob = await convertWebmToOggBlob(blob);
+        if (oggBlob && oggBlob.size > 0) {
+          sendBlob = oggBlob;
+          type = "audio/ogg; codecs=opus";
+          ext = "ogg";
+        }
+      } catch (convErr) {
+        console.warn("[stopAndSendAudio] Remux warning:", convErr);
+      }
+    }
+
     // Mostra o áudio na conversa na hora; upload e envio seguem em segundo plano.
-    const localUrl = URL.createObjectURL(blob);
+    const localUrl = URL.createObjectURL(sendBlob);
     const tmpId = onLocalMedia?.(localUrl, "audio", type.split(";")[0]) ?? null;
     void (async () => {
       try {
-        const uploaded = await uploadToStorage(blob, ext, `audio.${ext}`, type.split(";")[0]);
+        const uploaded = await uploadToStorage(sendBlob, ext, `audio.${ext}`, type.split(";")[0]);
         await sendAudioFn({ data: { numero: active, contatoNome: activeName, audio: uploaded.url, midiaUrl: null, storageKey: uploaded.storageKey, mimetype: type.split(";")[0], instanceId: activeSendInstance?.id ?? undefined } });
         // O áudio real já foi gravado no servidor: remove a prévia local
         // para não ficar duplicado (a cópia local não tem duração).

@@ -604,8 +604,8 @@ export async function dapiSendMedia(
       body.audio = targetUrl;
       body.audioUrl = targetUrl;
       body.url = targetUrl;
-      body.ptt = Boolean(media.ptt);
-      if (media.mime) body.mimetype = media.mime;
+      body.ptt = media.ptt ?? true;
+      body.mimetype = media.mime || "audio/ogg; codecs=opus";
     } else if (media.type === "video") {
       body.video = targetUrl;
       body.videoUrl = targetUrl;
@@ -689,14 +689,11 @@ export async function dapiSendAudio(
   ptt?: boolean,
   apiKey?: string | null,
 ): Promise<{ id: string; provider: string; raw: any }> {
-  // WhatsApp mobile exige estrictamente OGG Opus para notas de voz nativas (PTT).
-  // Si el audio es WebM, MP3 o AAC, ptt: false permite que el reproductor nativo del celular
-  // lo reproduzca sin el error "Este audio no está disponible porque algo falló con el archivo de audio".
   const isOgg =
     audioBase64OrUrl.includes("audio/ogg") ||
     audioBase64OrUrl.endsWith(".ogg") ||
     audioBase64OrUrl.includes(".ogg?");
-  const usePtt = ptt !== undefined ? (ptt && isOgg) : isOgg;
+  const usePtt = ptt !== undefined ? ptt : true;
   return dapiSendMedia(
     sessionId,
     to,
@@ -704,7 +701,7 @@ export async function dapiSendAudio(
       url: audioBase64OrUrl,
       type: "audio",
       ptt: usePtt,
-      mime: isOgg ? "audio/ogg; codecs=opus" : undefined,
+      mime: isOgg ? "audio/ogg; codecs=opus" : "audio/ogg",
     },
     apiKey,
   );
