@@ -93,7 +93,7 @@ export const importContacts = createServerFn({ method: "POST" })
     const novos = data.contatos.filter((c) => !existingNumeros.has(c.numero));
 
     if (novos.length > 0) {
-      const { plan, usage } = await getCompanyPlanUsage(companyId);
+      const { plan, usage } = await getCompanyPlanUsage(companyId, context.userId);
       if (usage.contatos + novos.length > plan.limites.contatos) {
         const restante = Math.max(0, plan.limites.contatos - usage.contatos);
         throw new Error(

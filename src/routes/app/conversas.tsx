@@ -1028,7 +1028,7 @@ function ConversasPage() {
     for (let i = thread.length - 1; i >= 0; i--) {
       const instId = thread[i].instance_id;
       if (instId) {
-        const match = instances.find((inst) => inst.id === instId);
+        const match = instances.find((inst) => inst.id === instId && (inst.status === "connected" || inst.status === "open"));
         if (match) return match;
       }
     }
@@ -1325,6 +1325,7 @@ function ConversasPage() {
       direcao: "saida", autor: "humano", texto: null,
       created_at: new Date().toISOString(), user_id: userId,
       midia_url: url, midia_tipo: tipo, midia_mime: mime ?? null,
+      instance_id: activeSendInstance?.id ?? null,
     } as unknown as Msg;
     setMsgs((p) => [optimistic, ...p].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)));
     return tmpId;
