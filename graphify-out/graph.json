@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-09T03:33:39.327303+00:00",
+  "generated_at": "2026-11-09T05:02:35.104121+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -907,7 +907,7 @@
     },
     {
       "path": "src/lib/plan-features.ts",
-      "bytes": 2153
+      "bytes": 2199
     },
     {
       "path": "src/lib/crm-engine.server.ts",
@@ -1035,7 +1035,7 @@
     },
     {
       "path": "src/lib/master.functions.ts",
-      "bytes": 52255
+      "bytes": 52465
     },
     {
       "path": "src/lib/tenant.ts",
@@ -1279,7 +1279,7 @@
     },
     {
       "path": "src/lib/lovable-ai.server.ts",
-      "bytes": 9828
+      "bytes": 10870
     },
     {
       "path": "src/lib/whatsapp.functions.ts",
@@ -1779,7 +1779,7 @@
     },
     {
       "path": "src/routes/master/sistema.tsx",
-      "bytes": 23741
+      "bytes": 26718
     },
     {
       "path": "src/routes/master/addons.tsx",
@@ -1903,7 +1903,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 149270
+      "bytes": 149907
     },
     {
       "path": "src/routes/app/contatos.tsx",
