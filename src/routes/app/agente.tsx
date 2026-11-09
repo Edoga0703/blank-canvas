@@ -2056,16 +2056,18 @@ function AgentePage() {
                         <Label>Provedor de Inteligência</Label>
                         <Select value={aiProvider} onValueChange={(val) => {
                           setAiProvider(val);
-                          if (val === "openai") setAiModel("gpt-4o-mini");
+                          if (val === "drael") setAiModel("drael-v1");
+                          else if (val === "openai") setAiModel("gpt-4o-mini");
                           else if (val === "anthropic") setAiModel("claude-3-5-sonnet-latest");
-                          else setAiModel("google/gemini-2.0-flash-exp");
+                          else setAiModel("google/gemini-2.5-flash");
                         }}>
                           <SelectTrigger className="bg-white">
                             <SelectValue placeholder="Selecione o provedor" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="gemini">Google Gemini (Nativo / Recomendado)</SelectItem>
-                            <SelectItem value="openai">OpenAI (GPT-4o / GPT-4o mini)</SelectItem>
+                            <SelectItem value="gemini">Google Gemini (Nativo / Alta Velocidad)</SelectItem>
+                            <SelectItem value="drael">Drael AI (drael.sh / drael-v1 — Base del Sistema)</SelectItem>
+                            <SelectItem value="openai">OpenAI (ChatGPT / GPT-4o mini)</SelectItem>
                             <SelectItem value="anthropic">Anthropic (Claude 3.5)</SelectItem>
                           </SelectContent>
                         </Select>
@@ -2081,16 +2083,23 @@ function AgentePage() {
                           <SelectContent>
                             {aiProvider === "gemini" && (
                               <>
-                                <SelectItem value="google/gemini-2.5-flash">Gemini 2.5 Flash (Raciocínio + Velocidade — Recomendado)</SelectItem>
-                                <SelectItem value="google/gemini-2.0-flash-exp">Gemini 2.0 Flash (Ultrarrápido — Padrão)</SelectItem>
-                                <SelectItem value="google/gemini-1.5-flash">Gemini 1.5 Flash (Equilibrado)</SelectItem>
-                                <SelectItem value="google/gemini-1.5-pro">Gemini 1.5 Pro (Raciocínio Profundo)</SelectItem>
+                                <SelectItem value="google/gemini-2.5-flash">Gemini 2.5 Flash (Recomendado — Inteligente y Rápido)</SelectItem>
+                                <SelectItem value="google/gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite (Ultrarrápido y Económico)</SelectItem>
+                                <SelectItem value="google/gemini-2.0-flash-exp">Gemini 2.0 Flash</SelectItem>
+                                <SelectItem value="google/gemini-1.5-flash">Gemini 1.5 Flash</SelectItem>
+                                <SelectItem value="google/gemini-1.5-pro">Gemini 1.5 Pro (Razonamiento Profundo)</SelectItem>
+                              </>
+                            )}
+                            {aiProvider === "drael" && (
+                              <>
+                                <SelectItem value="drael-v1">Drael v1 (Recomendado / Base)</SelectItem>
+                                <SelectItem value="drael-fast">Drael Fast</SelectItem>
                               </>
                             )}
                             {aiProvider === "openai" && (
                               <>
-                                <SelectItem value="gpt-4o-mini">GPT-4o mini (Rápido e Econômico)</SelectItem>
-                                <SelectItem value="gpt-4o">GPT-4o (Premium Multi-modal)</SelectItem>
+                                <SelectItem value="gpt-4o-mini">GPT-4o mini (Rápido y Económico)</SelectItem>
+                                <SelectItem value="gpt-4o">GPT-4o (Alta Capacidad)</SelectItem>
                                 <SelectItem value="gpt-4.1-mini">GPT-4.1 mini</SelectItem>
                               </>
                             )}

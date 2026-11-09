@@ -5,7 +5,7 @@
 export type PlanSlug = "starter" | "pro" | "business" | "cortesia";
 
 export type PlanFeatures = {
-  providersIA: Array<"gemini" | "openai" | "anthropic">;
+  providersIA: Array<"gemini" | "openai" | "anthropic" | "drael">;
   googleCalendar: boolean;
   automacoes: boolean;
   apiWebhooks: boolean;
@@ -16,7 +16,7 @@ export type PlanFeatures = {
 
 export const PLAN_FEATURES: Record<PlanSlug, PlanFeatures> = {
   starter: {
-    providersIA: ["gemini"],
+    providersIA: ["gemini", "drael"],
     googleCalendar: false,
     automacoes: false,
     apiWebhooks: false,
@@ -25,7 +25,7 @@ export const PLAN_FEATURES: Record<PlanSlug, PlanFeatures> = {
     financeiro: false,
   },
   pro: {
-    providersIA: ["gemini", "openai", "anthropic"],
+    providersIA: ["gemini", "openai", "anthropic", "drael"],
     googleCalendar: true,
     automacoes: true,
     apiWebhooks: false,
@@ -34,7 +34,7 @@ export const PLAN_FEATURES: Record<PlanSlug, PlanFeatures> = {
     financeiro: true,
   },
   business: {
-    providersIA: ["gemini", "openai", "anthropic"],
+    providersIA: ["gemini", "openai", "anthropic", "drael"],
     googleCalendar: true,
     automacoes: true,
     apiWebhooks: true,
@@ -43,7 +43,7 @@ export const PLAN_FEATURES: Record<PlanSlug, PlanFeatures> = {
     financeiro: true,
   },
   cortesia: {
-    providersIA: ["gemini", "openai", "anthropic"],
+    providersIA: ["gemini", "openai", "anthropic", "drael"],
     googleCalendar: true,
     automacoes: true,
     apiWebhooks: true,

@@ -62,28 +62,36 @@ export async function lovableAiChat(
   const globalOpenAiKey = gVal.openai_api_key || process.env.OPENAI_API_KEY;
   const globalAnthropicKey = gVal.anthropic_api_key || process.env.ANTHROPIC_API_KEY;
 
-  // A configuração global do painel Master tem prioridade sobre a do agente.
-  const provider = globalProvider || (cfg.provider || "gemini").toLowerCase();
+  const globalDraelKey = gVal.drael_api_key || (globalOpenAiKey?.startsWith("dk-") ? globalOpenAiKey : "") || process.env.DRAEL_API_KEY;
 
-  if (provider === "openai" || provider === "drael") {
-    const key = globalOpenAiKey?.trim() || cfg.openaiKey?.trim();
-    if (!key) throw new Error("Chave de IA não configurada no painel Master (Sistema > Inteligência Artificial).");
-    const isDrael = provider === "drael" || key.startsWith("dk-");
-    const baseUrl = (gVal.base_url || process.env.OPENAI_BASE_URL || (isDrael ? "https://drael.sh/v1" : "https://api.openai.com/v1")).trim();
-    const model = isDrael ? "drael-v1" : (globalModel || cfg.model || "gpt-4o-mini");
+  // Prioriza o provedor especificado pelo agente/chamada. Se nenhum for especificado, usa o padrão do Master.
+  const provider = (cfg.provider && cfg.provider !== "default" ? cfg.provider : globalProvider || "gemini").toLowerCase();
+
+  if (provider === "drael") {
+    const key = globalDraelKey?.trim() || (globalOpenAiKey?.startsWith("dk-") ? globalOpenAiKey.trim() : null) || cfg.openaiKey?.trim();
+    if (!key) throw new Error("Chave Drael (dk-...) não configurada no painel Master (Sistema > Inteligência Artificial).");
+    const baseUrl = (gVal.drael_base_url || gVal.base_url || process.env.DRAEL_BASE_URL || "https://drael.sh/v1").trim();
+    const model = (cfg.model && cfg.model !== "default" && !cfg.model.startsWith("google/")) ? cfg.model : (globalModel && !globalModel.startsWith("google/") ? globalModel : "drael-v1");
+    return openAiChat(key, model, msgs, 0.1, baseUrl);
+  }
+  if (provider === "openai") {
+    const key = (globalOpenAiKey && !globalOpenAiKey.startsWith("dk-") ? globalOpenAiKey.trim() : null) || cfg.openaiKey?.trim();
+    if (!key) throw new Error("Chave OpenAI (sk-...) não configurada no painel Master (Sistema > Inteligência Artificial).");
+    const baseUrl = (gVal.base_url || process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").trim();
+    const model = (cfg.model && cfg.model !== "default" && !cfg.model.startsWith("google/")) ? cfg.model : (globalModel && !globalModel.startsWith("google/") ? globalModel : "gpt-4o-mini");
     return openAiChat(key, model, msgs, 0.1, baseUrl);
   }
   if (provider === "anthropic") {
     const key = globalAnthropicKey?.trim() || cfg.anthropicKey?.trim();
     if (!key) throw new Error("Chave Anthropic (Claude) não configurada.");
-    const model = globalModel || cfg.model || "claude-3-5-sonnet-latest";
+    const model = cfg.model || globalModel || "claude-3-5-sonnet-latest";
     return anthropicChat(key, model, msgs);
   }
 
   // default: Gemini via Lovable Gateway (com retry + fallback de modelo)
   const key = process.env.LOVABLE_API_KEY;
   if (!key) throw new Error("LOVABLE_API_KEY ausente.");
-  const principal = cfg.model || "google/gemini-2.5-flash";
+  const principal = (cfg.model && cfg.model.startsWith("google/")) ? cfg.model : (globalModel && globalModel.startsWith("google/") ? globalModel : "google/gemini-2.5-flash");
   const fallback = "google/gemini-1.5-flash";
 
   let ultimoErro: Error | null = null;

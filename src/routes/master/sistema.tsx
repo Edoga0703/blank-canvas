@@ -77,15 +77,16 @@ function SistemaPage() {
 
   const [globalAi, setGlobalAi] = useState({
     openai_api_key: "",
+    drael_api_key: "",
     anthropic_api_key: "",
     ai_provider: "openai",
     ai_model: "gpt-4o-mini",
   });
-  const [savedKeys, setSavedKeys] = useState({ openai: false, anthropic: false });
+  const [savedKeys, setSavedKeys] = useState({ openai: false, drael: false, anthropic: false });
   const [testing, setTesting] = useState(false);
   const [savingAi, setSavingAi] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
-  const [showKeys, setShowKeys] = useState({ openai: false, anthropic: false });
+  const [showKeys, setShowKeys] = useState({ openai: false, drael: false, anthropic: false });
 
   async function copyKey(key: string, provider: string) {
     try {
@@ -122,6 +123,7 @@ function SistemaPage() {
         setGlobalAi((prev) => ({ ...prev, ...cfg }));
         setSavedKeys({
           openai: !!cfg.openai_api_key,
+          drael: !!cfg.drael_api_key,
           anthropic: !!cfg.anthropic_api_key,
         });
       }).catch(() => {});
@@ -221,7 +223,11 @@ function SistemaPage() {
     setSavingAi(true);
     try {
       await saveGlobalAi({ data: globalAi });
-      setSavedKeys({ openai: !!globalAi.openai_api_key, anthropic: !!globalAi.anthropic_api_key });
+      setSavedKeys({
+        openai: !!globalAi.openai_api_key,
+        drael: !!globalAi.drael_api_key,
+        anthropic: !!globalAi.anthropic_api_key,
+      });
       toast.success("Configuração de IA salva com sucesso");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao salvar");
@@ -391,15 +397,15 @@ function SistemaPage() {
               <Select
                 value={globalAi.ai_provider}
                 onValueChange={(v) => {
-                  const defaultModel = v === "drael" ? "drael-v1" : v === "openai" ? "gpt-4o-mini" : "google/gemini-2.0-flash-exp";
+                  const defaultModel = v === "drael" ? "drael-v1" : v === "openai" ? "gpt-4o-mini" : "google/gemini-2.5-flash";
                   setGlobalAi({ ...globalAi, ai_provider: v, ai_model: defaultModel });
                 }}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="openai">OpenAI (GPT-4o / GPT-4o-mini)</SelectItem>
-                  <SelectItem value="drael">Drael (drael.sh / drael-v1)</SelectItem>
-                  <SelectItem value="gemini">Google Gemini (Gateway Capi Conversa)</SelectItem>
+                  <SelectItem value="gemini">Google Gemini (Nativo / Alta Velocidad)</SelectItem>
+                  <SelectItem value="drael">Drael AI (drael.sh / drael-v1 — Base Recomendada)</SelectItem>
+                  <SelectItem value="openai">OpenAI (ChatGPT / GPT-4o)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -408,24 +414,63 @@ function SistemaPage() {
               <Input
                 value={globalAi.ai_model}
                 onChange={e => setGlobalAi({ ...globalAi, ai_model: e.target.value })}
-                placeholder="ex: gpt-4o-mini ou drael-v1"
+                placeholder="ex: google/gemini-2.5-flash ou drael-v1"
                 list="ai-models"
               />
               <datalist id="ai-models">
+                <option value="google/gemini-2.5-flash" />
+                <option value="google/gemini-2.5-flash-lite" />
+                <option value="google/gemini-2.0-flash-exp" />
+                <option value="drael-v1" />
+                <option value="drael-fast" />
                 <option value="gpt-4o-mini" />
                 <option value="gpt-4o" />
-                <option value="drael-v1" />
-                <option value="google/gemini-2.0-flash-exp" />
               </datalist>
             </div>
           </div>
 
           <div className="pt-4 border-t space-y-4">
+            {/* Drael API Key */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
-                <Key className="size-3" /> API Key (OpenAI ou Drael)
+                <Key className="size-3 text-purple-600" /> API Key Drael (dk-...)
+                {savedKeys.drael && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-semibold"><ShieldCheck className="size-3" /> Drael configurado</span>
+                )}
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type={showKeys.drael ? "text" : "password"}
+                  value={globalAi.drael_api_key}
+                  onChange={e => setGlobalAi({ ...globalAi, drael_api_key: e.target.value })}
+                  placeholder="dk-..."
+                  className="flex-1 font-mono text-xs"
+                />
+                <Button
+                  type="button" variant="ghost" size="icon" className="size-9 shrink-0"
+                  title={showKeys.drael ? "Ocultar chave" : "Mostrar chave"}
+                  onClick={() => setShowKeys(s => ({ ...s, drael: !s.drael }))}
+                >
+                  {showKeys.drael ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </Button>
+                <Button
+                  type="button" variant="ghost" size="icon" className="size-9 shrink-0"
+                  title="Copiar chave"
+                  disabled={!globalAi.drael_api_key}
+                  onClick={() => copyKey(globalAi.drael_api_key, "Drael")}
+                >
+                  <Copy className="size-4" />
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Endpoint: <code className="bg-muted px-1 rounded">https://drael.sh/v1</code> — Nuestra IA base recomendada.</p>
+            </div>
+
+            {/* OpenAI API Key */}
+            <div className="space-y-2 pt-2 border-t">
+              <Label className="flex items-center gap-2">
+                <Key className="size-3 text-emerald-600" /> API Key OpenAI / ChatGPT (sk-...)
                 {savedKeys.openai && (
-                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700"><ShieldCheck className="size-3" /> chave salva</span>
+                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-semibold"><ShieldCheck className="size-3" /> OpenAI configurado</span>
                 )}
               </Label>
               <div className="flex items-center gap-2">
@@ -433,8 +478,8 @@ function SistemaPage() {
                   type={showKeys.openai ? "text" : "password"}
                   value={globalAi.openai_api_key}
                   onChange={e => setGlobalAi({ ...globalAi, openai_api_key: e.target.value })}
-                  placeholder="sk-... ou dk-..."
-                  className="flex-1"
+                  placeholder="sk-proj-... ou sk-..."
+                  className="flex-1 font-mono text-xs"
                 />
                 <Button
                   type="button" variant="ghost" size="icon" className="size-9 shrink-0"
@@ -452,6 +497,13 @@ function SistemaPage() {
                   <Copy className="size-4" />
                 </Button>
               </div>
+              <p className="text-[11px] text-muted-foreground">Endpoint: <code className="bg-muted px-1 rounded">https://api.openai.com/v1</code> (GPT-4o, GPT-4o mini).</p>
+            </div>
+
+            {/* Google Gemini note */}
+            <div className="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/50 text-[11.5px] text-blue-900 dark:text-blue-200 flex items-center gap-2">
+              <Sparkles className="size-4 text-blue-600 shrink-0" />
+              <span><strong>Google Gemini:</strong> Funciona de forma nativa a través del Gateway de Capi Conversa con Gemini 2.5 Flash sin requerir API key manual.</span>
             </div>
           </div>
 

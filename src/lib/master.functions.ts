@@ -932,11 +932,14 @@ export const getGlobalAiConfig = createServerFn({ method: "GET" })
       .maybeSingle();
 
     const val = (data?.value as any) || {};
+    const openKey = val.openai_api_key || process.env.OPENAI_API_KEY || "";
+    const draelKey = val.drael_api_key || (openKey.startsWith("dk-") ? openKey : "") || process.env.DRAEL_API_KEY || "";
     return {
-      openai_api_key: val.openai_api_key || process.env.OPENAI_API_KEY || "",
+      openai_api_key: openKey.startsWith("dk-") ? "" : openKey,
+      drael_api_key: draelKey,
       anthropic_api_key: val.anthropic_api_key || process.env.ANTHROPIC_API_KEY || "",
       ai_provider: val.ai_provider || process.env.GLOBAL_AI_PROVIDER || "gemini",
-      ai_model: val.ai_model || process.env.GLOBAL_AI_MODEL || "google/gemini-2.0-flash-exp",
+      ai_model: val.ai_model || process.env.GLOBAL_AI_MODEL || "google/gemini-2.5-flash",
     };
   });
 
