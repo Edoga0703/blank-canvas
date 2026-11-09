@@ -20,7 +20,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { createContact, importContacts } from "@/lib/plan.functions";
+import { createContact } from "@/lib/plan.functions";
 import { addBlock, removeBlock, listBlocklist } from "@/lib/campaigns.functions";
 import { backfillLeadPhotos } from "@/lib/lead-photos.functions";
 import { PlanUsageBadge } from "@/components/plan-usage-badge";
@@ -47,7 +47,6 @@ function ContatosPage() {
   const [exportBusy, setExportBusy] = useState(false);
 
   const createContactFn = useServerFn(createContact);
-  const importContactsFn = useServerFn(importContacts);
   const addBlockFn = useServerFn(addBlock);
   const removeBlockFn = useServerFn(removeBlock);
   const listBlocklistFn = useServerFn(listBlocklist);
@@ -77,7 +76,6 @@ function ContatosPage() {
   const [novoNome, setNovoNome] = useState("");
   const [novoNumero, setNovoNumero] = useState("");
   const [loading, setLoading] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search.trim()), 300);
@@ -218,15 +216,7 @@ function ContatosPage() {
     return out;
   }
 
-  /** Modelo de planilha para o cliente preencher e importar. */
-  function baixarModelo() {
-    const exemplo = [
-      { nome: "Maria Silva", telefone: "5511999998888", email: "maria@email.com" },
-      { nome: "João Souza", telefone: "5511988887777", email: "" },
-    ];
-    baixarCSV("modelo-importacao-contatos.csv", Papa.unparse(exemplo, { delimiter: ";", columns: ["nome", "telefone", "email"] }));
-    toast.success("Modelo baixado. Preencha e importe a planilha.");
-  }
+
 
   function baixarCSV(nomeArquivo: string, csv: string) {
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -349,25 +339,7 @@ function ContatosPage() {
     } finally { setExportBusy(false); }
   }
 
-  function importCSV(file: File) {
-    Papa.parse(file, {
-      header: true, skipEmptyLines: true,
-      complete: async (res) => {
-        const rows = (res.data as any[]).map((r) => {
-          const nome = (r.nome ?? r.name ?? r.Nome ?? "").toString().trim() || null;
-          const numero = (r.telefone ?? r.phone ?? r.Telefone ?? r.numero ?? "").toString().replace(/\D/g, "");
-          return { nome, numero };
-        }).filter((r) => r.numero.length >= 8);
-        if (rows.length === 0) return toast.error("Nenhuma linha válida (precisa de coluna nome/telefone).");
-        try {
-          const r = await importContactsFn({ data: { contatos: rows } });
-          toast.success(`${r.inseridos ?? rows.length} contato(s) importado(s)`);
-          await Promise.all([loadPage(), plan.refresh()]);
-        } catch (e: any) { toast.error(e?.message || "Falha ao importar"); }
-      },
-      error: (e) => toast.error(e.message),
-    });
-  }
+
 
   async function toggleBlock(c: LeadCard) {
     const entry = blockMap.get(c.numero);
@@ -472,8 +444,7 @@ function ContatosPage() {
         <div className="order-4 sm:order-3 w-full sm:w-auto sm:ml-auto flex items-center gap-2">
 
 
-          <input ref={fileRef} type="file" accept=".csv" className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) importCSV(f); e.currentTarget.value = ""; }} />
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-9 sm:h-10 flex-1 sm:flex-none" disabled={exportBusy}>

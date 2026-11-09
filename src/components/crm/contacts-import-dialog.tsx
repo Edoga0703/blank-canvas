@@ -118,66 +118,108 @@ export function ContactsImportDialog({ open, onOpenChange, onSuccess }: Contacts
     return () => window.removeEventListener("message", handleOAuthMessage);
   }, [checkGoogleConnection]);
 
-  /** Extrae nombres, teléfonos y emails desde cualquier fila heterogénea */
+  /** Normaliza encabezados removiendo acentos, caracteres invisibles y mayúsculas */
+  function normalizeHeaderKey(key: string): string {
+    return String(key || "")
+      .replace(/^\uFEFF/, "") // Remueve BOM UTF-8
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
+
+  /** Extrae nombres, teléfonos y emails desde cualquier fila heterogénea (Excel, CSV, Google Contacts) */
   function extractContactsFromRows(rows: Record<string, any>[]): RawContactInput[] {
     const contacts: RawContactInput[] = [];
 
     for (const row of rows) {
+      if (!row || typeof row !== "object") continue;
+
+      // Mapa normalizado de la fila
+      const normMap = new Map<string, any>();
+      for (const [k, v] of Object.entries(row)) {
+        normMap.set(normalizeHeaderKey(k), v);
+      }
+
       // 1. Extraer nombre
       let name: string =
-        row["nome"] ||
-        row["Nome"] ||
-        row["nombre"] ||
-        row["Nombre"] ||
-        row["name"] ||
-        row["Name"] ||
-        row["display_name"] ||
-        row["Display Name"] ||
+        normMap.get("nombre") ||
+        normMap.get("nome") ||
+        normMap.get("name") ||
+        normMap.get("contacto") ||
+        normMap.get("contact") ||
+        normMap.get("cliente") ||
+        normMap.get("client") ||
+        normMap.get("razon social") ||
+        normMap.get("display_name") ||
+        normMap.get("display name") ||
+        normMap.get("nombres") ||
+        normMap.get("nombre completo") ||
         "";
 
       if (!name) {
-        const given = row["Given Name"] || row["first_name"] || row["Primer Nombre"] || "";
-        const family = row["Family Name"] || row["last_name"] || row["Apellido"] || "";
+        const given = normMap.get("given name") || normMap.get("first name") || normMap.get("primer nombre") || normMap.get("prenome") || "";
+        const family = normMap.get("family name") || normMap.get("last name") || normMap.get("apellido") || normMap.get("sobrenome") || "";
         name = [given, family].filter(Boolean).join(" ").trim();
       }
 
-      // 2. Extraer emails
-      const email =
-        row["email"] ||
-        row["Email"] ||
-        row["e-mail"] ||
-        row["E-mail"] ||
-        row["E-mail 1 - Value"] ||
-        row["Email 1 - Value"] ||
-        row["correo"] ||
-        row["Correo"] ||
+      // 2. Extraer email
+      let email: string | null =
+        normMap.get("email") ||
+        normMap.get("e-mail") ||
+        normMap.get("correo") ||
+        normMap.get("correo electronico") ||
+        normMap.get("mail") ||
         null;
+
+      if (!email) {
+        for (const [k, v] of normMap.entries()) {
+          if (k.includes("email") || k.includes("mail") || k.includes("correo")) {
+            if (v && String(v).includes("@")) {
+              email = String(v).trim();
+              break;
+            }
+          }
+        }
+      }
 
       // 3. Extraer todos los teléfonos presentes en la fila
       const phoneCandidates: string[] = [];
 
-      // Teléfonos directos
-      const directPhone =
-        row["telefone"] ||
-        row["Telefone"] ||
-        row["telefono"] ||
-        row["Telefono"] ||
-        row["numero"] ||
-        row["Numero"] ||
-        row["phone"] ||
-        row["Phone"] ||
-        row["celular"] ||
-        row["Celular"] ||
-        row["whatsapp"] ||
-        row["WhatsApp"];
+      for (const [k, v] of normMap.entries()) {
+        if (!v) continue;
+        const strVal = String(v).trim();
+        const isPhoneHeader =
+          k === "telefono" ||
+          k === "telefone" ||
+          k === "phone" ||
+          k === "numero" ||
+          k === "celular" ||
+          k === "movil" ||
+          k === "mobile" ||
+          k === "whatsapp" ||
+          k === "tel" ||
+          k.includes("phone") ||
+          k.includes("telefono") ||
+          k.includes("telefone") ||
+          k.includes("celular") ||
+          k.includes("movil") ||
+          k.includes("mobile") ||
+          k.includes("whatsapp");
 
-      if (directPhone) phoneCandidates.push(String(directPhone));
+        if (isPhoneHeader && !phoneCandidates.includes(strVal)) {
+          phoneCandidates.push(strVal);
+        }
+      }
 
-      // Columnas estilo Google Contacts (Phone 1 - Value, Phone 2 - Value, etc.)
-      for (const [k, v] of Object.entries(row)) {
-        if (/phone.*value/i.test(k) || /telefono.*\d+/i.test(k) || /celular.*\d+/i.test(k)) {
-          if (v && !phoneCandidates.includes(String(v))) {
-            phoneCandidates.push(String(v));
+      // Si aún no detectó teléfonos por encabezado, busca columnas con números de 8 a 15 dígitos
+      if (phoneCandidates.length === 0) {
+        for (const val of Object.values(row)) {
+          if (!val) continue;
+          const digits = String(val).replace(/\D/g, "");
+          if (digits.length >= 8 && digits.length <= 15) {
+            phoneCandidates.push(String(val).trim());
+            break;
           }
         }
       }
@@ -186,7 +228,7 @@ export function ContactsImportDialog({ open, onOpenChange, onSuccess }: Contacts
         const trimmedPh = String(ph).trim();
         if (trimmedPh) {
           contacts.push({
-            nome: name.trim() || null,
+            nome: String(name || "").trim() || null,
             numero: trimmedPh,
             email: email ? String(email).trim().toLowerCase() : null,
           });
