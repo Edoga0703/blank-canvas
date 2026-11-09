@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-09T01:19:24.666116+00:00",
+  "generated_at": "2026-11-09T02:15:06.427150+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -1131,7 +1131,7 @@
     },
     {
       "path": "src/lib/whatsapp-helpers.ts",
-      "bytes": 9633
+      "bytes": 10563
     },
     {
       "path": "src/lib/message-actions.functions.ts",
@@ -1143,7 +1143,7 @@
     },
     {
       "path": "src/lib/plan-limits.server.ts",
-      "bytes": 5759
+      "bytes": 6745
     },
     {
       "path": "src/lib/ai-limiter.server.ts",
@@ -1283,7 +1283,7 @@
     },
     {
       "path": "src/lib/whatsapp.functions.ts",
-      "bytes": 46613
+      "bytes": 46781
     },
     {
       "path": "src/lib/training.functions.ts",
@@ -1859,7 +1859,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 196005
+      "bytes": 200464
     },
     {
       "path": "src/routes/app/configuracoes.tsx",
@@ -1879,7 +1879,7 @@
     },
     {
       "path": "src/routes/app/conexao.tsx",
-      "bytes": 28368
+      "bytes": 28913
     },
     {
       "path": "src/routes/app/meu-plano.tsx",
@@ -6414,6 +6414,10 @@
     {
       "source": "src/lib/plan-limits.server.ts",
       "target": "./plan-features"
+    },
+    {
+      "source": "src/lib/plan-limits.server.ts",
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/plan-limits.server.ts",
