@@ -493,6 +493,7 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
 
     let quoted: any = undefined;
     let quotedText: string | null = null;
+    let validReplyId: string | null = null;
     if (data.replyToMessageId) {
       const { data: orig } = await supabase
         .from("mensagens")
@@ -500,7 +501,11 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
         .eq("id", data.replyToMessageId)
         .eq("company_id", companyId)
         .maybeSingle();
-      if (orig?.whatsapp_message_id) {
+      const sameContact =
+        orig?.numero === data.numero ||
+        (orig?.numero && data.numero && normalizePhone(orig.numero) === normalizePhone(data.numero));
+      if (orig?.whatsapp_message_id && sameContact) {
+        validReplyId = data.replyToMessageId;
         quotedText = orig.texto ?? null;
         quoted = {
           key: {
@@ -582,7 +587,7 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
       contato_nome: data.contatoNome ?? null,
       direcao: "saida", autor: "humano", texto: data.texto,
       whatsapp_message_id: waId,
-      reply_to_id: data.replyToMessageId ?? null,
+      reply_to_id: validReplyId ?? null,
       status_envio: permanentFailure ? "falha" : sendError ? "pendente" : waId ? "enviado" : "pendente",
     } as any).select("id").single();
     if (error) {

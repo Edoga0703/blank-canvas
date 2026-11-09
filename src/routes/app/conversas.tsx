@@ -710,6 +710,16 @@ function ConversasPage() {
     return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
   }, []);
   const [replyTo, setReplyTo] = useState<Msg | null>(null);
+  const effectiveReplyTo = useMemo(() => {
+    if (!replyTo || !active) return null;
+    if (replyTo.numero === active) return replyTo;
+    if (!isGrupo(active) && !isGrupo(replyTo.numero)) {
+      const c1 = numeroComparable(replyTo.numero);
+      const c2 = numeroComparable(active);
+      if (c1 && c2 && c1 === c2) return replyTo;
+    }
+    return null;
+  }, [replyTo, active]);
   const [newConvOpen, setNewConvOpen] = useState(false);
   const [contactPickerOpen, setContactPickerOpen] = useState(false);
   const [notifMuted, setNotifMuted] = useState(() => {
@@ -792,6 +802,9 @@ function ConversasPage() {
 
   useEffect(() => {
     if (active) markRead(active);
+    setReplyTo(null);
+    setInChatSearchOpen(false);
+    setInChatQuery("");
     // rola pra última mensagem ao trocar de conversa / receber nova
     const scrollToBottom = () => {
       const el = threadRef.current;
@@ -1471,7 +1484,7 @@ function ConversasPage() {
   async function sendMsg(text?: string) {
     const txt = (text ?? composer).trim();
     if (!txt || !active || !companyId) return;
-    const currentReply = replyTo;
+    const currentReply = effectiveReplyTo;
     setSending(true);
     const targetInstId = activeSendInstance?.id ?? null;
     const tmpId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -2702,6 +2715,7 @@ function ConversasPage() {
 
               {/* Composer estilo WhatsApp */}
               <Composer
+                key={active}
                 active={active}
                 activeName={activeConv?.nome ?? null}
                 channel={getChannel(activeCard, activeConv?.last)}
@@ -2717,7 +2731,7 @@ function ConversasPage() {
                 ownerId={activeIsGrupo ? (userId ?? null) : activeCard?.owner_id ?? null}
                 currentUserId={userId ?? null}
                 ownerNome={members.find((m) => m.user_id === activeCard?.owner_id)?.nome || "Humano"}
-                replyTo={replyTo}
+                replyTo={effectiveReplyTo}
                 onCancelReply={() => setReplyTo(null)}
                 agentTraits={agentConfig?.avatar_traits}
                 agentAvatarUrl={agentConfig?.avatar_url}
