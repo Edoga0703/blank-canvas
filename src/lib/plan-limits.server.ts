@@ -26,10 +26,32 @@ function startOfMonthISO(): string {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString();
 }
 
-export async function getCompanyPlan(companyId: string): Promise<CompanyPlan> {
+export async function getCompanyPlan(companyId: string, userId?: string): Promise<CompanyPlan> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  // 1) Assinatura ativa/trialing → plano vinculado (+ extras)
+  // 1) Bypass incondicional si el usuario tiene rol super_admin
+  if (userId) {
+    const { data: su } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "super_admin")
+      .maybeSingle();
+    if (su) {
+      return {
+        slug: "enterprise" as any,
+        nome: "Super Admin (Ilimitado)",
+        limites: {
+          instancias: 2147483647,
+          usuarios: 2147483647,
+          contatos: 2147483647,
+          mensagens: 2147483647,
+        },
+      };
+    }
+  }
+
+  // 2) Assinatura ativa/trialing → plano vinculado (+ extras)
   const [{ data: sub }, { data: comp }] = await Promise.all([
     supabaseAdmin
       .from("subscription")
@@ -39,23 +61,23 @@ export async function getCompanyPlan(companyId: string): Promise<CompanyPlan> {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
-    (supabaseAdmin as any)
+    supabaseAdmin
       .from("company")
-      .select("id, is_master, status_cobranca")
+      .select("id, status_cobranca")
       .eq("id", companyId)
       .maybeSingle(),
   ]);
 
-  // Bypass total para Super Admin, empresa master o suscripción de cortesía
-  if (sub?.cortesia || (comp as any)?.is_master || (comp as any)?.status_cobranca === "cortesia") {
+  // Bypass total para empresa con suscripción de cortesía o status de cobro cortesía
+  if (sub?.cortesia || (comp as any)?.status_cobranca === "cortesia") {
     return {
       slug: "enterprise" as any,
       nome: "Super Admin (Ilimitado)",
       limites: {
-        instancias: 9999999,
-        usuarios: 9999999,
-        contatos: 9999999,
-        mensagens: 9999999,
+        instancias: 2147483647,
+        usuarios: 2147483647,
+        contatos: 2147483647,
+        mensagens: 2147483647,
       },
     };
   }
@@ -129,8 +151,8 @@ export async function getCompanyUsage(companyId: string): Promise<CompanyUsage> 
   };
 }
 
-export async function getCompanyPlanUsage(companyId: string): Promise<{ plan: CompanyPlan; usage: CompanyUsage }> {
-  const [plan, usage] = await Promise.all([getCompanyPlan(companyId), getCompanyUsage(companyId)]);
+export async function getCompanyPlanUsage(companyId: string, userId?: string): Promise<{ plan: CompanyPlan; usage: CompanyUsage }> {
+  const [plan, usage] = await Promise.all([getCompanyPlan(companyId, userId), getCompanyUsage(companyId)]);
   return { plan, usage };
 }
 

@@ -18,7 +18,7 @@ export const getPlanUsage = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!data) return null;
     const { getCompanyPlanUsage } = await import("./plan-limits.server");
-    return getCompanyPlanUsage(data.company_id as string);
+    return getCompanyPlanUsage(data.company_id as string, context.userId);
   });
 
 export const createContact = createServerFn({ method: "POST" })

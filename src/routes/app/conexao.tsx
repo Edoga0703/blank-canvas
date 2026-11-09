@@ -536,7 +536,7 @@ function ConexoesPage() {
           })}
         </div>
 
-        {!canAdd && (
+        {!isUnlimited && !canAdd && (
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-center space-y-2 max-w-md mx-auto">
             <p className="text-sm font-semibold text-foreground">
               Límite de conexiones alcanzado ({waUsed}/{waLimit})
