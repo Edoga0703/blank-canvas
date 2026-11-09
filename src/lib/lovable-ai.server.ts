@@ -107,17 +107,25 @@ export async function lovableAiChat(
     return openAiChat(key, model, msgs, 0.1, baseUrl);
   }
   if (provider === "openai") {
-    const key = (globalOpenAiKey && !globalOpenAiKey.startsWith("dk-") ? globalOpenAiKey.trim() : null) || cfg.openaiKey?.trim();
-    if (!key) throw new Error("Chave OpenAI (sk-...) não configurada no painel Master (Sistema > Inteligência Artificial).");
-    const baseUrl = (gVal.base_url || process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").trim();
-    const model = (cfg.model && cfg.model !== "default" && !cfg.model.startsWith("google/")) ? cfg.model : (globalModel && !globalModel.startsWith("google/") ? globalModel : "gpt-4o-mini");
-    return openAiChat(key, model, msgs, 0.1, baseUrl);
+    const customKey = (globalOpenAiKey && !globalOpenAiKey.startsWith("dk-") ? globalOpenAiKey.trim() : null) || cfg.openaiKey?.trim();
+    if (customKey) {
+      const baseUrl = (gVal.base_url || process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").trim();
+      const model = (cfg.model && cfg.model !== "default" && !cfg.model.startsWith("google/") && !cfg.model.startsWith("openai/")) ? cfg.model : (globalModel && !globalModel.startsWith("google/") ? globalModel : "gpt-4o-mini");
+      return openAiChat(customKey, model, msgs, 0.1, baseUrl);
+    }
+    const lovableKey = process.env.LOVABLE_API_KEY;
+    if (!lovableKey) throw new Error("Chave OpenAI (sk-...) não configurada no painel Master e LOVABLE_API_KEY ausente.");
+    return gatewayOpenAiChat(lovableKey, cfg.model || "openai/gpt-5-mini", msgs);
   }
   if (provider === "anthropic") {
-    const key = globalAnthropicKey?.trim() || cfg.anthropicKey?.trim();
-    if (!key) throw new Error("Chave Anthropic (Claude) não configurada.");
-    const model = cfg.model || globalModel || "claude-3-5-sonnet-latest";
-    return anthropicChat(key, model, msgs);
+    const customKey = globalAnthropicKey?.trim() || cfg.anthropicKey?.trim();
+    if (customKey) {
+      const model = cfg.model || globalModel || "claude-3-5-sonnet-latest";
+      return anthropicChat(customKey, model, msgs);
+    }
+    const lovableKey = process.env.LOVABLE_API_KEY;
+    if (!lovableKey) throw new Error("Chave Anthropic (Claude) não configurada no painel Master e LOVABLE_API_KEY ausente.");
+    return gatewayAnthropicChat(lovableKey, cfg.model || "anthropic/claude-sonnet-5", msgs);
   }
 
   // default: Gemini via Lovable Gateway (com retry + fallback de modelo)
@@ -277,6 +285,75 @@ async function anthropicChat(key: string, model: string, messages: ChatMsg[]): P
     .map((p: any) => p.text)
     .join("\n")
     .trim();
+  return txt;
+}
+
+async function gatewayOpenAiChat(key: string, model: string, messages: ChatMsg[]): Promise<string> {
+  const m = model.toLowerCase();
+  const gatewayModel = m.startsWith("openai/")
+    ? model
+    : (m.includes("mini") || m.includes("4o-mini") ? "openai/gpt-5-mini" : "openai/chat-latest");
+
+  const res = await fetchJson(GATEWAY, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${key}`,
+      "Lovable-API-Key": key,
+      "Content-Type": "application/json",
+      "X-Lovable-AIG-SDK": "fetch",
+    },
+    body: JSON.stringify({ model: gatewayModel, messages }),
+  });
+  if (res.status === 402) throw new Error("Créditos de IA esgotados no workspace.");
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`OpenAI (Gateway): ${res.status} ${t.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  const texto = data?.choices?.[0]?.message?.content?.toString().trim() || "";
+  if (!texto) throw new Error("Resposta vazia da IA.");
+  return texto;
+}
+
+async function gatewayAnthropicChat(key: string, model: string, messages: ChatMsg[]): Promise<string> {
+  const m = model.toLowerCase();
+  const gatewayModel = m.startsWith("anthropic/")
+    ? model
+    : (m.includes("sonnet") ? "anthropic/claude-sonnet-5" : "anthropic/claude-haiku-4-5");
+
+  const system = messages.filter((msg) => msg.role === "system").map((msg) => msg.content).join("\n\n");
+  const conv = messages
+    .filter((msg) => msg.role !== "system")
+    .map((msg) => ({ role: msg.role, content: msg.content }));
+
+  const res = await fetchJson("https://ai.gateway.lovable.dev/v1/messages", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${key}`,
+      "Lovable-API-Key": key,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+      "X-Lovable-AIG-SDK": "fetch",
+    },
+    body: JSON.stringify({
+      model: gatewayModel,
+      max_tokens: 4096,
+      system: system || undefined,
+      messages: conv.length > 0 ? conv : [{ role: "user", content: "Olá" }],
+    }),
+  });
+  if (res.status === 402) throw new Error("Créditos de IA esgotados no workspace.");
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`Claude (Gateway): ${res.status} ${t.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  const txt = (data?.content || [])
+    .filter((p: any) => p?.type === "text")
+    .map((p: any) => p.text)
+    .join("\n")
+    .trim();
+  if (!txt) throw new Error("Resposta vazia da IA.");
   return txt;
 }
 
