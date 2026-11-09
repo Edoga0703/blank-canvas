@@ -1,3 +1,29 @@
+function highlightMatchedTextInSnippet(text: string, query: string) {
+  if (!text) return "";
+  if (!query || query.trim().length < 2) return text;
+  const q = query.trim();
+  const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`(${escaped})`, "gi");
+  const parts = text.split(regex);
+  if (parts.length <= 1) return text;
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === q.toLowerCase() ? (
+          <mark
+            key={i}
+            className="bg-amber-300/90 dark:bg-amber-400/35 text-foreground dark:text-amber-100 rounded-[2px] px-0.5 font-semibold"
+          >
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
+}
+
 import { normalizePhone } from "@/lib/br-phone";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -17,11 +43,12 @@ import {
   Smile, PanelRightClose, PanelRightOpen, Pencil, Reply, Package, ChevronLeft, ChevronRight, Info, CheckCircle2,
   UserPlus, Users, Inbox, Wifi, WifiOff, Image as ImageIcon, Mic as MicIcon, Video as VideoIcon,
   Filter as FunnelIcon, Check, CheckCheck, Bell, BellOff, Contact as ContactIcon, Ban, RefreshCw,
-  CalendarPlus, Sparkles, Gauge, Download, UserRound, ExternalLink, Phone,
+  CalendarPlus, Sparkles, Gauge, Download, UserRound, ExternalLink, Phone, Loader2,
 } from "lucide-react";
 import { SendContactDialog } from "@/components/chat/send-contact-dialog";
 import { AiAssistButton } from "@/components/chat/ai-assist-button";
 import { FormattedMessageText } from "@/components/chat/formatted-message-text";
+import { searchMessagesGlobal, fetchMessagesForContact, type MessageSearchResult } from "@/lib/message-search.functions";
 
 
 import { 
@@ -497,6 +524,69 @@ function ConversasPage() {
   useEffect(() => {
     if (companyId) setReadMap(getConvReadMap(companyId));
   }, [companyId]);
+
+  // ---- Búsqueda de Mensajes (Global y en Chat) ----
+  const searchMessagesGlobalFn = useServerFn(searchMessagesGlobal);
+  const fetchMessagesForContactFn = useServerFn(fetchMessagesForContact);
+  const [globalMessageResults, setGlobalMessageResults] = useState<MessageSearchResult[]>([]);
+  const [isSearchingMessages, setIsSearchingMessages] = useState(false);
+  const [flashingMessageId, setFlashingMessageId] = useState<string | null>(null);
+
+  // Buscador interno en el chat activo (In-Thread)
+  const [inChatSearchOpen, setInChatSearchOpen] = useState(false);
+  const [inChatQuery, setInChatQuery] = useState("");
+  const [inChatMatchIndex, setInChatMatchIndex] = useState(0);
+
+  // Debounced search para mensajes globales
+  useEffect(() => {
+    const q = search.trim();
+    if (q.length < 2) {
+      setGlobalMessageResults([]);
+      setIsSearchingMessages(false);
+      return;
+    }
+    setIsSearchingMessages(true);
+    const timer = setTimeout(async () => {
+      try {
+        const resp = await searchMessagesGlobalFn({ data: { query: q, limit: 35 } });
+        setGlobalMessageResults(resp?.results ?? []);
+      } catch (err) {
+        console.warn("[searchMessagesGlobal] Error:", err);
+      } finally {
+        setIsSearchingMessages(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, searchMessagesGlobalFn]);
+
+  async function handleSelectMessageResult(res: MessageSearchResult) {
+    setActive(res.numero);
+    const isLoaded = msgs.some((m) => m.id === res.id);
+    if (!isLoaded) {
+      try {
+        const resp = await fetchMessagesForContactFn({ data: { numero: res.numero, limit: 150 } });
+        if (resp?.messages && resp.messages.length > 0) {
+          setMsgs((prev) => {
+            const byId = new Map<string, Msg>();
+            for (const item of prev) byId.set(item.id, item);
+            for (const item of resp.messages as Msg[]) byId.set(item.id, item);
+            return Array.from(byId.values()).sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+          });
+        }
+      } catch (e) {
+        console.warn("[handleSelectMessageResult] fetch contact thread error:", e);
+      }
+    }
+    const targetId = res.id;
+    setTimeout(() => {
+      const el = document.getElementById(`msg-${targetId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setFlashingMessageId(targetId);
+        setTimeout(() => setFlashingMessageId((p) => (p === targetId ? null : p)), 2500);
+      }
+    }, 280);
+  }
 
   const markRead = useCallback((numero: string) => {
     if (!companyId || !numero) return;
@@ -1083,6 +1173,41 @@ function ConversasPage() {
       .filter((m) => m.numero === active || (!isGrupo(m.numero) && activeComp && numeroComparable(m.numero) === activeComp))
       .sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
   }, [msgs, active]);
+
+  const inChatMatches = useMemo(() => {
+    if (!inChatSearchOpen || !inChatQuery.trim() || inChatQuery.trim().length < 2) return [];
+    const q = inChatQuery.toLowerCase();
+    return thread.filter((m) => (m.texto || "").toLowerCase().includes(q));
+  }, [thread, inChatSearchOpen, inChatQuery]);
+
+  const scrollToInChatMatch = useCallback((targetIdx: number) => {
+    if (!inChatMatches.length) return;
+    const clamped = (targetIdx + inChatMatches.length) % inChatMatches.length;
+    setInChatMatchIndex(clamped);
+    const targetMsg = inChatMatches[clamped];
+    if (targetMsg) {
+      const el = document.getElementById(`msg-${targetMsg.id}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setFlashingMessageId(targetMsg.id);
+      setTimeout(() => setFlashingMessageId((p) => (p === targetMsg.id ? null : p)), 2000);
+    }
+  }, [inChatMatches]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+        if (active) {
+          e.preventDefault();
+          setInChatSearchOpen(true);
+        }
+      } else if (e.key === "Escape" && inChatSearchOpen) {
+        setInChatSearchOpen(false);
+        setInChatQuery("");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [active, inChatSearchOpen]);
 
   
   const stickyInstance = useMemo(() => {
@@ -1781,11 +1906,21 @@ function ConversasPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
               <Input
-                placeholder={t("chat.search_conversation", undefined, "Buscar conversas...")}
+                placeholder={t("chat.search_conversation", undefined, "Buscar conversas e mensagens...")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 h-10 rounded-xl bg-muted/60 border-transparent focus-visible:border-[color:var(--hairline)] text-[12.5px]"
+                className="pl-9 pr-8 h-10 rounded-xl bg-muted/60 border-transparent focus-visible:border-[color:var(--hairline)] text-[12.5px]"
               />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 transition-colors"
+                  title="Limpar busca"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
             </div>
 
             {/* Abas de Canais Rápidas (Todos, WhatsApp, Instagram, Messenger) */}
@@ -1903,11 +2038,9 @@ function ConversasPage() {
 
 
 
-          <ul className="flex-1 overflow-auto pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-0">
-            {conversations.length === 0 && (
-              <li className="p-8 text-sm text-muted-foreground text-center">Nenhuma conversa neste filtro.</li>
-            )}
-            {conversations.map((c) => {
+          {(() => {
+            const renderConversationRow = (c: (typeof conversations)[number]) => {
+
               const conversaEhGrupo = isGrupo(c.numero);
               const grupo = conversaEhGrupo ? grupos.find((g) => g.jid === c.numero) : undefined;
               const on = c.numero === active;
@@ -2056,11 +2189,103 @@ function ConversasPage() {
                   </div>
                 </li>
               );
-            })}
+     
+            };
 
+            return search.trim() ? (
+              <div className="flex-1 overflow-auto pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-0">
+                {conversations.length > 0 && (
+                  <div>
+                    <div className="px-4 py-1.5 text-[10.5px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 sticky top-0 z-10 border-b border-[color:var(--hairline)]">
+                      Conversas ({conversations.length})
+                    </div>
+                    <ul>
+                      {conversations.map(renderConversationRow)}
+                    </ul>
+                  </div>
+                )}
 
+                <div className={conversations.length > 0 ? "mt-1 border-t border-[color:var(--hairline)]" : ""}>
+                  <div className="px-4 py-1.5 text-[10.5px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 sticky top-0 z-10 border-b border-[color:var(--hairline)] flex items-center justify-between">
+                    <span>Mensagens ({globalMessageResults.length})</span>
+                    {isSearchingMessages && (
+                      <span className="inline-flex items-center gap-1 text-[10px] lowercase font-normal text-muted-foreground">
+                        <Loader2 className="size-3 animate-spin text-[color:var(--brand)]" />
+                        buscando...
+                      </span>
+                    )}
+                  </div>
 
-          </ul>
+                  {isSearchingMessages && globalMessageResults.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-muted-foreground flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="size-5 animate-spin text-[color:var(--brand)]" />
+                      <span>Buscando no histórico de mensagens...</span>
+                    </div>
+                  ) : globalMessageResults.length === 0 && conversations.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground">
+                      Nenhuma conversa ou mensagem encontrada para "{search.trim()}".
+                    </div>
+                  ) : globalMessageResults.length === 0 ? (
+                    <div className="px-4 py-6 text-xs text-muted-foreground italic text-center">
+                      Nenhuma mensagem contendo "{search.trim()}"
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-border/50">
+                      {globalMessageResults.map((msg) => (
+                        <li key={msg.id}>
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => handleSelectMessageResult(msg)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                handleSelectMessageResult(msg);
+                              }
+                            }}
+                            className={`w-full text-left flex gap-3 px-3.5 py-3 hover:bg-[color:var(--panel-2)] transition-colors cursor-pointer outline-none focus-visible:bg-accent/50 ${
+                              active === msg.numero ? "bg-accent/40" : ""
+                            }`}
+                          >
+                            <div className="relative size-10 shrink-0 self-start">
+                              <InitialsAvatar
+                                name={msg.lead_nome || msg.contato_nome || msg.numero}
+                                size={40}
+                                src={msg.lead_foto_url ?? undefined}
+                              />
+                            </div>
+                            <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+                              <div className="flex items-baseline justify-between gap-2">
+                                <span className="font-semibold text-[13px] truncate text-foreground">
+                                  {msg.lead_nome || msg.contato_nome || msg.numero}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                  {formatListTimestamp(msg.created_at)}
+                                </span>
+                              </div>
+                              <p className="text-[12px] text-muted-foreground line-clamp-2 leading-relaxed">
+                                {msg.direcao === "saida" && (
+                                  <span className="font-semibold text-foreground/80 mr-1">Você:</span>
+                                )}
+                                {highlightMatchedTextInSnippet(msg.texto, search.trim())}
+                              </p>
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <ul className="flex-1 overflow-auto pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-0">
+                {conversations.length === 0 && (
+                  <li className="p-8 text-sm text-muted-foreground text-center">Nenhuma conversa neste filtro.</li>
+                )}
+                {conversations.map(renderConversationRow)}
+              </ul>
+            );
+          })()}
         </aside>
 
         {/* ============ CENTER — THREAD ============ */}
@@ -2132,6 +2357,27 @@ function ConversasPage() {
                     </span>
                     <Switch checked={iaAtivaAqui} onCheckedChange={(v) => void toggleIa(v)} className="scale-75 lg:scale-100" />
                   </label>}
+
+                  {/* Botão Buscar nesta conversa */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className={cn(
+                      "size-9 p-0 rounded-full text-[12.5px] shadow-sm transition-colors",
+                      inChatSearchOpen
+                        ? "bg-[color:var(--brand)] text-white hover:bg-[color:var(--brand-strong)] hover:text-white"
+                        : "hover:bg-[color:var(--panel-2)] text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => {
+                      setInChatSearchOpen((prev) => !prev);
+                      if (!inChatSearchOpen) setInChatMatchIndex(0);
+                      else setInChatQuery("");
+                    }}
+                    title="Buscar nesta conversa (Ctrl+F)"
+                    aria-label="Buscar nesta conversa"
+                  >
+                    <Search className="size-4" />
+                  </Button>
 
                   {/* Assumir / Finalizar ticket (grupos não precisam) */}
                   {activeIsGrupo ? null : activeCard?.owner_id === userId ? (
@@ -2318,6 +2564,81 @@ function ConversasPage() {
                 </div>
               )}
 
+              {/* Barra Flutuante de Busca no Chat */}
+              {inChatSearchOpen && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-[color:var(--panel)]/95 backdrop-blur-md border-b border-[color:var(--hairline)] shadow-xs z-10 animate-in slide-in-from-top-2 duration-150">
+                  <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                    <Input
+                      autoFocus
+                      value={inChatQuery}
+                      onChange={(e) => {
+                        setInChatQuery(e.target.value);
+                        setInChatMatchIndex(0);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (e.shiftKey) scrollToInChatMatch(inChatMatchIndex - 1);
+                          else scrollToInChatMatch(inChatMatchIndex + 1);
+                        } else if (e.key === "Escape") {
+                          setInChatSearchOpen(false);
+                          setInChatQuery("");
+                        }
+                      }}
+                      placeholder="Buscar nesta conversa... (Enter para navegar)"
+                      className="pl-8 pr-7 h-8 rounded-lg bg-muted/60 border-transparent text-[12.5px]"
+                    />
+                    {inChatQuery && (
+                      <button
+                        type="button"
+                        onClick={() => { setInChatQuery(""); setInChatMatchIndex(0); }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <span className="text-[11px] font-medium text-muted-foreground px-1 tabular-nums whitespace-nowrap">
+                      {inChatQuery.trim().length < 2
+                        ? "Digite 2+ letras"
+                        : inChatMatches.length === 0
+                        ? "Sem resultados"
+                        : `${inChatMatchIndex + 1} de ${inChatMatches.length}`}
+                    </span>
+
+                    <button
+                      type="button"
+                      disabled={inChatMatches.length === 0}
+                      onClick={() => scrollToInChatMatch(inChatMatchIndex - 1)}
+                      className="size-7 grid place-items-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                      title="Anterior (Shift+Enter)"
+                    >
+                      <ChevronUp className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={inChatMatches.length === 0}
+                      onClick={() => scrollToInChatMatch(inChatMatchIndex + 1)}
+                      className="size-7 grid place-items-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                      title="Próximo (Enter)"
+                    >
+                      <ChevronDown className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setInChatSearchOpen(false); setInChatQuery(""); }}
+                      className="size-7 grid place-items-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors ml-1"
+                      title="Fechar busca (Esc)"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Thread body */}
               <div
                 ref={threadRef}
@@ -2371,6 +2692,8 @@ function ConversasPage() {
                         agentTraits={agentConfig?.avatar_traits}
                         agentAvatarUrl={agentConfig?.avatar_url}
                         instances={instances}
+                        highlightText={inChatSearchOpen ? inChatQuery : undefined}
+                        isFlashing={flashingMessageId === m.id}
                       />
                     </div>
                   );
@@ -2702,7 +3025,18 @@ function StageChip({ nome, cor }: { nome: string; cor: string | null }) {
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 const MORE_REACTIONS = ["👏", "🎉", "🔥", "✅", "🤔", "😍", "😡", "💯", "🙌", "🤝", "✨", "😅"];
 
-function Bubble({ m, quotedSnippet, companyId, onReply, agentTraits, agentAvatarUrl, hasUnofficialInstance, instances = [] }: {
+function Bubble({
+  m,
+  quotedSnippet,
+  companyId,
+  onReply,
+  agentTraits,
+  agentAvatarUrl,
+  hasUnofficialInstance,
+  instances = [],
+  highlightText,
+  isFlashing,
+}: {
   m: Msg;
   quotedSnippet?: { sender: string; text: string; id?: string | null } | null;
   companyId: string;
@@ -2711,6 +3045,8 @@ function Bubble({ m, quotedSnippet, companyId, onReply, agentTraits, agentAvatar
   agentAvatarUrl?: string;
   hasUnofficialInstance?: boolean;
   instances?: Array<{ id: string; instance_name: string; display_name: string | null; provider: string; status: string; phone_number_id: string | null; numero?: string | null }>;
+  highlightText?: string;
+  isFlashing?: boolean;
 }) {
   const instanceMeta = getInstanceVisualMeta(m.instance_id, m.provider, instances);
   const isOut = m.direcao === "saida";
@@ -2805,11 +3141,12 @@ function Bubble({ m, quotedSnippet, companyId, onReply, agentTraits, agentAvatar
       <div className="relative max-w-[78%] sm:max-w-[62%]">
         <div
           className={cn(
-            "px-3.5 py-2.5 pr-9 text-[13.5px] shadow-sm relative",
+            "px-3.5 py-2.5 pr-9 text-[13.5px] shadow-sm relative transition-all duration-300",
             ia && "ring-1 ring-blue-500/20",
             isOut
                ? "bg-[color:var(--chart-1)] text-primary-foreground rounded-2xl rounded-br-md font-medium"
-              : "bg-[color:var(--panel)] text-foreground rounded-2xl rounded-bl-md border border-[color:var(--hairline)]"
+              : "bg-[color:var(--panel)] text-foreground rounded-2xl rounded-bl-md border border-[color:var(--hairline)]",
+            isFlashing && "ring-4 ring-amber-400 dark:ring-amber-300 ring-offset-2 scale-[1.01] shadow-lg animate-pulse"
           )}
           style={instanceMeta ? (isOut ? { borderRight: `4px solid ${instanceMeta.color}` } : { borderLeft: `4px solid ${instanceMeta.color}` }) : undefined}
         >
@@ -2940,7 +3277,7 @@ function Bubble({ m, quotedSnippet, companyId, onReply, agentTraits, agentAvatar
                   ? <ChatLocation loc={parseLocationText(m.texto)!} outbound={isOut} />
                   : (
                     m.texto === "[ÁUDIO]" ? null : (
-                      <FormattedMessageText text={m.texto} isOut={isOut} />
+                      <FormattedMessageText text={m.texto} isOut={isOut} highlightText={highlightText} />
                     )
                   )
               )}

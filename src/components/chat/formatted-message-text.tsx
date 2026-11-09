@@ -6,6 +6,7 @@ export interface FormattedMessageTextProps {
   text: string;
   isOut?: boolean;
   className?: string;
+  highlightText?: string;
 }
 
 interface InlineToken {
@@ -403,28 +404,52 @@ function tokenizeInline(text: string): InlineToken[] {
   return restorePlaceholders(parseFormatting(processed));
 }
 
-function RenderInline({ tokens, isOut }: { tokens: InlineToken[]; isOut?: boolean }) {
+function highlightMatchedText(content: string, highlight?: string) {
+  if (!highlight || highlight.trim().length < 2) return content;
+  const q = highlight.trim();
+  const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const parts = content.split(new RegExp(`(${escaped})`, "gi"));
+  if (parts.length <= 1) return content;
+  return (
+    <>
+      {parts.map((part, idx) =>
+        part.toLowerCase() === q.toLowerCase() ? (
+          <mark
+            key={idx}
+            className="bg-amber-300/90 dark:bg-amber-400/35 text-foreground dark:text-amber-100 rounded-[3px] px-1 py-0.5 font-semibold shadow-xs"
+          >
+            {part}
+          </mark>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
+}
+
+function RenderInline({ tokens, isOut, highlightText }: { tokens: InlineToken[]; isOut?: boolean; highlightText?: string }) {
   return (
     <>
       {tokens.map((token, i) => {
         if (token.type === "bold") {
           return (
             <strong key={i} className="font-bold text-inherit">
-              {token.tokens ? <RenderInline tokens={token.tokens} isOut={isOut} /> : token.content}
+              {token.tokens ? <RenderInline tokens={token.tokens} isOut={isOut} highlightText={highlightText} /> : highlightMatchedText(token.content, highlightText)}
             </strong>
           );
         }
         if (token.type === "italic") {
           return (
             <em key={i} className="italic text-inherit opacity-90">
-              {token.tokens ? <RenderInline tokens={token.tokens} isOut={isOut} /> : token.content}
+              {token.tokens ? <RenderInline tokens={token.tokens} isOut={isOut} highlightText={highlightText} /> : highlightMatchedText(token.content, highlightText)}
             </em>
           );
         }
         if (token.type === "strikethrough") {
           return (
             <del key={i} className="line-through opacity-70">
-              {token.tokens ? <RenderInline tokens={token.tokens} isOut={isOut} /> : token.content}
+              {token.tokens ? <RenderInline tokens={token.tokens} isOut={isOut} highlightText={highlightText} /> : highlightMatchedText(token.content, highlightText)}
             </del>
           );
         }
@@ -439,7 +464,7 @@ function RenderInline({ tokens, isOut }: { tokens: InlineToken[]; isOut?: boolea
                   : "bg-muted text-foreground border border-border/50",
               )}
             >
-              {token.content}
+              {highlightMatchedText(token.content, highlightText)}
             </code>
           );
         }
@@ -455,17 +480,17 @@ function RenderInline({ tokens, isOut }: { tokens: InlineToken[]; isOut?: boolea
                 isOut ? "text-white" : "text-[color:var(--brand)]",
               )}
             >
-              {token.content}
+              {highlightMatchedText(token.content, highlightText)}
             </a>
           );
         }
-        return <React.Fragment key={i}>{token.content}</React.Fragment>;
+        return <React.Fragment key={i}>{highlightMatchedText(token.content, highlightText)}</React.Fragment>;
       })}
     </>
   );
 }
 
-export function FormattedMessageText({ text, isOut, className }: FormattedMessageTextProps) {
+export function FormattedMessageText({ text, isOut, className, highlightText }: FormattedMessageTextProps) {
   const parsed = useMemo(() => parseBlocks(text), [text]);
 
   if (!text) return null;
@@ -501,7 +526,7 @@ export function FormattedMessageText({ text, isOut, className }: FormattedMessag
 
           return (
             <div key={idx} className={cn(headerClasses, "text-inherit")}>
-              <RenderInline tokens={tokens} isOut={isOut} />
+              <RenderInline tokens={tokens} isOut={isOut} highlightText={highlightText} />
             </div>
           );
         }
@@ -522,7 +547,7 @@ export function FormattedMessageText({ text, isOut, className }: FormattedMessag
                 {block.listType === "number" ? `${block.itemNumber}.` : "•"}
               </span>
               <div className="flex-1 break-words leading-relaxed text-inherit">
-                <RenderInline tokens={tokens} isOut={isOut} />
+                <RenderInline tokens={tokens} isOut={isOut} highlightText={highlightText} />
               </div>
             </div>
           );
@@ -540,7 +565,7 @@ export function FormattedMessageText({ text, isOut, className }: FormattedMessag
                   : "border-primary/60 bg-primary/5 text-foreground/90",
               )}
             >
-              <RenderInline tokens={tokens} isOut={isOut} />
+              <RenderInline tokens={tokens} isOut={isOut} highlightText={highlightText} />
             </blockquote>
           );
         }
@@ -565,7 +590,7 @@ export function FormattedMessageText({ text, isOut, className }: FormattedMessag
         const tokens = tokenizeInline(block.rawText);
         return (
           <div key={idx} className="break-words leading-relaxed text-inherit">
-            <RenderInline tokens={tokens} isOut={isOut} />
+            <RenderInline tokens={tokens} isOut={isOut} highlightText={highlightText} />
           </div>
         );
       })}
