@@ -179,6 +179,16 @@ export async function upsertCard(
       ultima_em: payload.ultima_em,
     };
 
+    // Si el contacto estaba en la agenda sin conversación previa, ingresa a la primera etapa del embudo
+    if ((!existing.stage_id || existing.tipo_contato === "interno") && firstStage) {
+      updatePayload.pipeline_id = firstStage.pipeline_id;
+      updatePayload.stage_id = firstStage.id;
+      updatePayload.status = firstStage.nome;
+      updatePayload.entrou_stage_em = now;
+      updatePayload.tipo_contato = "lead";
+      updatePayload.primeiro_contato_em = existing.primeiro_contato_em || now;
+    }
+
     if (canal && (!existing.canal_chat || (existing.canal_chat === "whatsapp" && canal !== "whatsapp"))) {
       updatePayload.canal_chat = canal;
     }

@@ -639,7 +639,7 @@ export function ContactsImportDialog({ open, onOpenChange, onSuccess }: Contacts
                   Nuevos contactos
                 </div>
                 <div className="text-xl font-bold mt-1 text-foreground">{preview.toInsertCount}</div>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Se crearán en la 1ra etapa</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Guardados en agenda (no saturan el embudo)</p>
               </div>
 
               <div className="p-3 rounded-xl border border-[color:var(--hairline)] bg-[color:var(--panel-2)] col-span-2 sm:col-span-1">
@@ -656,8 +656,7 @@ export function ContactsImportDialog({ open, onOpenChange, onSuccess }: Contacts
             <div className="flex items-start gap-2.5 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-xs text-emerald-800 dark:text-emerald-300">
               <ShieldCheck className="size-4 text-emerald-500 mt-0.5 shrink-0" />
               <span>
-                <strong>Garantía de integridad:</strong> Los clientes que ya tienen conversaciones o negociaciones activas
-                NO serán movidos de etapa ni de embudo. Solo se actualizará su nombre y se reflejará en el chat de WhatsApp.
+                <strong>Garantía de integridad:</strong> Los clientes con conversaciones activas NO se mueven de etapa ni de embudo. Los contactos nuevos se registran con su nombre en la agenda y entrarán al embudo únicamente cuando inicien una conversación en WhatsApp.
               </span>
             </div>
 

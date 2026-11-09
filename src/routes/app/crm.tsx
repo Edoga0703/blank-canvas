@@ -170,7 +170,30 @@ function KanbanPage() {
     ] = await Promise.all([
       supabase.from("crm_pipeline").select("*").eq("company_id", cid).order("ordem", { ascending: true }),
       supabase.from("crm_stage").select("*, pipeline_id, ordem").eq("company_id", cid).order("ordem", { ascending: true }),
-      supabase.from("crm_cards").select("*").eq("company_id", cid).or("tipo_contato.is.null,tipo_contato.neq.interno").order("ultima_em", { ascending: false }),
+      (async () => {
+        const all: any[] = [];
+        const CHUNK = 1000;
+        for (let i = 0; i < 10; i++) {
+          const from = i * CHUNK;
+          const to = from + CHUNK - 1;
+          const { data, error } = await supabase
+            .from("crm_cards")
+            .select("*")
+            .eq("company_id", cid)
+            .not("stage_id", "is", null)
+            .or("tipo_contato.is.null,tipo_contato.neq.interno")
+            .order("ultima_em", { ascending: false })
+            .range(from, to);
+          if (error) throw error;
+          if (data && data.length > 0) {
+            all.push(...data);
+            if (data.length < CHUNK) break;
+          } else {
+            break;
+          }
+        }
+        return { data: all };
+      })(),
       supabase.from("company_user").select("user_id").eq("company_id", cid).eq("ativo", true),
       supabase.from("agent_config").select("id,nome,tipo,nome_agente,avatar_traits").eq("company_id", cid).order("nome", { ascending: true }),
       supabase.from("crm_distribution_queues").select("id,nome,ativo").eq("company_id", cid).eq("ativo", true).order("nome", { ascending: true }),
@@ -413,8 +436,8 @@ function KanbanPage() {
     const m: Record<string, LeadCard[]> = {};
     stages.forEach((s) => (m[s.id] = []));
     cards.forEach((c) => {
-      const sid = c.stage_id && m[c.stage_id] ? c.stage_id : stages[0]?.id;
-      if (sid) (m[sid] ||= []).push(c);
+      const sid = c.stage_id && m[c.stage_id] ? c.stage_id : null;
+      if (sid && m[sid]) (m[sid] ||= []).push(c);
     });
     return m;
   }, [cards, stages]);
