@@ -28,29 +28,52 @@ export const Route = createFileRoute("/api/public/ai-health")({
         }
         const model = url.searchParams.get("model") || "google/gemini-2.5-flash";
         const t0 = Date.now();
-        try {
-          const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${key}`,
-              "Lovable-API-Key": key,
-              "Content-Type": "application/json",
-              "X-Lovable-AIG-SDK": "fetch",
-            },
-            body: JSON.stringify({
+
+        const isAnthropic = model.startsWith("anthropic/");
+        const endpoint = isAnthropic
+          ? "https://ai.gateway.lovable.dev/v1/messages"
+          : "https://ai.gateway.lovable.dev/v1/chat/completions";
+
+        const headers: Record<string, string> = {
+          "Authorization": `Bearer ${key}`,
+          "Lovable-API-Key": key,
+          "Content-Type": "application/json",
+          "X-Lovable-AIG-SDK": "fetch",
+        };
+        if (isAnthropic) {
+          headers["anthropic-version"] = "2023-06-01";
+        }
+
+        const payload = isAnthropic
+          ? {
+              model,
+              max_tokens: 1024,
+              messages: [{ role: "user", content: "ping" }],
+            }
+          : {
               model,
               messages: [{ role: "user", content: "ping" }],
-            }),
+            };
+
+        try {
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(payload),
           });
           const body = await res.text();
           let parsed: any = null;
           try { parsed = JSON.parse(body); } catch {}
+          const reply = isAnthropic
+            ? parsed?.content?.[0]?.text || null
+            : parsed?.choices?.[0]?.message?.content || null;
+
           return Response.json({
             ok: res.ok,
             status: res.status,
             model,
             ms: Date.now() - t0,
-            reply: parsed?.choices?.[0]?.message?.content || null,
+            reply,
             detalhe: res.ok ? undefined : body.slice(0, 300),
           });
         } catch (e: any) {
