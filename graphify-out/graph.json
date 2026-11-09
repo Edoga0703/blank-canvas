@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-09T05:44:18.444056+00:00",
+  "generated_at": "2026-11-09T05:53:47.611227+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -1279,7 +1279,7 @@
     },
     {
       "path": "src/lib/lovable-ai.server.ts",
-      "bytes": 11998
+      "bytes": 14968
     },
     {
       "path": "src/lib/whatsapp.functions.ts",
