@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-09T16:18:56.587758+00:00",
+  "generated_at": "2026-11-09T17:03:25.250152+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -11,7 +11,7 @@
     },
     {
       "path": "package.json",
-      "bytes": 4127
+      "bytes": 4156
     },
     {
       "path": "vite.config.ts",
@@ -63,7 +63,7 @@
     },
     {
       "path": "package-lock.json",
-      "bytes": 549871
+      "bytes": 550408
     },
     {
       "path": "drizzle.config.ts",
@@ -627,7 +627,7 @@
     },
     {
       "path": "src/lib/audio-remux.server.ts",
-      "bytes": 1501
+      "bytes": 1180
     },
     {
       "path": "src/lib/comercial-stats.functions.ts",
@@ -1003,7 +1003,7 @@
     },
     {
       "path": "src/lib/wa-dispatch.server.ts",
-      "bytes": 13154
+      "bytes": 13010
     },
     {
       "path": "src/lib/agendamentos-dispatch.server.ts",
@@ -1119,7 +1119,7 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 33129
+      "bytes": 32844
     },
     {
       "path": "src/lib/crm-lead-context.server.ts",
@@ -1132,6 +1132,10 @@
     {
       "path": "src/lib/br-phone.ts",
       "bytes": 6974
+    },
+    {
+      "path": "src/lib/audio-remux-browser.ts",
+      "bytes": 1054
     },
     {
       "path": "src/lib/whatsapp-helpers.ts",
@@ -1863,7 +1867,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 209968
+      "bytes": 210571
     },
     {
       "path": "src/routes/app/configuracoes.tsx",
@@ -3673,27 +3677,7 @@
     },
     {
       "source": "src/lib/audio-remux.server.ts",
-      "target": "node:child_process"
-    },
-    {
-      "source": "src/lib/audio-remux.server.ts",
-      "target": "node:util"
-    },
-    {
-      "source": "src/lib/audio-remux.server.ts",
-      "target": "node:fs/promises"
-    },
-    {
-      "source": "src/lib/audio-remux.server.ts",
-      "target": "node:os"
-    },
-    {
-      "source": "src/lib/audio-remux.server.ts",
-      "target": "node:path"
-    },
-    {
-      "source": "src/lib/audio-remux.server.ts",
-      "target": "node:crypto"
+      "target": "mediabunny"
     },
     {
       "source": "src/lib/comercial-stats.functions.ts",
@@ -6386,6 +6370,10 @@
     {
       "source": "src/lib/olist.functions.ts",
       "target": "@/lib/webhooks.server"
+    },
+    {
+      "source": "src/lib/audio-remux-browser.ts",
+      "target": "mediabunny"
     },
     {
       "source": "src/lib/whatsapp-helpers.ts",
@@ -9934,6 +9922,10 @@
     {
       "source": "src/routes/app/conversas.tsx",
       "target": "@/lib/ensure-session"
+    },
+    {
+      "source": "src/routes/app/conversas.tsx",
+      "target": "@/lib/audio-remux-browser"
     },
     {
       "source": "src/routes/app/configuracoes.tsx",
