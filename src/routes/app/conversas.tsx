@@ -195,10 +195,12 @@ function getInstanceVisualMeta(
     return { name: "Telegram", color: "#229ED9", lightBg: "#f0f9ff", text: "#0369a1", ring: "rgba(34,158,217,0.3)" };
   }
   if (!instanceId) return null;
-  const idx = instancesList.findIndex((i) => i.id === instanceId);
-  const inst = idx >= 0 ? instancesList[idx] : null;
+  const waOnly = instancesList.filter((i) => !i.provider || i.provider === "dapi" || i.provider === "dapi_official" || i.provider === "official" || (i as any).provider_type === "dapi");
+  const idxInWa = waOnly.findIndex((i) => i.id === instanceId);
+  const idx = idxInWa >= 0 ? idxInWa : instancesList.findIndex((i) => i.id === instanceId);
+  const inst = idxInWa >= 0 ? waOnly[idxInWa] : (idx >= 0 ? instancesList[idx] : null);
   const colorDef = INSTANCE_COLORS[(idx >= 0 ? idx : 0) % INSTANCE_COLORS.length] || INSTANCE_COLORS[0];
-  const name = inst?.display_name || (inst?.numero ? `+${inst.numero}` : inst?.instance_name) || `Línea ${idx + 1}`;
+  const name = inst?.display_name || (inst?.numero ? `+${inst.numero}` : inst?.instance_name) || `Línea ${(idx >= 0 ? idx : 0) + 1}`;
   return {
     name,
     color: colorDef.border,
@@ -2308,6 +2310,7 @@ function ConversasPage() {
                         hasUnofficialInstance={instances.some(i => (i.provider === "dapi" || (i as any).provider_type === "dapi") && (i.status === "connected" || i.status === "open"))}
                         agentTraits={agentConfig?.avatar_traits}
                         agentAvatarUrl={agentConfig?.avatar_url}
+                        instances={instances}
                       />
                     </div>
                   );
@@ -2318,6 +2321,7 @@ function ConversasPage() {
               <Composer
                 active={active}
                 activeName={activeConv?.nome ?? null}
+                channel={getChannel(activeCard, activeConv?.last)}
                 templates={templates}
                 quickReplies={quickReplies}
                 onQuickRepliesChanged={() => void reloadQuickReplies()}
@@ -2337,7 +2341,10 @@ function ConversasPage() {
                 scheduleTarget={{ numero: active, nome: activeCard?.nome ?? activeConv?.nome ?? null, cardId: activeCard?.id }}
                 onLocalMedia={addLocalMedia}
                 onLocalMediaFail={removeLocalMsg}
-
+                instances={instances}
+                activeSendInstance={activeSendInstance}
+                stickyInstance={stickyInstance}
+                onSelectInstance={(id) => setOverrideInstanceId(id)}
               />
 
 
@@ -2743,6 +2750,7 @@ function Bubble({ m, quotedSnippet, companyId, onReply, agentTraits, agentAvatar
                ? "bg-[color:var(--chart-1)] text-primary-foreground rounded-2xl rounded-br-md font-medium"
               : "bg-[color:var(--panel)] text-foreground rounded-2xl rounded-bl-md border border-[color:var(--hairline)]"
           )}
+          style={instanceMeta ? (isOut ? { borderRight: `4px solid ${instanceMeta.color}` } : { borderLeft: `4px solid ${instanceMeta.color}` }) : undefined}
         >
           {!editing && (
             <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
@@ -2771,6 +2779,21 @@ function Bubble({ m, quotedSnippet, companyId, onReply, agentTraits, agentAvatar
             </DropdownMenu>
           )}
 
+          {!isOut && instanceMeta && (
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <span
+                className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                style={{
+                  backgroundColor: instanceMeta.lightBg,
+                  color: instanceMeta.text,
+                  border: `1px solid ${instanceMeta.color}50`,
+                }}
+              >
+                <span className="size-1.5 rounded-full" style={{ backgroundColor: instanceMeta.color }} />
+                <span>Línea: {instanceMeta.name}</span>
+              </span>
+            </div>
+          )}
           {quotedSnippet && (
             <div
               onClick={() => {
@@ -2797,6 +2820,15 @@ function Bubble({ m, quotedSnippet, companyId, onReply, agentTraits, agentAvatar
               <span className="block text-[9.5px] font-bold opacity-80 uppercase tracking-wider">
                 {ia ? "⚡ Agente IA" : automacao ? "🤖 Automação da etapa" : "Atendente"}
               </span>
+              {instanceMeta && (
+                <span
+                  className="inline-flex items-center gap-1 text-[9px] font-semibold px-2 py-0.5 rounded-full bg-white/20 text-white border border-white/25 ml-auto"
+                  title={`Enviado por: ${instanceMeta.name}`}
+                >
+                  <span className="size-1.5 rounded-full" style={{ backgroundColor: instanceMeta.color }} />
+                  <span>{instanceMeta.name}</span>
+                </span>
+              )}
             </div>
           )}
           {media && (
@@ -2926,12 +2958,13 @@ function Bubble({ m, quotedSnippet, companyId, onReply, agentTraits, agentAvatar
 
 /* =============== Composer estilo WhatsApp =============== */
 function Composer({
-  active, activeName, templates, quickReplies, onQuickRepliesChanged, sending, onSendText, companyId, iaAtiva, onAssumir, onEncaminhar, replyTo, onCancelReply,
+  active, activeName, channel = "whatsapp", templates, quickReplies, onQuickRepliesChanged, sending, onSendText, companyId, iaAtiva, onAssumir, onEncaminhar, replyTo, onCancelReply,
   ownerId, currentUserId, ownerNome, agentTraits, agentAvatarUrl, scheduleTarget, onLocalMedia, onLocalMediaFail,
   instances = [], activeSendInstance, stickyInstance, onSelectInstance,
 }: {
   active: string;
   activeName: string | null;
+  channel?: CanalChat;
   templates: MessageTemplate[];
   quickReplies: QuickReply[];
   onQuickRepliesChanged?: () => void;
@@ -2957,6 +2990,11 @@ function Composer({
   onSelectInstance?: (id: string) => void;
 }) {
   const connectedInstances = (instances || []).filter((i) => i.status === "connected" || i.status === "open" || i.provider?.startsWith("meta_") || i.provider === "telegram");
+  const waInstances = (instances || []).filter(
+    (i) =>
+      (!i.provider || i.provider === "dapi" || i.provider === "dapi_official" || i.provider === "official" || (i as any).provider_type === "dapi") &&
+      (i.status === "connected" || i.status === "open")
+  );
   const activeMeta = activeSendInstance ? getInstanceVisualMeta(activeSendInstance.id, activeSendInstance.provider, instances || []) : null;
 
 
@@ -3167,7 +3205,7 @@ function Composer({
     setText("");
     try {
       if (qr.tipo === "audio") {
-        await sendAudioFn({ data: { numero: active, contatoNome: activeName, audio: qr.media_url, midiaUrl: qr.media_url } });
+        await sendAudioFn({ data: { numero: active, contatoNome: activeName, audio: qr.media_url, midiaUrl: qr.media_url, instanceId: activeSendInstance?.id ?? undefined } });
       } else {
         const mediatype = qr.tipo === "imagem" ? "image" : qr.tipo === "video" ? "video" : "document";
         await sendMediaFn({ data: {
@@ -3177,6 +3215,7 @@ function Composer({
           fileName: qr.media_nome || undefined,
           caption: qr.texto || undefined,
           midiaUrl: qr.media_url,
+          instanceId: activeSendInstance?.id ?? undefined,
         } });
       }
     } catch (e: any) {
@@ -3289,6 +3328,7 @@ function Composer({
           fileName: file.name, caption: (caption ?? text).trim() || undefined,
           midiaUrl: null,
           storageKey: uploaded.storageKey,
+          instanceId: activeSendInstance?.id ?? undefined,
         },
       });
       if (caption === undefined) setText("");
@@ -3588,7 +3628,62 @@ function Composer({
       )}
 
       {!recording && (
-        <div className="px-2.5 sm:px-4 pt-2 grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-1.5">
+        <div className="px-2.5 sm:px-4 pt-2 flex items-center gap-1.5 min-w-0">
+          {(channel === "whatsapp" || !channel) && waInstances.length > 1 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 text-[12px] font-semibold hover:bg-emerald-500/20 transition shadow-sm shrink-0"
+                  title="Cambiar línea de WhatsApp para responder"
+                >
+                  <span
+                    className="size-2 rounded-full shrink-0"
+                    style={{ backgroundColor: activeMeta?.color || "#10b981" }}
+                  />
+                  <span className="text-muted-foreground font-normal hidden sm:inline">Responder por:</span>
+                  <span className="font-bold truncate max-w-[120px]">
+                    {activeSendInstance?.display_name || activeSendInstance?.instance_name || "WhatsApp"}
+                  </span>
+                  <ChevronDown className="size-3.5 text-muted-foreground ml-0.5 shrink-0" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-64 p-1 z-50">
+                <div className="px-2.5 py-1.5 text-[10.5px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Elegir línea de WhatsApp
+                </div>
+                {waInstances.map((inst: any) => {
+                  const meta = getInstanceVisualMeta(inst.id, inst.provider, instances || []);
+                  const isSelected = activeSendInstance?.id === inst.id;
+                  const isSticky = stickyInstance?.id === inst.id;
+                  return (
+                    <DropdownMenuItem
+                      key={inst.id}
+                      onClick={() => onSelectInstance?.(inst.id)}
+                      className={cn(
+                        "flex items-center justify-between gap-2 px-2.5 py-2 cursor-pointer rounded-md text-[12.5px]",
+                        isSelected && "bg-accent font-bold"
+                      )}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: meta?.color || "#10b981" }} />
+                        <div className="flex flex-col min-w-0">
+                          <span className="truncate">{inst.display_name || inst.instance_name}</span>
+                          {inst.numero && <span className="text-[10px] text-muted-foreground">+{inst.numero}</span>}
+                        </div>
+                      </div>
+                      {isSticky && (
+                        <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-semibold shrink-0">
+                          Automático
+                        </span>
+                      )}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           <Button
             type="button"
             variant="outline"
@@ -3602,7 +3697,7 @@ function Composer({
           <button type="button" onClick={() => favoritesRef.current?.scrollBy({ left: -220, behavior: "smooth" })} className={`size-7 shrink-0 rounded-full grid place-items-center border border-[color:var(--hairline)] text-muted-foreground hover:bg-[color:var(--panel-2)] ${favoriteScroll.left ? "visible" : "invisible"}`} aria-label="Ver favoritos anteriores" tabIndex={favoriteScroll.left ? 0 : -1}>
             <ChevronLeft className="size-4" />
           </button>
-          <div ref={favoritesRef} className="min-w-0 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div ref={favoritesRef} className="min-w-0 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-1">
           {favoritos.map((qr) => (
             <button
               key={qr.id}
