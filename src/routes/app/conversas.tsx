@@ -17,7 +17,7 @@ import {
   Smile, PanelRightClose, PanelRightOpen, Pencil, Reply, Package, ChevronLeft, ChevronRight, Info, CheckCircle2,
   UserPlus, Users, Inbox, Wifi, WifiOff, Image as ImageIcon, Mic as MicIcon, Video as VideoIcon,
   Filter as FunnelIcon, Check, CheckCheck, Bell, BellOff, Contact as ContactIcon, Ban, RefreshCw,
-  CalendarPlus, Sparkles, Gauge, Download, UserRound,
+  CalendarPlus, Sparkles, Gauge, Download, UserRound, ExternalLink, Phone,
 } from "lucide-react";
 import { SendContactDialog } from "@/components/chat/send-contact-dialog";
 import { AiAssistButton } from "@/components/chat/ai-assist-button";
@@ -161,6 +161,66 @@ interface Msg {
   status_envio?: string | null;
   provider?: string | null;
   instance_id?: string | null;
+  raw_payload?: any;
+}
+
+interface ParsedTemplateData {
+  isTemplate: boolean;
+  title?: string | null;
+  footer?: string | null;
+  templateId?: string | null;
+  buttons: Array<{
+    id?: string;
+    text: string;
+    type?: string;
+    url?: string;
+    phone?: string;
+  }>;
+}
+
+function parseTemplateData(m: Msg): ParsedTemplateData {
+  const raw = (m as any).raw_payload;
+  if (!raw) return { isTemplate: false, buttons: [] };
+
+  const dataLevel = raw?.data?.data || raw?.data || raw;
+  const isTpl =
+    raw?.data?.type === "template" ||
+    raw?.type === "template" ||
+    raw?.data?.type === "interactive" ||
+    raw?.type === "interactive" ||
+    Boolean(dataLevel?.template_id) ||
+    Boolean(dataLevel?.buttons?.length);
+
+  if (!isTpl) return { isTemplate: false, buttons: [] };
+
+  const title = dataLevel?.title || dataLevel?.header?.text || dataLevel?.header || null;
+  const footer = dataLevel?.footer?.text || dataLevel?.footer || null;
+  const templateId = dataLevel?.template_id || raw?.template_id || null;
+
+  let rawButtons: any[] = [];
+  if (Array.isArray(dataLevel?.buttons)) {
+    rawButtons = dataLevel.buttons;
+  } else if (Array.isArray(raw?.data?.buttons)) {
+    rawButtons = raw.data.buttons;
+  } else if (Array.isArray(raw?.buttons)) {
+    rawButtons = raw.buttons;
+  }
+
+  const buttons = rawButtons.map((b: any) => ({
+    id: b.id || b.index || "",
+    text: b.text || b.title || b.display_text || b.id || "Botón",
+    type: b.type || "quick_reply",
+    url: b.url || b.phone_number,
+    phone: b.phone_number || b.phone,
+  }));
+
+  return {
+    isTemplate: true,
+    title,
+    footer,
+    templateId,
+    buttons,
+  };
 }
 
 function getChannel(card?: any, lastMsg?: Msg | null): CanalChat {
@@ -2656,6 +2716,7 @@ function Bubble({ m, quotedSnippet, companyId, onReply, agentTraits, agentAvatar
   const isOut = m.direcao === "saida";
   const ia = m.autor === "ia";
   const automacao = m.autor === "automacao";
+  const templateData = parseTemplateData(m);
   const media = m.midia_tipo && m.midia_url ? { tipo: m.midia_tipo, url: m.midia_url, nome: m.midia_nome, mime: m.midia_mime } : null;
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
   const [busy, setBusy] = useState(false);
@@ -2817,9 +2878,14 @@ function Bubble({ m, quotedSnippet, companyId, onReply, agentTraits, agentAvatar
                 </div>
 
               ) : null}
-              <span className="block text-[9.5px] font-bold opacity-80 uppercase tracking-wider">
-                {ia ? "⚡ Agente IA" : automacao ? "🤖 Automação da etapa" : "Atendente"}
+              <span className="block text-[9.5px] font-bold opacity-80 uppercase tracking-wider flex items-center gap-1.5">
+                {ia ? "⚡ Agente IA" : automacao ? "🤖 Automação da etapa" : templateData.isTemplate ? "📑 Plantilla" : "Atendente"}
               </span>
+              {templateData.isTemplate && !ia && !automacao && (
+                <span className="inline-flex items-center gap-1 text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-white/20 text-white border border-white/25">
+                  Interactivo
+                </span>
+              )}
               {instanceMeta && (
                 <span
                   className="inline-flex items-center gap-1 text-[9px] font-semibold px-2 py-0.5 rounded-full bg-white/20 text-white border border-white/25 ml-auto"
@@ -2863,15 +2929,51 @@ function Bubble({ m, quotedSnippet, companyId, onReply, agentTraits, agentAvatar
               </div>
             </div>
           ) : (
-            m.texto && !(m.midia_tipo === "sticker" || media?.tipo === "sticker" || (m.texto === "Sticker" && ((m as any).raw_payload?.data?.media_url || (m as any).raw_payload?.data?.type === "sticker"))) && !(media && (media.tipo === "audio" || (media.tipo === "document" && m.texto.startsWith("📎")))) && (
-              parseLocationText(m.texto)
-                ? <ChatLocation loc={parseLocationText(m.texto)!} outbound={isOut} />
-                : (
-                  m.texto === "[ÁUDIO]" ? null : (
-                    <FormattedMessageText text={m.texto} isOut={isOut} />
+            <>
+              {templateData.title && (
+                <div className="text-[12.5px] font-bold opacity-95 pb-1 mb-1.5 border-b border-white/20">
+                  {templateData.title}
+                </div>
+              )}
+              {m.texto && !(m.midia_tipo === "sticker" || media?.tipo === "sticker" || (m.texto === "Sticker" && ((m as any).raw_payload?.data?.media_url || (m as any).raw_payload?.data?.type === "sticker"))) && !(media && (media.tipo === "audio" || (media.tipo === "document" && m.texto.startsWith("📎")))) && (
+                parseLocationText(m.texto)
+                  ? <ChatLocation loc={parseLocationText(m.texto)!} outbound={isOut} />
+                  : (
+                    m.texto === "[ÁUDIO]" ? null : (
+                      <FormattedMessageText text={m.texto} isOut={isOut} />
+                    )
                   )
-                )
-            )
+              )}
+              {templateData.footer && (
+                <div className="text-[11px] opacity-75 pt-1 mt-1 italic">
+                  {templateData.footer}
+                </div>
+              )}
+              {templateData.buttons.length > 0 && (
+                <div className="mt-2.5 pt-2 border-t border-white/20 flex flex-col gap-1.5">
+                  {templateData.buttons.map((btn, bIdx) => (
+                    <div
+                      key={bIdx}
+                      className={cn(
+                        "w-full py-1.5 px-3 rounded-lg text-[12px] font-semibold flex items-center justify-center gap-1.5 select-none transition-colors",
+                        isOut
+                          ? "bg-white/15 text-white border border-white/25"
+                          : "bg-muted text-foreground border border-border"
+                      )}
+                    >
+                      {btn.type === "url" ? (
+                        <ExternalLink className="size-3 opacity-80" />
+                      ) : btn.type === "call" || btn.type === "phone_number" ? (
+                        <Phone className="size-3 opacity-80" />
+                      ) : (
+                        <Reply className="size-3 opacity-80" />
+                      )}
+                      <span>{btn.text}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
 
           <div className={cn(

@@ -74,6 +74,7 @@ export const Route = createFileRoute("/api/public/ai-health")({
             model,
             ms: Date.now() - t0,
             reply,
+            usage: parsed?.usage || parsed?.usage_metadata || null,
             detalhe: res.ok ? undefined : body.slice(0, 300),
           });
         } catch (e: any) {
