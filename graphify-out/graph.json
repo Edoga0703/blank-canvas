@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-09T17:03:25.250152+00:00",
+  "generated_at": "2026-11-09T21:05:44.051336+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -1298,6 +1298,10 @@
       "bytes": 6325
     },
     {
+      "path": "src/lib/message-search.functions.ts",
+      "bytes": 4877
+    },
+    {
       "path": "src/lib/cron-auth.server.ts",
       "bytes": 1255
     },
@@ -1867,7 +1871,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 210571
+      "bytes": 226613
     },
     {
       "path": "src/routes/app/configuracoes.tsx",
@@ -2815,7 +2819,7 @@
     },
     {
       "path": "src/components/chat/formatted-message-text.tsx",
-      "bytes": 19500
+      "bytes": 20742
     },
     {
       "path": "src/components/chat/send-contact-dialog.tsx",
@@ -7192,6 +7196,26 @@
       "target": "zod"
     },
     {
+      "source": "src/lib/message-search.functions.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/message-search.functions.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/message-search.functions.ts",
+      "target": "./whatsapp-helpers"
+    },
+    {
+      "source": "src/lib/message-search.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/message-search.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
       "source": "src/lib/meta-message-media.server.ts",
       "target": "@/lib/storage/r2.server"
     },
@@ -9754,6 +9778,10 @@
     {
       "source": "src/routes/app/conversas.tsx",
       "target": "@/components/chat/formatted-message-text"
+    },
+    {
+      "source": "src/routes/app/conversas.tsx",
+      "target": "@/lib/message-search.functions"
     },
     {
       "source": "src/routes/app/conversas.tsx",
