@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-10T03:44:55.878226+00:00",
+  "generated_at": "2026-11-10T04:02:05.073117+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -819,7 +819,7 @@
     },
     {
       "path": "src/lib/utils.ts",
-      "bytes": 169
+      "bytes": 619
     },
     {
       "path": "src/lib/plugin-store.functions.ts",
@@ -1291,7 +1291,7 @@
     },
     {
       "path": "src/lib/whatsapp.functions.ts",
-      "bytes": 48588
+      "bytes": 48751
     },
     {
       "path": "src/lib/training.functions.ts",
@@ -1871,7 +1871,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 227121
+      "bytes": 227209
     },
     {
       "path": "src/routes/app/configuracoes.tsx",
@@ -2819,7 +2819,7 @@
     },
     {
       "path": "src/components/chat/formatted-message-text.tsx",
-      "bytes": 20742
+      "bytes": 20905
     },
     {
       "path": "src/components/chat/send-contact-dialog.tsx",
@@ -6986,6 +6986,10 @@
     {
       "source": "src/lib/whatsapp.functions.ts",
       "target": "./br-phone"
+    },
+    {
+      "source": "src/lib/whatsapp.functions.ts",
+      "target": "./utils"
     },
     {
       "source": "src/lib/whatsapp.functions.ts",
