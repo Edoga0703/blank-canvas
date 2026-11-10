@@ -37,27 +37,32 @@ function parseBlocks(raw: string): {
 
   // Detect [Imagen recibido: ...] or [Documento recibido: ...] or [O cliente enviou...: ...]
   const analysisMatch = text.match(
-    /^\[(Imagen recibid[ao]|Documento recibid[ao]|O cliente enviou um[a]? (?:imagem|documento|v[íi]deo)[^:]*):\s*([\s\S]*?)\]$/i,
+    /^([\s\S]*?)\n*\[(Imagen recibid[ao]|Documento recibid[ao]|O cliente enviou um[a]? (?:imagem|documento|v[íi]deo)[^:]*):\s*([\s\S]*?)\]$/i,
   );
 
   if (analysisMatch) {
-    isAiAnalysis = true;
-    const kind = analysisMatch[1]!.toLowerCase();
-    const content = analysisMatch[2]!.trim();
-    text = content;
-
-    const isDoc = kind.includes("documento");
-    const isPayment = /comprovante|comprobante|transfer[eê]ncia|pago m[oó]vil|banco|operaci[oó]n exitosa|refer[eê]ncia|valor da opera/i.test(
-      content,
-    );
-
-    if (isPayment) {
-      isPaymentVoucher = true;
-      analysisTitle = "Análisis de Comprobante / Pago (IA)";
-    } else if (isDoc) {
-      analysisTitle = "Resumen de Documento (IA)";
+    const userCaption = analysisMatch[1]?.trim();
+    if (userCaption) {
+      text = userCaption;
     } else {
-      analysisTitle = "Análisis Visual de IA";
+      isAiAnalysis = true;
+      const kind = analysisMatch[2]!.toLowerCase();
+      const content = analysisMatch[3]!.trim();
+      text = content;
+
+      const isDoc = kind.includes("documento");
+      const isPayment = /comprovante|comprobante|transfer[eê]ncia|pago m[oó]vil|banco|operaci[oó]n exitosa|refer[eê]ncia|valor da opera/i.test(
+        content,
+      );
+
+      if (isPayment) {
+        isPaymentVoucher = true;
+        analysisTitle = "Análisis de Comprobante / Pago (IA)";
+      } else if (isDoc) {
+        analysisTitle = "Resumen de Documento (IA)";
+      } else {
+        analysisTitle = "Análisis Visual de IA";
+      }
     }
   }
 

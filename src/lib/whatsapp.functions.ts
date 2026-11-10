@@ -1,4 +1,5 @@
 import { normalizePhone } from "./br-phone";
+import { stripAiMediaAnalysis } from "./utils";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
@@ -497,7 +498,7 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
     if (data.replyToMessageId) {
       const { data: orig } = await supabase
         .from("mensagens")
-        .select("whatsapp_message_id,texto,direcao,numero")
+        .select("whatsapp_message_id,texto,direcao,numero,midia_tipo")
         .eq("id", data.replyToMessageId)
         .eq("company_id", companyId)
         .maybeSingle();
@@ -506,14 +507,15 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
         (orig?.numero && data.numero && normalizePhone(orig.numero) === normalizePhone(data.numero));
       if (orig?.whatsapp_message_id && sameContact) {
         validReplyId = data.replyToMessageId;
-        quotedText = orig.texto ?? null;
+        const sanitized = stripAiMediaAnalysis(orig.texto);
+        quotedText = sanitized || (orig.midia_tipo ? `[${orig.midia_tipo}]` : null);
         quoted = {
           key: {
             id: orig.whatsapp_message_id,
             remoteJid: `${orig.numero}@s.whatsapp.net`,
             fromMe: orig.direcao === "saida",
           },
-          message: { conversation: orig.texto ?? "" },
+          message: { conversation: quotedText ?? "" },
         };
       }
     }

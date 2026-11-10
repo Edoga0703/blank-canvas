@@ -27,7 +27,7 @@ function highlightMatchedTextInSnippet(text: string, query: string) {
 import { normalizePhone } from "@/lib/br-phone";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn, stripAiMediaAnalysis } from "@/lib/utils";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -2664,7 +2664,7 @@ function ConversasPage() {
                   const quotedSnippet = quotedMsg
                     ? {
                         sender: quotedMsg.direcao === "saida" ? "Você" : (quotedMsg.contato_nome ?? "Contato"),
-                        text: quotedMsg.texto || (quotedMsg.midia_tipo ? `[${quotedMsg.midia_tipo}]` : ""),
+                        text: stripAiMediaAnalysis(quotedMsg.texto) || (quotedMsg.midia_tipo ? `[${quotedMsg.midia_tipo}]` : ""),
                         id: quotedMsg.id,
                       }
                     : (() => {
@@ -2679,7 +2679,7 @@ function ConversasPage() {
                         if (quotedTxt) {
                           return {
                             sender: "Mensagem citada",
-                            text: quotedTxt,
+                            text: stripAiMediaAnalysis(quotedTxt),
                             id: null,
                           };
                         }
@@ -4057,7 +4057,7 @@ function Composer({
               Respondendo a {replyTo.direcao === "saida" ? "você" : (replyTo.contato_nome ?? "contato")}
             </div>
             <div className="text-[12px] text-muted-foreground truncate">
-              {replyTo.texto || (replyTo.midia_tipo ? `[${replyTo.midia_tipo}]` : "")}
+              {stripAiMediaAnalysis(replyTo.texto) || (replyTo.midia_tipo ? `[${replyTo.midia_tipo}]` : "")}
             </div>
           </div>
           <button type="button" onClick={() => onCancelReply?.()} className="p-1 rounded hover:bg-[color:var(--panel)]" title="Cancelar">
