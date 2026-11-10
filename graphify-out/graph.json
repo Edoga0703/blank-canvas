@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-09T21:35:34.872332+00:00",
+  "generated_at": "2026-11-10T03:44:55.878226+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -731,7 +731,7 @@
     },
     {
       "path": "src/lib/media-understanding.server.ts",
-      "bytes": 7686
+      "bytes": 10420
     },
     {
       "path": "src/lib/agent-ai.functions.ts",
@@ -963,7 +963,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 51739
+      "bytes": 52995
     },
     {
       "path": "src/lib/presence.ts",
@@ -1267,7 +1267,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.server.ts",
-      "bytes": 31253
+      "bytes": 31977
     },
     {
       "path": "src/lib/ensure-session.ts",
@@ -2011,7 +2011,7 @@
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
-      "bytes": 34970
+      "bytes": 34552
     },
     {
       "path": "src/routes/api/public/lead-capture.ts",
@@ -5505,6 +5505,10 @@
     },
     {
       "source": "src/lib/ai-engine.server.ts",
+      "target": "@/lib/media-understanding.server"
+    },
+    {
+      "source": "src/lib/ai-engine.server.ts",
       "target": "./crm-stage-meta"
     },
     {
@@ -6930,6 +6934,10 @@
     {
       "source": "src/lib/crm-lead-analyzer.server.ts",
       "target": "./crm-lead-analyzer.functions"
+    },
+    {
+      "source": "src/lib/crm-lead-analyzer.server.ts",
+      "target": "@/lib/media-understanding.server"
     },
     {
       "source": "src/lib/crm-lead-analyzer.server.ts",
