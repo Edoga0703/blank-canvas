@@ -89,7 +89,7 @@ export async function analyzeLeadInternal(
 
   const { data: messages } = await supabaseAdmin
     .from("mensagens")
-    .select("id, direcao, autor, texto, created_at, midia_tipo")
+    .select("id, direcao, autor, texto, created_at, midia_tipo, midia_url, midia_mime, raw_payload")
     .eq("company_id", companyId)
     .eq("numero", card.numero)
     .order("created_at", { ascending: false })
@@ -207,17 +207,34 @@ export async function analyzeLeadInternal(
   const langLabel = langCode.startsWith("pt") ? "Português" : langCode.startsWith("en") ? "English" : "Español";
   const localeForDates = langCode.startsWith("pt") ? "pt-BR" : langCode.startsWith("en") ? "en-US" : "es-ES";
 
-  const formattedTranscript =
-    orderedMessages.length > 0
-      ? orderedMessages
-          .map((m: any) => {
-            const fecha = m.created_at ? new Date(m.created_at).toLocaleString(localeForDates) : "";
-            const emisor = m.direcao === "entrada" ? `Cliente (${card.nome || card.numero})` : `Asesor / Sistema (${m.autor || "empresa"})`;
-            const contenido = m.texto || (m.midia_tipo ? `[Archivo adjunto: ${m.midia_tipo}]` : "[Mensaje sin texto]");
-            return `[${fecha}] ${emisor}: ${contenido}`;
-          })
-          .join("\n")
-      : `[Captura de Lead (${card.canal_entrada || card.origem || "CRM"})]: ${card.ultima_mensagem || "Lead registrado en el embudo"}`;
+  const { getOrAnalyzeMessageMedia } = await import("@/lib/media-understanding.server");
+  const formattedTranscriptParts: string[] = [];
+  if (orderedMessages.length > 0) {
+    for (const m of orderedMessages) {
+      const fecha = m.created_at ? new Date(m.created_at).toLocaleString(localeForDates) : "";
+      const emisor = m.direcao === "entrada" ? `Cliente (${card.nome || card.numero})` : `Asesor / Sistema (${m.autor || "empresa"})`;
+      let contenido = m.texto || "";
+      if (m.midia_tipo === "image" || m.midia_tipo === "document") {
+        const desc = await getOrAnalyzeMessageMedia(
+          supabaseAdmin,
+          m,
+          companyId,
+          { provider: activeAgent?.ai_provider, model: activeAgent?.ai_model },
+        );
+        if (desc) {
+          contenido = contenido ? `${contenido} [Detalle adjunto: ${desc}]` : `[Detalle adjunto: ${desc}]`;
+        } else if (!contenido) {
+          contenido = `[Archivo adjunto: ${m.midia_tipo}]`;
+        }
+      } else if (!contenido) {
+        contenido = "[Mensaje sin texto]";
+      }
+      formattedTranscriptParts.push(`[${fecha}] ${emisor}: ${contenido}`);
+    }
+  }
+  const formattedTranscript = formattedTranscriptParts.length > 0
+    ? formattedTranscriptParts.join("\n")
+    : `[Captura de Lead (${card.canal_entrada || card.origem || "CRM"})]: ${card.ultima_mensagem || "Lead registrado en el embudo"}`;
 
   const stagesPromptBlock = stages
     .map((s, idx) => {

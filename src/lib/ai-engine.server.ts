@@ -234,16 +234,29 @@ export async function processAiResponse(
     // Busca todas as mensagens de entrada do cliente desde a última resposta
     const { data: unrepliedMsgs } = await (supabaseAdmin as any)
       .from("mensagens")
-      .select("id, texto, created_at")
+      .select("id, texto, created_at, midia_tipo, midia_url, midia_mime, raw_payload")
       .eq("company_id", companyId)
       .eq("numero", number)
       .eq("direcao", "entrada")
       .gt("created_at", lastReplyTime)
       .order("created_at", { ascending: true });
 
-    const unrepliedList = (unrepliedMsgs ?? []).filter((m: any) => m.texto && m.texto.trim().length > 0);
-    const effectiveIncomingText = unrepliedList.length > 0
-      ? unrepliedList.map((m: any) => m.texto.trim()).join("\n")
+    const { getOrAnalyzeMessageMedia } = await import("@/lib/media-understanding.server");
+    const unrepliedRawList = unrepliedMsgs ?? [];
+    const unrepliedTextParts: string[] = [];
+    for (const m of unrepliedRawList) {
+      let t = (m.texto || "").trim();
+      if (m.midia_tipo === "image" || m.midia_tipo === "document") {
+        const desc = await getOrAnalyzeMessageMedia(supabaseAdmin, m, companyId, { provider: cfg.ai_provider, model: cfg.ai_model });
+        if (desc) {
+          t = t ? `${t} [Archivo adjunto: ${desc}]` : `[Archivo adjunto: ${desc}]`;
+        }
+      }
+      if (t) unrepliedTextParts.push(t);
+    }
+    const unrepliedList = unrepliedRawList.filter((m: any) => (m.texto && m.texto.trim().length > 0) || m.midia_url);
+    const effectiveIncomingText = unrepliedTextParts.length > 0
+      ? unrepliedTextParts.join("\n")
       : incomingText;
 
     const unrepliedIdSet = new Set(unrepliedList.map((m: any) => m.id));
@@ -438,7 +451,7 @@ export async function processAiResponse(
     const umaHoraAtras = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: historyMsgs } = await supabaseAdmin
       .from("mensagens")
-      .select("id, autor, texto")
+      .select("id, autor, texto, midia_tipo, midia_url, midia_mime, raw_payload")
       .eq("company_id", companyId)
       .eq("numero", number)
       .gt("created_at", umaHoraAtras)
@@ -446,13 +459,23 @@ export async function processAiResponse(
       .limit(20); 
 
 
-    const history: ChatMsg[] = (historyMsgs ?? [])
-      .filter((m: any) => !unrepliedIdSet.has(m.id))
-      .reverse()
-      .map(m => ({
+    const rawHistoryItems = (historyMsgs ?? []).filter((m: any) => !unrepliedIdSet.has(m.id)).reverse();
+    const history: ChatMsg[] = [];
+    for (const m of rawHistoryItems) {
+      let content = m.texto || "";
+      if (m.midia_tipo === "image" || m.midia_tipo === "document") {
+        const desc = await getOrAnalyzeMessageMedia(supabaseAdmin, m, companyId, { provider: cfg.ai_provider, model: cfg.ai_model });
+        if (desc) {
+          content = content ? `${content}\n[Archivo adjunto: ${desc}]` : `[Archivo adjunto: ${desc}]`;
+        } else if (!content) {
+          content = `[Archivo adjunto: ${m.midia_tipo}]`;
+        }
+      }
+      history.push({
         role: m.autor === "contato" ? "user" : "assistant",
-        content: m.texto || ""
-      }));
+        content: content || "",
+      });
+    }
 
     // 4. Buscar estágios do CRM e o catálogo (produtos + serviços) para o prompt
     const [stages, { data: catRows }] = await Promise.all([

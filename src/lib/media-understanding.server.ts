@@ -87,6 +87,7 @@ export async function describeIncomingFile(
   tipo: "image" | "video" | "document",
   mime?: string | null,
   caption?: string | null,
+  options?: { provider?: string; model?: string },
 ): Promise<string | null> {
   const file = await download(url);
   if (!file) return null;
@@ -107,11 +108,20 @@ export async function describeIncomingFile(
     content.push({ type: "file", file: { filename: "documento.pdf", file_data: dataUrl } });
   }
 
+  let selectedModel = "openai/gpt-4o-mini";
+  if (options?.model && !options.model.startsWith("google/")) {
+    selectedModel = options.model.includes("/") ? options.model : `openai/${options.model}`;
+  } else if (options?.provider === "anthropic") {
+    selectedModel = "anthropic/claude-3-5-sonnet-latest";
+  } else if (options?.provider === "gemini") {
+    selectedModel = "google/gemini-2.5-flash";
+  }
+
   const res = await fetch(`${GATEWAY}/chat/completions`, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey()}`, "Lovable-API-Key": apiKey(), "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: selectedModel,
       messages: [{ role: "user", content }],
     }),
   });
@@ -179,5 +189,78 @@ export async function understandIncomingMedia(params: {
   } catch (e: any) {
     console.warn("[media-understanding] failed:", e?.message);
   }
+  return null;
+}
+
+/**
+ * Obtiene la descripción de una imagen/documento desde el caché (raw_payload.ai_media_description)
+ * o la analiza UNA ÚNICA VEZ y la persiste en PostgreSQL para futuros contextos (atención IA y análisis de leads).
+ * Evita llamadas redundantes y ahorra el 100% de tokens de visión repetidos.
+ */
+export async function getOrAnalyzeMessageMedia(
+  supabaseAdmin: any,
+  msg: {
+    id: string;
+    midia_url?: string | null;
+    midia_tipo?: string | null;
+    midia_mime?: string | null;
+    texto?: string | null;
+    raw_payload?: any;
+  },
+  companyId: string,
+  options?: { provider?: string; model?: string },
+): Promise<string | null> {
+  if (!msg.midia_url || (msg.midia_tipo !== "image" && msg.midia_tipo !== "document")) {
+    return null;
+  }
+
+  // 1. Verificar si ya fue analizado previamente (Caché persistido en BD)
+  const cached =
+    msg.raw_payload?.ai_media_description ||
+    (typeof msg.raw_payload === "object" && msg.raw_payload !== null
+      ? (msg.raw_payload as any).ai_media_description
+      : null);
+
+  if (cached && typeof cached === "string" && cached.trim().length > 0) {
+    return cached.trim();
+  }
+
+  // 2. Si no está en caché, analizar una única vez
+  try {
+    const desc = await describeIncomingFile(
+      msg.midia_url,
+      msg.midia_tipo as "image" | "document",
+      msg.midia_mime,
+      msg.texto,
+      options,
+    );
+
+    if (desc && desc.trim().length > 0) {
+      const cleanDesc = desc.trim();
+      // 3. Guardar en raw_payload para reusar en futuros contextos
+      const currentPayload =
+        typeof msg.raw_payload === "object" && msg.raw_payload !== null
+          ? { ...msg.raw_payload }
+          : {};
+      currentPayload.ai_media_description = cleanDesc;
+      currentPayload.ai_media_analyzed_at = new Date().toISOString();
+
+      if (msg.id && supabaseAdmin) {
+        await supabaseAdmin
+          .from("mensagens")
+          .update({ raw_payload: currentPayload })
+          .eq("id", msg.id);
+      }
+
+      if (msg.raw_payload && typeof msg.raw_payload === "object") {
+        msg.raw_payload.ai_media_description = cleanDesc;
+      }
+
+      return cleanDesc;
+    }
+  } catch (err: any) {
+    console.warn("[getOrAnalyzeMessageMedia] Error analyzing media:", err?.message);
+  }
+
   return null;
 }

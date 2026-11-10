@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { ingestMessagingEvent } from "@/lib/messaging/ingest.server";
 import { dapiDownloadMedia } from "@/lib/dapi.server";
-import { transcribeIncomingAudio, describeIncomingFile } from "@/lib/media-understanding.server";
+import { transcribeIncomingAudio } from "@/lib/media-understanding.server";
 
 /**
  * Helper forense para extraer JID, número telefónico y nombre desde cualquier formato
@@ -732,15 +732,7 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
                 }
               }
 
-              // Entendimiento de imagen/documento por IA (comprobantes / catálogos)
-              if ((dataType === "image" || dataType === "document") && mediaUrl) {
-                const originalCaption = text;
-                const desc = await describeIncomingFile(mediaUrl, dataType as "image" | "document", mimeType, originalCaption);
-                if (desc) {
-                  const aiBlock = `[${dataType === "document" ? "Documento" : "Imagen"} recibido: ${desc}]`;
-                  text = originalCaption ? `${originalCaption}\n\n${aiBlock}` : aiBlock;
-                }
-              }
+              // El análisis de imágenes ya no se ejecuta automáticamente en el webhook para evitar gasto de créditos innecesarios. Se analiza bajo demanda solo si la IA atiende o en análisis de leads.
             }
 
             // Preservar y elevar metadatos de anuncio (CTWA / referral / contextInfo)
