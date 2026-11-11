@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T08:10:22.120477+00:00",
+  "generated_at": "2026-11-11T08:20:17.276884+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -2695,15 +2695,15 @@
     },
     {
       "path": "src/components/content/omnichannel-comments-inbox.tsx",
-      "bytes": 17713
+      "bytes": 22912
     },
     {
       "path": "src/components/content/omnichannel-publisher.tsx",
-      "bytes": 33193
+      "bytes": 48504
     },
     {
       "path": "src/components/content/omnichannel-analytics.tsx",
-      "bytes": 16498
+      "bytes": 21080
     },
     {
       "path": "src/components/master/nova-empresa-form.tsx",
