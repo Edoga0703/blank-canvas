@@ -1,0 +1,15 @@
+services:
+  telegram-gateway:
+    build: .
+    container_name: capiversa-telegram-gateway
+    restart: unless-stopped
+    ports:
+      - "3005:3005"
+    environment:
+      - PORT=3005
+      - GATEWAY_SECRET=${GATEWAY_SECRET:-capiversa-mtproto-dev-secret-2026}
+      - TELEGRAM_API_ID=${TELEGRAM_API_ID:-}
+      - TELEGRAM_API_HASH=${TELEGRAM_API_HASH:-}
+      - SESSIONS_DATA_DIR=/app/.sessions
+    volumes:
+      - ./data/sessions:/app/.sessions

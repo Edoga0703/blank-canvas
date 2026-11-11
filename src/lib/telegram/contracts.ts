@@ -42,3 +42,57 @@ export function conversationKey(p: TelegramPeerRef): string {
 export function channelMessageKey(channelId: string, messageId: string): string {
   return `tg:${channelId}:${messageId}`;
 }
+
+// =========================================================================
+// Contratos de Pasarela MTProto (Gateway Sidecar Desacoplado)
+// =========================================================================
+
+export type TelegramQrSessionStatus =
+  | "waiting_qr"
+  | "waiting_password"
+  | "authorized"
+  | "expired"
+  | "failed";
+
+export interface TelegramChannelInfo {
+  telegramChannelId: string;     // String decimal int64 (ej: "-1001234567890")
+  title: string;
+  username: string | null;
+  visibility: "public" | "private";
+  discussionChatId?: string | null;
+  memberCount: number;
+  canPost: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  canManageDiscussion?: boolean;
+  isLinked?: boolean;
+  socialAccountId?: string | null;
+}
+
+export interface TelegramConnectedAccount {
+  id: string;                    // UUID de telegram_connections
+  companyId: string;
+  transport: TelegramTransport;
+  telegramActorId: string | null;
+  displayName: string | null;
+  username: string | null;
+  status: "pending" | "active" | "degraded" | "revoked" | "disconnected" | "legacy_pending_migration";
+  createdAt: string;
+  channelCount?: number;
+}
+
+export type GatewayCommand =
+  | { type: "start_qr"; companyId: string; connectionId: string; requestId: string }
+  | { type: "check_qr"; companyId: string; sessionId: string; requestId: string }
+  | { type: "complete_password"; companyId: string; sessionId: string; requestId: string; passwordOneTime: string }
+  | { type: "list_channels"; companyId: string; connectionId: string; requestId: string }
+  | { type: "publish"; companyId: string; connectionId: string; requestId: string; fencingEpoch: number; channelId: string; contentTargetId: string; text: string; assetRefs: string[] }
+  | { type: "backfill"; companyId: string; connectionId: string; requestId: string; channelId: string; beforeMessageId?: string; limit: number }
+  | { type: "logout"; companyId: string; connectionId: string; requestId: string };
+
+export type GatewayEvent =
+  | { type: "qr_ready"; connectionId: string; qrLink: string; expiresAt: string }
+  | { type: "password_required"; connectionId: string }
+  | { type: "authorized"; connectionId: string; actorId: string; username?: string; displayName?: string }
+  | { type: "disconnected"; connectionId: string; reason: string }
+  | { type: "telegram_update"; connectionId: string; eventKey: string; body: unknown };
