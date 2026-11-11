@@ -325,6 +325,61 @@ export const Route = createFileRoute("/api/public/chat-media")({
           }
         }
 
+        // 4) Intentar descarga directa desde Telegram si aún no está guardada (mensajes de Telegram)
+        if (msg?.company_id && (msg?.provider === "telegram" || (msg as any)?.canal_chat === "telegram")) {
+          try {
+            const rawTg = (msg.raw_payload as any)?.telegram;
+            const tgPhoto = Array.isArray(rawTg?.photo) ? rawTg.photo[rawTg.photo.length - 1] : null;
+            const tgMedia = tgPhoto || rawTg?.video || rawTg?.voice || rawTg?.audio || rawTg?.document || rawTg?.sticker;
+            const fileId = tgMedia?.file_id;
+
+            if (fileId) {
+              const { data: tgInst } = await supabaseAdmin
+                .from("whatsapp_instances")
+                .select("instance_token")
+                .eq("company_id", msg.company_id)
+                .eq("provider", "telegram")
+                .order("updated_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              const botToken = tgInst?.instance_token;
+              if (botToken) {
+                const { tgDownloadAndStoreMedia } = await import("@/lib/telegram.server");
+                const stored = await tgDownloadAndStoreMedia({
+                  botToken,
+                  fileId,
+                  companyId: msg.company_id,
+                  fileName: msg.midia_nome || "archivo",
+                  mimeType: msg.midia_mime,
+                });
+
+                if (stored?.storageKey) {
+                  await (supabaseAdmin as any).from("message_attachments").upsert({
+                    company_id: msg.company_id,
+                    mensagem_id: msg.id,
+                    attachment_key: stored.sha256,
+                    kind: msg.midia_tipo || (stored.mimeType.startsWith("image/") ? "image" : "document"),
+                    storage_key: stored.storageKey,
+                    storage_url: stored.storageUrl,
+                    mime_type: stored.mimeType,
+                    file_name: stored.fileName,
+                    size_bytes: stored.sizeBytes,
+                    sha256: stored.sha256,
+                    storage_account_id: stored.storageAccountId ?? null,
+                  });
+
+                  const { resolveR2DownloadUrlAsync } = await import("@/lib/storage/r2.server");
+                  const dlUrl = await resolveR2DownloadUrlAsync(stored.storageKey, 3600, stored.storageAccountId);
+                  return proxyStream(dlUrl, request, stored.mimeType, isDownload ? downloadFileName : null);
+                }
+              }
+            }
+          } catch (e) {
+            console.warn("[chat-media] Telegram on-demand fetch error:", e);
+          }
+        }
+
         return new Response("Media not found", { status: 404 });
       },
     },

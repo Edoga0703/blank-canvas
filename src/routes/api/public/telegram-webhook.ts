@@ -42,8 +42,37 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
 
           const companyId = inst?.company_id || tc?.company_id;
           const botToken = (inst?.instance_token || tc?.secret_ref) as string | null;
-          const connectionId = tc?.id || null;
+          let connectionId = tc?.id || null;
           const instanceId = inst?.id || null;
+
+          // Auto-heal: garantir registro em telegram_connections para instâncias legadas
+          if (!connectionId && inst) {
+            try {
+              const { data: createdTc } = await (supabaseAdmin as any)
+                .from("telegram_connections")
+                .upsert(
+                  {
+                    company_id: inst.company_id,
+                    legacy_instance_id: inst.id,
+                    transport: "business_bot",
+                    telegram_actor_id: inst.numero || inst.instance_name.replace(/^tg_/, ""),
+                    display_name: inst.display_name || inst.instance_name,
+                    status: "active",
+                    webhook_endpoint_key: inst.webhook_token,
+                    secret_ref: inst.instance_token,
+                    rights: { can_business_reply: true, auto_healed: true },
+                    updated_at: new Date().toISOString(),
+                  },
+                  { onConflict: "company_id,transport,telegram_actor_id" },
+                )
+                .select("id")
+                .maybeSingle();
+
+              if (createdTc?.id) connectionId = createdTc.id;
+            } catch (healErr) {
+              console.warn("[telegram-webhook] Auto-heal telegram_connections aviso:", healErr);
+            }
+          }
 
           // 2. Conexão Telegram Business estabelecida ou revogada
           if (update?.business_connection) {
@@ -202,6 +231,14 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
             return new Response("no content", { status: 200 });
           }
 
+          const fallbackLabel =
+            mediaType === "image" ? "[Foto]"
+            : mediaType === "video" ? "[Vídeo]"
+            : mediaType === "audio" ? "[Áudio]"
+            : mediaType === "sticker" ? "[Sticker]"
+            : "[Documento]";
+          const finalTexto = texto || (mediaProxiedUrl ? "[Mídia]" : fallbackLabel);
+
           const from = msg.from ?? {};
           const senderName =
             [from.first_name, from.last_name].filter(Boolean).join(" ") ||
@@ -212,7 +249,7 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
           const autor = isMerchantEcho ? "atendente" : "contato";
           const statusEnvio = isMerchantEcho ? "enviado" : "recebido";
 
-          // 7. Persistir mensagem no banco
+          // 7. Persistir mensagem no banco com rastreamento integral
           const { data: insertedMsg } = await (supabaseAdmin as any)
             .from("mensagens")
             .insert({
@@ -220,9 +257,11 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
               company_id: companyId,
               instance_id: instanceId,
               numero: String(chatId),
-              texto: texto || (mediaProxiedUrl ? "[Mídia]" : ""),
+              contato_nome: senderName,
+              provider: "telegram",
+              texto: finalTexto,
               midia_url: mediaProxiedUrl,
-              midia_tipo: mediaProxiedUrl ? mediaType : null,
+              midia_tipo: mediaProxiedUrl ? mediaType : (mediaFileId ? mediaType : null),
               midia_mime: storedAttachment?.mimeType || mediaMime,
               midia_nome: storedAttachment?.fileName || mediaFileName,
               direcao,
@@ -230,6 +269,7 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
               canal_chat: "telegram",
               autor,
               status_envio: statusEnvio,
+              raw_payload: { telegram: msg, update_id: update?.update_id },
               created_at: new Date().toISOString(),
             })
             .select("id")

@@ -126,12 +126,29 @@ async function assertMetaWindowForInstance(inst: WaInstance, numero: string) {
 async function getTelegramBusinessConnection(inst: WaInstance): Promise<string | null> {
   if (!inst.company_id) return null;
   try {
-    const { data } = await (supabaseAdmin as any)
+    let connectionId: string | null = null;
+    if (inst.instance_token) {
+      const { data: tc } = await (supabaseAdmin as any)
+        .from("telegram_connections")
+        .select("id")
+        .eq("company_id", inst.company_id)
+        .eq("secret_ref", inst.instance_token)
+        .maybeSingle();
+      connectionId = tc?.id ?? null;
+    }
+
+    let query = (supabaseAdmin as any)
       .from("telegram_business_bindings")
       .select("business_connection_id, can_reply, is_active")
       .eq("company_id", inst.company_id)
       .eq("is_active", true)
-      .eq("can_reply", true)
+      .eq("can_reply", true);
+
+    if (connectionId) {
+      query = query.eq("connection_id", connectionId);
+    }
+
+    const { data } = await query
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -293,21 +310,10 @@ export async function waSendAudio(inst: WaInstance, numero: string, audioBase64O
   if (inst.provider === "telegram") {
     if (!inst.instance_token) throw new Error(`Token do Telegram ausente para conexão ${inst.instance_name}`);
     const businessConnectionId = await getTelegramBusinessConnection(inst);
-    const { tgSendAudio, tgSendBusinessMedia } = await import("./telegram.server");
-    if (businessConnectionId) {
-      return tgSendBusinessMedia(
-        inst.instance_token,
-        businessConnectionId,
-        numero,
-        {
-          mediatype: "audio",
-          media: audioBase64OrUrl,
-          fileName: "audio.ogg",
-          mimetype: "audio/ogg",
-        },
-      );
-    }
-    return tgSendAudio(inst.instance_token, numero, audioBase64OrUrl);
+    const { tgSendAudio } = await import("./telegram.server");
+    return tgSendAudio(inst.instance_token, numero, audioBase64OrUrl, {
+      businessConnectionId,
+    });
   }
   if (inst.provider === "dapi_official") {
     await assertMetaWindowForInstance(inst, numero);

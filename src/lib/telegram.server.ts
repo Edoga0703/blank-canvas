@@ -57,6 +57,14 @@ export async function tgGetWebhookInfo(token: string) {
   return tg(token, "getWebhookInfo") as Promise<any>;
 }
 
+function parseNumericMessageId(rawId?: string | number | null): number | null {
+  if (rawId === null || rawId === undefined) return null;
+  const digits = String(rawId).replace(/\D/g, "");
+  if (!digits) return null;
+  const n = parseInt(digits, 10);
+  return !isNaN(n) && n > 0 ? n : null;
+}
+
 export async function tgSendText(
   token: string,
   chatId: string,
@@ -70,8 +78,9 @@ export async function tgSendText(
   if (options?.businessConnectionId) {
     payload.business_connection_id = options.businessConnectionId;
   }
-  if (options?.replyToMessageId) {
-    payload.reply_parameters = { message_id: Number(options.replyToMessageId) };
+  const replyId = parseNumericMessageId(options?.replyToMessageId);
+  if (replyId) {
+    payload.reply_parameters = { message_id: replyId };
   }
   const r: any = await tg(token, "sendMessage", payload);
   return { key: { id: String(r?.message_id ?? "") }, messageId: r?.message_id };
@@ -153,8 +162,9 @@ async function sendFile(
       if (opts?.businessConnectionId) {
         payload.business_connection_id = opts.businessConnectionId;
       }
-      if (opts?.replyToMessageId) {
-        payload.reply_parameters = { message_id: Number(opts.replyToMessageId) };
+      const replyId = parseNumericMessageId(opts?.replyToMessageId);
+      if (replyId) {
+        payload.reply_parameters = { message_id: replyId };
       }
       const r: any = await tg(token, method, payload);
       return { key: { id: String(r?.message_id ?? "") }, messageId: r?.message_id };
@@ -173,8 +183,9 @@ async function sendFile(
     form.append("business_connection_id", opts.businessConnectionId);
   }
   if (opts?.caption) form.append("caption", opts.caption);
-  if (opts?.replyToMessageId) {
-    form.append("reply_parameters", JSON.stringify({ message_id: Number(opts.replyToMessageId) }));
+  const replyIdForm = parseNumericMessageId(opts?.replyToMessageId);
+  if (replyIdForm) {
+    form.append("reply_parameters", JSON.stringify({ message_id: replyIdForm }));
   }
   form.append(field, blob, filename);
 
