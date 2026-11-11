@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T13:16:30.178598+00:00",
+  "generated_at": "2026-11-11T16:07:55.590591+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -546,6 +546,10 @@
       "bytes": 7324
     },
     {
+      "path": "supabase/migrations/20261111060000_social_credentials_vault_and_queue_integrity.sql",
+      "bytes": 4180
+    },
+    {
       "path": "supabase/migrations/20261111020000_scheduled_posts_and_crm_worker_hardening.sql",
       "bytes": 1022
     },
@@ -624,6 +628,10 @@
     {
       "path": "docs/sql/20261111010000_hybrid_storage_pool_and_google_drive.sql",
       "bytes": 7324
+    },
+    {
+      "path": "docs/sql/20261111060000_social_credentials_vault_and_queue_integrity.sql",
+      "bytes": 4180
     },
     {
       "path": "docs/sql/20261111020000_scheduled_posts_and_crm_worker_hardening.sql",
@@ -723,7 +731,7 @@
     },
     {
       "path": "src/lib/social-content.types.ts",
-      "bytes": 5496
+      "bytes": 5524
     },
     {
       "path": "src/lib/business-hours.ts",
@@ -1347,7 +1355,7 @@
     },
     {
       "path": "src/lib/message-search.functions.ts",
-      "bytes": 8837
+      "bytes": 9069
     },
     {
       "path": "src/lib/cron-auth.server.ts",
@@ -1407,7 +1415,7 @@
     },
     {
       "path": "src/lib/omnichannel-content.functions.ts",
-      "bytes": 18796
+      "bytes": 18935
     },
     {
       "path": "src/lib/meta-response-window.server.ts",
@@ -1955,7 +1963,7 @@
     },
     {
       "path": "src/routes/app/automacoes.$workflowId.tsx",
-      "bytes": 85842
+      "bytes": 87590
     },
     {
       "path": "src/routes/app/treinamentos.index.tsx",
@@ -2751,7 +2759,7 @@
     },
     {
       "path": "src/components/content/omnichannel-publisher.tsx",
-      "bytes": 54809
+      "bytes": 55681
     },
     {
       "path": "src/components/content/omnichannel-analytics.tsx",
@@ -3027,11 +3035,11 @@
     },
     {
       "path": "src/lib/automations/registry.server.ts",
-      "bytes": 18411
+      "bytes": 21926
     },
     {
       "path": "src/lib/automations/queue.server.ts",
-      "bytes": 17206
+      "bytes": 17318
     },
     {
       "path": "src/lib/automations/conversation-control.server.ts",
@@ -3051,7 +3059,7 @@
     },
     {
       "path": "src/lib/automations/events.server.ts",
-      "bytes": 12864
+      "bytes": 13063
     },
     {
       "path": "src/lib/automations/functions.ts",
@@ -3147,7 +3155,7 @@
     },
     {
       "path": "src/lib/content/queue.server.ts",
-      "bytes": 14291
+      "bytes": 17239
     },
     {
       "path": "src/lib/content/assets.server.ts",
@@ -3179,7 +3187,7 @@
     },
     {
       "path": "src/lib/content/providers/youtube.server.ts",
-      "bytes": 9285
+      "bytes": 9683
     },
     {
       "path": "src/lib/content/providers/types.ts",
@@ -3195,7 +3203,7 @@
     },
     {
       "path": "src/lib/content/providers/tiktok.server.ts",
-      "bytes": 10155
+      "bytes": 10572
     },
     {
       "path": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
@@ -17918,6 +17926,10 @@
     {
       "source": "src/lib/automations/registry.server.ts",
       "target": "@/lib/wa-dispatch.server"
+    },
+    {
+      "source": "src/lib/automations/registry.server.ts",
+      "target": "@/lib/crm-engine.server"
     },
     {
       "source": "src/lib/automations/registry.server.ts",
