@@ -57,9 +57,6 @@ export interface R2ResolvedConfig {
 
 // Fallback por defecto extraído de variables de entorno (Idéntico a r2.server.ts para 100% retrocompatibilidad)
 const R2_DEFAULTS: Record<string, string> = {
-  R2_ACCOUNT_ID: "3bc2408cba1eadcd78d9ccdb0a8c987d",
-  R2_ACCESS_KEY_ID: "a0048ab1cf7078594e2057b9b31131de",
-  R2_SECRET_ACCESS_KEY: "328e9326f2e6adad6740f7ea6d1cf64ded1d4727e95408ad5fb4451ff5d29a3c",
   R2_BUCKET: "capiversa-media",
   R2_MAX_FILE_BYTES: "524288000", // 500 MB
   R2_SIGNED_URL_TTL_SECONDS: "900",
@@ -70,10 +67,10 @@ export function getDefaultR2EnvConfig(): R2ResolvedConfig {
     return (process.env[name]?.trim() || (process.env as any)?.[name]?.trim() || R2_DEFAULTS[name] || "");
   };
 
-  const accountId = getEnv("R2_ACCOUNT_ID") || R2_DEFAULTS.R2_ACCOUNT_ID;
-  const accessKeyId = getEnv("R2_ACCESS_KEY_ID") || R2_DEFAULTS.R2_ACCESS_KEY_ID;
-  const secretAccessKey = getEnv("R2_SECRET_ACCESS_KEY") || R2_DEFAULTS.R2_SECRET_ACCESS_KEY;
-  const bucket = getEnv("R2_BUCKET") || R2_DEFAULTS.R2_BUCKET;
+  const accountId = getEnv("R2_ACCOUNT_ID");
+  const accessKeyId = getEnv("R2_ACCESS_KEY_ID");
+  const secretAccessKey = getEnv("R2_SECRET_ACCESS_KEY");
+  const bucket = getEnv("R2_BUCKET") || "capiversa-media";
   const publicBaseUrl = (getEnv("R2_PUBLIC_BASE_URL") || "").replace(/\/$/, "") || null;
   const maxFileBytes = Number(getEnv("R2_MAX_FILE_BYTES") || 524288000);
   const signedUrlTtlSeconds = Math.min(604800, Number(getEnv("R2_SIGNED_URL_TTL_SECONDS") || 900));
@@ -87,7 +84,7 @@ export function getDefaultR2EnvConfig(): R2ResolvedConfig {
     maxFileBytes: Number.isSafeInteger(maxFileBytes) && maxFileBytes > 0 ? maxFileBytes : 524288000,
     signedUrlTtlSeconds: Number.isSafeInteger(signedUrlTtlSeconds) && signedUrlTtlSeconds > 0 ? signedUrlTtlSeconds : 900,
     storageAccountId: null,
-    label: "R2 Cuenta Primaria (Sistema)",
+    label: "R2 Conta Primária (Sistema)",
     isFallback: true,
   };
 }
@@ -150,13 +147,15 @@ export async function resolveActiveR2UploadConfig(options?: {
       return getDefaultR2EnvConfig();
     }
 
-    // 2. Consultar estrategia de rotación (smart_failover, round_robin, least_used)
+    // 2. Consultar estratégia de rotación de la empresa específica (o global si aplica)
     let strategy: RotationStrategy = "smart_failover";
-    const { data: poolSettings } = await (supabaseAdmin as any)
-      .from("storage_pool_settings")
-      .select("rotation_strategy")
-      .limit(1)
-      .maybeSingle();
+    let poolQuery = (supabaseAdmin as any).from("storage_pool_settings").select("rotation_strategy");
+    if (options?.companyId) {
+      poolQuery = poolQuery.eq("company_id", options.companyId);
+    } else {
+      poolQuery = poolQuery.is("company_id", null);
+    }
+    const { data: poolSettings } = await poolQuery.limit(1).maybeSingle();
 
     if (poolSettings?.rotation_strategy) {
       strategy = poolSettings.rotation_strategy as RotationStrategy;
@@ -170,21 +169,25 @@ export async function resolveActiveR2UploadConfig(options?: {
       return usage + sizeBytes <= capacity;
     });
 
-    const candidatePool = availableAccounts.length > 0 ? availableAccounts : (accounts as StorageAccountRecord[]);
+    if (availableAccounts.length === 0) {
+      const def = getDefaultR2EnvConfig();
+      if (def.accountId && def.accessKeyId && def.secretAccessKey) {
+        return def;
+      }
+      throw new Error("Capacidade de armazenamento do pool esgotada. Todas as contas R2 estão cheias. Adicione uma nova conta R2 ou ative o arquivamento para Google Drive.");
+    }
 
     let selected: StorageAccountRecord;
 
-    if (strategy === "round_robin" && candidatePool.length > 1) {
-      roundRobinCounter = (roundRobinCounter + 1) % candidatePool.length;
-      selected = candidatePool[roundRobinCounter];
-    } else if (strategy === "least_used" && candidatePool.length > 1) {
-      // Ordenar por menor porcentaje o bytes usados
-      selected = [...candidatePool].sort(
+    if (strategy === "round_robin" && availableAccounts.length > 1) {
+      roundRobinCounter = (roundRobinCounter + 1) % availableAccounts.length;
+      selected = availableAccounts[roundRobinCounter];
+    } else if (strategy === "least_used" && availableAccounts.length > 1) {
+      selected = [...availableAccounts].sort(
         (a, b) => Number(a.current_usage_bytes || 0) - Number(b.current_usage_bytes || 0),
       )[0];
     } else {
-      // smart_failover (por defecto): la primera con espacio disponible según prioridad
-      selected = candidatePool[0];
+      selected = availableAccounts[0];
     }
 
     if (!selected.account_id || !selected.access_key_id || !selected.secret_access_key || !selected.bucket_name) {

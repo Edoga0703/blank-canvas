@@ -1,9 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+function getMediaSigningSecret(): string {
+  const secret = (process.env.MEDIA_SIGNING_SECRET || process.env["MEDIA_SIGNING_SECRET"] || process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+  if (!secret) throw new Error("MEDIA_SIGNING_SECRET não configurada no servidor.");
+  return secret;
+}
+
 export function generateMediaToken(messageId: string, ttlMs = 86400000): { sig: string; exp: number } {
   const exp = Date.now() + ttlMs;
-  const secret = (process.env.MEDIA_SIGNING_SECRET || process.env["MEDIA_SIGNING_SECRET"] || "capiconversa_media_signing_secret_998877").trim();
+  const secret = getMediaSigningSecret();
   const sig = createHmac("sha256", secret).update(`${messageId}:${exp}`).digest("hex");
   return { sig, exp };
 }
@@ -12,7 +18,7 @@ function verifyMediaToken(messageId: string, sig: string, expStr: string): boole
   if (!messageId || !sig || !expStr) return false;
   const exp = parseInt(expStr, 10);
   if (isNaN(exp) || exp < Date.now()) return false;
-  const secret = (process.env.MEDIA_SIGNING_SECRET || process.env["MEDIA_SIGNING_SECRET"] || "capiconversa_media_signing_secret_998877").trim();
+  const secret = getMediaSigningSecret();
   const expected = createHmac("sha256", secret).update(`${messageId}:${exp}`).digest("hex");
   if (!/^[a-f0-9]{64}$/i.test(sig)) return false;
   const a = Buffer.from(expected, "hex");
@@ -188,10 +194,10 @@ export const Route = createFileRoute("/api/public/chat-media")({
         const fallbackMime = msg?.midia_mime || attachment?.mime_type || "application/octet-stream";
         const downloadFileName = customFilename || msg?.midia_nome || attachment?.file_name || "archivo";
 
-        // Caso R2 con storage_key
+        // Caso R2 con storage_key: resolución asíncrona para soportar múltiples cuentas sin depender de caché local
         if (attachment?.storage_key) {
-          const { createR2DownloadUrl } = await import("@/lib/storage/r2.server");
-          const downloadUrl = createR2DownloadUrl(attachment.storage_key, 3600, attachment.storage_account_id);
+          const { resolveR2DownloadUrlAsync } = await import("@/lib/storage/r2.server");
+          const downloadUrl = await resolveR2DownloadUrlAsync(attachment.storage_key, 3600, attachment.storage_account_id);
           return proxyStream(downloadUrl, request, fallbackMime, isDownload ? downloadFileName : null);
         }
 

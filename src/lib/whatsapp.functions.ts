@@ -245,7 +245,6 @@ export const listWhatsappInstances = createServerFn({ method: "POST" })
     for (const instance of allRows) {
       const prov = String(instance.provider || instance.provider_type || "").toLowerCase();
       if (LEGACY_WA_PROVIDERS.has(prov) || !ALLOWED_INSTANCE_PROVIDERS.has(prov)) {
-        if (instance.id) legacyIds.push(instance.id);
         continue;
       }
       validInstances.push({
@@ -253,28 +252,6 @@ export const listWhatsappInstances = createServerFn({ method: "POST" })
         provider: prov,
         provider_type: prov,
       });
-    }
-
-    // Purga automática en caliente de cualquier conexión legada de WhatsApp (Evolution, Uazapi, WaBlast, Lovable)
-    if (legacyIds.length > 0) {
-      try {
-        await (sbAdminTok as any)
-          .from("company_user_instance")
-          .delete()
-          .eq("company_id", companyId)
-          .in("instance_id", legacyIds);
-      } catch (e) {
-        console.warn("[legacy.purge.company_user_instance]", e);
-      }
-      try {
-        await (sbAdminTok as any)
-          .from("whatsapp_instances")
-          .delete()
-          .eq("company_id", companyId)
-          .in("id", legacyIds);
-      } catch (e) {
-        console.warn("[legacy.purge.whatsapp_instances]", e);
-      }
     }
 
     return { instances: sortInstances(validInstances) };

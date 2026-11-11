@@ -120,6 +120,7 @@ import { Route as ApiPublicHooksProcessKanbanReguasRouteImport } from './routes/
 import { Route as ApiPublicHooksProcessMetaLeadsRouteImport } from './routes/api/public/hooks/process-meta-leads'
 import { Route as ApiPublicHooksProcessRelatorioIaRouteImport } from './routes/api/public/hooks/process-relatorio-ia'
 import { Route as ApiPublicHooksProcessRetryQueueRouteImport } from './routes/api/public/hooks/process-retry-queue'
+import { Route as ApiPublicHooksProcessScheduledPostsRouteImport } from './routes/api/public/hooks/process-scheduled-posts'
 import { Route as ApiPublicHooksWhatsappWatchdogRouteImport } from './routes/api/public/hooks/whatsapp-watchdog'
 import { Route as ApiPublicMetaOauthCallbackRouteImport } from './routes/api/public/meta-oauth.callback'
 import { Route as ApiPublicV1SplatRouteImport } from './routes/api/public/v1/$'
@@ -704,6 +705,12 @@ const ApiPublicHooksProcessRetryQueueRoute =
     path: '/api/public/hooks/process-retry-queue',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksProcessScheduledPostsRoute =
+  ApiPublicHooksProcessScheduledPostsRouteImport.update({
+    id: '/api/public/hooks/process-scheduled-posts',
+    path: '/api/public/hooks/process-scheduled-posts',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksWhatsappWatchdogRoute =
   ApiPublicHooksWhatsappWatchdogRouteImport.update({
     id: '/api/public/hooks/whatsapp-watchdog',
@@ -850,6 +857,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/process-meta-leads': typeof ApiPublicHooksProcessMetaLeadsRoute
   '/api/public/hooks/process-relatorio-ia': typeof ApiPublicHooksProcessRelatorioIaRoute
   '/api/public/hooks/process-retry-queue': typeof ApiPublicHooksProcessRetryQueueRoute
+  '/api/public/hooks/process-scheduled-posts': typeof ApiPublicHooksProcessScheduledPostsRoute
   '/api/public/hooks/whatsapp-watchdog': typeof ApiPublicHooksWhatsappWatchdogRoute
   '/api/public/meta-oauth/callback': typeof ApiPublicMetaOauthCallbackRoute
   '/api/public/v1/$': typeof ApiPublicV1SplatRoute
@@ -966,6 +974,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/process-meta-leads': typeof ApiPublicHooksProcessMetaLeadsRoute
   '/api/public/hooks/process-relatorio-ia': typeof ApiPublicHooksProcessRelatorioIaRoute
   '/api/public/hooks/process-retry-queue': typeof ApiPublicHooksProcessRetryQueueRoute
+  '/api/public/hooks/process-scheduled-posts': typeof ApiPublicHooksProcessScheduledPostsRoute
   '/api/public/hooks/whatsapp-watchdog': typeof ApiPublicHooksWhatsappWatchdogRoute
   '/api/public/meta-oauth/callback': typeof ApiPublicMetaOauthCallbackRoute
   '/api/public/v1/$': typeof ApiPublicV1SplatRoute
@@ -1086,6 +1095,7 @@ export interface FileRoutesById {
   '/api/public/hooks/process-meta-leads': typeof ApiPublicHooksProcessMetaLeadsRoute
   '/api/public/hooks/process-relatorio-ia': typeof ApiPublicHooksProcessRelatorioIaRoute
   '/api/public/hooks/process-retry-queue': typeof ApiPublicHooksProcessRetryQueueRoute
+  '/api/public/hooks/process-scheduled-posts': typeof ApiPublicHooksProcessScheduledPostsRoute
   '/api/public/hooks/whatsapp-watchdog': typeof ApiPublicHooksWhatsappWatchdogRoute
   '/api/public/meta-oauth/callback': typeof ApiPublicMetaOauthCallbackRoute
   '/api/public/v1/$': typeof ApiPublicV1SplatRoute
@@ -1207,6 +1217,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/process-meta-leads'
     | '/api/public/hooks/process-relatorio-ia'
     | '/api/public/hooks/process-retry-queue'
+    | '/api/public/hooks/process-scheduled-posts'
     | '/api/public/hooks/whatsapp-watchdog'
     | '/api/public/meta-oauth/callback'
     | '/api/public/v1/$'
@@ -1323,6 +1334,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/process-meta-leads'
     | '/api/public/hooks/process-relatorio-ia'
     | '/api/public/hooks/process-retry-queue'
+    | '/api/public/hooks/process-scheduled-posts'
     | '/api/public/hooks/whatsapp-watchdog'
     | '/api/public/meta-oauth/callback'
     | '/api/public/v1/$'
@@ -1442,6 +1454,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/process-meta-leads'
     | '/api/public/hooks/process-relatorio-ia'
     | '/api/public/hooks/process-retry-queue'
+    | '/api/public/hooks/process-scheduled-posts'
     | '/api/public/hooks/whatsapp-watchdog'
     | '/api/public/meta-oauth/callback'
     | '/api/public/v1/$'
@@ -1507,6 +1520,7 @@ export interface RootRouteChildren {
   ApiPublicHooksProcessMetaLeadsRoute: typeof ApiPublicHooksProcessMetaLeadsRoute
   ApiPublicHooksProcessRelatorioIaRoute: typeof ApiPublicHooksProcessRelatorioIaRoute
   ApiPublicHooksProcessRetryQueueRoute: typeof ApiPublicHooksProcessRetryQueueRoute
+  ApiPublicHooksProcessScheduledPostsRoute: typeof ApiPublicHooksProcessScheduledPostsRoute
   ApiPublicHooksWhatsappWatchdogRoute: typeof ApiPublicHooksWhatsappWatchdogRoute
   ApiPublicMetaOauthCallbackRoute: typeof ApiPublicMetaOauthCallbackRoute
   ApiPublicV1SplatRoute: typeof ApiPublicV1SplatRoute
@@ -2294,6 +2308,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksProcessRetryQueueRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/process-scheduled-posts': {
+      id: '/api/public/hooks/process-scheduled-posts'
+      path: '/api/public/hooks/process-scheduled-posts'
+      fullPath: '/api/public/hooks/process-scheduled-posts'
+      preLoaderRoute: typeof ApiPublicHooksProcessScheduledPostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/whatsapp-watchdog': {
       id: '/api/public/hooks/whatsapp-watchdog'
       path: '/api/public/hooks/whatsapp-watchdog'
@@ -2550,6 +2571,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksProcessMetaLeadsRoute: ApiPublicHooksProcessMetaLeadsRoute,
   ApiPublicHooksProcessRelatorioIaRoute: ApiPublicHooksProcessRelatorioIaRoute,
   ApiPublicHooksProcessRetryQueueRoute: ApiPublicHooksProcessRetryQueueRoute,
+  ApiPublicHooksProcessScheduledPostsRoute:
+    ApiPublicHooksProcessScheduledPostsRoute,
   ApiPublicHooksWhatsappWatchdogRoute: ApiPublicHooksWhatsappWatchdogRoute,
   ApiPublicMetaOauthCallbackRoute: ApiPublicMetaOauthCallbackRoute,
   ApiPublicV1SplatRoute: ApiPublicV1SplatRoute,

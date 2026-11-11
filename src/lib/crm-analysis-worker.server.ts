@@ -36,8 +36,8 @@ export interface BackgroundReanalysisStatus {
 const SETTING_KEY_STATUS = "crm_background_reanalysis_status";
 const SETTING_KEY_LOCK = "crm_background_worker_lock";
 
-// En memoria por si el proceso permanece activo en el mismo contenedor
-let activeAbortController: AbortController | null = null;
+// En memoria por empresa para aislar completamente las cancelaciones y ejecuciones concurrentes
+const activeAbortControllers = new Map<string, AbortController>();
 
 /**
  * Adquiere el cerrojo distribuido en base de datos con TTL.
@@ -174,9 +174,10 @@ export async function getBackgroundReanalysisStatus(
 export async function pauseBackgroundReanalysis(
   companyId: string,
 ): Promise<{ ok: boolean; message: string }> {
-  if (activeAbortController) {
-    activeAbortController.abort();
-    activeAbortController = null;
+  const controller = activeAbortControllers.get(companyId);
+  if (controller) {
+    controller.abort();
+    activeAbortControllers.delete(companyId);
   }
 
   const current = await getBackgroundReanalysisStatus(companyId);
@@ -273,7 +274,7 @@ export async function startBackgroundReanalysis(
 
   // 4. Iniciar ejecución asíncrona de fondo sin esperar su finalización
   const controller = new AbortController();
-  activeAbortController = controller;
+  activeAbortControllers.set(companyId, controller);
 
   // Ejecución en background desconectada
   void (async () => {
@@ -292,7 +293,7 @@ export async function startBackgroundReanalysis(
       initialStatus.updatedAt = new Date().toISOString();
       await persistWorkerStatus(initialStatus);
     } finally {
-      activeAbortController = null;
+      activeAbortControllers.delete(companyId);
       await releaseDistributedLock(companyId);
     }
   })();
@@ -437,7 +438,22 @@ async function processSingleCardWithGuards(
           if (assignedOwner) extra.owner_id = assignedOwner;
         }
 
-        await moveCardToStage(supabaseAdmin, cardId, suggestedStageId, extra);
+        const movedSuccessfully = await moveCardToStage(
+          supabaseAdmin,
+          cardId,
+          suggestedStageId,
+          extra,
+          {
+            expectedStageId: snapshotStageId,
+            expectedUltimaEm: snapshotUltimaEm,
+          }
+        );
+
+        if (!movedSuccessfully) {
+          console.log(`[Worker.Guard] Abortado movimiento para ${cardId}: colisión evitada por versión optimista.`);
+          return { ok: true, moved: false, metaSent: false };
+        }
+
         didMove = true;
 
         try {
@@ -464,8 +480,13 @@ async function processSingleCardWithGuards(
     if (options.sendMeta) {
       const destLower = (suggestedStageName || "").toLowerCase();
       let eventName = "Lead";
-      if (destLower.includes("ganado") || destLower.includes("cliente activo") || destLower.includes("pago enviado")) {
+      if (
+        (destLower.includes("ganado") || destLower.includes("cliente activo") || destLower.includes("ganho")) &&
+        didMove
+      ) {
         eventName = "Purchase";
+      } else if (destLower.includes("pago enviado")) {
+        eventName = "InitiateCheckout";
       } else if (analysis.result.calificado || analysis.result.intencao === "POSITIVA" || destLower.includes("seguimiento")) {
         eventName = "QualifiedLead";
       }

@@ -269,17 +269,22 @@ export async function executeContactsImport(
           if (item.email) updateCardPatch.email = item.email;
 
           // Actualiza SOLO nombre y fecha en el card (etapa, embudo, dueño e historial quedan 100% intactos)
-          await (supabaseAdmin as any)
+          const { error: cardErr } = await (supabaseAdmin as any)
             .from("crm_cards")
             .update(updateCardPatch)
-            .eq("id", item.id);
+            .eq("id", item.id)
+            .eq("company_id", companyId);
+
+          if (cardErr) throw cardErr;
 
           // Actualiza el nombre del contacto en las conversaciones de mensajes
-          await (supabaseAdmin as any)
+          const { error: msgErr } = await (supabaseAdmin as any)
             .from("mensagens")
             .update({ contato_nome: item.newNome })
             .eq("company_id", companyId)
             .eq("numero", item.numero);
+
+          if (msgErr) throw msgErr;
 
           updatedCount++;
         } catch (e) {
@@ -312,9 +317,9 @@ export async function executeContactsImport(
         numero: c.numero,
         nome: c.nome,
         email: c.email || null,
-        pipeline_id: null,
-        stage_id: null,
-        status: "Contato da agenda",
+        pipeline_id: firstStage?.pipeline_id || null,
+        stage_id: firstStage?.id || null,
+        status: firstStage?.nome || "Contato da agenda",
         tipo_contato: "interno",
         ultima_mensagem: null,
         ultima_em: nowIso,

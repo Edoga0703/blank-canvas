@@ -372,12 +372,18 @@ export async function pickLeadOwner(admin: any, companyId: string, stageId?: str
  * Sem isso, mover para uma etapa de OUTRO funil (ex.: follow up) deixava o card
  * preso visualmente no funil antigo.
  */
+export interface MoveCardConditions {
+  expectedStageId?: string;
+  expectedUltimaEm?: string | null;
+}
+
 export async function moveCardToStage(
   admin: any,
   cardId: string,
   stageId: string,
   extra: Record<string, any> = {},
-): Promise<void> {
+  conditions?: MoveCardConditions,
+): Promise<boolean> {
   const { data: stage } = await admin
     .from("crm_stage")
     .select("id, nome, pipeline_id, tipo, trigger_pipeline_destino, mensagem_prompt")
@@ -435,15 +441,29 @@ export async function moveCardToStage(
     if (patch.regua_status === undefined) patch.regua_status = "pausada";
   }
 
-  const { data: updatedCard, error: updateErr } = await admin
-    .from("crm_cards")
-    .update(patch)
-    .eq("id", cardId)
-    .select("id, stage_id, company_id")
-    .single();
+  let query = admin.from("crm_cards").update(patch).eq("id", cardId);
+  if (conditions?.expectedStageId) {
+    query = query.eq("stage_id", conditions.expectedStageId);
+  }
+  if (conditions?.expectedUltimaEm !== undefined) {
+    if (conditions.expectedUltimaEm === null) {
+      query = query.is("ultima_em", null);
+    } else {
+      query = query.eq("ultima_em", conditions.expectedUltimaEm);
+    }
+  }
 
-  if (updateErr || !updatedCard) {
-    throw updateErr ?? new Error(`No se pudo actualizar la tarjeta ${cardId}`);
+  const { data: updatedCard, error: updateErr } = await query
+    .select("id, stage_id, company_id")
+    .maybeSingle();
+
+  if (updateErr) {
+    throw updateErr;
+  }
+
+  if (!updatedCard) {
+    // Trava de versão otimista acionada: o card foi alterado concorrentemente (humano ou novo chat)
+    return false;
   }
 
   // Webhooks de saída: venda ganha / lead perdido.
@@ -484,6 +504,8 @@ export async function moveCardToStage(
       console.warn("[moveCardToStage.metaCapi] Best-effort error:", e?.message);
     }
   }
+
+  return true;
 }
 
 /**

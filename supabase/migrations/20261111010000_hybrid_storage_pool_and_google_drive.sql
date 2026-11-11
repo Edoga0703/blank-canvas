@@ -1,16 +1,17 @@
 -- ==============================================================================
--- Migración: Pool Rotativo de Almacenamiento Híbrido (Cloudflare R2 + Google Drive)
+-- Migração: Pool Rotativo de Almacenamiento Híbrido (Cloudflare R2 + Google Drive)
 -- Soporta:
 --   1. Pool multi-cuenta de Cloudflare R2 con rotación inteligente (Hot Tier)
 --   2. Bóveda fría masiva en Google Drive (Cold Tier)
 --   3. Mapeo jerárquico Empresa -> Clientes -> Archivos
---   4. 100% retrocompatible con cuentas y archivos existentes
+--   4. RLS blindada: CERO exposición de secretos globales a clientes
+--   5. 100% retrocompatible con cuentas y archivos existentes
 -- ==============================================================================
 
 -- 1. Tabla de Cuentas de Almacenamiento (Pool R2 y Bóvedas Drive)
 CREATE TABLE IF NOT EXISTS public.storage_accounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  company_id uuid REFERENCES public.company(id) ON DELETE CASCADE, -- NULL = Pool global de la plataforma
+  company_id uuid REFERENCES public.company(id) ON DELETE CASCADE, -- NULL = Pool global del sistema (solo accesible por service_role)
   provider text NOT NULL CHECK (provider IN ('cloudflare_r2', 'google_drive', 's3_compatible')),
   label text NOT NULL,
   role text NOT NULL DEFAULT 'hot_pool' CHECK (role IN ('hot_pool', 'cold_archive', 'backup')),
@@ -48,7 +49,7 @@ CREATE TABLE IF NOT EXISTS public.storage_accounts (
 -- 2. Tabla de Configuración de Estrategia del Pool
 CREATE TABLE IF NOT EXISTS public.storage_pool_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  company_id uuid UNIQUE REFERENCES public.company(id) ON DELETE CASCADE, -- NULL = Configuración global
+  company_id uuid REFERENCES public.company(id) ON DELETE CASCADE, -- NULL = Configuración global
   rotation_strategy text NOT NULL DEFAULT 'smart_failover' CHECK (rotation_strategy IN ('smart_failover', 'round_robin', 'least_used')),
   hot_retention_days integer NOT NULL DEFAULT 30,
   auto_archive_enabled boolean NOT NULL DEFAULT true,
@@ -94,32 +95,84 @@ CREATE INDEX IF NOT EXISTS idx_content_posts_tier
 CREATE INDEX IF NOT EXISTS idx_crm_cards_drive_folder 
   ON public.crm_cards (company_id, drive_folder_id);
 
--- 7. RLS (Row Level Security)
+-- 7. RLS (Row Level Security) - BLINDAJE ESTRICTO MULTI-TENANT
 ALTER TABLE public.storage_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.storage_pool_settings ENABLE ROW LEVEL SECURITY;
 
--- Políticas de Seguridad para storage_accounts
+-- Políticas de Seguridad para storage_accounts:
+-- Los usuarios autenticados NUNCA tienen acceso a filas globales (company_id IS NULL)
+-- Solo pueden ver y manipular filas explícitamente pertenecientes a su empresa si tienen rol 'owner' o 'admin'
 DROP POLICY IF EXISTS storage_accounts_owner_admin ON public.storage_accounts;
-CREATE POLICY storage_accounts_owner_admin ON public.storage_accounts
-  FOR ALL TO authenticated
+DROP POLICY IF EXISTS storage_accounts_tenant_select ON public.storage_accounts;
+DROP POLICY IF EXISTS storage_accounts_tenant_mutation ON public.storage_accounts;
+
+CREATE POLICY storage_accounts_tenant_select ON public.storage_accounts
+  FOR SELECT TO authenticated
   USING (
-    company_id IS NULL OR 
-    (EXISTS (SELECT 1 FROM public.company_user cu WHERE cu.company_id = storage_accounts.company_id AND cu.user_id = auth.uid() AND cu.role IN ('owner', 'admin')))
-  )
-  WITH CHECK (
-    company_id IS NULL OR 
-    (EXISTS (SELECT 1 FROM public.company_user cu WHERE cu.company_id = storage_accounts.company_id AND cu.user_id = auth.uid() AND cu.role IN ('owner', 'admin')))
+    company_id IS NOT NULL AND 
+    EXISTS (
+      SELECT 1 FROM public.company_user cu 
+      WHERE cu.company_id = storage_accounts.company_id 
+        AND cu.user_id = auth.uid() 
+        AND cu.role IN ('owner', 'admin')
+    )
   );
 
--- Políticas de Seguridad para storage_pool_settings
-DROP POLICY IF EXISTS storage_pool_settings_owner_admin ON public.storage_pool_settings;
-CREATE POLICY storage_pool_settings_owner_admin ON public.storage_pool_settings
+CREATE POLICY storage_accounts_tenant_mutation ON public.storage_accounts
   FOR ALL TO authenticated
   USING (
-    company_id IS NULL OR 
-    (EXISTS (SELECT 1 FROM public.company_user cu WHERE cu.company_id = storage_pool_settings.company_id AND cu.user_id = auth.uid() AND cu.role IN ('owner', 'admin')))
+    company_id IS NOT NULL AND 
+    EXISTS (
+      SELECT 1 FROM public.company_user cu 
+      WHERE cu.company_id = storage_accounts.company_id 
+        AND cu.user_id = auth.uid() 
+        AND cu.role IN ('owner', 'admin')
+    )
   )
   WITH CHECK (
-    company_id IS NULL OR 
-    (EXISTS (SELECT 1 FROM public.company_user cu WHERE cu.company_id = storage_pool_settings.company_id AND cu.user_id = auth.uid() AND cu.role IN ('owner', 'admin')))
+    company_id IS NOT NULL AND 
+    EXISTS (
+      SELECT 1 FROM public.company_user cu 
+      WHERE cu.company_id = storage_accounts.company_id 
+        AND cu.user_id = auth.uid() 
+        AND cu.role IN ('owner', 'admin')
+    )
+  );
+
+-- Políticas de Seguridad para storage_pool_settings:
+DROP POLICY IF EXISTS storage_pool_settings_owner_admin ON public.storage_pool_settings;
+DROP POLICY IF EXISTS storage_pool_settings_tenant_select ON public.storage_pool_settings;
+DROP POLICY IF EXISTS storage_pool_settings_tenant_mutation ON public.storage_pool_settings;
+
+CREATE POLICY storage_pool_settings_tenant_select ON public.storage_pool_settings
+  FOR SELECT TO authenticated
+  USING (
+    company_id IS NOT NULL AND 
+    EXISTS (
+      SELECT 1 FROM public.company_user cu 
+      WHERE cu.company_id = storage_pool_settings.company_id 
+        AND cu.user_id = auth.uid() 
+        AND cu.role IN ('owner', 'admin')
+    )
+  );
+
+CREATE POLICY storage_pool_settings_tenant_mutation ON public.storage_pool_settings
+  FOR ALL TO authenticated
+  USING (
+    company_id IS NOT NULL AND 
+    EXISTS (
+      SELECT 1 FROM public.company_user cu 
+      WHERE cu.company_id = storage_pool_settings.company_id 
+        AND cu.user_id = auth.uid() 
+        AND cu.role IN ('owner', 'admin')
+    )
+  )
+  WITH CHECK (
+    company_id IS NOT NULL AND 
+    EXISTS (
+      SELECT 1 FROM public.company_user cu 
+      WHERE cu.company_id = storage_pool_settings.company_id 
+        AND cu.user_id = auth.uid() 
+        AND cu.role IN ('owner', 'admin')
+    )
   );

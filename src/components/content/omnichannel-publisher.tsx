@@ -89,12 +89,10 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
     return acc?.display_name || "Sua Empresa";
   }, [accounts]);
 
-  // Seleção de redes
+  // Seleção de redes (TikTok e YouTube em fase de homologação OAuth)
   const [selectedPlatforms, setSelectedPlatforms] = useState<SocialPlatform[]>([
     "instagram",
     "facebook",
-    "tiktok",
-    "youtube",
   ]);
 
   // Mídia
@@ -145,11 +143,16 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
   const [scheduledTime, setScheduledTime] = useState("18:30");
 
   // Preview ativo
-  const [previewPlatform, setPreviewPlatform] = useState<SocialPlatform>("tiktok");
+  const [previewPlatform, setPreviewPlatform] = useState<SocialPlatform>("instagram");
   const [submitting, setSubmitting] = useState(false);
 
   // Alternar plataforma
   const togglePlatform = (p: SocialPlatform) => {
+    if (p === "tiktok" || p === "youtube") {
+      toast.info(`Publicação direta para ${p === "tiktok" ? "TikTok" : "YouTube"} está em fase de homologação OAuth.`);
+      setPreviewPlatform(p);
+      return;
+    }
     setSelectedPlatforms((prev) => {
       const exists = prev.includes(p);
       if (exists && prev.length === 1) {
@@ -445,32 +448,36 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
               <span className="truncate">Facebook</span>
             </button>
 
-            {/* TikTok */}
+            {/* TikTok (Homologação OAuth) */}
             <button
               type="button"
               onClick={() => togglePlatform("tiktok")}
-              className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-semibold transition-all ${
-                selectedPlatforms.includes("tiktok")
-                  ? "bg-foreground/5 border-foreground text-foreground shadow-sm ring-1 ring-foreground"
-                  : "bg-muted/30 border-transparent text-muted-foreground opacity-60 hover:opacity-100"
+              className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-semibold transition-all opacity-60 hover:opacity-80 bg-muted/20 border-dashed border-border ${
+                previewPlatform === "tiktok" ? "ring-1 ring-foreground/30" : ""
               }`}
+              title="Publicação direta em homologação de app OAuth. Clique para alternar preview."
             >
-              <TikTokGlyph className="size-4 text-foreground shrink-0" />
-              <span className="truncate">TikTok</span>
+              <div className="flex items-center gap-1.5 truncate">
+                <TikTokGlyph className="size-4 text-foreground shrink-0" />
+                <span className="truncate">TikTok</span>
+              </div>
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium shrink-0">Em breve</span>
             </button>
 
-            {/* YouTube Shorts */}
+            {/* YouTube Shorts (Homologação OAuth) */}
             <button
               type="button"
               onClick={() => togglePlatform("youtube")}
-              className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-semibold transition-all ${
-                selectedPlatforms.includes("youtube")
-                  ? "bg-[#FF0000]/10 border-[#FF0000] text-foreground shadow-sm ring-1 ring-[#FF0000]"
-                  : "bg-muted/30 border-transparent text-muted-foreground opacity-60 hover:opacity-100"
+              className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-semibold transition-all opacity-60 hover:opacity-80 bg-muted/20 border-dashed border-border ${
+                previewPlatform === "youtube" ? "ring-1 ring-foreground/30" : ""
               }`}
+              title="Publicação direta em homologação de app OAuth. Clique para alternar preview."
             >
-              <YouTubeGlyph className="size-4 text-[#FF0000] shrink-0" />
-              <span className="truncate">YouTube Shorts</span>
+              <div className="flex items-center gap-1.5 truncate">
+                <YouTubeGlyph className="size-4 text-[#FF0000] shrink-0" />
+                <span className="truncate">YouTube</span>
+              </div>
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium shrink-0">Em breve</span>
             </button>
           </div>
         </div>

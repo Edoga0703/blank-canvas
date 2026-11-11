@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { resolveCompanyId } from "./whatsapp-helpers";
+import { resolveCompanyIdCached } from "@/lib/company-cache";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export interface MessageSearchResult {
   id: string;
@@ -10,27 +11,77 @@ export interface MessageSearchResult {
   lead_foto_url: string | null;
   texto: string;
   created_at: string;
-  direcao: "entrada" | "saida";
+  direcao: string;
   autor: string;
   midia_tipo: string | null;
 }
 
+/**
+ * Validação rigorosa de acesso à conversa:
+ * No modo 'atendimento_operacional', atendentes comuns só podem buscar, abrir ou interagir
+ * com conversas de contatos/leads que estejam estritamente atribuídos a eles (crm_cards.owner_id = userId).
+ * Proprietários (owner), administradores (admin) ou empresas sem modo operacional possuem acesso integral.
+ */
+export async function requireConversationAccess(
+  companyId: string,
+  userId: string,
+  numero: string,
+): Promise<boolean> {
+  const [{ data: company }, { data: membership }] = await Promise.all([
+    supabaseAdmin
+      .from("company")
+      .select("atendimento_operacional")
+      .eq("id", companyId)
+      .maybeSingle(),
+    supabaseAdmin
+      .from("company_user")
+      .select("role")
+      .eq("company_id", companyId)
+      .eq("user_id", userId)
+      .maybeSingle(),
+  ]);
+
+  if (!membership) {
+    throw new Error("Acesso negado: usuário não pertence à empresa.");
+  }
+
+  // Proprietários, administradores ou empresas fora do modo operacional têm acesso completo
+  if (["owner", "admin"].includes(membership.role) || !company?.atendimento_operacional) {
+    return true;
+  }
+
+  // Modo operacional restrito: atendente só pode acessar números de cards atribuídos a ele
+  const { data: card } = await supabaseAdmin
+    .from("crm_cards")
+    .select("id, owner_id")
+    .eq("company_id", companyId)
+    .eq("numero", numero)
+    .eq("owner_id", userId)
+    .maybeSingle();
+
+  if (!card) {
+    throw new Error("Acesso negado: esta conversa não está atribuída ao seu usuário.");
+  }
+
+  return true;
+}
+
 export const searchMessagesGlobal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { query: string; limit?: number }) => ({
+  .validator((d: { query: string; limit?: number }) => ({
     query: (d?.query || "").trim(),
-    limit: Math.min(Math.max(d?.limit ?? 40, 5), 100),
+    limit: Math.min(Math.max(d?.limit ?? 30, 5), 100),
   }))
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const { query, limit } = data;
+    const companyId = await resolveCompanyIdCached(supabase, userId);
+
+    const query = data.query;
+    const limit = data.limit;
 
     if (!query || query.length < 2) {
       return { results: [] };
     }
-
-    const companyId = await resolveCompanyId(supabase, userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Verificar se a empresa está em modo operacional e o usuário é atendente restrito
     const [{ data: company }, { data: membership }] = await Promise.all([
@@ -52,13 +103,27 @@ export const searchMessagesGlobal = createServerFn({ method: "POST" })
 
     let allowedNumbers: string[] | null = null;
     if (isAtendente && isOperational) {
-      // Busca quais leads pertencem a esse atendente
-      const { data: userCards } = await supabaseAdmin
-        .from("crm_cards")
-        .select("numero")
-        .eq("company_id", companyId)
-        .eq("owner_id", userId);
-      allowedNumbers = (userCards || []).map((c: any) => c.numero).filter(Boolean);
+      // Busca todos os leads pertencentes a este atendente com paginação para superar limite de 1000
+      const allNumbers: string[] = [];
+      let page = 0;
+      const PAGE_SIZE = 1000;
+      while (true) {
+        const { data: userCards } = await supabaseAdmin
+          .from("crm_cards")
+          .select("numero")
+          .eq("company_id", companyId)
+          .eq("owner_id", userId)
+          .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+        if (!userCards || userCards.length === 0) break;
+        for (const c of userCards) {
+          if (c.numero) allNumbers.push(c.numero);
+        }
+        if (userCards.length < PAGE_SIZE) break;
+        page++;
+      }
+
+      allowedNumbers = allNumbers;
       if (allowedNumbers.length === 0) {
         return { results: [] };
       }
@@ -69,19 +134,31 @@ export const searchMessagesGlobal = createServerFn({ method: "POST" })
       .select("id,numero,contato_nome,texto,created_at,direcao,autor,midia_tipo")
       .eq("company_id", companyId)
       .ilike("texto", `%${query}%`)
-      .order("created_at", { ascending: false })
-      .limit(limit);
+      .order("created_at", { ascending: false });
 
-    if (allowedNumbers && allowedNumbers.length > 0) {
-      msgQuery = msgQuery.in("numero", allowedNumbers);
+    if (allowedNumbers) {
+      if (allowedNumbers.length <= 300) {
+        msgQuery = msgQuery.in("numero", allowedNumbers).limit(limit);
+      } else {
+        // Para carteiras extensas (>300), busca janela maior e filtra com Set em memória
+        // para prevenir erro 414 URI Too Long no PostgREST
+        msgQuery = msgQuery.limit(Math.min(limit * 5, 300));
+      }
+    } else {
+      msgQuery = msgQuery.limit(limit);
     }
 
-    const { data: rows, error } = await msgQuery;
-    if (error || !rows) {
+    const { data: rawRows, error } = await msgQuery;
+    if (error || !rawRows) {
       return { results: [] };
     }
 
-    // Obter dados de contato / lead para enriquecer os resultados com avatar e nome
+    let rows = rawRows;
+    if (allowedNumbers && allowedNumbers.length > 300) {
+      const allowedSet = new Set(allowedNumbers);
+      rows = rawRows.filter((r: any) => allowedSet.has(r.numero)).slice(0, limit);
+    }
+
     const uniqueNumeros = Array.from(new Set(rows.map((r: any) => r.numero)));
     const { data: cards } = await supabaseAdmin
       .from("crm_cards")
@@ -115,14 +192,20 @@ export const searchMessagesGlobal = createServerFn({ method: "POST" })
 
 export const fetchMessagesForContact = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { numero: string; limit?: number }) => ({
+  .validator((d: { numero: string; limit?: number }) => ({
     numero: (d?.numero || "").trim(),
     limit: Math.min(Math.max(d?.limit ?? 150, 20), 500),
   }))
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const companyId = await resolveCompanyId(supabase, userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const companyId = await resolveCompanyIdCached(supabase, userId);
+
+    if (!data.numero) {
+      throw new Error("Número de contato não fornecido.");
+    }
+
+    // Blindagem de permissão: bloqueia atendente de abrir conversas que não são suas
+    await requireConversationAccess(companyId, userId, data.numero);
 
     const MSG_COLS =
       "id,numero,contato_nome,direcao,autor,texto,created_at,user_id,midia_url,midia_tipo,midia_mime,midia_nome,reacao,editado_em,deletado_em,whatsapp_message_id,reply_to_id,status_envio,provider,instance_id,raw_payload";
@@ -135,9 +218,9 @@ export const fetchMessagesForContact = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .limit(data.limit);
 
-    if (error || !rows) {
-      return { messages: [] };
+    if (error) {
+      throw new Error(`Erro ao consultar mensagens: ${error.message}`);
     }
 
-    return { messages: rows };
+    return { messages: rows || [] };
   });

@@ -110,16 +110,16 @@ export const createOmnichannelPost = createServerFn({ method: "POST" })
       .single();
 
     if (postErr || !post) {
-      // Se a tabela ainda não tiver sido criada pelo SQL manual, fallback gracioso
-      console.warn("[createOmnichannelPost] Erro insert content_posts:", postErr?.message);
+      console.error("[createOmnichannelPost] Erro insert content_posts:", postErr?.message);
+      throw new Error(`Falha ao registrar publicação no banco de dados: ${postErr?.message || "erro desconhecido"}`);
     }
 
-    const postId = post?.id ?? `local-${Date.now()}`;
+    const postId = post.id;
 
-    // Insere os alvos na tabela content_post_targets se o post mestre foi gravado
-    if (post?.id && data.targets.length) {
+    // Insere os alvos na tabela content_post_targets
+    if (data.targets.length) {
       const targetRows = data.targets.map((t) => ({
-        post_id: post.id,
+        post_id: postId,
         company_id: companyId,
         platform: t.platform,
         social_account_id: t.socialAccountId || null,
@@ -129,79 +129,28 @@ export const createOmnichannelPost = createServerFn({ method: "POST" })
         status: isScheduled ? "pending" : "publishing",
       }));
 
-      await (supabaseAdmin as any)
+      const { error: targetErr } = await (supabaseAdmin as any)
         .from("content_post_targets")
-        .insert(targetRows)
-        .catch((e: any) => console.warn("[createOmnichannelPost] Erro insert content_post_targets:", e?.message));
+        .insert(targetRows);
+
+      if (targetErr) {
+        console.warn("[createOmnichannelPost] Erro insert content_post_targets:", targetErr.message);
+      }
     }
 
-    const targetResults: Array<{ platform: string; status: string; error?: string; url?: string }> = [];
+    let targetResults: Array<{ platform: string; status: string; error?: string; url?: string }> = [];
 
-    // 2. Se for imediato, orquestra publicação
+    // 2. Se for imediato, orquestra publicação real
     if (!isScheduled) {
-      for (const target of data.targets) {
-        try {
-          const caption = target.customCaption?.trim() || data.baseCaption || "";
-          
-          if (target.platform === "instagram" && target.socialAccountId) {
-            // Busca credenciais da conta Instagram
-            const { data: acc } = await (supabaseAdmin as any)
-              .from("meta_social_accounts")
-              .select("instance_id,ig_user_id")
-              .eq("id", target.socialAccountId)
-              .maybeSingle();
-
-            if (acc?.instance_id && acc?.ig_user_id) {
-              const { data: inst } = await (supabaseAdmin as any)
-                .from("whatsapp_instances")
-                .select("instance_token")
-                .eq("id", acc.instance_id)
-                .maybeSingle();
-
-              if (inst?.instance_token) {
-                const { metaPublishInstagramVideo, metaPublishInstagramPhoto } = await import("./meta-publish.server");
-                if (data.mediaType === "video" && data.mediaUrl) {
-                  const res = await metaPublishInstagramVideo(inst.instance_token, acc.ig_user_id, data.mediaUrl, caption);
-                  targetResults.push({ platform: "instagram", status: "published", url: res?.id });
-                } else if (data.mediaUrl) {
-                  const res = await metaPublishInstagramPhoto(inst.instance_token, acc.ig_user_id, data.mediaUrl, caption);
-                  targetResults.push({ platform: "instagram", status: "published", url: res?.id });
-                }
-              }
-            }
-          } else if (target.platform === "facebook" && target.socialAccountId) {
-            const { data: acc } = await (supabaseAdmin as any)
-              .from("meta_social_accounts")
-              .select("instance_id,page_id")
-              .eq("id", target.socialAccountId)
-              .maybeSingle();
-
-            if (acc?.instance_id && acc?.page_id) {
-              const { data: inst } = await (supabaseAdmin as any)
-                .from("whatsapp_instances")
-                .select("instance_token")
-                .eq("id", acc.instance_id)
-                .maybeSingle();
-
-              if (inst?.instance_token) {
-                const { metaPublishFacebookPost } = await import("./meta-publish.server");
-                const res = await metaPublishFacebookPost(inst.instance_token, acc.page_id, caption, data.mediaUrl || undefined);
-                targetResults.push({ platform: "facebook", status: "published", url: res?.id });
-              }
-            }
-          } else {
-            // TikTok & YouTube (em preparação de credenciais)
-            targetResults.push({
-              platform: target.platform,
-              status: "published",
-              url: `https://${target.platform}.com/preview`,
-            });
-          }
-        } catch (e: any) {
-          console.error(`[createOmnichannelPost] Falha em ${target.platform}:`, e?.message);
-          targetResults.push({ platform: target.platform, status: "failed", error: e?.message });
-        }
-      }
+      const { executePostTargetsPublishing } = await import("./omnichannel-publish.server");
+      targetResults = await executePostTargetsPublishing({
+        postId,
+        companyId,
+        mediaUrl: data.mediaUrl || null,
+        mediaType: data.mediaType,
+        baseCaption: data.baseCaption || null,
+        targets: data.targets,
+      });
     }
 
     return {

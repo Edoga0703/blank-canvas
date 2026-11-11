@@ -14,9 +14,11 @@ export function assertCronRequest(request: Request): Response | null {
   const authHeader = request.headers.get("authorization") ?? "";
   const bearer = authHeader.replace(/^Bearer\s+/i, "").trim();
   const cronHeader = (request.headers.get("x-cron-secret") ?? "").trim();
-  const provided = cronHeader || bearer;
+  const url = new URL(request.url);
+  const querySecret = (url.searchParams.get("secret") ?? "").trim();
+  const provided = cronHeader || bearer || querySecret;
 
-  const cronSecret = (process.env.CRON_SECRET || "capiconversa_cron_secret_7f8a9b2c3d4e5f6a1b2c").trim();
+  const cronSecret = (process.env.CRON_SECRET || "").trim();
 
   if (!cronSecret) {
     return new Response(JSON.stringify({ ok: false, error: "CRON_SECRET não configurado no servidor" }), {
@@ -29,6 +31,9 @@ export function assertCronRequest(request: Request): Response | null {
     return null;
   }
 
-  return new Response("Unauthorized", { status: 401 });
+  return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+    status: 401,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
