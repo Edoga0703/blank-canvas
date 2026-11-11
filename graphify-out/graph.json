@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T21:51:41.680696+00:00",
+  "generated_at": "2026-11-11T22:52:37.897123+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -1075,7 +1075,7 @@
     },
     {
       "path": "src/lib/wa-dispatch.server.ts",
-      "bytes": 14895
+      "bytes": 15062
     },
     {
       "path": "src/lib/agendamentos-dispatch.server.ts",
@@ -1179,7 +1179,7 @@
     },
     {
       "path": "src/lib/telegram.server.ts",
-      "bytes": 10491
+      "bytes": 10882
     },
     {
       "path": "src/lib/department-menu.functions.ts",
@@ -2083,7 +2083,7 @@
     },
     {
       "path": "src/routes/api/public/chat-media.ts",
-      "bytes": 13788
+      "bytes": 16446
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
@@ -2115,7 +2115,7 @@
     },
     {
       "path": "src/routes/api/public/telegram-webhook.ts",
-      "bytes": 13920
+      "bytes": 15741
     },
     {
       "path": "src/routes/api/public/track-click.ts",
@@ -12050,6 +12050,14 @@
     {
       "source": "src/routes/api/public/chat-media.ts",
       "target": "@/lib/dapi.server"
+    },
+    {
+      "source": "src/routes/api/public/chat-media.ts",
+      "target": "@/lib/storage/r2.server"
+    },
+    {
+      "source": "src/routes/api/public/chat-media.ts",
+      "target": "@/lib/telegram.server"
     },
     {
       "source": "src/routes/api/public/chat-media.ts",
