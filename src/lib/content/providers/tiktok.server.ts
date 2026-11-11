@@ -55,7 +55,7 @@ export class TikTokPublisherAdapter implements SocialPublisherAdapter {
     // 1. Busca conta do TikTok no meta_social_accounts isolada por empresa
     const { data: acc, error: accErr } = await (supabaseAdmin as any)
       .from("meta_social_accounts")
-      .select("id, company_id, network, external_id, username, display_name, credentials, status")
+      .select("id, company_id, network, external_id, username, display_name, status")
       .eq("id", socialAccountId)
       .eq("company_id", companyId)
       .maybeSingle();
@@ -74,7 +74,15 @@ export class TikTokPublisherAdapter implements SocialPublisherAdapter {
       );
     }
 
-    const credentials = (acc.credentials || {}) as {
+    // 2. Busca credenciais no cofre seguro social_account_credentials (acesso exclusivo service_role, P0.A)
+    const { data: credRow } = await (supabaseAdmin as any)
+      .from("social_account_credentials")
+      .select("credentials")
+      .eq("account_id", socialAccountId)
+      .eq("company_id", companyId)
+      .maybeSingle();
+
+    const credentials = (credRow?.credentials || (acc as any)?.credentials || {}) as {
       access_token?: string;
       refresh_token?: string;
       open_id?: string;
@@ -89,7 +97,7 @@ export class TikTokPublisherAdapter implements SocialPublisherAdapter {
       );
     }
 
-    // 2. Renova token com rotação estrita de refresh_token do TikTok
+    // 3. Renova token com rotação estrita de refresh_token do TikTok
     let activeToken = credentials.access_token;
     if (
       credentials.refresh_token &&
@@ -116,8 +124,10 @@ export class TikTokPublisherAdapter implements SocialPublisherAdapter {
             const newRefreshExpiresAt = Date.now() + (resData.data.refresh_expires_in || 31536000) * 1000;
 
             await (supabaseAdmin as any)
-              .from("meta_social_accounts")
-              .update({
+              .from("social_account_credentials")
+              .upsert({
+                company_id: companyId,
+                account_id: socialAccountId,
                 credentials: {
                   ...credentials,
                   access_token: activeToken,
@@ -126,9 +136,7 @@ export class TikTokPublisherAdapter implements SocialPublisherAdapter {
                   refresh_expires_at: newRefreshExpiresAt,
                 },
                 updated_at: new Date().toISOString(),
-              })
-              .eq("id", socialAccountId)
-              .eq("company_id", companyId);
+              }, { onConflict: "account_id" });
           }
         }
       } catch (refreshErr) {
@@ -237,14 +245,14 @@ export class TikTokPublisherAdapter implements SocialPublisherAdapter {
       throw new PermanentProviderError("Conta do TikTok não informada para reconciliação.", "MISSING_ACCOUNT");
     }
 
-    const { data: acc } = await (supabaseAdmin as any)
-      .from("meta_social_accounts")
+    const { data: credRow } = await (supabaseAdmin as any)
+      .from("social_account_credentials")
       .select("credentials")
-      .eq("id", socialAccountId)
+      .eq("account_id", socialAccountId)
       .eq("company_id", companyId)
       .maybeSingle();
 
-    const activeToken = acc?.credentials?.access_token;
+    const activeToken = credRow?.credentials?.access_token;
     if (!activeToken) {
       throw new PermanentProviderError("Credenciais TikTok ausentes para verificação de status.", "TOKEN_MISSING");
     }

@@ -326,6 +326,9 @@ registerNode({
 
         if (instCandidate) {
           targetInstanceId = instCandidate.id;
+        } else {
+          // P1.D: Bloqueia conversão implícita de canal não-WhatsApp para WhatsApp
+          throw new Error(`Não foi encontrada conexão ativa compatível com o canal do contato (${channel}). O envio automático não converterá o canal em WhatsApp silenciosamente.`);
         }
       }
 
@@ -468,6 +471,104 @@ registerNode({
         throw new Error(`Falha ao adicionar etiqueta no CRM: ${upErr.message}`);
       }
     }
+
+    return { kind: "next", port: "next" };
+  },
+});
+
+registerNode({
+  type: "crm.remove_tag",
+  version: 1,
+  category: "action",
+  name: "Remover Etiqueta",
+  description: "Elimina una etiqueta del lead en el CRM.",
+  icon: "Tag",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    tag: z.string().min(1, "Escribe el nombre de la etiqueta"),
+  }),
+  async execute(ctx, config) {
+    const cardId = ctx.subject?.id || ctx.context.card?.id || ctx.context.trigger?.cardId;
+    if (!cardId) throw new Error("No hay tarjeta de lead vinculada.");
+
+    const { data: card } = await (supabaseAdmin as any)
+      .from("crm_cards")
+      .select("tags")
+      .eq("company_id", ctx.companyId)
+      .eq("id", cardId)
+      .maybeSingle();
+
+    const prevTags = Array.isArray(card?.tags) ? card.tags : [];
+    const targetTag = config.tag.trim();
+    const newTags = prevTags.filter((t: string) => t !== targetTag);
+
+    if (newTags.length !== prevTags.length) {
+      const { error: upErr } = await (supabaseAdmin as any)
+        .from("crm_cards")
+        .update({ tags: newTags, updated_at: new Date().toISOString() })
+        .eq("id", cardId)
+        .eq("company_id", ctx.companyId);
+
+      if (upErr) throw new Error(`Falha ao remover etiqueta no CRM: ${upErr.message}`);
+    }
+
+    return { kind: "next", port: "next" };
+  },
+});
+
+registerNode({
+  type: "crm.assign_card",
+  version: 1,
+  category: "action",
+  name: "Atribuir Responsável",
+  description: "Asigna un asesor comercial específico a la tarjeta del lead.",
+  icon: "UserCheck",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    ownerId: z.string().min(1, "Selecciona el responsable"),
+  }),
+  async execute(ctx, config) {
+    const cardId = ctx.subject?.id || ctx.context.card?.id || ctx.context.trigger?.cardId;
+    if (!cardId) throw new Error("No hay tarjeta de lead vinculada.");
+
+    const { error: upErr } = await (supabaseAdmin as any)
+      .from("crm_cards")
+      .update({ owner_id: config.ownerId, updated_at: new Date().toISOString() })
+      .eq("id", cardId)
+      .eq("company_id", ctx.companyId);
+
+    if (upErr) throw new Error(`Falha ao atribuir responsável no CRM: ${upErr.message}`);
+
+    return { kind: "next", port: "next" };
+  },
+});
+
+registerNode({
+  type: "crm.move_card_stage",
+  version: 1,
+  category: "action",
+  name: "Mover Etapa en CRM",
+  description: "Mueve el lead hacia otra etapa del embudo de ventas (alias).",
+  icon: "ArrowRightLeft",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    stageId: z.string().min(1, "Selecciona la etapa de destino"),
+  }),
+  async execute(ctx, config) {
+    const cardId = ctx.subject?.id || ctx.context.card?.id || ctx.context.trigger?.cardId;
+    if (!cardId) throw new Error("No hay tarjeta de lead vinculada.");
+
+    const { data: stageCheck } = await (supabaseAdmin as any)
+      .from("crm_stage")
+      .select("id")
+      .eq("company_id", ctx.companyId)
+      .eq("id", config.stageId)
+      .maybeSingle();
+
+    if (!stageCheck) throw new Error(`La etapa de destino (${config.stageId}) no pertenece a esta empresa.`);
+
+    const { moveCardToStage } = await import("@/lib/crm-engine.server");
+    await moveCardToStage(supabaseAdmin, cardId, config.stageId);
 
     return { kind: "next", port: "next" };
   },

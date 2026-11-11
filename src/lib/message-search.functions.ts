@@ -151,7 +151,8 @@ export const searchMessagesGlobal = createServerFn({ method: "POST" })
           chunks.push(allowedNumbers.slice(i, i + 150));
         }
 
-        const chunkPromises = chunks.slice(0, 10).map((chunk) =>
+        // P1.F: Consulta todos os blocos de números sem limitar a 10 para suportar carteiras > 1500 leads
+        const chunkPromises = chunks.map((chunk) =>
           supabaseAdmin
             .from("mensagens")
             .select("id,numero,contato_nome,texto,created_at,direcao,autor,midia_tipo")
@@ -165,6 +166,9 @@ export const searchMessagesGlobal = createServerFn({ method: "POST" })
         const chunkResults = await Promise.all(chunkPromises);
         const collected: any[] = [];
         for (const res of chunkResults) {
+          if (res.error) {
+            console.error("[searchMessagesGlobal fallback] Erro ao consultar bloco:", res.error);
+          }
           if (res.data) collected.push(...res.data);
         }
         collected.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());

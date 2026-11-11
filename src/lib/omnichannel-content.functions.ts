@@ -360,6 +360,8 @@ export const retryOmnichannelTarget = createServerFn({ method: "POST" })
       .update({
         status: "pending",
         attempts: 0,
+        provider_job_id: null, // P1.G: Limpa job para iniciar nova postagem em vez de consultar job morto
+        external_post_id: null,
         next_attempt_at: null,
         error_message: null,
         lease_owner: null,

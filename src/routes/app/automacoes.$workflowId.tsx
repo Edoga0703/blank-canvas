@@ -438,6 +438,7 @@ const nodeTypes = {
   actionNode: ActionNodeCard,
   conditionNode: ConditionNodeCard,
   waitNode: WaitNodeCard,
+  delayNode: WaitNodeCard, // P1.B: Compatibilidade com nós de atraso
   endNode: EndNodeCard,
 };
 
@@ -555,26 +556,26 @@ function AutomacaoCanvasPage() {
         nodeType = "actionNode";
         nodeName = "Remover Tag CRM";
         initialConfig = { tag: "lead" };
-      } else if (typeKey === "crm.move_card_stage") {
+      } else if (typeKey === "crm.move_card_to_stage" || typeKey === "crm.move_card_stage") {
         nodeType = "actionNode";
         nodeName = "Mover Etapa CRM";
-        initialConfig = {};
+        initialConfig = { stageId: "" };
       } else if (typeKey === "crm.assign_card") {
         nodeType = "actionNode";
         nodeName = "Atribuir Responsável";
-        initialConfig = {};
-      } else if (typeKey === "flow.condition") {
+        initialConfig = { ownerId: "" };
+      } else if (typeKey === "condition.if_else" || typeKey === "flow.condition") {
         nodeType = "conditionNode";
         nodeName = "Condição Se / Senão";
-        initialConfig = { field: "text", operator: "contains", value: "" };
+        initialConfig = { variable: "trigger.text", operator: "contains", value: "" };
       } else if (typeKey === "messaging.wait_for_reply") {
         nodeType = "waitNode";
         nodeName = "Aguardar Resposta";
         initialConfig = { timeoutMinutes: 60 };
       } else if (typeKey === "control.wait_duration") {
-        nodeType = "delayNode";
+        nodeType = "waitNode";
         nodeName = "Aguardar Tempo";
-        initialConfig = { durationMinutes: 15 };
+        initialConfig = { unit: "minutes", amount: 15 };
       }
 
       const newNode: Node = {
@@ -583,7 +584,7 @@ function AutomacaoCanvasPage() {
         position: newPos,
         data: {
           id: newId,
-          type: typeKey,
+          type: typeKey === "flow.condition" ? "condition.if_else" : typeKey === "crm.move_card_stage" ? "crm.move_card_to_stage" : typeKey,
           version: 1,
           name: nodeName,
           config: initialConfig,
@@ -600,21 +601,60 @@ function AutomacaoCanvasPage() {
         animated: true,
       };
 
-      // Substitui aresta existente daquela mesma porta, se houver
+      // P1.E: Interpolação inteligente de nós (Splice).
+      // Se já existia uma conexão daquela porta para um nó destino, encadeia newNode -> oldTarget
+      // para não romper a continuidade do fluxo e não deixar o nó antigo órfão.
+      const existingEdge = edges.find(
+        (e) => e.source === sourceId && (e.sourceHandle || "next") === sourcePort
+      );
+
+      const hasOutputPort = nodeType !== "endNode" && typeKey !== "messaging.route_to_human";
+      let chainedEdge: Edge | null = null;
+
+      if (existingEdge && hasOutputPort) {
+        const outHandle =
+          nodeType === "conditionNode"
+            ? "true"
+            : typeKey === "messaging.wait_for_reply"
+              ? "reply"
+              : "next";
+
+        chainedEdge = {
+          id: `edge_${newId}_${outHandle}_to_${existingEdge.target}`,
+          source: newId,
+          sourceHandle: outHandle,
+          target: existingEdge.target,
+          targetHandle: existingEdge.targetHandle || "input",
+          markerEnd: { type: MarkerType.ArrowClosed },
+          animated: true,
+        };
+      }
+
       setEdges((eds) => {
         const filtered = eds.filter(
           (e) => !(e.source === sourceId && (e.sourceHandle || "next") === sourcePort)
         );
-        return [...filtered, newEdge];
+        const nextEds = [...filtered, newEdge];
+        if (chainedEdge) {
+          nextEds.push(chainedEdge);
+        }
+        return nextEds;
       });
 
       setNodes((nds) => [...nds, newNode]);
       setSelectedNodeId(newId);
       setIsDirty(true);
       setQuickPicker(null);
-      toast.success(`Passo "${nodeName}" adicionado e conectado!`);
+
+      if (existingEdge && !hasOutputPort) {
+        toast.info("Nó terminal adicionado; conexão anterior foi desvinculada.");
+      } else if (existingEdge && chainedEdge) {
+        toast.success(`Passo "${nodeName}" inserido entre os passos existentes!`);
+      } else {
+        toast.success(`Passo "${nodeName}" adicionado e conectado!`);
+      }
     },
-    [nodes, setNodes, setEdges]
+    [nodes, edges, setNodes, setEdges]
   );
 
   // Injeta callback de adicionar próximo passo em cada nó
@@ -1873,7 +1913,7 @@ function AutomacaoCanvasPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "crm.move_card_stage")}
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "crm.move_card_to_stage")}
                       className="p-3 text-left border rounded-xl hover:border-primary hover:bg-primary/5 transition-colors flex flex-col gap-1"
                     >
                       <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
@@ -1899,7 +1939,7 @@ function AutomacaoCanvasPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "flow.condition")}
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "condition.if_else")}
                       className="p-3 text-left border rounded-xl hover:border-primary hover:bg-primary/5 transition-colors flex flex-col gap-1"
                     >
                       <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">

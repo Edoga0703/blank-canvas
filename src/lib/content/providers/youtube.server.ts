@@ -59,7 +59,7 @@ export class YouTubePublisherAdapter implements SocialPublisherAdapter {
     // 1. Busca conta do canal no meta_social_accounts isolada por empresa
     const { data: acc, error: accErr } = await (supabaseAdmin as any)
       .from("meta_social_accounts")
-      .select("id, company_id, network, external_id, username, display_name, credentials, status")
+      .select("id, company_id, network, external_id, username, display_name, status")
       .eq("id", socialAccountId)
       .eq("company_id", companyId)
       .maybeSingle();
@@ -78,7 +78,15 @@ export class YouTubePublisherAdapter implements SocialPublisherAdapter {
       );
     }
 
-    const credentials = (acc.credentials || {}) as {
+    // 2. Busca credenciais no cofre protegido social_account_credentials (acesso exclusivo service_role, P0.A)
+    const { data: credRow } = await (supabaseAdmin as any)
+      .from("social_account_credentials")
+      .select("credentials")
+      .eq("account_id", socialAccountId)
+      .eq("company_id", companyId)
+      .maybeSingle();
+
+    const credentials = (credRow?.credentials || (acc as any)?.credentials || {}) as {
       access_token?: string;
       refresh_token?: string;
       expires_at?: number;
@@ -139,17 +147,17 @@ export class YouTubePublisherAdapter implements SocialPublisherAdapter {
           activeToken = tokenData.access_token;
           const newExpiresAt = Date.now() + (tokenData.expires_in || 3600) * 1000;
           await (supabaseAdmin as any)
-            .from("meta_social_accounts")
-            .update({
+            .from("social_account_credentials")
+            .upsert({
+              company_id: companyId,
+              account_id: socialAccountId,
               credentials: {
                 ...credentials,
                 access_token: activeToken,
                 expires_at: newExpiresAt,
               },
               updated_at: new Date().toISOString(),
-            })
-            .eq("id", socialAccountId)
-            .eq("company_id", companyId);
+            }, { onConflict: "account_id" });
         }
       } catch (refreshErr) {
         console.warn("[YouTubePublisherAdapter] Falha ao renovar token OAuth:", refreshErr);

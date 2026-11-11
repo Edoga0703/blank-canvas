@@ -382,13 +382,23 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
         } else {
           const results = res.results || [];
           const publishedCount = results.filter((r) => r.status === "published").length;
-          const failedCount = results.filter((r) => r.status === "failed").length;
+          const awaitingCreatorCount = results.filter((r) => r.status === "awaiting_creator_post").length;
+          const failedCount = results.filter((r) => ["failed", "failed_terminal"].includes(r.status)).length;
+          const inProgressCount = results.filter((r) => ["processing", "retry_wait", "pending", "leased"].includes(r.status)).length;
 
-          if (publishedCount > 0 && failedCount === 0) {
+          if (publishedCount > 0 && failedCount === 0 && awaitingCreatorCount === 0 && inProgressCount === 0) {
             toast.success(`Publicado com sucesso em ${publishedCount} ${publishedCount === 1 ? "canal" : "canais"}!`);
-          } else if (publishedCount > 0 && failedCount > 0) {
-            const failedNames = results.filter((r) => r.status === "failed").map((r) => r.platform).join(", ");
-            toast.warning(`Publicado parcialmente (${publishedCount} sucesso, falha em: ${failedNames}).`);
+          } else if (awaitingCreatorCount > 0 && failedCount === 0 && publishedCount === 0) {
+            toast.info("Enviado para a caixa de entrada do TikTok. O criador deve concluir a postagem no aplicativo.");
+          } else if (publishedCount > 0 || awaitingCreatorCount > 0) {
+            const failedNames = results
+              .filter((r) => ["failed", "failed_terminal"].includes(r.status))
+              .map((r) => r.platform)
+              .join(", ");
+            const detail = failedNames ? ` (falha em: ${failedNames})` : "";
+            toast.warning(`Publicação parcial concluída${detail}. Verifique os detalhes no histórico.`);
+          } else if (inProgressCount > 0 && failedCount === 0) {
+            toast.info("Publicação em processamento assíncrono. Acompanhe a confirmação no histórico.");
           } else {
             const firstError = results.find((r) => r.error)?.error || "Erro no envio.";
             toast.error(`Falha ao publicar nos canais: ${firstError}`);

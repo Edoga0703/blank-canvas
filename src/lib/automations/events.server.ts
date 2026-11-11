@@ -282,11 +282,11 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
       const firstEdge = graph.edges.find((e) => e.source === triggerNode.id);
       if (!firstEdge) continue;
 
-      // Cargar datos de tarjeta con aislamiento estricto de empresa
+      // Cargar datos de tarjeta con aislamiento estricto de empresa (P1.D: incluye canal e instance_id)
       const { data: cardRow } = payload.cardId
         ? await (supabaseAdmin as any)
             .from("crm_cards")
-            .select("id, company_id, nome, numero, pipeline_id, stage_id, owner_id, tags, valor, email, campos_extras")
+            .select("id, company_id, nome, numero, canal, instance_id, pipeline_id, stage_id, owner_id, tags, valor, email, campos_extras")
             .eq("company_id", companyId)
             .eq("id", payload.cardId)
             .maybeSingle()
@@ -297,13 +297,16 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
         card: cardRow || null,
       };
 
+      const resolvedChannel = payload.channel || cardRow?.canal || null;
+      const resolvedInstanceId = payload.instanceId || cardRow?.instance_id || null;
+
       const { data: started, error: startErr } = await (supabaseAdmin as any)
         .rpc("automation_start_execution", {
           p_company_id: companyId, p_workflow_id: wf.id,
           p_version_id: wf.active_version_id, p_event_id: event.id,
           p_subject_type: payload.cardId ? "crm_card" : "contact",
-          p_subject_id: String(subjectId || ""), p_channel: payload.channel || null,
-          p_instance_id: payload.instanceId || null,
+          p_subject_id: String(subjectId || ""), p_channel: resolvedChannel,
+          p_instance_id: resolvedInstanceId,
           p_conversation_id: payload.externalConversationId || payload.phone || null,
           p_card_id: payload.cardId || null, p_node_id: firstEdge.target,
           p_context: initialContext,

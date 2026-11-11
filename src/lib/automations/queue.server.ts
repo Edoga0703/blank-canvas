@@ -219,7 +219,8 @@ export async function runOneAutomationJob(params: {
       });
 
       if (stepErr) {
-        console.error(`[runOneAutomationJob] Erro ao persistir step_run para nó ${node.id}:`, stepErr);
+        console.error(`[runOneAutomationJob] Erro crítico ao persistir step_run para nó ${node.id}:`, stepErr);
+        throw new Error(`Falha de persistência na trilha do passo (${node.id}): ${stepErr.message}`);
       }
     }
 

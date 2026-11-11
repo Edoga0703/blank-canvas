@@ -119,6 +119,8 @@ export async function claimAndProcessTarget(
   const postId = target.post_id;
   const companyId = target.company_id;
   const platform = target.platform as SocialPlatform;
+  let remotePublishSucceeded = false;
+  let capturedExternalId: string | null = null;
 
   try {
     // 2. Busca postagem mestre verificando rigorosamente company_id
@@ -223,9 +225,17 @@ export async function claimAndProcessTarget(
       result = await adapter.publish(publishCtx);
     }
 
-    // 5. Persiste resultado do provedor com verificação estrita de posse de lease (P0.3)
     if (result.state === "published" || result.state === "scheduled_on_provider") {
-      const { error: updErr } = await (supabaseAdmin as any)
+      remotePublishSucceeded = true;
+      capturedExternalId = result.externalPostId || null;
+    } else if (result.state === "awaiting_creator_post" && result.externalPostId) {
+      remotePublishSucceeded = true;
+      capturedExternalId = result.externalPostId;
+    }
+
+    // 5. Persiste resultado do provedor com verificação estrita de posse de lease (P0.3 / P0.C)
+    if (result.state === "published" || result.state === "scheduled_on_provider") {
+      const { data: updatedTarget, error: updErr } = await (supabaseAdmin as any)
         .from("content_post_targets")
         .update({
           status: "published",
@@ -239,11 +249,25 @@ export async function claimAndProcessTarget(
         })
         .eq("id", targetId)
         .eq("company_id", companyId)
-        .eq("lease_owner", workerId);
+        .eq("lease_owner", workerId)
+        .select("id");
 
-      if (updErr) {
-        console.error(`[queue.server] Erro crítico ao persistir status published para ${targetId}:`, updErr);
-        throw updErr;
+      if (updErr || !updatedTarget || updatedTarget.length === 0) {
+        console.warn(`[queue.server] Atualização com lease_owner falhou ou expirou para target ${targetId}; aplicando salvamento incondicional de segurança para preservar external_post_id.`);
+        await (supabaseAdmin as any)
+          .from("content_post_targets")
+          .update({
+            status: "published",
+            external_post_id: result.externalPostId,
+            external_url: (result as any).externalUrl || null,
+            lease_owner: null,
+            lease_until: null,
+            error_message: null,
+            published_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", targetId)
+          .eq("company_id", companyId);
       }
 
       await reconcileMasterPostStatus(postId, companyId);
@@ -258,7 +282,10 @@ export async function claimAndProcessTarget(
         },
       };
     } else if (result.state === "awaiting_creator_post") {
-      const { error: updErr } = await (supabaseAdmin as any)
+      remotePublishSucceeded = true;
+      capturedExternalId = result.externalPostId || null;
+
+      const { data: updatedTarget, error: updErr } = await (supabaseAdmin as any)
         .from("content_post_targets")
         .update({
           status: "awaiting_creator_post",
@@ -270,11 +297,21 @@ export async function claimAndProcessTarget(
         })
         .eq("id", targetId)
         .eq("company_id", companyId)
-        .eq("lease_owner", workerId);
+        .eq("lease_owner", workerId)
+        .select("id");
 
-      if (updErr) {
-        console.error(`[queue.server] Erro ao persistir awaiting_creator_post para ${targetId}:`, updErr);
-        throw updErr;
+      if (updErr || !updatedTarget || updatedTarget.length === 0) {
+        await (supabaseAdmin as any)
+          .from("content_post_targets")
+          .update({
+            status: "awaiting_creator_post",
+            external_post_id: result.externalPostId || null,
+            lease_owner: null,
+            lease_until: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", targetId)
+          .eq("company_id", companyId);
       }
 
       await reconcileMasterPostStatus(postId, companyId);
@@ -291,7 +328,7 @@ export async function claimAndProcessTarget(
     } else if (result.state === "processing") {
       // P0.2: Agenda próxima reconciliação em 1 minuto
       const nextAttemptAt = new Date(Date.now() + 60000).toISOString();
-      const { error: updErr } = await (supabaseAdmin as any)
+      const { data: updatedTarget, error: updErr } = await (supabaseAdmin as any)
         .from("content_post_targets")
         .update({
           status: "processing",
@@ -303,11 +340,22 @@ export async function claimAndProcessTarget(
         })
         .eq("id", targetId)
         .eq("company_id", companyId)
-        .eq("lease_owner", workerId);
+        .eq("lease_owner", workerId)
+        .select("id");
 
-      if (updErr) {
-        console.error(`[queue.server] Erro ao persistir processamento para ${targetId}:`, updErr);
-        throw updErr;
+      if (updErr || !updatedTarget || updatedTarget.length === 0) {
+        await (supabaseAdmin as any)
+          .from("content_post_targets")
+          .update({
+            status: "processing",
+            provider_job_id: result.providerJobId,
+            next_attempt_at: nextAttemptAt,
+            lease_owner: null,
+            lease_until: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", targetId)
+          .eq("company_id", companyId);
       }
 
       await reconcileMasterPostStatus(postId, companyId);
@@ -322,7 +370,7 @@ export async function claimAndProcessTarget(
       };
     } else {
       // failed_terminal
-      const { error: updErr } = await (supabaseAdmin as any)
+      await (supabaseAdmin as any)
         .from("content_post_targets")
         .update({
           status: "failed_terminal",
@@ -332,12 +380,7 @@ export async function claimAndProcessTarget(
           updated_at: new Date().toISOString(),
         })
         .eq("id", targetId)
-        .eq("company_id", companyId)
-        .eq("lease_owner", workerId);
-
-      if (updErr) {
-        console.error(`[queue.server] Erro ao persistir failed_terminal para ${targetId}:`, updErr);
-      }
+        .eq("company_id", companyId);
 
       await reconcileMasterPostStatus(postId, companyId);
       return {
@@ -352,6 +395,38 @@ export async function claimAndProcessTarget(
       };
     }
   } catch (err: any) {
+    // P0.C: Se o envio remoto já foi aceito pelo provedor, NUNCA marcar como failed_terminal para não duplicar post!
+    if (remotePublishSucceeded && capturedExternalId) {
+      console.error(`[queue.server] Falha local de persistência após confirmação remota da publicação (${capturedExternalId}):`, err);
+      try {
+        await (supabaseAdmin as any)
+          .from("content_post_targets")
+          .update({
+            status: "published",
+            external_post_id: capturedExternalId,
+            lease_owner: null,
+            lease_until: null,
+            error_message: `Publicado remotamente (${capturedExternalId}). Erro na sincronização local de banco: ${err?.message}`,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", targetId)
+          .eq("company_id", companyId);
+      } catch (e) {
+        // best-effort
+      }
+      await reconcileMasterPostStatus(postId, companyId);
+      return {
+        claimed: true,
+        outcome: {
+          targetId,
+          postId,
+          platform,
+          status: "published",
+          externalPostId: capturedExternalId,
+        },
+      };
+    }
+
     const isRetryable = err instanceof RetryableProviderError;
     const isTerminal = err instanceof PermanentProviderError;
     const currentAttempts = Number(target.attempts || 1);

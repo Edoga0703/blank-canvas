@@ -75,7 +75,8 @@ export type ContentPostStatus =
   | "published"
   | "partial"
   | "failed"
-  | "cancelled";
+  | "cancelled"
+  | "awaiting_creator_post";
 
 export type ContentApprovalState = "draft" | "awaiting_approval" | "approved" | "rejected";
 
