@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { brand } from "@/config/brand";
-import { useLanguage } from "@/lib/i18n/context";
+import { useLanguage, translateDefaultStageName, translateDefaultPipelineName } from "@/lib/i18n/context";
 import { AgentAvatar } from "@/components/agente/agent-avatar";
 import {
   Hand, MessageSquareText, Send, Search, Bot,
@@ -328,7 +328,8 @@ const QUICK_FILTERS_ATENDENTE: { key: Filter; label: string }[] = [
   { key: "grupos", label: "Grupos" },
 ];
 
-type StageWithTipo = Stage & { tipo?: string; modo_atendimento?: string };
+type StageWithTipo = Stage & { tipo?: string; modo_atendimento?: string; pipeline_id?: string | null };
+interface PipelineOption { id: string; nome: string; tipo: string | null; ordem?: number };
 
 /** Conversa de grupo do WhatsApp (o número é o JID do grupo). */
 const isGrupo = (numero: string) => numero.includes("@g.us");
@@ -479,6 +480,29 @@ function ConversasPage() {
   const [pauses, setPauses] = useState<Record<string, boolean>>({});
   const [pausesLoaded, setPausesLoaded] = useState(false);
   const [stages, setStages] = useState<StageWithTipo[]>([]);
+  const [pipelines, setPipelines] = useState<PipelineOption[]>([]);
+  const [pipelineFilter, setPipelineFilter] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("conv:pipeline") || null;
+  });
+  const [stageFilter, setStageFilter] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("conv:stage") || null;
+  });
+
+  useEffect(() => {
+    try {
+      if (pipelineFilter) localStorage.setItem("conv:pipeline", pipelineFilter);
+      else localStorage.removeItem("conv:pipeline");
+    } catch {}
+  }, [pipelineFilter]);
+
+  useEffect(() => {
+    try {
+      if (stageFilter) localStorage.setItem("conv:stage", stageFilter);
+      else localStorage.removeItem("conv:stage");
+    } catch {}
+  }, [stageFilter]);
   const [members, setMembers] = useState<Member[]>([]);
   const [readMap, setReadMap] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
@@ -927,7 +951,7 @@ function ConversasPage() {
     "id,numero,contato_nome,direcao,autor,texto,created_at,user_id,midia_url,midia_tipo,midia_mime,midia_nome,reacao,editado_em,deletado_em,whatsapp_message_id,reply_to_id,status_envio,provider,instance_id,raw_payload";
 
   const CARD_COLS =
-    "id,company_id,numero,nome,foto_url,owner_id,stage_id,canal_chat,department_id,transfer_para_user_id,transfer_de_user_id,transfer_status,tags,valor,email,campos_extras,ctwa_clid,fbclid,gclid,utm_source,utm_medium,utm_campaign,utm_content,utm_term,origem,referrer,first_page,status,ultima_em,created_at";
+    "id,company_id,numero,nome,foto_url,owner_id,pipeline_id,stage_id,canal_chat,department_id,transfer_para_user_id,transfer_de_user_id,transfer_status,tags,valor,email,campos_extras,ctwa_clid,fbclid,gclid,utm_source,utm_medium,utm_campaign,utm_content,utm_term,origem,referrer,first_page,status,ultima_em,created_at";
 
   // Paginação por cursor (keyset): OFFSET profundo fazia o banco reler tudo a
   // cada página e era a principal causa da lentidão ao abrir Conversas.
@@ -981,13 +1005,14 @@ function ConversasPage() {
     // da lista — por isso disparam em paralelo com o recorte rápido.
     const metaPromise = Promise.all([
       supabase.from("crm_cards").select(CARD_COLS).eq("company_id", cid),
-      supabase.from("crm_stage").select("id,nome,cor,ordem,tipo,modo_atendimento").eq("company_id", cid).order("ordem", { ascending: true }),
+      supabase.from("crm_stage").select("id,nome,cor,ordem,tipo,modo_atendimento,pipeline_id").eq("company_id", cid).order("ordem", { ascending: true }),
       supabase.from("contact_pause").select("numero,pausado").eq("company_id", cid),
       supabase.from("company_user").select("user_id").eq("company_id", cid).eq("ativo", true),
       supabase.from("agent_config").select("company_id, avatar_traits, avatar_url, nome_agente").eq("company_id", cid).eq("tipo", "qualificacao"),
+      supabase.from("crm_pipeline").select("id,nome,tipo,ordem").eq("company_id", cid).order("ordem", { ascending: true }),
     ]);
 
-    const [quick, [{ data: c }, { data: st }, { data: pz }, { data: cu }, { data: agents }]] = await Promise.all([
+    const [quick, [{ data: c }, { data: st }, { data: pz }, { data: cu }, { data: agents }, { data: pips }]] = await Promise.all([
       fetchAllMensagens(cid, 300).catch(() => [] as any[]),
       metaPromise,
     ]);
@@ -998,6 +1023,7 @@ function ConversasPage() {
       return map;
     });
     setStages((st ?? []) as any);
+    if (pips) setPipelines(pips as any);
     const pmap: Record<string, boolean> = {};
     (pz ?? []).forEach((r: any) => { pmap[r.numero] = !!r.pausado; });
     setPauses(pmap);
@@ -1172,6 +1198,19 @@ function ConversasPage() {
         if (canal !== channelFilter) return false;
       }
 
+      if (pipelineFilter) {
+        const cardPipelineId = card?.pipeline_id ?? (card?.stage_id ? stages.find((s) => s.id === card.stage_id)?.pipeline_id : null);
+        if (cardPipelineId !== pipelineFilter) return false;
+      }
+
+      if (stageFilter) {
+        if (stageFilter === "_none") {
+          if (card?.stage_id) return false;
+        } else {
+          if (card?.stage_id !== stageFilter) return false;
+        }
+      }
+
 
       const iaAtiva = !(pauses[c.numero] ?? false);
       const tipo = card?.stage_id ? stages.find((s) => s.id === card.stage_id)?.tipo : null;
@@ -1187,7 +1226,7 @@ function ConversasPage() {
     });
     // ordena SEMPRE pela última mensagem (mais recente no topo)
     return list.sort((a, b) => +new Date(b.last.created_at) - +new Date(a.last.created_at));
-  }, [msgs, search, filter, sectorFilter, agentFilter, channelFilter, mySectorIds, unread, cards, pauses, stages, userId, ctx, grupos, operationalMode]);
+  }, [msgs, search, filter, sectorFilter, agentFilter, channelFilter, pipelineFilter, stageFilter, mySectorIds, unread, cards, pauses, stages, userId, ctx, grupos, operationalMode]);
 
 
   const thread = useMemo(() => {
@@ -1338,6 +1377,66 @@ function ConversasPage() {
     }
     return counts;
   }, [msgs, cards]);
+
+  const filteredStages = useMemo(() => {
+    if (!pipelineFilter) return stages;
+    return stages.filter((s) => (s as any).pipeline_id === pipelineFilter);
+  }, [stages, pipelineFilter]);
+
+  const stageCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    let noStage = 0;
+    const map = new Map<string, Msg>();
+    for (const m of msgs) if (!map.has(m.numero)) map.set(m.numero, m);
+    for (const numero of map.keys()) {
+      if (isGrupo(numero)) continue;
+      const card = cards[numero];
+      if (pipelineFilter) {
+        const cardPipelineId = card?.pipeline_id ?? (card?.stage_id ? stages.find((s) => s.id === card.stage_id)?.pipeline_id : null);
+        if (cardPipelineId !== pipelineFilter) continue;
+      }
+      if (card?.stage_id) {
+        counts[card.stage_id] = (counts[card.stage_id] ?? 0) + 1;
+      } else {
+        noStage++;
+      }
+    }
+    return { counts, noStage };
+  }, [msgs, cards, stages, pipelineFilter]);
+
+  const pipelineCounts = useMemo(() => {
+    const pcounts: Record<string, number> = {};
+    const map = new Map<string, Msg>();
+    for (const m of msgs) if (!map.has(m.numero)) map.set(m.numero, m);
+    for (const numero of map.keys()) {
+      if (isGrupo(numero)) continue;
+      const card = cards[numero];
+      const pId = card?.pipeline_id ?? (card?.stage_id ? stages.find((s) => s.id === card.stage_id)?.pipeline_id : null);
+      if (pId) {
+        pcounts[pId] = (pcounts[pId] ?? 0) + 1;
+      }
+    }
+    return pcounts;
+  }, [msgs, cards, stages]);
+
+  const currentStageObj = stageFilter && stageFilter !== "_none" ? stages.find((s) => s.id === stageFilter) : null;
+  const currentPipelineObj = pipelineFilter ? pipelines.find((p) => p.id === pipelineFilter) : null;
+
+  const activeFilterSubtitle = useMemo(() => {
+    const parts: string[] = [getFilterLabel(filter)];
+    if (currentPipelineObj) {
+      parts.push(translateDefaultPipelineName(currentPipelineObj.nome, t));
+    }
+    if (stageFilter === "_none") {
+      parts.push("Sin etapa");
+    } else if (currentStageObj) {
+      parts.push(translateDefaultStageName(currentStageObj.nome, t));
+    }
+    if (channelFilter) {
+      parts.push(channelFilter === "whatsapp" ? "WhatsApp" : channelFilter === "instagram" ? "Instagram" : "Messenger");
+    }
+    return parts.join(" • ");
+  }, [filter, currentPipelineObj, stageFilter, currentStageObj, channelFilter, t]);
 
 
   useEffect(() => {
@@ -1679,7 +1778,7 @@ function ConversasPage() {
             className="hidden lg:block absolute top-0 right-0 h-full w-1.5 -mr-[3px] cursor-col-resize z-20 hover:bg-[color:var(--brand)]/30 active:bg-[color:var(--brand)]/50 transition-colors"
           />
            <div className="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
-             <div className="min-w-0"><h2 className="font-display text-[19px] font-extrabold text-foreground">Conversas</h2><p className="text-xs text-muted-foreground truncate">{FILTER_LABELS[filter]}</p></div>
+             <div className="min-w-0"><h2 className="font-display text-[19px] font-extrabold text-foreground">Conversas</h2><p className="text-xs text-muted-foreground truncate" title={activeFilterSubtitle}>{activeFilterSubtitle}</p></div>
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
@@ -1707,151 +1806,300 @@ function ConversasPage() {
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    title="Filtrar conversas"
-                    aria-label="Filtrar conversas"
+                    title="Filtrar conversas por embudo e etapa"
+                    aria-label="Filtrar conversas por embudo e etapa"
                     className={`relative inline-flex items-center justify-center size-8 rounded-xl transition-colors ${
-                      filter !== baseFilter
-                        ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)]"
+                      (pipelineFilter || stageFilter || channelFilter || sectorFilter || agentFilter)
+                        ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)] font-semibold"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     }`}
                   >
                     <FunnelIcon className="size-4" />
-                    {filter !== baseFilter && (
-                      <span className="absolute top-1 right-1 size-1.5 rounded-full bg-[color:var(--brand)]" />
+                    {(pipelineFilter || stageFilter || channelFilter || sectorFilter || agentFilter) && (
+                      <span className="absolute top-1 right-1 size-2 rounded-full bg-[color:var(--brand)] ring-2 ring-[var(--panel)]" />
                     )}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-56 p-1.5 rounded-xl">
-                  <p className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Filtrar por
-                  </p>
-                   {(Object.keys(FILTER_LABELS) as Filter[])
-                    .filter((k) => !(isAtendenteUser && (k === "todas" || k === "sem_responsavel")) && !(k === "grupos" && !gruposAtivos))
-                    .map((k) => {
-                    const on = filter === k;
-                    const count = tabCounts[k] ?? 0;
-                    return (
+                <PopoverContent align="end" className="w-80 p-0 rounded-2xl shadow-xl border border-[color:var(--hairline)] overflow-hidden bg-[var(--panel)]">
+                  {/* Cabeçalho do Popover */}
+                  <div className="px-3.5 py-3 border-b border-[color:var(--hairline)] flex items-center justify-between gap-2 bg-muted/20">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FunnelIcon className="size-3.5 text-primary shrink-0" />
+                      <span className="text-xs font-semibold text-foreground truncate">
+                        Filtro de CRM & Etapas
+                      </span>
+                    </div>
+                    {(pipelineFilter || stageFilter || channelFilter || sectorFilter || agentFilter) && (
                       <button
-                        key={k}
                         type="button"
-                        onClick={() => { setFilter(k); setFilterOpen(false); }}
-                        className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-                          on ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)]" : "hover:bg-muted text-foreground"
-                        }`}
+                        onClick={() => {
+                          setPipelineFilter(null);
+                          setStageFilter(null);
+                          setChannelFilter(null);
+                          setSectorFilter(null);
+                          setAgentFilter(null);
+                        }}
+                        className="text-[11px] font-semibold text-muted-foreground hover:text-red-500 transition-colors"
                       >
-                        <Check className={`size-3.5 shrink-0 ${on ? "opacity-100" : "opacity-0"}`} />
-                        <span className="flex-1 text-left truncate">{FILTER_LABELS[k]}</span>
-                        {count > 0 && (
-                          <span className={`inline-flex items-center justify-center min-w-[20px] h-[18px] px-1.5 rounded-full text-[10px] font-bold ${
-                            on ? "bg-[color:var(--brand)] text-primary-foreground" : "bg-muted text-muted-foreground"
-                          }`}>
-                            {count > 999 ? "999+" : count}
-                          </span>
-                        )}
+                        Limpiar todo
                       </button>
-                    );
-                  })}
+                    )}
+                  </div>
 
-                  {sectors.length > 0 && (
-                    <>
-                      <div className="my-1 h-px bg-[color:var(--hairline)]" />
-                      <p className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Setor
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => { setSectorFilter(null); setFilterOpen(false); }}
-                        className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-                          !sectorFilter ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)]" : "hover:bg-muted text-foreground"
-                        }`}
-                      >
-                        <Check className={`size-3.5 shrink-0 ${!sectorFilter ? "opacity-100" : "opacity-0"}`} />
-                        <span className="flex-1 text-left truncate">Todos os setores</span>
-                      </button>
-                      {sectors.map((s) => {
-                        const on = sectorFilter === s.id;
-                        return (
+                  <div className="p-3 space-y-3.5 max-h-[75vh] overflow-y-auto">
+                    {/* Seção 1: Flujo / Embudo */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-0.5">
+                        <span>Flujo / Embudo</span>
+                        {pipelineFilter && (
                           <button
-                            key={s.id}
                             type="button"
-                            onClick={() => { setSectorFilter(s.id); setFilterOpen(false); }}
-                            className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-                              on ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)]" : "hover:bg-muted text-foreground"
+                            onClick={() => { setPipelineFilter(null); setStageFilter(null); }}
+                            className="text-[10px] lowercase text-primary hover:underline font-normal"
+                          >
+                            todos
+                          </button>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <select
+                          value={pipelineFilter ?? ""}
+                          onChange={(e) => {
+                            const val = e.target.value || null;
+                            setPipelineFilter(val);
+                            if (stageFilter && stageFilter !== "_none") {
+                              const s = stages.find((st) => st.id === stageFilter);
+                              if (val && s && (s as any).pipeline_id !== val) {
+                                setStageFilter(null);
+                              }
+                            }
+                          }}
+                          className="w-full h-8 px-2.5 pr-8 text-xs bg-muted/50 hover:bg-muted border border-[color:var(--hairline)] rounded-lg font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
+                        >
+                          <option value="">Todos los flujos ({channelCounts.todos})</option>
+                          {pipelines.map((p) => {
+                            const c = pipelineCounts[p.id] ?? 0;
+                            return (
+                              <option key={p.id} value={p.id}>
+                                {translateDefaultPipelineName(p.nome, t)} {c > 0 ? `(${c})` : ""}
+                              </option>
+                            );
+                          })}
+                        </select>
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3 text-muted-foreground pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Seção 2: Etapas */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-0.5 pb-0.5">
+                        <span>Etapa del lead</span>
+                        {stageFilter && (
+                          <button
+                            type="button"
+                            onClick={() => setStageFilter(null)}
+                            className="text-[10px] lowercase text-primary hover:underline font-normal"
+                          >
+                            todas
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="max-h-48 overflow-y-auto pr-1 space-y-0.5 -mr-1">
+                        {/* Opção Todas as Etapas */}
+                        <button
+                          type="button"
+                          onClick={() => setStageFilter(null)}
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                            !stageFilter
+                              ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)] font-semibold"
+                              : "hover:bg-muted text-foreground"
+                          }`}
+                        >
+                          <Check className={`size-3.5 shrink-0 ${!stageFilter ? "opacity-100" : "opacity-0"}`} />
+                          <span className="flex-1 text-left truncate">Todas las etapas</span>
+                          <span className="text-[10.5px] tabular-nums text-muted-foreground font-semibold">
+                            {pipelineFilter && pipelineCounts[pipelineFilter] !== undefined ? pipelineCounts[pipelineFilter] : channelCounts.todos}
+                          </span>
+                        </button>
+
+                        {/* Lista de etapas do fluxo selecionado */}
+                        {filteredStages.map((st) => {
+                          const on = stageFilter === st.id;
+                          const count = stageCounts.counts[st.id] ?? 0;
+                          return (
+                            <button
+                              key={st.id}
+                              type="button"
+                              onClick={() => setStageFilter(on ? null : st.id)}
+                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                                on
+                                  ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)] font-semibold"
+                                  : "hover:bg-muted text-foreground"
+                              }`}
+                            >
+                              <Check className={`size-3.5 shrink-0 ${on ? "opacity-100" : "opacity-0"}`} />
+                              <span
+                                className="size-2.5 rounded-full shrink-0 shadow-sm"
+                                style={{ backgroundColor: st.cor || "#94a3b8" }}
+                              />
+                              <span className="flex-1 text-left truncate">
+                                {translateDefaultStageName(st.nome, t)}
+                              </span>
+                              {count > 0 && (
+                                <span
+                                  className={`inline-flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-[10px] font-bold tabular-nums ${
+                                    on
+                                      ? "bg-[color:var(--brand)] text-primary-foreground"
+                                      : "bg-muted text-muted-foreground"
+                                  }`}
+                                >
+                                  {count}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+
+                        {/* Opção Sin etapa */}
+                        {stageCounts.noStage > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setStageFilter(stageFilter === "_none" ? null : "_none")}
+                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                              stageFilter === "_none"
+                                ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)] font-semibold"
+                                : "hover:bg-muted text-foreground"
                             }`}
                           >
-                            <Check className={`size-3.5 shrink-0 ${on ? "opacity-100" : "opacity-0"}`} />
-                            <span
-                              className="size-2 rounded-full shrink-0"
-                              style={{ background: s.cor || "var(--brand)" }}
-                            />
-                            <span className="flex-1 text-left truncate">{s.nome}</span>
+                            <Check className={`size-3.5 shrink-0 ${stageFilter === "_none" ? "opacity-100" : "opacity-0"}`} />
+                            <span className="size-2.5 rounded-full shrink-0 border border-dashed border-muted-foreground/60" />
+                            <span className="flex-1 text-left truncate text-muted-foreground">Sin etapa asignada</span>
+                            <span className="inline-flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-[10px] font-bold tabular-nums bg-muted text-muted-foreground">
+                              {stageCounts.noStage}
+                            </span>
                           </button>
-                        );
-                      })}
-                    </>
-                  )}
-                  {operationalMode && !isAtendenteUser && members.length > 0 && (
-                    <>
-                      <div className="my-1 h-px bg-[color:var(--hairline)]" />
-                      <p className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Atendente</p>
-                      <button type="button" onClick={() => { setAgentFilter(null); setFilterOpen(false); }} className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] ${!agentFilter ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)]" : "hover:bg-muted"}`}>
-                        <Check className={`size-3.5 ${!agentFilter ? "opacity-100" : "opacity-0"}`} /> Todos os atendentes
-                      </button>
-                      {members.map((member) => (
-                        <button key={member.user_id} type="button" onClick={() => { setAgentFilter(member.user_id); setFilterOpen(false); }} className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] ${agentFilter === member.user_id ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)]" : "hover:bg-muted"}`}>
-                          <Check className={`size-3.5 ${agentFilter === member.user_id ? "opacity-100" : "opacity-0"}`} /><span className="truncate">{member.nome || member.email || "Usuário"}</span>
-                        </button>
-                      ))}
-                    </>
-                  )}
+                        )}
+                      </div>
+                    </div>
 
-                  <div className="my-1 h-px bg-[color:var(--hairline)]" />
-                  <p className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Canal / Aplicativo
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => { setChannelFilter(null); setFilterOpen(false); }}
-                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-                      !channelFilter ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)]" : "hover:bg-muted text-foreground"
-                    }`}
-                  >
-                    <Check className={`size-3.5 shrink-0 ${!channelFilter ? "opacity-100" : "opacity-0"}`} />
-                    <span className="flex-1 text-left truncate">Todos os canais</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setChannelFilter("whatsapp"); setFilterOpen(false); }}
-                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-                      channelFilter === "whatsapp" ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)]" : "hover:bg-muted text-foreground"
-                    }`}
-                  >
-                    <Check className={`size-3.5 shrink-0 ${channelFilter === "whatsapp" ? "opacity-100" : "opacity-0"}`} />
-                    <WhatsAppGlyph className="size-4 shrink-0 text-[#25D366]" />
-                    <span className="flex-1 text-left truncate">WhatsApp</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setChannelFilter("instagram"); setFilterOpen(false); }}
-                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-                      channelFilter === "instagram" ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)]" : "hover:bg-muted text-foreground"
-                    }`}
-                  >
-                    <Check className={`size-3.5 shrink-0 ${channelFilter === "instagram" ? "opacity-100" : "opacity-0"}`} />
-                    <InstagramGlyph className="size-4 shrink-0 text-[#E4405F]" />
-                    <span className="flex-1 text-left truncate">Instagram Direct</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setChannelFilter("messenger"); setFilterOpen(false); }}
-                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-                      channelFilter === "messenger" ? "bg-[color:var(--brand)]/10 text-[color:var(--brand)]" : "hover:bg-muted text-foreground"
-                    }`}
-                  >
-                    <Check className={`size-3.5 shrink-0 ${channelFilter === "messenger" ? "opacity-100" : "opacity-0"}`} />
-                    <MessengerGlyph className="size-4 shrink-0 text-[#0084FF]" />
-                    <span className="flex-1 text-left truncate">Facebook Messenger</span>
-                  </button>
+                    {/* Seção 3: Canal / Aplicativo */}
+                    <div className="pt-2 border-t border-[color:var(--hairline)] space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-0.5">
+                        <span>Canal de mensaje</span>
+                        {channelFilter && (
+                          <button
+                            type="button"
+                            onClick={() => setChannelFilter(null)}
+                            className="text-[10px] lowercase text-primary hover:underline font-normal"
+                          >
+                            todos
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setChannelFilter(null)}
+                          className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                            !channelFilter
+                              ? "bg-primary text-primary-foreground border-transparent font-semibold shadow-sm"
+                              : "bg-muted/40 border-[color:var(--hairline)] text-foreground hover:bg-muted"
+                          }`}
+                        >
+                          <span>Todos</span>
+                          <span className="text-[10px] opacity-75 font-bold">({channelCounts.todos})</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setChannelFilter("whatsapp")}
+                          className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                            channelFilter === "whatsapp"
+                              ? "bg-[#25D366] text-white border-transparent font-semibold shadow-sm"
+                              : "bg-muted/40 border-[color:var(--hairline)] text-foreground hover:bg-muted"
+                          }`}
+                        >
+                          <WhatsAppGlyph className="size-3.5 shrink-0" />
+                          <span>WhatsApp</span>
+                          <span className="text-[10px] opacity-75 font-bold">({channelCounts.whatsapp})</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setChannelFilter("instagram")}
+                          className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                            channelFilter === "instagram"
+                              ? "bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] text-white border-transparent font-semibold shadow-sm"
+                              : "bg-muted/40 border-[color:var(--hairline)] text-foreground hover:bg-muted"
+                          }`}
+                        >
+                          <InstagramGlyph className="size-3.5 shrink-0" />
+                          <span>Instagram</span>
+                          <span className="text-[10px] opacity-75 font-bold">({channelCounts.instagram})</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setChannelFilter("messenger")}
+                          className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                            channelFilter === "messenger"
+                              ? "bg-[#0084FF] text-white border-transparent font-semibold shadow-sm"
+                              : "bg-muted/40 border-[color:var(--hairline)] text-foreground hover:bg-muted"
+                          }`}
+                        >
+                          <MessengerGlyph className="size-3.5 shrink-0" />
+                          <span>Messenger</span>
+                          <span className="text-[10px] opacity-75 font-bold">({channelCounts.messenger})</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Seção 4: Setor (se houver) */}
+                    {sectors.length > 0 && (
+                      <div className="pt-2 border-t border-[color:var(--hairline)] space-y-1.5">
+                        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-0.5">
+                          Departamento / Setor
+                        </p>
+                        <div className="relative">
+                          <select
+                            value={sectorFilter ?? ""}
+                            onChange={(e) => setSectorFilter(e.target.value || null)}
+                            className="w-full h-8 px-2.5 pr-8 text-xs bg-muted/50 hover:bg-muted border border-[color:var(--hairline)] rounded-lg font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
+                          >
+                            <option value="">Todos os setores</option>
+                            {sectors.map((s) => (
+                              <option key={s.id} value={s.id}>{s.nome}</option>
+                            ))}
+                          </select>
+                          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3 text-muted-foreground pointer-events-none" />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Seção 5: Atendente (no modo operacional) */}
+                    {operationalMode && !isAtendenteUser && members.length > 0 && (
+                      <div className="pt-2 border-t border-[color:var(--hairline)] space-y-1.5">
+                        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-0.5">
+                          Atendente
+                        </p>
+                        <div className="relative">
+                          <select
+                            value={agentFilter ?? ""}
+                            onChange={(e) => setAgentFilter(e.target.value || null)}
+                            className="w-full h-8 px-2.5 pr-8 text-xs bg-muted/50 hover:bg-muted border border-[color:var(--hairline)] rounded-lg font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
+                          >
+                            <option value="">Todos os atendentes</option>
+                            {members.map((m) => (
+                              <option key={m.user_id} value={m.user_id}>{m.nome || m.email || "Usuário"}</option>
+                            ))}
+                          </select>
+                          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3 text-muted-foreground pointer-events-none" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </PopoverContent>
 
               </Popover>
@@ -2030,6 +2278,37 @@ function ConversasPage() {
               })}
             </div>
 
+            {pipelineFilter && (
+              <button
+                type="button"
+                onClick={() => { setPipelineFilter(null); setStageFilter(null); }}
+                className="mt-2 mr-2 inline-flex items-center gap-1.5 h-6 pl-2.5 pr-1.5 rounded-full bg-primary/10 text-primary border border-primary/20 text-[11px] font-semibold hover:bg-primary/20 transition-colors"
+                title="Remover filtro de embudo"
+              >
+                <span className="truncate max-w-[130px]">
+                  {translateDefaultPipelineName(currentPipelineObj?.nome || "Embudo", t)}
+                </span>
+                <X className="size-3" />
+              </button>
+            )}
+            {stageFilter && (
+              <button
+                type="button"
+                onClick={() => setStageFilter(null)}
+                className="mt-2 mr-2 inline-flex items-center gap-1.5 h-6 pl-2 pr-1.5 rounded-full bg-muted text-foreground border border-[color:var(--hairline)] text-[11px] font-semibold hover:bg-muted/80 transition-colors"
+                title="Remover filtro de etapa"
+              >
+                {currentStageObj ? (
+                  <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: currentStageObj.cor }} />
+                ) : (
+                  <span className="size-2 rounded-full shrink-0 bg-muted-foreground/50" />
+                )}
+                <span className="truncate max-w-[140px]">
+                  {stageFilter === "_none" ? "Sin etapa" : translateDefaultStageName(currentStageObj?.nome || "Etapa", t)}
+                </span>
+                <X className="size-3" />
+              </button>
+            )}
             {sectorFilter && (
               <button
                 type="button"

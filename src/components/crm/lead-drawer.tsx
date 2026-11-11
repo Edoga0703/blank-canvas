@@ -37,6 +37,7 @@ import { LeadAdReferralCard } from "@/components/crm/lead-ad-referral-card";
 export interface LeadCard {
   id: string; numero: string; nome: string | null;
   status: string; stage_id: string | null;
+  pipeline_id?: string | null;
   ultima_mensagem: string | null; ultima_em: string;
   observacao: string | null; valor: number | null;
   origem: string | null; owner_id: string | null;
@@ -63,7 +64,7 @@ export interface RespostaExtra {
 
 
 
-export interface Stage { id: string; nome: string; cor: string; }
+export interface Stage { id: string; nome: string; cor: string; pipeline_id?: string | null; ordem?: number; }
 export interface Member { user_id: string; email?: string | null; nome?: string | null; }
 
 import { handleChatAction } from "@/lib/whatsapp.functions";
