@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T16:07:55.590591+00:00",
+  "generated_at": "2026-11-11T16:46:40.393171+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -554,6 +554,10 @@
       "bytes": 1022
     },
     {
+      "path": "supabase/migrations/20261111070000_content_backfill_identity_and_attribution.sql",
+      "bytes": 6036
+    },
+    {
       "path": "supabase/migrations/20261011040000_meta_phase1_assets_content_history.sql",
       "bytes": 14026
     },
@@ -638,6 +642,10 @@
       "bytes": 1022
     },
     {
+      "path": "docs/sql/20261111070000_content_backfill_identity_and_attribution.sql",
+      "bytes": 6036
+    },
+    {
       "path": "docs/sql/20261111050000_social_accounts_queue_and_search_hardening.sql",
       "bytes": 4348
     },
@@ -683,7 +691,7 @@
     },
     {
       "path": "src/lib/meta-content.functions.ts",
-      "bytes": 13878
+      "bytes": 15596
     },
     {
       "path": "src/lib/error-page.ts",
@@ -771,7 +779,7 @@
     },
     {
       "path": "src/lib/meta-history.functions.ts",
-      "bytes": 16834
+      "bytes": 19774
     },
     {
       "path": "src/lib/master-admin.functions.ts",
@@ -1407,7 +1415,7 @@
     },
     {
       "path": "src/lib/meta-content-sync.server.ts",
-      "bytes": 56827
+      "bytes": 59446
     },
     {
       "path": "src/lib/prospeccao.functions.ts",
@@ -1415,7 +1423,7 @@
     },
     {
       "path": "src/lib/omnichannel-content.functions.ts",
-      "bytes": 18935
+      "bytes": 28463
     },
     {
       "path": "src/lib/meta-response-window.server.ts",
@@ -2747,15 +2755,15 @@
     },
     {
       "path": "src/components/content/meta-content-history.tsx",
-      "bytes": 40066
+      "bytes": 44648
     },
     {
       "path": "src/components/content/meta-social-intelligence.tsx",
-      "bytes": 11884
+      "bytes": 12788
     },
     {
       "path": "src/components/content/omnichannel-comments-inbox.tsx",
-      "bytes": 24756
+      "bytes": 28350
     },
     {
       "path": "src/components/content/omnichannel-publisher.tsx",
@@ -2763,7 +2771,7 @@
     },
     {
       "path": "src/components/content/omnichannel-analytics.tsx",
-      "bytes": 40980
+      "bytes": 45027
     },
     {
       "path": "src/components/master/nova-empresa-form.tsx",
@@ -4342,6 +4350,14 @@
     {
       "source": "src/lib/meta-history.functions.ts",
       "target": "./meta-content-sync.server"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "./storage/r2.server"
     },
     {
       "source": "src/lib/meta-history.functions.ts",
@@ -7658,6 +7674,18 @@
     {
       "source": "src/lib/omnichannel-content.functions.ts",
       "target": "./content/queue.server"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/omnichannel-content.functions.ts",
@@ -16069,6 +16097,10 @@
     },
     {
       "source": "src/components/content/omnichannel-comments-inbox.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/components/content/omnichannel-comments-inbox.tsx",
       "target": "lucide-react"
     },
     {
@@ -16090,6 +16122,14 @@
     {
       "source": "src/components/content/omnichannel-comments-inbox.tsx",
       "target": "@/components/ui/channel-icons"
+    },
+    {
+      "source": "src/components/content/omnichannel-comments-inbox.tsx",
+      "target": "@/lib/omnichannel-content.functions"
+    },
+    {
+      "source": "src/components/content/omnichannel-comments-inbox.tsx",
+      "target": "@/lib/meta-content.functions"
     },
     {
       "source": "src/components/content/omnichannel-comments-inbox.tsx",
@@ -16153,6 +16193,10 @@
     },
     {
       "source": "src/components/content/omnichannel-analytics.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/components/content/omnichannel-analytics.tsx",
       "target": "lucide-react"
     },
     {
@@ -16174,6 +16218,10 @@
     {
       "source": "src/components/content/omnichannel-analytics.tsx",
       "target": "@/components/ui/channel-icons"
+    },
+    {
+      "source": "src/components/content/omnichannel-analytics.tsx",
+      "target": "@/lib/omnichannel-content.functions"
     },
     {
       "source": "src/components/content/omnichannel-analytics.tsx",
