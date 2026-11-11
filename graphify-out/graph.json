@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T22:52:37.897123+00:00",
+  "generated_at": "2026-11-11T23:26:36.696456+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -1080,6 +1080,10 @@
     {
       "path": "src/lib/agendamentos-dispatch.server.ts",
       "bytes": 2185
+    },
+    {
+      "path": "src/lib/telegram-mtproto.functions.ts",
+      "bytes": 13492
     },
     {
       "path": "src/lib/billing.functions.ts",
@@ -2707,7 +2711,7 @@
     },
     {
       "path": "src/components/conexao/telegram-connect-dialog.tsx",
-      "bytes": 8250
+      "bytes": 32605
     },
     {
       "path": "src/components/conexao/nova-conexao-dialog.tsx",
@@ -3038,8 +3042,12 @@
       "bytes": 3053
     },
     {
+      "path": "src/lib/telegram/mtproto-client.server.ts",
+      "bytes": 7927
+    },
+    {
       "path": "src/lib/telegram/contracts.ts",
-      "bytes": 1500
+      "bytes": 3907
     },
     {
       "path": "src/lib/integracoes/catalogo.ts",
@@ -3236,6 +3244,18 @@
     {
       "path": "src/lib/messaging/providers/dapi.server.ts",
       "bytes": 12754
+    },
+    {
+      "path": "services/telegram-gateway/package.json",
+      "bytes": 456
+    },
+    {
+      "path": "services/telegram-gateway/README.md",
+      "bytes": 2919
+    },
+    {
+      "path": "services/telegram-gateway/src/index.js",
+      "bytes": 13922
     }
   ],
   "dependencies": [
@@ -6014,6 +6034,78 @@
     {
       "source": "src/lib/agendamentos-dispatch.server.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "./company-cache"
+    },
+    {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "qrcode"
+    },
+    {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "./telegram/contracts"
+    },
+    {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "./plugin-gate.server"
+    },
+    {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "./telegram/mtproto-client.server"
+    },
+    {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "./telegram/mtproto-client.server"
+    },
+    {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "./telegram/mtproto-client.server"
+    },
+    {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "./telegram/mtproto-client.server"
+    },
+    {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "./telegram/mtproto-client.server"
     },
     {
       "source": "src/lib/billing.functions.ts",
@@ -15433,11 +15525,23 @@
     },
     {
       "source": "src/components/conexao/telegram-connect-dialog.tsx",
+      "target": "@/components/ui/checkbox"
+    },
+    {
+      "source": "src/components/conexao/telegram-connect-dialog.tsx",
       "target": "lucide-react"
     },
     {
       "source": "src/components/conexao/telegram-connect-dialog.tsx",
       "target": "@/lib/telegram.functions"
+    },
+    {
+      "source": "src/components/conexao/telegram-connect-dialog.tsx",
+      "target": "@/lib/telegram-mtproto.functions"
+    },
+    {
+      "source": "src/components/conexao/telegram-connect-dialog.tsx",
+      "target": "@/lib/telegram/contracts"
     },
     {
       "source": "src/components/conexao/nova-conexao-dialog.tsx",
@@ -17980,6 +18084,10 @@
       "target": "@/integrations/supabase/client.server"
     },
     {
+      "source": "src/lib/telegram/mtproto-client.server.ts",
+      "target": "./contracts"
+    },
+    {
       "source": "src/lib/integracoes/runtime.server.ts",
       "target": "./adapters.server"
     },
@@ -18554,6 +18662,42 @@
     {
       "source": "src/lib/messaging/providers/dapi.server.ts",
       "target": "@/lib/dapi.server"
+    },
+    {
+      "source": "services/telegram-gateway/src/index.js",
+      "target": "express"
+    },
+    {
+      "source": "services/telegram-gateway/src/index.js",
+      "target": "cors"
+    },
+    {
+      "source": "services/telegram-gateway/src/index.js",
+      "target": "dotenv"
+    },
+    {
+      "source": "services/telegram-gateway/src/index.js",
+      "target": "node:fs/promises"
+    },
+    {
+      "source": "services/telegram-gateway/src/index.js",
+      "target": "node:path"
+    },
+    {
+      "source": "services/telegram-gateway/src/index.js",
+      "target": "node:crypto"
+    },
+    {
+      "source": "services/telegram-gateway/src/index.js",
+      "target": "telegram"
+    },
+    {
+      "source": "services/telegram-gateway/src/index.js",
+      "target": "telegram/sessions/index.js"
+    },
+    {
+      "source": "services/telegram-gateway/src/index.js",
+      "target": "telegram"
     }
   ]
 }
