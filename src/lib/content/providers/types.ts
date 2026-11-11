@@ -1,4 +1,4 @@
-export type SocialPlatform = "instagram" | "facebook" | "tiktok" | "youtube";
+export type SocialPlatform = "instagram" | "facebook" | "tiktok" | "youtube" | "telegram";
 
 export class PermanentProviderError extends Error {
   code: string;

@@ -48,6 +48,29 @@ export const connectTelegram = createServerFn({ method: "POST" })
     );
     if (error) throw new Error(error.message);
 
+    // Persistência paralela na tabela telegram_connections (Fase 0)
+    try {
+      await (supabase as any).from("telegram_connections").upsert(
+        {
+          company_id: companyId,
+          transport: "business_bot",
+          telegram_actor_id: String(me.id),
+          display_name: data.displayName || (me.username ? `@${me.username}` : me.first_name) || "Telegram",
+          username: me.username ?? null,
+          status: "active",
+          webhook_endpoint_key: webhookToken,
+          secret_ref: botToken,
+          rights: {
+            can_business_reply: true,
+            migrated_at: new Date().toISOString(),
+          },
+        },
+        { onConflict: "company_id,transport,telegram_actor_id" },
+      );
+    } catch (tcErr) {
+      console.warn("[connectTelegram] Aviso de persistência telegram_connections:", tcErr);
+    }
+
     // meta cache cleared
 
     await tgSetWebhook(

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { resolveCompanyIdCached as resolveCompanyId } from "./company-cache";
 import type {
+  SocialPlatform,
   SocialAccount,
   ContentPost,
   ContentPostTarget,
@@ -60,7 +61,7 @@ export const createOmnichannelPost = createServerFn({ method: "POST" })
       timezone?: string | null;
       idempotencyKey?: string | null;
       targets: Array<{
-        platform: "instagram" | "facebook" | "tiktok" | "youtube";
+        platform: SocialPlatform;
         socialAccountId?: string | null;
         assetId?: string | null;
         customTitle?: string | null;
@@ -574,7 +575,7 @@ export const listOmnichannelComments = createServerFn({ method: "POST" })
 
     const comments = (rows ?? []).map((r: any) => ({
       id: r.id,
-      platform: r.network as "instagram" | "facebook" | "tiktok" | "youtube",
+      platform: r.network as SocialPlatform,
       external_comment_id: r.external_comment_id,
       external_post_id: r.external_post_id,
       author_name: r.author_name || "Usuário",

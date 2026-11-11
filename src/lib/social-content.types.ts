@@ -1,6 +1,6 @@
 // Tipos oficiales para el Módulo de Contenido Multicanal, Programación y Analítica
 
-export type SocialPlatform = "instagram" | "facebook" | "tiktok" | "youtube";
+export type SocialPlatform = "instagram" | "facebook" | "tiktok" | "youtube" | "telegram";
 
 export type SocialAccountStatus = "active" | "degraded" | "expired" | "disconnected";
 

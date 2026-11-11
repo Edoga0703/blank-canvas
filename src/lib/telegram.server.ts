@@ -37,7 +37,14 @@ export async function tgSetWebhook(token: string, url: string, secret: string) {
   return tg(token, "setWebhook", {
     url,
     secret_token: secret,
-    allowed_updates: ["message", "edited_message"],
+    allowed_updates: [
+      "message",
+      "edited_message",
+      "business_connection",
+      "business_message",
+      "edited_business_message",
+      "deleted_business_messages",
+    ],
     drop_pending_updates: false,
   });
 }
