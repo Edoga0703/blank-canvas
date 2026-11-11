@@ -1,14 +1,14 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
+import {
+  resolveActiveR2UploadConfig,
+  resolveR2ConfigById,
+  getCachedR2Config,
+  getDefaultR2EnvConfig,
+  recordStorageUsageDelta,
+  type R2ResolvedConfig,
+} from "./storage-pool.server";
 
-type R2Config = {
-  accountId: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-  bucket: string;
-  publicBaseUrl: string | null;
-  maxFileBytes: number;
-  signedUrlTtlSeconds: number;
-};
+export type R2Config = R2ResolvedConfig;
 
 export type StoredMediaObject = {
   storageKey: string;
@@ -17,6 +17,7 @@ export type StoredMediaObject = {
   fileName: string;
   sizeBytes: number;
   sha256: string;
+  storageAccountId?: string | null;
 };
 
 const R2_DEFAULTS: Record<string, string> = {
@@ -38,32 +39,12 @@ function getR2Env(name: string): string {
   return (process.env[name]?.trim() || R2_DEFAULTS[name] || "");
 }
 
-function required(name: string): string {
-  const value = getR2Env(name);
-  if (!value) throw new Error(`Falta la variable de servidor ${name} para usar Cloudflare R2.`);
-  return value;
-}
-
-function positiveInteger(name: string, fallback: number): number {
-  const envVal = getR2Env(name);
-  const parsed = Number(envVal || fallback);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
-}
-
 function getConfig(): R2Config {
-  return {
-    accountId: required("R2_ACCOUNT_ID"),
-    accessKeyId: required("R2_ACCESS_KEY_ID"),
-    secretAccessKey: required("R2_SECRET_ACCESS_KEY"),
-    bucket: required("R2_BUCKET"),
-    publicBaseUrl: (process.env.R2_PUBLIC_BASE_URL?.trim() || process.env["R2_PUBLIC_BASE_URL"]?.trim() || "").replace(/\/$/, "") || null,
-    maxFileBytes: positiveInteger("R2_MAX_FILE_BYTES", 500 * 1024 * 1024),
-    signedUrlTtlSeconds: Math.min(604800, positiveInteger("R2_SIGNED_URL_TTL_SECONDS", 900)),
-  };
+  return getDefaultR2EnvConfig();
 }
 
 export function isR2Configured(): boolean {
-  return ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET"].every((name) =>
+  return ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET"].some((name) =>
     Boolean(getR2Env(name)),
   );
 }
@@ -120,10 +101,16 @@ export async function storeMediaObject(input: {
   mimeType?: string | null;
   fileName?: string | null;
   occurredAt?: string | Date | null;
+  storageAccountId?: string | null;
 }): Promise<StoredMediaObject> {
-  const config = getConfig();
   const bytes = input.bytes instanceof ArrayBuffer ? new Uint8Array(input.bytes) : input.bytes;
   if (bytes.byteLength === 0) throw new Error("El archivo recibido esta vacio.");
+
+  // Resolver cuenta R2 activa desde el pool (o usar la cuenta indicada o fallback a env)
+  const config = input.storageAccountId
+    ? await resolveR2ConfigById(input.storageAccountId)
+    : await resolveActiveR2UploadConfig({ companyId: input.companyId, sizeBytes: bytes.byteLength });
+
   if (bytes.byteLength > config.maxFileBytes) {
     throw new Error(`El archivo supera el limite de ${config.maxFileBytes} bytes.`);
   }
@@ -173,6 +160,11 @@ export async function storeMediaObject(input: {
     throw new Error(`R2 rechazo el archivo (${response.status}): ${detail || response.statusText}`);
   }
 
+  // Registrar métrica de uso en el pool
+  if (config.storageAccountId) {
+    recordStorageUsageDelta(config.storageAccountId, bytes.byteLength, 1).catch(() => null);
+  }
+
   return {
     storageKey,
     storageUrl: permanentUrl(config, storageKey),
@@ -180,6 +172,7 @@ export async function storeMediaObject(input: {
     fileName,
     sizeBytes: bytes.byteLength,
     sha256: digest,
+    storageAccountId: config.storageAccountId,
   };
 }
 
@@ -190,9 +183,13 @@ function encodeQuery(value: string): string {
   );
 }
 
-/** Entrega acceso corto a objetos privados. Nunca se guarda esta URL temporal en la base. */
-export function createR2DownloadUrl(storageKey: string, ttlSeconds?: number): string {
-  const config = getConfig();
+/** Entrega acceso corto a objetos privados. Sincrónico para máxima compatibilidad. */
+export function createR2DownloadUrl(
+  storageKey: string,
+  ttlSeconds?: number,
+  storageAccountId?: string | null,
+): string {
+  const config = storageAccountId ? getCachedR2Config(storageAccountId) : getConfig();
   const publicUrl = permanentUrl(config, storageKey);
   if (publicUrl) return publicUrl;
 
@@ -226,19 +223,72 @@ export function createR2DownloadUrl(storageKey: string, ttlSeconds?: number): st
   return `${endpoint}?${canonicalQuery}&X-Amz-Signature=${signature}`;
 }
 
-export function createR2UploadTarget(input: {
+/** Versión asíncrona que resuelve la cuenta exacta desde la base de datos si no estuviera en caché. */
+export async function resolveR2DownloadUrlAsync(
+  storageKey: string,
+  ttlSeconds?: number,
+  storageAccountId?: string | null,
+): Promise<string> {
+  const config = await resolveR2ConfigById(storageAccountId);
+  const publicUrl = permanentUrl(config, storageKey);
+  if (publicUrl) return publicUrl;
+
+  const { host, canonicalUri, endpoint } = objectParts(config, storageKey);
+  const now = new Date();
+  const { amzDate, dateStamp } = awsDate(now);
+  const scope = `${dateStamp}/auto/s3/aws4_request`;
+  const expires = Math.min(604800, Math.max(1, ttlSeconds ?? config.signedUrlTtlSeconds));
+  const queryEntries = [
+    ["X-Amz-Algorithm", "AWS4-HMAC-SHA256"],
+    ["X-Amz-Credential", `${config.accessKeyId}/${scope}`],
+    ["X-Amz-Date", amzDate],
+    ["X-Amz-Expires", String(expires)],
+    ["X-Amz-SignedHeaders", "host"],
+  ].sort(([a], [b]) => a.localeCompare(b));
+  const canonicalQuery = queryEntries
+    .map(([key, value]) => `${encodeQuery(key)}=${encodeQuery(value)}`)
+    .join("&");
+  const canonicalRequest = [
+    "GET",
+    canonicalUri,
+    canonicalQuery,
+    `host:${host}\n`,
+    "host",
+    "UNSIGNED-PAYLOAD",
+  ].join("\n");
+  const stringToSign = ["AWS4-HMAC-SHA256", amzDate, scope, sha256(canonicalRequest)].join("\n");
+  const signature = createHmac("sha256", signingKey(config.secretAccessKey, dateStamp))
+    .update(stringToSign)
+    .digest("hex");
+  return `${endpoint}?${canonicalQuery}&X-Amz-Signature=${signature}`;
+}
+
+export async function createR2UploadTarget(input: {
   companyId: string;
   fileName?: string | null;
   mimeType?: string | null;
   sizeBytes: number;
-}): { uploadUrl: string; downloadUrl: string; storageKey: string; mimeType: string } {
-  const config = getConfig();
+  storageAccountId?: string | null;
+}): Promise<{
+  uploadUrl: string;
+  downloadUrl: string;
+  storageKey: string;
+  mimeType: string;
+  storageAccountId: string | null;
+}> {
   if (!Number.isSafeInteger(input.sizeBytes) || input.sizeBytes <= 0) {
     throw new Error("El tamaño del archivo no es válido.");
   }
+
+  // Resolver la cuenta activa según la estrategia del pool
+  const config = input.storageAccountId
+    ? await resolveR2ConfigById(input.storageAccountId)
+    : await resolveActiveR2UploadConfig({ companyId: input.companyId, sizeBytes: input.sizeBytes });
+
   if (input.sizeBytes > config.maxFileBytes) {
     throw new Error(`El archivo supera el límite de ${config.maxFileBytes} bytes.`);
   }
+
   const mimeType = (input.mimeType?.trim() || "application/octet-stream").replace(/[\r\n]/g, "");
   const now = new Date();
   const year = now.getUTCFullYear();
@@ -271,10 +321,17 @@ export function createR2UploadTarget(input: {
   const signature = createHmac("sha256", signingKey(config.secretAccessKey, dateStamp))
     .update(stringToSign)
     .digest("hex");
+
+  // Registrar reserva provisional del tamaño del archivo en la cuenta
+  if (config.storageAccountId) {
+    recordStorageUsageDelta(config.storageAccountId, input.sizeBytes, 1).catch(() => null);
+  }
+
   return {
     uploadUrl: `${endpoint}?${canonicalQuery}&X-Amz-Signature=${signature}`,
-    downloadUrl: createR2DownloadUrl(storageKey),
+    downloadUrl: createR2DownloadUrl(storageKey, undefined, config.storageAccountId),
     storageKey,
     mimeType,
+    storageAccountId: config.storageAccountId,
   };
 }

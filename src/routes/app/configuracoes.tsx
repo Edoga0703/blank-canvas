@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, Save, CreditCard, Sparkles, AlertTriangle, Download, Shield, Wallet, Lock, User, Palette, Users, Clock, Star, ChevronDown, Search, MapPin, KeyRound, Upload, Webhook, Lightbulb, Send, Link2, ImageIcon, X, Tag, Building2, FileText, ListOrdered, Infinity } from "lucide-react";
+import { Loader2, Save, CreditCard, Sparkles, AlertTriangle, Download, Shield, Wallet, Lock, User, Palette, Users, Clock, Star, ChevronDown, Search, MapPin, KeyRound, Upload, Webhook, Lightbulb, Send, Link2, ImageIcon, X, Tag, Building2, FileText, ListOrdered, Infinity, HardDrive } from "lucide-react";
 import { submitFeedback } from "@/lib/admin-broadcast.functions";
 import { brand } from "@/config/brand";
 import { trialDaysLeft } from "@/lib/tenant";
@@ -18,6 +18,7 @@ import { HorariosTab } from "@/components/config/horarios-tab";
 import { TagsTab } from "@/components/config/tags-tab";
 import { CsatRespostasTab } from "@/components/config/csat-respostas-tab";
 import { DepartamentosTab } from "@/components/config/departamentos-tab";
+import { StorageVaultsTab } from "@/components/config/storage-vaults-tab";
 
 import { DistribuicaoTab } from "@/components/config/distribuicao-tab";
 
@@ -338,7 +339,7 @@ function ConfigPage() {
           <StyledTab value="sugestoes" icon={<Lightbulb className="size-4" />}>{t("config.suggestions_tab", undefined, "Sugestões")}</StyledTab>
           {!isAtendente && <StyledTab value="integracoes" icon={<Webhook className="size-4" />}>{t("config.integrations_tab", undefined, "Integrações")}</StyledTab>}
           {!isAtendente && formulariosOn && <StyledTab value="formularios" icon={<FileText className="size-4" />}>{t("config.forms_tab", undefined, "Formulários")}</StyledTab>}
-          
+          {!isAtendente && <StyledTab value="storage" icon={<HardDrive className="size-4" />}>Armazenamento</StyledTab>}
           {!isAtendente && <StyledTab value="plano" icon={<CreditCard className="size-4" />}>{t("config.plan_tab", undefined, "Plano")}</StyledTab>}
 
         </TabsList>
@@ -671,6 +672,7 @@ function ConfigPage() {
         <TabsContent value="integracoes"><IntegracoesTab /></TabsContent>
         <TabsContent value="formularios"><FormulariosTab /></TabsContent>
         <TabsContent value="distribuicao"><DistribuicaoTab /></TabsContent>
+        <TabsContent value="storage"><StorageVaultsTab /></TabsContent>
         <TabsContent value="plano"><PlanoCard company={company} sub={sub} /></TabsContent>
 
       </Tabs>

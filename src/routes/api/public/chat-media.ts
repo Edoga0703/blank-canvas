@@ -164,7 +164,7 @@ export const Route = createFileRoute("/api/public/chat-media")({
         // 1) Chequear message_attachments (Cloudflare R2) validando compañía si aplica
         let attQuery = (supabaseAdmin as any)
           .from("message_attachments")
-          .select("kind,storage_key,storage_url,provider_url,mime_type,file_name,company_id")
+          .select("kind,storage_key,storage_url,provider_url,mime_type,file_name,company_id,storage_account_id,storage_tier,cold_storage_file_id")
           .eq("mensagem_id", messageId);
         if (authorizedCompanyId) {
           attQuery = attQuery.eq("company_id", authorizedCompanyId);
@@ -191,7 +191,7 @@ export const Route = createFileRoute("/api/public/chat-media")({
         // Caso R2 con storage_key
         if (attachment?.storage_key) {
           const { createR2DownloadUrl } = await import("@/lib/storage/r2.server");
-          const downloadUrl = createR2DownloadUrl(attachment.storage_key, 3600);
+          const downloadUrl = createR2DownloadUrl(attachment.storage_key, 3600, attachment.storage_account_id);
           return proxyStream(downloadUrl, request, fallbackMime, isDownload ? downloadFileName : null);
         }
 

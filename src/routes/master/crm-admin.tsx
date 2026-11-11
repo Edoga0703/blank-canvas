@@ -18,6 +18,7 @@ import { BaseTab } from "@/components/master/crm-admin/base-tab";
 import { AutomacoesTab } from "@/components/master/crm-admin/automacoes-tab";
 import { DisparosTab } from "@/components/master/crm-admin/disparos-tab";
 import { HistoricoTab } from "@/components/master/crm-admin/historico-tab";
+import { StorageVaultsTab } from "@/components/config/storage-vaults-tab";
 
 export const Route = createFileRoute("/master/crm-admin")({
   head: () => ({
@@ -96,6 +97,7 @@ function CrmAdminPage() {
           <TabsTrigger value="automacoes">Automações</TabsTrigger>
           <TabsTrigger value="disparos">Disparos</TabsTrigger>
           <TabsTrigger value="historico">Histórico</TabsTrigger>
+          <TabsTrigger value="armazenamento">Armazenamento & Bóvedas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="visao" className="mt-4">
@@ -122,6 +124,10 @@ function CrmAdminPage() {
 
         <TabsContent value="historico" className="mt-4">
           <HistoricoTab />
+        </TabsContent>
+
+        <TabsContent value="armazenamento" className="mt-4">
+          <StorageVaultsTab />
         </TabsContent>
       </Tabs>
     </div>
