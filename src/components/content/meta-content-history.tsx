@@ -28,7 +28,7 @@ import { MetaSocialIntelligence } from "@/components/content/meta-social-intelli
 type Account = { id: string; network: string; username: string | null; display_name: string | null; status: string; last_synced_at: string | null; last_error: string | null; instance_name: string | null };
 type Metrics = Partial<Record<"likes" | "comments" | "shares" | "saves" | "reach" | "impressions" | "views" | "total_interactions" | "replies" | "avg_watch_time_ms" | "total_watch_time_ms", number | null>>;
 type Post = {
-  id: string; social_account_id: string | null; network: string; format: string; caption: string | null; permalink: string | null;
+  id: string; social_account_id: string | null; network: string; external_post_id?: string | null; format: string; caption: string | null; permalink: string | null;
   media_url: string | null; thumbnail_url: string | null; archived_media_url: string | null; archived_thumbnail_url: string | null;
   published_at: string | null; metrics_latest: Metrics;
 };
@@ -45,6 +45,32 @@ function PostMedia({ post, controls = false }: { post: Post; controls?: boolean 
   const [failed, setFailed] = useState(false);
   const thumb = post.archived_thumbnail_url ?? post.thumbnail_url ?? (isVideo(post) ? null : post.archived_media_url ?? post.media_url);
   const src = post.archived_media_url ?? post.media_url;
+
+  // Reprodutor oficial embutido para YouTube (Fase 2)
+  if (controls && post.network === "youtube" && post.external_post_id) {
+    return (
+      <iframe
+        src={`https://www.youtube.com/embed/${encodeURIComponent(post.external_post_id)}?rel=0`}
+        title={post.caption || "YouTube Video"}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        className="h-full w-full rounded-md border-0 bg-black"
+      />
+    );
+  }
+
+  // Reprodutor oficial embutido para TikTok (Fase 2)
+  if (controls && post.network === "tiktok" && post.external_post_id) {
+    return (
+      <iframe
+        src={`https://www.tiktok.com/embed/v2/${encodeURIComponent(post.external_post_id)}`}
+        title={post.caption || "TikTok Video"}
+        allow="encrypted-media"
+        className="h-full w-full rounded-md border-0 bg-black"
+      />
+    );
+  }
+
   if (controls && isVideo(post) && src && !failed) {
     return <video src={src} poster={thumb ?? undefined} controls playsInline className="h-full w-full rounded-md bg-muted object-contain" onError={() => setFailed(true)} />;
   }
@@ -52,7 +78,7 @@ function PostMedia({ post, controls = false }: { post: Post; controls?: boolean 
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-muted text-xs text-muted-foreground">
       <ImageIcon className="h-6 w-6" />
-      {failed ? "Mídia expirada na Meta" : "Sem prévia"}
+      {failed ? "Mídia expirada no provedor" : "Sem prévia"}
     </div>
   );
 }
@@ -74,6 +100,10 @@ export function MetaContentHistory() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [analyticsPosts, setAnalyticsPosts] = useState<Post[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [nextOffset, setNextOffset] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -97,8 +127,8 @@ export function MetaContentHistory() {
       const previousStart = new Date(analysisStart.getTime() - span).toISOString().slice(0, 10);
       const [a, p, analysis, g] = await Promise.all([
         listAccounts(),
-        listPosts({ data: { network: network === "all" ? undefined : network, accountId: accountId === "all" ? undefined : accountId, format: format === "all" ? undefined : format, since: since || undefined, until: until || undefined } }),
-        listPosts({ data: { network: network === "all" ? undefined : network, accountId: accountId === "all" ? undefined : accountId, format: format === "all" ? undefined : format, since: previousStart, until: until || analysisEnd.toISOString().slice(0, 10) } }),
+        listPosts({ data: { network: network === "all" ? undefined : network, accountId: accountId === "all" ? undefined : accountId, format: format === "all" ? undefined : format, since: since || undefined, until: until || undefined, limit: 100, offset: 0 } }),
+        listPosts({ data: { network: network === "all" ? undefined : network, accountId: accountId === "all" ? undefined : accountId, format: format === "all" ? undefined : format, since: previousStart, until: until || analysisEnd.toISOString().slice(0, 10), limit: 100, offset: 0 } }),
         growth({ data: { accountId: accountId === "all" ? undefined : accountId } }),
       ]);
       let accs = a.accounts as Account[];
@@ -110,6 +140,9 @@ export function MetaContentHistory() {
       }
       setAccounts(accs);
       setPosts(p.posts as Post[]);
+      setTotalCount(p.totalCount ?? (p.posts?.length || 0));
+      setHasMore(Boolean(p.hasMore));
+      setNextOffset(p.nextOffset ?? (p.posts?.length || 0));
       setAnalyticsPosts(analysis.posts as Post[]);
       setProfile(g.profile);
       setError(a.error ?? p.error ?? analysis.error ?? g.error ?? null);
@@ -119,6 +152,32 @@ export function MetaContentHistory() {
       setLoading(false);
     }
   }, [listAccounts, reconcileAssets, listPosts, growth, network, accountId, format, since, until]);
+
+  const loadMorePosts = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const p = await listPosts({
+        data: {
+          network: network === "all" ? undefined : network,
+          accountId: accountId === "all" ? undefined : accountId,
+          format: format === "all" ? undefined : format,
+          since: since || undefined,
+          until: until || undefined,
+          limit: 100,
+          offset: nextOffset,
+        },
+      });
+      const newPosts = p.posts as Post[];
+      setPosts((prev) => [...prev, ...newPosts]);
+      setHasMore(Boolean(p.hasMore));
+      setNextOffset(p.nextOffset ?? (nextOffset + newPosts.length));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao carregar mais publicações.");
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   useEffect(() => { void load(); }, [load]);
 
@@ -230,7 +289,10 @@ export function MetaContentHistory() {
           const delta = c.prev ? Math.round(((c.cur - c.prev) / c.prev) * 100) : null;
           return (
             <Card key={String(c.k)}><CardContent className="pt-5">
-              <div className="text-xs text-muted-foreground">{c.k === ("posts" as any) ? "Publicações" : METRIC_LABEL[c.k as string]}</div>
+              <div className="text-xs text-muted-foreground flex items-center justify-between">
+                <span>{c.k === ("posts" as any) ? "Publicações" : METRIC_LABEL[c.k as string]}</span>
+                {c.k !== ("posts" as any) && <span className="text-[10px] text-muted-foreground" title="Métricas vitalícias acumuladas até hoje de posts publicados no período (ciclo de vida)">Ciclo de vida</span>}
+              </div>
               <div className="text-2xl font-bold">{fmt(c.cur)}</div>
               <div className="text-xs text-muted-foreground">anterior: {fmt(c.prev)}{delta !== null ? ` (${delta >= 0 ? "+" : ""}${delta}%)` : ""}</div>
             </CardContent></Card>
@@ -303,6 +365,15 @@ export function MetaContentHistory() {
         </CardContent></Card>
       )}
 
+      {hasMore && (
+        <div className="flex justify-center pt-3">
+          <Button variant="outline" onClick={loadMorePosts} disabled={loadingMore} className="gap-2">
+            {loadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
+            Carregar mais publicações ({posts.length} de {totalCount})
+          </Button>
+        </div>
+      )}
+
       <PostDetailDialog post={open} account={accounts.find((a) => a.id === open?.social_account_id) ?? null} onClose={() => setOpen(null)} />
     </div>
   );
@@ -311,7 +382,15 @@ export function MetaContentHistory() {
 function PostDetailDialog({ post, account, onClose }: { post: Post | null; account: Account | null; onClose: () => void }) {
   const getDetail = useServerFn(getStoredMetaPost);
   const reply = useServerFn(replyMetaComment);
-  const [detail, setDetail] = useState<{ snapshots: any[]; media: any[]; comments: any[] } | null>(null);
+  const [detail, setDetail] = useState<{
+    snapshots: any[];
+    media: any[];
+    comments: any[];
+    totalComments?: number;
+    hasMoreComments?: boolean;
+    nextCommentsOffset?: number;
+  } | null>(null);
+  const [loadingComments, setLoadingComments] = useState(false);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -319,9 +398,36 @@ function PostDetailDialog({ post, account, onClose }: { post: Post | null; accou
   useEffect(() => {
     if (!post) { setDetail(null); return; }
     let alive = true;
-    getDetail({ data: { postId: post.id } }).then((d) => { if (alive) setDetail(d); }).catch(() => alive && setDetail({ snapshots: [], media: [], comments: [] }));
+    getDetail({ data: { postId: post.id, commentsLimit: 100, commentsOffset: 0 } })
+      .then((d: any) => { if (alive) setDetail(d); })
+      .catch(() => alive && setDetail({ snapshots: [], media: [], comments: [], totalComments: 0, hasMoreComments: false }));
     return () => { alive = false; };
   }, [post, getDetail]);
+
+  const loadMoreComments = async () => {
+    if (!post || !detail?.hasMoreComments || loadingComments) return;
+    setLoadingComments(true);
+    try {
+      const more: any = await getDetail({
+        data: {
+          postId: post.id,
+          commentsLimit: 100,
+          commentsOffset: detail.nextCommentsOffset ?? detail.comments.length,
+        },
+      });
+      setDetail((prev) => prev ? ({
+        ...prev,
+        comments: [...prev.comments, ...(more.comments ?? [])],
+        hasMoreComments: Boolean(more.hasMoreComments),
+        nextCommentsOffset: more.nextCommentsOffset,
+        totalComments: more.totalComments ?? prev.totalComments,
+      }) : more);
+    } catch (e) {
+      toast.error("Falha ao carregar mais comentários.");
+    } finally {
+      setLoadingComments(false);
+    }
+  };
 
   async function send() {
     if (!replyTo || !text.trim() || !account?.instance_name) return;
@@ -383,7 +489,9 @@ function PostDetailDialog({ post, account, onClose }: { post: Post | null; accou
                 )}
               </div>
               <div>
-                <h4 className="mb-2 text-sm font-semibold">Comentários armazenados ({detail?.comments.length ?? 0})</h4>
+                <h4 className="mb-2 text-sm font-semibold">
+                  Comentários armazenados ({detail?.comments.length ?? 0}{detail?.totalComments ? ` de ${detail.totalComments}` : ""})
+                </h4>
                 {!detail ? <Loader2 className="h-4 w-4 animate-spin" /> : top.length === 0 ? <p className="text-xs text-muted-foreground">Sem comentários armazenados.</p> : (
                   <ul className="space-y-2">
                     {top.map((c) => (
@@ -400,6 +508,14 @@ function PostDetailDialog({ post, account, onClose }: { post: Post | null; accou
                       </li>
                     ))}
                   </ul>
+                )}
+                {detail?.hasMoreComments && (
+                  <div className="pt-3 text-center">
+                    <Button variant="outline" size="sm" onClick={loadMoreComments} disabled={loadingComments} className="gap-1.5 text-xs">
+                      {loadingComments && <Loader2 className="h-3 w-3 animate-spin" />}
+                      Carregar mais comentários ({detail.comments.length} de {detail.totalComments})
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>

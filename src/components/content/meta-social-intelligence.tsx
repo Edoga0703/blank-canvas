@@ -73,13 +73,19 @@ export function MetaSocialIntelligence({ posts }: { posts: SocialIntelligencePos
     for (const post of published) {
       const date = new Date(post.published_at!);
       if (Number.isNaN(date.getTime())) continue;
-      days.set(date.getDay(), [...(days.get(date.getDay()) ?? []), post]);
-      hours.set(date.getHours(), [...(hours.get(date.getHours()) ?? []), post]);
+      // Normalização horária UTC para consistência independente do fuso do navegador
+      days.set(date.getUTCDay(), [...(days.get(date.getUTCDay()) ?? []), post]);
+      hours.set(date.getUTCHours(), [...(hours.get(date.getUTCHours()) ?? []), post]);
     }
-    const best = (groups: Map<number, SocialIntelligencePost[]>) => [...groups.entries()]
-      .map(([key, rows]) => ({ key, count: rows.length, score: average(rows, "interactions") ?? 0 }))
-      .sort((a, b) => b.score - a.score)[0] ?? null;
-    return { day: best(days), hour: best(hours) };
+    // Exige amostra estatística mínima de pelo menos 3 publicações para não sugerir horários esparsos
+    const best = (groups: Map<number, SocialIntelligencePost[]>, minSample = 3) => {
+      const qualified = [...groups.entries()].filter(([_, rows]) => rows.length >= minSample);
+      if (!qualified.length) return null;
+      return qualified
+        .map(([key, rows]) => ({ key, count: rows.length, score: average(rows, "interactions") ?? 0 }))
+        .sort((a, b) => b.score - a.score)[0] ?? null;
+    };
+    return { day: best(days, 3), hour: best(hours, 3) };
   }, [published]);
 
   const coverage = useMemo(() => {
@@ -110,8 +116,16 @@ export function MetaSocialIntelligence({ posts }: { posts: SocialIntelligencePos
     if (!published.length) return ["Sincronize publicações para gerar recomendações com dados reais."];
     const best = formatRows[0];
     if (best && formatRows.length > 1) messages.push(`${FORMAT_LABEL[best.format] ?? best.format} possui a maior média de interações (${display(best.interactions)} por publicação).`);
-    if (timing.day) messages.push(`A melhor média atual ocorre na ${WEEKDAYS[timing.day.key]}, com ${timing.day.count} publicação(ões) analisadas.`);
-    if (timing.hour) messages.push(`O horário com maior média de interações é por volta de ${String(timing.hour.key).padStart(2, "0")}:00.`);
+    if (timing.day) {
+      messages.push(`Padrão observacional: Maior média na ${WEEKDAYS[timing.day.key]} (${timing.day.count} publicações analisadas).`);
+    } else {
+      messages.push("Amostra insuficiente para indicar o melhor dia (mínimo de 3 posts por dia).");
+    }
+    if (timing.hour) {
+      messages.push(`Padrão observacional: Maior média por volta de ${String(timing.hour.key).padStart(2, "0")}:00 UTC (${timing.hour.count} publicações analisadas).`);
+    } else {
+      messages.push("Amostra insuficiente para indicar o melhor horário (mínimo de 3 posts por faixa horária).");
+    }
     const reachCoverage = coverage.find((item) => item.key === "reach");
     if (reachCoverage && reachCoverage.available < Math.ceil(reachCoverage.total * 0.6)) messages.push("A cobertura de alcance está baixa. Revise read_insights / instagram_manage_insights antes de tomar decisões por alcance.");
     if (totals.archived < posts.length) messages.push(`${posts.length - totals.archived} mídia(s) ainda dependem da URL da Meta. Use a sincronização completa para arquivá-las gradualmente no R2.`);
@@ -147,7 +161,7 @@ export function MetaSocialIntelligence({ posts }: { posts: SocialIntelligencePos
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card><CardContent className="pt-5"><div className="text-xs text-muted-foreground">Publicações analisadas</div><div className="text-2xl font-bold">{display(published.length)}</div></CardContent></Card>
-        <Card><CardContent className="pt-5"><div className="text-xs text-muted-foreground">Alcance somado</div><div className="text-2xl font-bold">{display(totals.reach)}</div></CardContent></Card>
+        <Card><CardContent className="pt-5"><div className="text-xs text-muted-foreground" title="Soma bruta não deduplicada (Meta não fornece audiência única consolidada entre múltiplos posts)">Alcance somado (bruto)</div><div className="text-2xl font-bold">{display(totals.reach)}</div><div className="text-[10px] text-muted-foreground mt-0.5">Não deduplicado entre posts</div></CardContent></Card>
         <Card><CardContent className="pt-5"><div className="text-xs text-muted-foreground">Taxa de interação</div><div className="text-2xl font-bold">{totals.engagementRate == null ? "—" : `${display(totals.engagementRate, 2)}%`}</div></CardContent></Card>
         <Card><CardContent className="pt-5"><div className="flex items-center gap-1 text-xs text-muted-foreground"><HardDrive className="h-3.5 w-3.5" />Mídias no R2</div><div className="text-2xl font-bold">{display(totals.archived)} / {display(posts.length)}</div></CardContent></Card>
       </div>

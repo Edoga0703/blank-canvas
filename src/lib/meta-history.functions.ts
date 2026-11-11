@@ -58,48 +58,74 @@ export const syncMetaContentHistory = createServerFn({ method: "POST" })
     }
   });
 
-/** Publicações armazenadas com filtros. */
+/** Publicações armazenadas com filtros e paginação completa. */
 export const listStoredMetaPosts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { network?: string; accountId?: string; format?: string; since?: string; until?: string }) => ({
+  .inputValidator((d: {
+    network?: string;
+    accountId?: string;
+    format?: string;
+    since?: string;
+    until?: string;
+    limit?: number;
+    offset?: number;
+  }) => ({
     network: ["facebook", "instagram"].includes(String(d?.network)) ? String(d!.network) : undefined,
     accountId: d?.accountId || undefined,
     format: ["photo", "video", "reel", "story", "carousel", "text", "link", "other"].includes(String(d?.format)) ? String(d!.format) : undefined,
     since: d?.since || undefined,
     until: d?.until || undefined,
+    limit: Math.min(Math.max(Number(d?.limit) || 100, 1), 300),
+    offset: Math.max(Number(d?.offset) || 0, 0),
   }))
   .handler(async ({ context, data }) => {
     const companyId = await resolveCompanyId(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let q = (supabaseAdmin as any).from("meta_content_posts")
-      .select("id,social_account_id,network,external_post_id,format,caption,permalink,media_url,thumbnail_url,archived_media_key,archived_thumbnail_key,published_at,expires_at,metrics_latest,last_synced_at")
-      .eq("company_id", companyId).order("published_at", { ascending: false, nullsFirst: false }).limit(300);
+      .select("id,social_account_id,network,external_post_id,format,caption,permalink,media_url,thumbnail_url,archived_media_key,archived_thumbnail_key,published_at,expires_at,metrics_latest,last_synced_at", { count: "exact" })
+      .eq("company_id", companyId)
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .range(data.offset, data.offset + data.limit - 1);
+
     if (data.network) q = q.eq("network", data.network);
     if (data.accountId) q = q.eq("social_account_id", data.accountId);
     if (data.format) q = q.eq("format", data.format);
     if (data.since) q = q.gte("published_at", data.since);
     if (data.until) q = q.lte("published_at", `${data.until}T23:59:59Z`);
-    const { data: rows, error } = await q;
-    if (error) return { posts: [], error: tableError(error.message) };
+
+    const { data: rows, count, error } = await q;
+    if (error) return { posts: [], totalCount: 0, hasMore: false, nextOffset: data.offset, error: tableError(error.message) };
     const { isR2Configured, createR2DownloadUrl } = await import("./storage/r2.server");
     const r2 = isR2Configured();
+
+    const totalCount = count ?? (rows?.length || 0);
+    const hasMore = (data.offset + (rows?.length || 0)) < totalCount;
+    const nextOffset = data.offset + (rows?.length || 0);
+
     return {
       error: null as string | null,
+      totalCount,
+      hasMore,
+      nextOffset,
       posts: (rows ?? []).map((p: any) => ({
         ...p,
         metrics_latest: p.metrics_latest && typeof p.metrics_latest === "object" ? p.metrics_latest : {},
-        archived_media_url: r2 && p.archived_media_key ? createR2DownloadUrl(p.archived_media_key, 3600) : null,
-        archived_thumbnail_url: r2 && p.archived_thumbnail_key ? createR2DownloadUrl(p.archived_thumbnail_key, 3600) : null,
+        archived_media_url: r2 && p.archived_media_key ? createR2DownloadUrl(p.archived_media_key, 7200) : null,
+        archived_thumbnail_url: r2 && p.archived_thumbnail_key ? createR2DownloadUrl(p.archived_thumbnail_key, 7200) : null,
       })),
     };
   });
 
-/** Detalhe: série de métricas, mídias e comentários armazenados. */
+/** Detalhe: série de métricas, mídias e comentários armazenados com paginação independente. */
 export const getStoredMetaPost = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { postId?: string }) => {
+  .inputValidator((d: { postId?: string; commentsLimit?: number; commentsOffset?: number }) => {
     if (!d?.postId) throw new Error("Publicação obrigatória.");
-    return { postId: String(d.postId) };
+    return {
+      postId: String(d.postId),
+      commentsLimit: Math.min(Math.max(Number(d?.commentsLimit) || 100, 1), 500),
+      commentsOffset: Math.max(Number(d?.commentsOffset) || 0, 0),
+    };
   })
   .handler(async ({ context, data }) => {
     const companyId = await resolveCompanyId(context.supabase, context.userId);
@@ -108,17 +134,66 @@ export const getStoredMetaPost = createServerFn({ method: "POST" })
     const [snap, media, comments] = await Promise.all([
       admin.from("meta_content_metric_snapshots").select("collected_date,likes,comments,shares,saves,reach,impressions,views,total_interactions,replies,avg_watch_time_ms,total_watch_time_ms,unavailable").eq("company_id", companyId).eq("post_id", data.postId).order("collected_date"),
       admin.from("meta_content_media").select("position,media_type,media_url,thumbnail_url,storage_key").eq("company_id", companyId).eq("post_id", data.postId).order("position"),
-      admin.from("meta_content_comments").select("id,external_comment_id,parent_external_id,author_name,author_username,text,like_count,is_own,status,commented_at").eq("company_id", companyId).eq("post_id", data.postId).order("commented_at").limit(500),
+      admin.from("meta_content_comments").select("id,external_comment_id,parent_external_id,author_name,author_username,text,like_count,is_own,status,commented_at", { count: "exact" })
+        .eq("company_id", companyId)
+        .eq("post_id", data.postId)
+        .order("commented_at", { ascending: true })
+        .range(data.commentsOffset, data.commentsOffset + data.commentsLimit - 1),
     ]);
     const { isR2Configured, createR2DownloadUrl } = await import("./storage/r2.server");
     const r2 = isR2Configured();
+
+    const totalComments = comments.count ?? (comments.data?.length || 0);
+    const hasMoreComments = (data.commentsOffset + (comments.data?.length || 0)) < totalComments;
+
     return {
       snapshots: snap.data ?? [],
       media: (media.data ?? []).map((item: any) => ({
         ...item,
-        archived_url: r2 && item.storage_key ? createR2DownloadUrl(item.storage_key, 3600) : null,
+        archived_url: r2 && item.storage_key ? createR2DownloadUrl(item.storage_key, 7200) : null,
       })),
       comments: comments.data ?? [],
+      totalComments,
+      hasMoreComments,
+      nextCommentsOffset: data.commentsOffset + (comments.data?.length || 0),
+    };
+  });
+
+/** Gera URLs assinadas frescas sob demanda para reprodução durável (> 1 hora). */
+export const refreshPostMediaUrls = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { postId: string }) => ({ postId: String(d.postId) }))
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const admin = supabaseAdmin as any;
+
+    const { data: post, error } = await admin
+      .from("meta_content_posts")
+      .select("id,archived_media_key,archived_thumbnail_key,media_url,thumbnail_url")
+      .eq("company_id", companyId)
+      .eq("id", data.postId)
+      .maybeSingle();
+
+    if (error || !post) throw new Error("Publicação não encontrada.");
+
+    const { isR2Configured, createR2DownloadUrl } = await import("./storage/r2.server");
+    const r2 = isR2Configured();
+
+    const { data: mediaItems } = await admin
+      .from("meta_content_media")
+      .select("position,storage_key,media_url,thumbnail_url")
+      .eq("company_id", companyId)
+      .eq("post_id", data.postId)
+      .order("position");
+
+    return {
+      archived_media_url: r2 && post.archived_media_key ? createR2DownloadUrl(post.archived_media_key, 7200) : post.media_url,
+      archived_thumbnail_url: r2 && post.archived_thumbnail_key ? createR2DownloadUrl(post.archived_thumbnail_key, 7200) : post.thumbnail_url,
+      media: (mediaItems ?? []).map((m: any) => ({
+        position: m.position,
+        archived_url: r2 && m.storage_key ? createR2DownloadUrl(m.storage_key, 7200) : m.media_url,
+      })),
     };
   });
 

@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import {
   TrendingUp,
   TrendingDown,
@@ -28,6 +29,7 @@ import {
   Check,
   ChevronRight,
   ShieldCheck,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +41,10 @@ import {
   TikTokGlyph,
   YouTubeGlyph,
 } from "@/components/ui/channel-icons";
+import {
+  getOmnichannelIntelligence,
+  getContentAttributionSummary,
+} from "@/lib/omnichannel-content.functions";
 import type { SocialAccount } from "@/lib/social-content.types";
 
 interface Props {
@@ -51,6 +57,44 @@ export function OmnichannelAnalytics({ accounts }: Props) {
   const [originFilter, setOriginFilter] = useState<"all" | "crm" | "external">("all");
   const [selectedPostDetail, setSelectedPostDetail] = useState<string | null>(null);
 
+  // Integração com dados reais do backend
+  const getIntelFn = useServerFn(getOmnichannelIntelligence);
+  const getAttributionFn = useServerFn(getContentAttributionSummary);
+
+  const [realIntel, setRealIntel] = useState<{
+    availability: "available" | "no_data";
+    reason: string | null;
+    kpis: any;
+    heatmapBestHours: any[];
+    accounts: any[];
+  } | null>(null);
+
+  const [realAttribution, setRealAttribution] = useState<{
+    events: any[];
+    summary: { totalLeads: number; totalWonDeals: number; totalAttributedValue: number; hasEvidence: boolean };
+  } | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    getIntelFn({ data: { socialAccountId: null } })
+      .then((res: any) => {
+        if (alive && res) setRealIntel(res);
+      })
+      .catch(() => {});
+
+    getAttributionFn({ data: {} })
+      .then((res: any) => {
+        if (alive && res) setRealAttribution(res);
+      })
+      .catch(() => {});
+
+    return () => {
+      alive = false;
+    };
+  }, [getIntelFn, getAttributionFn]);
+
+  const isRealData = realIntel?.availability === "available" && !!realIntel?.kpis;
+
   // Nome e identificador dinâmicos da empresa
   const companyHandle = useMemo(() => {
     const acc = accounts.find((a) => a.username);
@@ -62,7 +106,7 @@ export function OmnichannelAnalytics({ accounts }: Props) {
     return acc?.display_name || "Sua Empresa";
   }, [accounts]);
 
-  // Multiplicadores dinâmicos para simular período selecionado
+  // Multiplicadores dinâmicos apenas para projeções ilustrativas quando não houver dados reais
   const multiplier = useMemo(() => {
     switch (timeRange) {
       case "today":
@@ -80,7 +124,7 @@ export function OmnichannelAnalytics({ accounts }: Props) {
     }
   }, [timeRange]);
 
-  // Métricas consolidadas por rede social
+  // Métricas por rede social (reais ou demonstrativas com rótulo explícito)
   const profileMetrics = useMemo(() => {
     return [
       {
@@ -150,12 +194,33 @@ export function OmnichannelAnalytics({ accounts }: Props) {
     ];
   }, [companyHandle, companyName, timeRange, multiplier]);
 
-  // Sumas Totais Consolidadas
-  const totalFollowers = profileMetrics.reduce((acc, m) => acc + m.followers, 0);
-  const totalViews = profileMetrics.reduce((acc, m) => acc + m.views, 0);
-  const totalInteractions = profileMetrics.reduce((acc, m) => acc + m.interactions, 0);
-  const totalLeads = profileMetrics.reduce((acc, m) => acc + m.leads, 0);
-  const estimatedRevenue = totalLeads * 14.5; // Ticket médio genérico estimado
+  // Sumas Totais Consolidadas — Prioriza valores reais do banco se disponíveis
+  const totalFollowers = isRealData
+    ? realIntel!.kpis.totalFollowers
+    : profileMetrics.reduce((acc, m) => acc + m.followers, 0);
+
+  const totalViews = isRealData
+    ? realIntel!.kpis.totalImpressions
+    : profileMetrics.reduce((acc, m) => acc + m.views, 0);
+
+  const totalInteractions = isRealData
+    ? realIntel!.kpis.totalInteractions
+    : profileMetrics.reduce((acc, m) => acc + m.interactions, 0);
+
+  // Atribuição de leads reais do CRM
+  const totalLeads = realAttribution?.summary.hasEvidence
+    ? realAttribution.summary.totalLeads
+    : (isRealData ? 0 : profileMetrics.reduce((acc, m) => acc + m.leads, 0));
+
+  const totalWonDeals = realAttribution?.summary.totalWonDeals ?? 0;
+  const totalAttributedValue = realAttribution?.summary.totalAttributedValue ?? 0;
+
+  // Receita mensurada verificável — nunca multiplicada por constantes fictícias
+  const estimatedRevenueText = realAttribution?.summary.hasEvidence && totalAttributedValue > 0
+    ? `$${totalAttributedValue.toLocaleString()} USD (Fechamentos Reais)`
+    : isRealData
+      ? "Sem vendas atribuídas ainda"
+      : `Projeção Comercial em Avaliação`;
 
   // Histórico de Posts Multicanal com Rastreamento Unificado
   const omnichannelPosts = useMemo(() => {
@@ -325,7 +390,14 @@ export function OmnichannelAnalytics({ accounts }: Props) {
 
   // Copiar resumo executivo para WhatsApp ou relatório
   const handleCopySummary = () => {
-    const summary = `📊 *RELATÓRIO EXECUTIVO DE REDES SOCIAIS & INTELIGÊNCIA COMERCIAL*\nEmpresa: ${companyName}\nPeríodo: ${timeRange.toUpperCase()}\n\n👥 Audiência Consolidada: ${totalFollowers.toLocaleString()} seguidores (4 plataformas)\n👀 Visualizações Globais: ${totalViews.toLocaleString()}\n💬 Interações Totais: ${totalInteractions.toLocaleString()}\n🎯 Oportunidades Identificadas: ${totalLeads} leads com intenção de compra\n💰 Pipeline Estimado: $${estimatedRevenue.toLocaleString()} USD em vendas potenciais\n\n🏆 Desempenho por Canal:\n• TikTok: 142K views (Maior volume de perguntas sobre contratação)\n• YouTube Shorts: 285K views (Líder em retenção e tempo de tela)\n• Instagram: 68K views (Maior taxa de conversão direta em vendas)\n• Facebook: 32K views (Alcance qualificado de público maduro)\n\nRelatório gerado pelo Capi Conversa CRM.`;
+    if (!isRealData) {
+      const summary = `📊 *RELATÓRIO PRELIMINAR DE REDES SOCIAIS (PROJEÇÃO DEMO)*\n⚠️ *Aviso de Homologação:* Este relatório apresenta métricas estimadas de demonstração. Dados oficiais de produção são consolidados após conexão com permissões de leitura das APIs.\n\nEmpresa: ${companyName}\nPeríodo: ${timeRange.toUpperCase()}\n\n👥 Audiência Projetada: ${totalFollowers.toLocaleString()} seguidores\n👀 Visualizações Estimadas: ${totalViews.toLocaleString()}\n💬 Interações Totais: ${totalInteractions.toLocaleString()}\n🎯 Oportunidades: ${totalLeads} leads projetados\n\nRelatório gerado pelo Capi Conversa CRM (Ambiente de Demonstração).`;
+      navigator.clipboard.writeText(summary);
+      toast.info("Relatório de projeção copiado com aviso de homologação obrigatório.");
+      return;
+    }
+
+    const summary = `📊 *RELATÓRIO EXECUTIVO DE REDES SOCIAIS & INTELIGÊNCIA COMERCIAL*\nEmpresa: ${companyName}\nPeríodo: ${timeRange.toUpperCase()}\n\n👥 Audiência Consolidada: ${totalFollowers.toLocaleString()} seguidores\n👀 Visualizações / Impressões Reais: ${totalViews.toLocaleString()}\n💬 Interações Registradas: ${totalInteractions.toLocaleString()}\n🎯 Leads Atribuídos no CRM: ${totalLeads}\n💰 Receita Atribuída Confirmada: ${totalAttributedValue > 0 ? `$${totalAttributedValue.toLocaleString()} USD` : "Sem vendas confirmadas no período"}\n\nRelatório auditado gerado pelo Capi Conversa CRM.`;
     navigator.clipboard.writeText(summary);
     toast.success("Relatório executivo copiado para a área de transferência!");
   };
@@ -333,17 +405,31 @@ export function OmnichannelAnalytics({ accounts }: Props) {
   return (
     <div className="space-y-6">
       {/* Banner de Demonstração / Homologação */}
-      <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-primary/10 border border-primary/20 text-xs text-primary-900 dark:text-primary-200">
-        <Sparkles className="size-4 shrink-0 text-primary" />
-        <div>
-          <span className="font-bold uppercase tracking-wider text-[10px] mr-1.5 px-1.5 py-0.5 rounded bg-primary/20">
-            DEMO / Métricas Simuladas
-          </span>
-          <span>
-            Os dados consolidados abaixo exibem uma prévia da inteligência e análise comparativa de conteúdo. A sincronização de métricas reais será ativada conforme cada conta for conectada com permissões oficiais de Insights (Meta Graph, YouTube Analytics e TikTok Display).
-          </span>
+      {isRealData ? (
+        <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-900 dark:text-emerald-200">
+          <ShieldCheck className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <div>
+            <span className="font-bold uppercase tracking-wider text-[10px] mr-1.5 px-1.5 py-0.5 rounded bg-emerald-500/20">
+              DADOS REAIS SINCRONIZADOS
+            </span>
+            <span>
+              Métricas reais agregadas a partir de contas conectadas com permissão de Insights e eventos verificáveis do CRM.
+            </span>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-200">
+          <Sparkles className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <div>
+            <span className="font-bold uppercase tracking-wider text-[10px] mr-1.5 px-1.5 py-0.5 rounded bg-amber-500/20">
+              MODO DEMONSTRAÇÃO / DADOS SIMULADOS
+            </span>
+            <span>
+              Nenhuma conta conectada possui histórico de Insights coletado para este período. Os valores abaixo são projeções ilustrativas para avaliação visual da interface.
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Cabeçalho, Filtros de Período & Ações */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-5 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] shadow-sm">
@@ -352,12 +438,12 @@ export function OmnichannelAnalytics({ accounts }: Props) {
             <h2 className="text-lg font-bold text-foreground">
               Painel Geral de Redes & Inteligência Capiversa
             </h2>
-            <Badge variant="outline" className="text-[10px] font-bold text-primary border-primary/30 uppercase">
-              Omnichannel
+            <Badge variant="outline" className={`text-[10px] font-bold uppercase ${isRealData ? "text-emerald-600 border-emerald-500/30" : "text-amber-600 border-amber-500/30"}`}>
+              {isRealData ? "Métricas Reais" : "Projeção Simulada"}
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Métricas unificadas em tempo real com rastreamento diferencial para conteúdos publicados via CRM.
+            Métricas unificadas com rastreamento diferencial para conteúdos publicados via CRM.
           </p>
         </div>
 
@@ -431,46 +517,46 @@ export function OmnichannelAnalytics({ accounts }: Props) {
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
             <BarChart3 className="size-3.5 text-primary" />
-            <span>Sumas Totais Consolidadas (Meta, TikTok e YouTube)</span>
+            <span>Sumas Totais Consolidadas {!isRealData && "(Valores de Demonstração)"}</span>
           </h3>
-          <span className="text-[11px] text-muted-foreground">Métricas consolidadas sem duplicações</span>
+          <span className="text-[11px] text-muted-foreground">
+            {isRealData ? "Métricas agregadas sem duplicações artificiais" : "Valores ilustrativos em homologação"}
+          </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
           {/* Total Visualizações */}
           <div className="p-4 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] shadow-sm space-y-1">
             <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-xs font-medium">Visualizações Totais</span>
+              <span className="text-xs font-medium">Visualizações {!isRealData && "(Simulado)"}</span>
               <Eye className="size-4 text-primary" />
             </div>
             <div className="text-2xl font-extrabold text-foreground tracking-tight">
               {totalViews.toLocaleString()}
             </div>
-            <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-              <TrendingUp className="size-3" />
-              <span>+34.8% vs. período anterior</span>
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+              <span>{isRealData ? "Impressões / Views apuradas" : "+34.8% estimado vs. anterior"}</span>
             </p>
           </div>
 
           {/* Total Seguidores / Audiência */}
           <div className="p-4 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] shadow-sm space-y-1">
             <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-xs font-medium">Audiência Global</span>
+              <span className="text-xs font-medium">Audiência Global {!isRealData && "(Simulado)"}</span>
               <Users className="size-4 text-primary" />
             </div>
             <div className="text-2xl font-extrabold text-foreground tracking-tight">
               {totalFollowers.toLocaleString()}
             </div>
-            <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-              <TrendingUp className="size-3" />
-              <span>+{timeRange === "today" ? "96" : timeRange === "7d" ? "790" : timeRange === "year" ? "18,950" : "2,720"} novos seguidores</span>
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+              <span>{isRealData ? "Soma de seguidores registrados" : "Projeção multicanal"}</span>
             </p>
           </div>
 
           {/* Total Interações */}
           <div className="p-4 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] shadow-sm space-y-1">
             <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-xs font-medium">Interações Totais</span>
+              <span className="text-xs font-medium">Interações Totais {!isRealData && "(Simulado)"}</span>
               <MessageSquare className="size-4 text-primary" />
             </div>
             <div className="text-2xl font-extrabold text-foreground tracking-tight">
@@ -488,14 +574,14 @@ export function OmnichannelAnalytics({ accounts }: Props) {
                 <Flame className="size-3.5 fill-amber-500 text-amber-500" /> Leads de Venda
               </span>
               <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] font-bold">
-                14.6%
+                {realAttribution?.summary.hasEvidence ? "Rastreados" : "Projetados"}
               </Badge>
             </div>
             <div className="text-2xl font-extrabold text-foreground tracking-tight">
               {totalLeads} leads
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Interações com intenção comercial
+              {realAttribution?.summary.hasEvidence ? "Com evento de atribuição CRM" : "Interações com intenção comercial estimada"}
             </p>
           </div>
 
@@ -503,17 +589,21 @@ export function OmnichannelAnalytics({ accounts }: Props) {
           <div className="p-4 rounded-2xl bg-[var(--panel)] border border-emerald-500/30 shadow-sm space-y-1 ring-1 ring-emerald-500/15">
             <div className="flex items-center justify-between text-muted-foreground">
               <span className="text-xs font-medium text-emerald-600 flex items-center gap-1">
-                <DollarSign className="size-3.5 text-emerald-600" /> Pipeline Estimado
+                <DollarSign className="size-3.5 text-emerald-600" /> Vendas Confirmadas
               </span>
               <span className="text-[10px] text-emerald-600 font-bold bg-emerald-500/10 px-1.5 py-0.2 rounded">
-                Orgânico
+                {realAttribution?.summary.hasEvidence && totalAttributedValue > 0 ? "Atribuídas" : "CRM"}
               </span>
             </div>
-            <div className="text-2xl font-extrabold text-foreground tracking-tight">
-              ${estimatedRevenue.toLocaleString()} <span className="text-xs font-semibold text-muted-foreground">USD</span>
+            <div className="text-xl font-extrabold text-foreground tracking-tight">
+              {realAttribution?.summary.hasEvidence && totalAttributedValue > 0
+                ? `$${totalAttributedValue.toLocaleString()} USD`
+                : "—"}
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Sem custo com anúncios pagos
+              {realAttribution?.summary.hasEvidence && totalAttributedValue > 0
+                ? `${totalWonDeals} negócio(s) ganho(s) vinculado(s)`
+                : "Requer atribuição CRM com cartões/UTM"}
             </p>
           </div>
         </div>

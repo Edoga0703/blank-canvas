@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import {
   MessageCircle,
   Send,
@@ -20,6 +21,8 @@ import {
   BadgeAlert,
   Flame,
   Calendar,
+  ShieldCheck,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -31,6 +34,8 @@ import {
   TikTokGlyph,
   YouTubeGlyph,
 } from "@/components/ui/channel-icons";
+import { listOmnichannelComments } from "@/lib/omnichannel-content.functions";
+import { replyMetaComment } from "@/lib/meta-content.functions";
 import type { ContentComment, SocialPlatform } from "@/lib/social-content.types";
 
 interface ExtendedComment extends ContentComment {
@@ -121,11 +126,46 @@ const REPLY_EMOJIS = ["👍", "❤️", "🔥", "🚀", "✨", "👋", "💬", "
 
 export function OmnichannelCommentsInbox() {
   const [comments, setComments] = useState<ExtendedComment[]>(INITIAL_COMMENTS);
+  const [isRealData, setIsRealData] = useState<boolean>(false);
   const [activeFilter, setActiveFilter] = useState<"all" | "pending" | "replied">("pending");
   const [platformFilter, setPlatformFilter] = useState<SocialPlatform | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [replyTextMap, setReplyTextMap] = useState<Record<string, string>>({});
   const [sendingId, setSendingId] = useState<string | null>(null);
+
+  const listCommentsFn = useServerFn(listOmnichannelComments);
+  const replyMetaCommentFn = useServerFn(replyMetaComment);
+
+  useEffect(() => {
+    let alive = true;
+    listCommentsFn({
+      data: {
+        platform: platformFilter,
+        status: activeFilter,
+        search: searchQuery,
+        limit: 50,
+        offset: 0,
+      },
+    })
+      .then((res: any) => {
+        if (!alive) return;
+        if (res?.comments && res.comments.length > 0) {
+          setComments(res.comments);
+          setIsRealData(true);
+        } else {
+          // Quando o banco ainda não tem comentários, mantém os exemplos com aviso transparente
+          setComments(INITIAL_COMMENTS);
+          setIsRealData(false);
+        }
+      })
+      .catch(() => {
+        if (alive) setIsRealData(false);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [listCommentsFn, platformFilter, activeFilter, searchQuery]);
 
   // Filtragem
   const filteredComments = useMemo(() => {
@@ -149,8 +189,20 @@ export function OmnichannelCommentsInbox() {
     return comments.filter((c) => c.status === "pending").length;
   }, [comments]);
 
-  // Curtir/Descurtir comentário
+  // Curtir/Descurtir comentário — Validação de suporte da API por plataforma
   const handleToggleLike = (commentId: string) => {
+    const target = comments.find((c) => c.id === commentId);
+    if (!target) return;
+
+    if (target.platform === "instagram" || target.platform === "youtube") {
+      toast.info(`A API pública oficial de ${target.platform === "instagram" ? "Instagram" : "YouTube"} não disponibiliza endpoint de curtida para contas empresariais de terceiros.`);
+      return;
+    }
+    if (target.platform === "tiktok") {
+      toast.info("Curtida em comentários do TikTok requer homologação e permissão especial na TikTok Accounts API.");
+      return;
+    }
+
     setComments((prev) =>
       prev.map((c) => {
         if (c.id === commentId) {
@@ -183,14 +235,44 @@ export function OmnichannelCommentsInbox() {
   };
 
   // Enviar resposta pública oficial
-  const handleSendReply = (commentId: string) => {
+  const handleSendReply = async (commentId: string) => {
     const text = replyTextMap[commentId]?.trim();
     if (!text) {
       toast.error("Escreva uma resposta para enviar.");
       return;
     }
 
+    const targetComment = comments.find((c) => c.id === commentId);
     setSendingId(commentId);
+
+    // Se for comentário real de conta Meta, despacha para a API real
+    if (isRealData && targetComment && (targetComment.platform === "instagram" || targetComment.platform === "facebook")) {
+      try {
+        await replyMetaCommentFn({
+          data: {
+            commentId: targetComment.external_comment_id || targetComment.id,
+            message: text,
+            instanceName: targetComment.platform === "instagram" ? "instagram" : "facebook",
+          },
+        });
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === commentId
+              ? { ...c, status: "replied", replied_at: new Date().toISOString() }
+              : c
+          )
+        );
+        setReplyTextMap((prev) => ({ ...prev, [commentId]: "" }));
+        toast.success("Resposta enviada oficialmente via Graph API!");
+      } catch (err: any) {
+        toast.error(err.message || "Falha ao enviar resposta via API.");
+      } finally {
+        setSendingId(null);
+      }
+      return;
+    }
+
+    // Modo demonstração com aviso transparente
     setTimeout(() => {
       setComments((prev) =>
         prev.map((c) =>
@@ -201,8 +283,8 @@ export function OmnichannelCommentsInbox() {
       );
       setReplyTextMap((prev) => ({ ...prev, [commentId]: "" }));
       setSendingId(null);
-      toast.info("Modo demonstração: a resposta simulada foi registrada na visualização local. O disparo em produção requer aprovação de app pelas redes.");
-    }, 600);
+      toast.info("Modo demonstração: resposta simulada na interface local. Disparos reais ocorrem quando há comentários importados de canais conectados.");
+    }, 500);
   };
 
   // Aplicar template rápido
@@ -238,23 +320,37 @@ export function OmnichannelCommentsInbox() {
     }
 
     setReplyTextMap((prev) => ({ ...prev, [comment.id]: suggested }));
-    toast.success("Resposta comercial sugerida pela IA!");
+    toast.success("Rascunho comercial gerado pela IA (Revise antes de enviar)!");
   };
 
   return (
     <div className="space-y-4">
       {/* Banner de Homologação / Demonstração */}
-      <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400">
-        <Sparkles className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-        <div>
-          <span className="font-bold uppercase tracking-wider text-[10px] mr-1.5 px-1.5 py-0.5 rounded bg-amber-500/20">
-            DEMO / Em Homologação
-          </span>
-          <span>
-            Esta bandeja ilustra o fluxo de triagem e respostas inteligentes. A sincronização e resposta em tempo real serão habilitadas após a homologação das permissões oficiais de comentários com as plataformas.
-          </span>
+      {isRealData ? (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-800 dark:text-emerald-300">
+          <ShieldCheck className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <div>
+            <span className="font-bold uppercase tracking-wider text-[10px] mr-1.5 px-1.5 py-0.5 rounded bg-emerald-500/20">
+              Comentários Reais Conectados
+            </span>
+            <span>
+              Exibindo comentários sincronizados das contas sociais oficiais com suporte a resposta direta.
+            </span>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400">
+          <Sparkles className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <div>
+            <span className="font-bold uppercase tracking-wider text-[10px] mr-1.5 px-1.5 py-0.5 rounded bg-amber-500/20">
+              DEMO / Modo Demonstração
+            </span>
+            <span>
+              Nenhum comentário importado no banco ainda. Exibindo exemplos interativos para avaliação da experiência de triagem comercial.
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Barra de Filtros e Busca */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-[var(--panel)] border border-[color:var(--hairline)] rounded-2xl shadow-sm">

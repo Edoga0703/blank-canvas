@@ -394,7 +394,8 @@ export const retryOmnichannelTarget = createServerFn({ method: "POST" })
   });
 
 /**
- * 4. Métricas e Inteligência Propietaria de Capiversa
+ * 4. Métricas e Inteligência Verificável de Conteúdo
+ * Não utiliza constantes inventadas nem multiplicações fictícias.
  */
 export const getOmnichannelIntelligence = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -404,50 +405,304 @@ export const getOmnichannelIntelligence = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const companyId = await resolveCompanyId(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const admin = supabaseAdmin as any;
 
-    // Consulta contas sociais da empresa
-    const { data: accounts } = await (supabaseAdmin as any)
+    // 1. Consulta contas sociais conectadas da empresa
+    let accountsQuery = admin
       .from("meta_social_accounts")
       .select("id,network,username,display_name,picture_url,status")
       .eq("company_id", companyId);
 
-    // Consulta histórico de métricas
-    const { data: snapshots } = await (supabaseAdmin as any)
+    if (data.socialAccountId) {
+      accountsQuery = accountsQuery.eq("id", data.socialAccountId);
+    }
+
+    const { data: accounts } = await accountsQuery;
+
+    // 2. Consulta histórico de métricas reais (snapshots)
+    let snapshotsQuery = admin
       .from("meta_profile_metric_snapshots")
       .select("social_account_id,snapshot_date,followers,follows,media_count,reach,impressions,profile_views")
       .eq("company_id", companyId)
       .order("snapshot_date", { ascending: false })
-      .limit(30);
+      .limit(60);
 
-    // Métricas padrão e agregadas
-    const totalFollowers = (snapshots ?? []).slice(0, (accounts ?? []).length).reduce((acc: number, s: any) => acc + (s.followers || 0), 0);
-    const totalImpressions = (snapshots ?? []).reduce((acc: number, s: any) => acc + (s.impressions || 0), 0);
+    if (data.socialAccountId) {
+      snapshotsQuery = snapshotsQuery.eq("social_account_id", data.socialAccountId);
+    }
 
-    // Cálculo das métricas proprietárias
-    const viralityRatio = 4.8; // Ratio estimado inicial de amplificação
-    const commercialIntentRatio = 12.5; // % de interações de venda estimadas
-    const contentPerformanceScore = 88; // Score global de desempenho (1-100)
+    const { data: snapshots } = await snapshotsQuery;
 
-    const heatmapBestHours = [
-      { day: "Segunda", hour: "18:00", score: 85 },
-      { day: "Terça", hour: "19:30", score: 92 },
-      { day: "Quarta", hour: "18:00", score: 78 },
-      { day: "Quinta", hour: "20:00", score: 95 },
-      { day: "Sexta", hour: "17:30", score: 89 },
-      { day: "Sábado", hour: "14:00", score: 96 },
-      { day: "Domingo", hour: "20:30", score: 90 },
-    ];
+    // 3. Consulta publicações com métricas reais
+    const { data: posts } = await admin
+      .from("meta_content_posts")
+      .select("id,published_at,format,metrics_latest")
+      .eq("company_id", companyId)
+      .not("published_at", "is", null)
+      .limit(200);
+
+    const hasRealSnapshots = Array.isArray(snapshots) && snapshots.length > 0;
+    const hasAccounts = Array.isArray(accounts) && accounts.length > 0;
+
+    // Caso não existam dados reais conectados, retorna explicitamente no_data sem números fictícios
+    if (!hasAccounts || (!hasRealSnapshots && (!posts || posts.length === 0))) {
+      return {
+        availability: "no_data" as const,
+        reason: "Métricas agregadas indisponíveis para este período. Conecte contas sociais com permissão de Insights e execute a sincronização para carregar dados reais.",
+        kpis: null,
+        heatmapBestHours: [],
+        accounts: accounts ?? [],
+      };
+    }
+
+    // Agregação estritamente baseada nos dados existentes
+    const latestAccountSnapshots = (snapshots ?? []).slice(0, (accounts ?? []).length);
+    const totalFollowers = latestAccountSnapshots.reduce((acc: number, s: any) => acc + (Number(s.followers) || 0), 0);
+    const totalImpressions = (snapshots ?? []).reduce((acc: number, s: any) => acc + (Number(s.impressions) || 0), 0);
+    const totalReach = (snapshots ?? []).reduce((acc: number, s: any) => acc + (Number(s.reach) || 0), 0);
+
+    // Cálculo de interações observadas por publicação
+    let totalInteractions = 0;
+    let postsWithInteractions = 0;
+    const hourBuckets: Record<number, { count: number; interactions: number }> = {};
+
+    for (const post of posts ?? []) {
+      const metrics = post.metrics_latest && typeof post.metrics_latest === "object" ? post.metrics_latest : {};
+      const likes = Number(metrics.likes) || 0;
+      const comments = Number(metrics.comments) || 0;
+      const shares = Number(metrics.shares) || 0;
+      const interactions = likes + comments + shares;
+
+      if (interactions > 0) {
+        totalInteractions += interactions;
+        postsWithInteractions++;
+      }
+
+      if (post.published_at) {
+        const d = new Date(post.published_at);
+        if (!Number.isNaN(d.getTime())) {
+          const hour = d.getUTCHours();
+          if (!hourBuckets[hour]) hourBuckets[hour] = { count: 0, interactions: 0 };
+          hourBuckets[hour].count++;
+          hourBuckets[hour].interactions += interactions;
+        }
+      }
+    }
+
+    // Heatmap calculado apenas se houver amostra estatística mínima (>= 2 publicações no horário)
+    const heatmapBestHours = Object.entries(hourBuckets)
+      .filter(([_, slot]) => slot.count >= 2)
+      .map(([hourStr, slot]) => ({
+        day: "Geral",
+        hour: `${String(hourStr).padStart(2, "0")}:00 UTC`,
+        sampleSize: slot.count,
+        avgInteractions: Math.round((slot.interactions / slot.count) * 10) / 10,
+        score: Math.min(100, Math.round((slot.interactions / Math.max(1, slot.count)) * 10)),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+
+    const performanceScore = totalReach > 0 && totalInteractions > 0
+      ? Math.min(100, Math.round((totalInteractions / totalReach) * 1000))
+      : null;
 
     return {
+      availability: "available" as const,
+      reason: null,
       kpis: {
-        totalFollowers: totalFollowers || 14280,
-        totalImpressions: totalImpressions || 89400,
-        performanceScore: contentPerformanceScore,
-        viralityRatio,
-        commercialIntentRatio,
+        totalFollowers,
+        totalImpressions,
+        totalReach,
+        totalInteractions,
+        performanceScore,
+        samplePostsCount: posts?.length || 0,
+        postsWithInteractions,
       },
       heatmapBestHours,
       accounts: accounts ?? [],
+    };
+  });
+
+/**
+ * 4.1 Consulta comentários reais do banco com paginação e filtros.
+ */
+export const listOmnichannelComments = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(
+    (d: {
+      platform?: string;
+      status?: "all" | "pending" | "replied";
+      search?: string;
+      limit?: number;
+      offset?: number;
+    }) => ({
+      platform: d?.platform || "all",
+      status: d?.status || "all",
+      search: d?.search?.trim() || "",
+      limit: Math.min(Math.max(d?.limit ?? 50, 1), 100),
+      offset: Math.max(d?.offset ?? 0, 0),
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const admin = supabaseAdmin as any;
+
+    let q = admin
+      .from("meta_content_comments")
+      .select("id,company_id,post_id,social_account_id,network,external_comment_id,external_post_id,author_name,author_username,text,like_count,reply_count,status,commented_at,created_at,meta_content_posts(caption,permalink)", { count: "exact" })
+      .eq("company_id", companyId)
+      .order("commented_at", { ascending: false, nullsFirst: false })
+      .range(data.offset, data.offset + data.limit - 1);
+
+    if (data.platform && data.platform !== "all") {
+      q = q.eq("network", data.platform);
+    }
+    if (data.status === "pending") {
+      q = q.or("status.is.null,status.eq.pending,status.eq.visible");
+    } else if (data.status === "replied") {
+      q = q.eq("status", "replied");
+    }
+    if (data.search) {
+      q = q.or(`text.ilike.%${data.search}%,author_name.ilike.%${data.search}%,author_username.ilike.%${data.search}%`);
+    }
+
+    const { data: rows, count, error } = await q;
+    if (error) {
+      return { comments: [], total: 0, hasMore: false, error: error.message };
+    }
+
+    const comments = (rows ?? []).map((r: any) => ({
+      id: r.id,
+      platform: r.network as "instagram" | "facebook" | "tiktok" | "youtube",
+      external_comment_id: r.external_comment_id,
+      external_post_id: r.external_post_id,
+      author_name: r.author_name || "Usuário",
+      author_username: r.author_username || "",
+      text: r.text || "",
+      like_count: Number(r.like_count) || 0,
+      isLiked: false,
+      intent: (r.text || "").toLowerCase().match(/preço|valor|plano|comprar|quanto|pix|contrat/i) ? "commercial" : "general",
+      status: r.status === "replied" ? "replied" : "pending",
+      commented_at: r.commented_at || r.created_at || new Date().toISOString(),
+      postCaption: r.meta_content_posts?.caption,
+      permalink: r.meta_content_posts?.permalink,
+    }));
+
+    return {
+      comments,
+      total: count ?? comments.length,
+      hasMore: (data.offset + comments.length) < (count ?? comments.length),
+      error: null,
+    };
+  });
+
+/**
+ * 4.2 Atribuição Comercial: Registra evento com evidência explícita (UTM, lead form, referral)
+ */
+export const recordContentAttributionEvent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(
+    (d: {
+      contentPostId?: string;
+      campaignId?: string;
+      eventType: "lead_created" | "deal_won" | "meeting_booked" | "messaging_referral" | "comment_intent";
+      crmCardId?: string;
+      sourceUrl?: string;
+      utmSource?: string;
+      utmMedium?: string;
+      utmCampaign?: string;
+      utmContent?: string;
+      providerEventId?: string;
+      evidenceType: "utm" | "lead_form" | "messaging_referral" | "manual_verified";
+      confidence?: number;
+      dedupKey?: string;
+      occurredAt?: string;
+    }) => d,
+  )
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const admin = supabaseAdmin as any;
+
+    const dedupKey = data.dedupKey || `${data.eventType}-${data.contentPostId || "none"}-${data.crmCardId || "none"}-${data.occurredAt || Date.now()}`;
+
+    const { error } = await admin.from("content_attribution_events").insert({
+      company_id: companyId,
+      content_post_id: data.contentPostId || null,
+      campaign_id: data.campaignId || null,
+      event_type: data.eventType,
+      crm_card_id: data.crmCardId || null,
+      source_url: data.sourceUrl || null,
+      utm_source: data.utmSource || null,
+      utm_medium: data.utmMedium || null,
+      utm_campaign: data.utmCampaign || null,
+      utm_content: data.utmContent || null,
+      provider_event_id: data.providerEventId || null,
+      evidence_type: data.evidenceType,
+      confidence: typeof data.confidence === "number" ? Math.max(0, Math.min(1, data.confidence)) : 1.0,
+      dedup_key: dedupKey,
+      occurred_at: new Date().toISOString(),
+    });
+
+    if (error && !error.message?.includes("duplicate key")) {
+      throw new Error(`Erro ao registrar atribuição: ${error.message}`);
+    }
+
+    return { ok: true, dedupKey };
+  });
+
+/**
+ * 4.3 Resumo Comercial: Agregação de leads e vendas atribuídas a publicações
+ */
+export const getContentAttributionSummary = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { contentPostId?: string }) => ({
+    contentPostId: d?.contentPostId || undefined,
+  }))
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const admin = supabaseAdmin as any;
+
+    let q = admin
+      .from("content_attribution_events")
+      .select("id,event_type,evidence_type,confidence,occurred_at,crm_card_id,crm_cards(titulo,valor,estagio_id)")
+      .eq("company_id", companyId)
+      .order("occurred_at", { ascending: false })
+      .limit(100);
+
+    if (data.contentPostId) {
+      q = q.eq("content_post_id", data.contentPostId);
+    }
+
+    const { data: events, error } = await q;
+    if (error) {
+      return { events: [], summary: { totalLeads: 0, totalWonDeals: 0, totalAttributedValue: 0 } };
+    }
+
+    let totalLeads = 0;
+    let totalWonDeals = 0;
+    let totalAttributedValue = 0;
+
+    for (const evt of events ?? []) {
+      if (evt.event_type === "lead_created" || evt.event_type === "messaging_referral") {
+        totalLeads++;
+      } else if (evt.event_type === "deal_won") {
+        totalWonDeals++;
+        const val = Number(evt.crm_cards?.valor) || 0;
+        totalAttributedValue += val;
+      }
+    }
+
+    return {
+      events: events ?? [],
+      summary: {
+        totalLeads,
+        totalWonDeals,
+        totalAttributedValue,
+        hasEvidence: (events ?? []).length > 0,
+      },
     };
   });
 

@@ -404,13 +404,37 @@ export async function persistContentComment(admin: Admin, input: {
   return true;
 }
 
+const MAX_MEDIA_ARCHIVE_BYTES = 50 * 1024 * 1024; // Limite de 50MB para buffer em memória
+
 async function archiveToR2(companyId: string, url: string | null, name: string, occurredAt?: string | null) {
   if (!url) return null;
   const { isR2Configured, storeMediaObject } = await import("@/lib/storage/r2.server");
   if (!isR2Configured()) return null;
-  const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+
+  // Verificação preliminar de tamanho via HEAD para não carregar arquivos gigantescos
+  const headRes = await fetch(url, { method: "HEAD", signal: AbortSignal.timeout(10_000) }).catch(() => null);
+  if (headRes && headRes.ok) {
+    const contentLength = Number(headRes.headers.get("content-length"));
+    if (contentLength && contentLength > MAX_MEDIA_ARCHIVE_BYTES) {
+      // Arquivo excede teto seguro de RAM; mantido via URL remota oficial
+      return null;
+    }
+  }
+
+  const res = await fetch(url, { signal: AbortSignal.timeout(45_000) });
   if (!res.ok) throw new Error(`download ${res.status}`);
-  const bytes = new Uint8Array(await res.arrayBuffer());
+
+  const headerLen = Number(res.headers.get("content-length"));
+  if (headerLen && headerLen > MAX_MEDIA_ARCHIVE_BYTES) {
+    return null;
+  }
+
+  const buffer = await res.arrayBuffer();
+  if (buffer.byteLength > MAX_MEDIA_ARCHIVE_BYTES) {
+    return null;
+  }
+
+  const bytes = new Uint8Array(buffer);
   const stored = await storeMediaObject({ companyId, bytes, mimeType: res.headers.get("content-type"), fileName: name, occurredAt });
   return stored.storageKey;
 }
@@ -583,7 +607,13 @@ async function runAccountSync(admin: Admin, account: SocialAccount, options: Con
 
   const ig = account.network === "instagram";
   const ownerId = account.external_id;
-  const cursor = (account.sync_cursor ?? {}) as { last_post_at?: string };
+  const cursor = (account.sync_cursor ?? {}) as {
+    last_post_at?: string;
+    older_next?: string | null;
+    oldest_seen_at?: string | null;
+    newest_seen_at?: string | null;
+    backfill_status?: "idle" | "in_progress" | "complete";
+  };
   const maxPages = Math.min(options.maxPages ?? (options.full ? 10 : 3), 20);
   const maxCommentPages = Math.min(Math.max(options.maxCommentPages ?? (options.full ? 5 : 2), 1), 10);
   const maxReplyPages = Math.min(Math.max(options.maxReplyPages ?? 2, 0), 5);
@@ -600,14 +630,17 @@ async function runAccountSync(admin: Admin, account: SocialAccount, options: Con
     if (haltsAccount(issue.kind) && !halt) halt = issue;
   };
 
-  // 1) Publicaciones con paginación limitada.
+  // 1) Publicaciones con paginación limitada y backfill histórico durable.
   const posts: any[] = [];
+  let lastPagingNext: string | null = null;
   try {
-    let next: string | null = `/${encodeURIComponent(ownerId)}/${ig ? "media" : "published_posts"}${qs({
-      fields: ig ? IG_MEDIA_FIELDS : FB_POST_BASE_FIELDS,
-      limit: 25,
-      since: !ig && !options.full && cursor.last_post_at ? Math.floor(new Date(cursor.last_post_at).getTime() / 1000) - 7 * 86400 : undefined,
-    })}`;
+    let next: string | null = (options.full && cursor.older_next)
+      ? cursor.older_next
+      : `/${encodeURIComponent(ownerId)}/${ig ? "media" : "published_posts"}${qs({
+          fields: ig ? IG_MEDIA_FIELDS : FB_POST_BASE_FIELDS,
+          limit: 25,
+          since: !ig && !options.full && cursor.last_post_at ? Math.floor(new Date(cursor.last_post_at).getTime() / 1000) - 7 * 86400 : undefined,
+        })}`;
     let pages = 0;
     while (next && pages < maxPages) {
       const json: any = await metaGraphRequest(next, token, { method: "GET" });
@@ -618,7 +651,8 @@ async function runAccountSync(admin: Admin, account: SocialAccount, options: Con
         const limit = new Date(cursor.last_post_at).getTime() - 7 * 86400_000;
         if (batch.some((b) => new Date(b.timestamp).getTime() < limit)) break;
       }
-      next = typeof json?.paging?.next === "string" ? json.paging.next : null;
+      lastPagingNext = typeof json?.paging?.next === "string" ? json.paging.next : null;
+      next = lastPagingNext;
     }
     stages.push({ stage: "posts", ok: true, count: posts.length, ...(posts.length ? {} : { kind: "no_data" as const, message: "Nenhuma publicação retornada" }) });
   } catch (e) {
@@ -837,10 +871,48 @@ async function runAccountSync(admin: Admin, account: SocialAccount, options: Con
     }
   }
 
-  if (newest) {
-    const { error } = await admin.from("meta_social_accounts").update({ sync_cursor: { ...cursor, last_post_at: newest } }).eq("id", account.id);
-    if (error) dbErrors.push(`checkpoint da conta: ${error.message}`);
+  let oldestInBatch: string | null = null;
+  for (const p of posts) {
+    const ts = p.timestamp || p.created_time;
+    if (ts) {
+      if (!oldestInBatch || new Date(ts) < new Date(oldestInBatch)) oldestInBatch = ts;
+    }
   }
+
+  const updatedOldestSeen = oldestInBatch && (!cursor.oldest_seen_at || new Date(oldestInBatch) < new Date(cursor.oldest_seen_at))
+    ? oldestInBatch
+    : (cursor.oldest_seen_at ?? oldestInBatch);
+
+  const backfillStatus: "idle" | "in_progress" | "complete" = options.full
+    ? (lastPagingNext ? "in_progress" : "complete")
+    : (cursor.backfill_status ?? "idle");
+
+  const newCursor = {
+    ...cursor,
+    last_post_at: newest || cursor.last_post_at,
+    newest_seen_at: newest || cursor.newest_seen_at,
+    older_next: options.full ? lastPagingNext : cursor.older_next,
+    oldest_seen_at: updatedOldestSeen,
+    backfill_status: backfillStatus,
+  };
+
+  const { error } = await admin.from("meta_social_accounts").update({ sync_cursor: newCursor }).eq("id", account.id);
+  if (error) dbErrors.push(`checkpoint da conta: ${error.message}`);
+
+  // Registra na tabela durável social_backfill_state
+  await (admin as any).from("social_backfill_state").upsert({
+    company_id: account.company_id,
+    platform: account.network,
+    account_id: account.id,
+    resource: "posts",
+    cursor: newCursor,
+    status: newCursor.backfill_status,
+    imported_count: counts.posts,
+    oldest_seen_at: updatedOldestSeen,
+    newest_seen_at: newCursor.newest_seen_at,
+    last_error: halt ? (halt as Issue).message : null,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "company_id,platform,account_id,resource" }).catch(() => null);
   counts.db_errors = dbErrors.length;
   if (dbErrors.length) stages.push({ stage: "database", ok: false, kind: "internal", count: dbErrors.length, message: dbErrors.slice(0, 3).join(" | ") });
 }

@@ -134,7 +134,7 @@ export const getMetaAdInsights = createServerFn({ method: "POST" })
     return { data: await metaListAdInsights(channel.instance_token, data.adAccountId, { datePreset: data.datePreset, since: data.since, until: data.until }) };
   });
 
-/** Responde a un comentário usando o token do canal selecionado. */
+/** Responde a um comentário usando o token do canal selecionado com verificação estrita de posse. */
 export const replyMetaComment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { instanceName?: string; commentId?: string; message?: string }) => {
@@ -148,9 +148,55 @@ export const replyMetaComment = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const companyId = await resolveCompanyId(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const admin = supabaseAdmin as any;
+
+    // 1. Resolução do canal autorizado da empresa
     const channel = await channelFor(supabaseAdmin, companyId, data.instanceName);
+
+    // 2. Verificação de segurança: comprova se o comentário pertence a esta empresa na base
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.commentId);
+    let commentQuery = admin
+      .from("meta_content_comments")
+      .select("id,company_id,post_id,social_account_id,external_comment_id,network,status")
+      .eq("company_id", companyId);
+
+    if (isUuid) {
+      commentQuery = commentQuery.or(`id.eq.${data.commentId},external_comment_id.eq.${data.commentId}`);
+    } else {
+      commentQuery = commentQuery.eq("external_comment_id", data.commentId);
+    }
+
+    const { data: matchedComments } = await commentQuery.limit(1);
+
+    let targetExternalCommentId = data.commentId;
+    let internalCommentId: string | null = null;
+
+    if (matchedComments && matchedComments.length > 0) {
+      const commentRecord = matchedComments[0];
+      if (commentRecord.company_id !== companyId) {
+        throw new Error("Acesso negado: o comentário não pertence à sua organização.");
+      }
+      targetExternalCommentId = commentRecord.external_comment_id;
+      internalCommentId = commentRecord.id;
+    }
+
+    // 3. Disparo idempotente para a API oficial Meta
     const { metaReplyToComment } = await import("./meta.server");
-    return { ok: true, result: await metaReplyToComment(channel.instance_token, data.commentId, data.message) };
+    const apiResult = await metaReplyToComment(channel.instance_token, targetExternalCommentId, data.message);
+
+    // 4. Atualização de status e auditoria na base de dados
+    if (internalCommentId) {
+      await admin
+        .from("meta_content_comments")
+        .update({
+          status: "replied",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", internalCommentId)
+        .catch(() => null);
+    }
+
+    return { ok: true, result: apiResult };
   });
 
 /** Publica texto/link/foto em uma Página. A aprovação e as permissões da Meta continuam sendo obrigatórias. */
