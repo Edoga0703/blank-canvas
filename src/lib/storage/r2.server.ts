@@ -24,7 +24,7 @@ const R2_DEFAULTS: Record<string, string> = {
   R2_ACCESS_KEY_ID: "a0048ab1cf7078594e2057b9b31131de",
   R2_SECRET_ACCESS_KEY: "328e9326f2e6adad6740f7ea6d1cf64ded1d4727e95408ad5fb4451ff5d29a3c",
   R2_BUCKET: "capiversa-media",
-  R2_MAX_FILE_BYTES: "52428800",
+  R2_MAX_FILE_BYTES: "524288000", // 500 MB para soportar vídeo 1080p y 4K sin compresión
   R2_SIGNED_URL_TTL_SECONDS: "900",
 };
 
@@ -57,7 +57,7 @@ function getConfig(): R2Config {
     secretAccessKey: required("R2_SECRET_ACCESS_KEY"),
     bucket: required("R2_BUCKET"),
     publicBaseUrl: (process.env.R2_PUBLIC_BASE_URL?.trim() || process.env["R2_PUBLIC_BASE_URL"]?.trim() || "").replace(/\/$/, "") || null,
-    maxFileBytes: positiveInteger("R2_MAX_FILE_BYTES", 50 * 1024 * 1024),
+    maxFileBytes: positiveInteger("R2_MAX_FILE_BYTES", 500 * 1024 * 1024),
     signedUrlTtlSeconds: Math.min(604800, positiveInteger("R2_SIGNED_URL_TTL_SECONDS", 900)),
   };
 }

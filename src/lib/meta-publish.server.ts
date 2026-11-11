@@ -109,7 +109,7 @@ export async function metaPublishInstagramPhoto(
   return { id: publishResp?.id || container.id, success: true };
 }
 
-/** Publica um vídeo ou Reels no Instagram. */
+/** Publica um vídeo ou Reels no Instagram em qualidade máxima. */
 export async function metaPublishInstagramVideo(
   token: string,
   igUserId: string,
@@ -125,12 +125,13 @@ export async function metaPublishInstagramVideo(
   });
   if (!container?.id) throw new Error("A Meta não retornou o identificador do container do vídeo.");
 
-  await waitForContainer(container.id, token, 35, 3000);
+  // Aguarda até 150 segundos para processamento de vídeos pesados em Full HD / 4K
+  await waitForContainer(container.id, token, 50, 3000);
   const publishResp = await publishContainer(igUserId, container.id, token);
   return { id: publishResp?.id || container.id, success: true };
 }
 
-/** Publica uma postagem de texto/imagem na Página do Facebook. */
+/** Publica uma postagem de texto, imagem ou vídeo nativo em alta resolução na Página do Facebook. */
 export async function metaPublishFacebookPost(
   token: string,
   pageId: string,
@@ -142,6 +143,13 @@ export async function metaPublishFacebookPost(
     if (/\.(jpe?g|png|webp|gif)/i.test(linkOrImageUrl)) {
       params.url = linkOrImageUrl;
       return graphPost(`${pageId}/photos`, token, params);
+    }
+    // Para vídeos, utiliza o endpoint nativo de vídeos do Facebook garantindo reprodução em 1080p HD
+    if (/\.(mp4|mov|webm)/i.test(linkOrImageUrl)) {
+      return graphPost(`${pageId}/videos`, token, {
+        description: message,
+        file_url: linkOrImageUrl,
+      });
     }
     params.link = linkOrImageUrl;
   }

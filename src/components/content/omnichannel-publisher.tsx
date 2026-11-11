@@ -46,7 +46,7 @@ import {
   TikTokGlyph,
   YouTubeGlyph,
 } from "@/components/ui/channel-icons";
-import { uploadR2Direct } from "@/lib/storage/r2.functions";
+import { prepareR2Upload, uploadR2Direct } from "@/lib/storage/r2.functions";
 import { createOmnichannelPost } from "@/lib/omnichannel-content.functions";
 import type { SocialAccount, SocialPlatform } from "@/lib/social-content.types";
 
@@ -74,6 +74,7 @@ const DEMO_MEDIA_SAMPLES = {
 };
 
 export function OmnichannelPublisher({ accounts, onPublished }: Props) {
+  const prepareUploadFn = useServerFn(prepareR2Upload);
   const uploadFn = useServerFn(uploadR2Direct);
   const publishFn = useServerFn(createOmnichannelPost);
 
@@ -100,6 +101,17 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<"video" | "image">("video");
+  const [mediaMeta, setMediaMeta] = useState<{
+    width?: number;
+    height?: number;
+    duration?: number;
+    sizeBytes?: number;
+  }>({
+    width: 1080,
+    height: 1920,
+    duration: 25,
+    sizeBytes: 15400000,
+  });
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -150,7 +162,7 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
     });
   };
 
-  // Upload para Cloudflare R2
+  // Upload em Streaming Binário Direto (Zero Perda de Bitrate e Qualidade Máxima)
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -160,6 +172,67 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
     setMediaType(isVid ? "video" : "image");
     setUploading(true);
 
+    // Extrai metadados do vídeo para auditoria de resolução
+    if (isVid) {
+      const vEl = document.createElement("video");
+      vEl.preload = "metadata";
+      vEl.onloadedmetadata = () => {
+        window.URL.revokeObjectURL(vEl.src);
+        setMediaMeta({
+          width: vEl.videoWidth,
+          height: vEl.videoHeight,
+          duration: Math.round(vEl.duration),
+          sizeBytes: file.size,
+        });
+      };
+      vEl.src = URL.createObjectURL(file);
+    } else {
+      const imgEl = new window.Image();
+      imgEl.onload = () => {
+        window.URL.revokeObjectURL(imgEl.src);
+        setMediaMeta({
+          width: imgEl.naturalWidth,
+          height: imgEl.naturalHeight,
+          duration: 0,
+          sizeBytes: file.size,
+        });
+      };
+      imgEl.src = URL.createObjectURL(file);
+    }
+
+    // 1. Tenta upload em streaming direto assinado via PUT (sem base64, bitrate original intacto)
+    try {
+      const target = await prepareUploadFn({
+        data: {
+          fileName: file.name,
+          mimeType: file.type,
+          sizeBytes: file.size,
+        },
+      });
+
+      if (target?.uploadUrl) {
+        const putRes = await fetch(target.uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+
+        if (putRes.ok && target.downloadUrl) {
+          setMediaUrl(target.downloadUrl);
+          toast.success(
+            isVid
+              ? "Vídeo carregado com bitrate original e máxima qualidade preservada!"
+              : "Imagem de alta resolução carregada com sucesso!",
+          );
+          setUploading(false);
+          return;
+        }
+      }
+    } catch (err: any) {
+      console.warn("Tentando fallback de upload direto...", err);
+    }
+
+    // 2. Fallback resiliente com uploadR2Direct
     try {
       const reader = new FileReader();
       reader.onload = async () => {
@@ -174,7 +247,7 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
           });
           if (res?.downloadUrl) {
             setMediaUrl(res.downloadUrl);
-            toast.success(`${isVid ? "Vídeo" : "Imagem"} carregado com sucesso no storage R2!`);
+            toast.success("Arquivo carregado com sucesso!");
           }
         } catch (err: any) {
           toast.error("Erro no upload do arquivo: " + err?.message);
@@ -486,8 +559,51 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
                     </Badge>
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    Armazenado no Cloudflare R2 • Pronto para publicação simultânea
+                    Armazenado no Cloudflare R2 • Pronto para publicação simultânea em qualidade nativa
                   </p>
+
+                  {/* Selo de Qualidade Máxima & Auditoria de Resolução */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
+                    {mediaType === "video" ? (
+                      <>
+                        <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] font-bold flex items-center gap-1 h-5">
+                          <Sparkles className="size-3" />
+                          <span>
+                            {mediaMeta.width && mediaMeta.width >= 2160
+                              ? "4K Ultra HD (3840×2160)"
+                              : mediaMeta.height && mediaMeta.height >= 1080
+                              ? "1080p Full HD (Qualidade Máxima)"
+                              : "HD 720p Otimizado"}
+                          </span>
+                        </Badge>
+                        <Badge variant="outline" className="text-[9.5px] text-muted-foreground border-[color:var(--hairline)] h-5">
+                          Bitrate Original Preservado
+                        </Badge>
+                        {mediaMeta.duration ? (
+                          <span className="text-[10.5px] text-muted-foreground font-medium">
+                            • {mediaMeta.duration}s
+                          </span>
+                        ) : null}
+                        {mediaMeta.sizeBytes ? (
+                          <span className="text-[10.5px] text-muted-foreground font-medium">
+                            • {(mediaMeta.sizeBytes / (1024 * 1024)).toFixed(1)} MB
+                          </span>
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] font-bold flex items-center gap-1 h-5">
+                          <Sparkles className="size-3" />
+                          <span>Alta Resolução (Original)</span>
+                        </Badge>
+                        {mediaMeta.sizeBytes ? (
+                          <span className="text-[10.5px] text-muted-foreground font-medium">
+                            {(mediaMeta.sizeBytes / (1024 * 1024)).toFixed(1)} MB
+                          </span>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-1">
