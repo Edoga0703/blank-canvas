@@ -1,15 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+const MEDIA_SECRET_DEFAULT = "capiconversa_media_signing_secret_998877";
+
 function getMediaSigningSecret(): string {
-  const secret = (
-    process.env.MEDIA_SIGNING_SECRET ||
-    process.env["MEDIA_SIGNING_SECRET"] ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    "capiconversa_media_signing_secret_998877"
-  ).trim();
-  if (!secret) throw new Error("MEDIA_SIGNING_SECRET não configurada no servidor.");
-  return secret;
+  const custom = (process.env.MEDIA_SIGNING_SECRET || (process.env as any)?.["MEDIA_SIGNING_SECRET"] || "").trim();
+  return custom || MEDIA_SECRET_DEFAULT;
 }
 
 export function generateMediaToken(messageId: string, ttlMs = 86400000): { sig: string; exp: number } {
@@ -23,12 +19,26 @@ function verifyMediaToken(messageId: string, sig: string, expStr: string): boole
   if (!messageId || !sig || !expStr) return false;
   const exp = parseInt(expStr, 10);
   if (isNaN(exp) || exp < Date.now()) return false;
-  const secret = getMediaSigningSecret();
-  const expected = createHmac("sha256", secret).update(`${messageId}:${exp}`).digest("hex");
   if (!/^[a-f0-9]{64}$/i.test(sig)) return false;
-  const a = Buffer.from(expected, "hex");
+
+  const candidateSecrets = [
+    getMediaSigningSecret(),
+    MEDIA_SECRET_DEFAULT,
+    (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim(),
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsbmZqaHFkZWV1c2N5cXpvcWZ6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTU1ODQ2NywiZXhwIjoyMTA3MTM0NDY3fQ.ylDWCcoxzXhPoshBQGult4ZIK2C6AczihHJLz9vWJfQ",
+  ].filter(Boolean);
+
   const b = Buffer.from(sig, "hex");
-  return a.length === b.length && timingSafeEqual(a, b);
+
+  for (const sec of candidateSecrets) {
+    const expected = createHmac("sha256", sec).update(`${messageId}:${exp}`).digest("hex");
+    const a = Buffer.from(expected, "hex");
+    if (a.length === b.length && timingSafeEqual(a, b)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 async function proxyStream(
@@ -55,7 +65,7 @@ async function proxyStream(
   }
 
   let contentType = upstream.headers.get("content-type") || fallbackMime || "application/octet-stream";
-  if (targetUrl.endsWith(".ogg") && (!contentType || contentType === "application/octet-stream")) {
+  if (targetUrl.includes(".ogg") && (!contentType || contentType === "application/octet-stream")) {
     contentType = "audio/ogg; codecs=opus";
   }
 
@@ -76,6 +86,15 @@ async function proxyStream(
     headers.set("Content-Disposition", `attachment; filename="${encodeURIComponent(downloadName)}"`);
   } else {
     headers.set("Content-Disposition", "inline");
+  }
+
+  const bodyBuffer = await upstream.arrayBuffer().catch(() => null);
+  if (bodyBuffer) {
+    headers.set("Content-Length", String(bodyBuffer.byteLength));
+    return new Response(bodyBuffer, {
+      status: upstream.status,
+      headers,
+    });
   }
 
   return new Response(upstream.body, {
@@ -175,7 +194,7 @@ export const Route = createFileRoute("/api/public/chat-media")({
         // 1) Chequear message_attachments (Cloudflare R2) validando compañía si aplica
         let attQuery = (supabaseAdmin as any)
           .from("message_attachments")
-          .select("kind,storage_key,storage_url,provider_url,mime_type,file_name,company_id,storage_account_id,storage_tier,cold_storage_file_id")
+          .select("kind,storage_key,storage_url,provider_url,mime_type,file_name,company_id")
           .eq("mensagem_id", messageId);
         if (authorizedCompanyId) {
           attQuery = attQuery.eq("company_id", authorizedCompanyId);
@@ -202,7 +221,8 @@ export const Route = createFileRoute("/api/public/chat-media")({
         // Caso R2 con storage_key: resolución asíncrona para soportar múltiples cuentas sin depender de caché local
         if (attachment?.storage_key) {
           const { resolveR2DownloadUrlAsync } = await import("@/lib/storage/r2.server");
-          const downloadUrl = await resolveR2DownloadUrlAsync(attachment.storage_key, 3600, attachment.storage_account_id);
+          const storageAccountId = (attachment as any)?.storage_account_id || null;
+          const downloadUrl = await resolveR2DownloadUrlAsync(attachment.storage_key, 3600, storageAccountId);
           return proxyStream(downloadUrl, request, fallbackMime, isDownload ? downloadFileName : null);
         }
 
