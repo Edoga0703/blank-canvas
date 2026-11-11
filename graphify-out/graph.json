@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T11:11:41.283746+00:00",
+  "generated_at": "2026-11-11T12:00:05.365407+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -1947,7 +1947,7 @@
     },
     {
       "path": "src/routes/app/automacoes.$workflowId.tsx",
-      "bytes": 46875
+      "bytes": 74233
     },
     {
       "path": "src/routes/app/treinamentos.index.tsx",
@@ -1967,7 +1967,7 @@
     },
     {
       "path": "src/routes/app/automacoes.index.tsx",
-      "bytes": 10742
+      "bytes": 11260
     },
     {
       "path": "src/routes/app/treinamentos.$courseId.tsx",
@@ -3019,11 +3019,11 @@
     },
     {
       "path": "src/lib/automations/registry.server.ts",
-      "bytes": 17135
+      "bytes": 17383
     },
     {
       "path": "src/lib/automations/queue.server.ts",
-      "bytes": 16085
+      "bytes": 16996
     },
     {
       "path": "src/lib/automations/conversation-control.server.ts",
@@ -3039,7 +3039,7 @@
     },
     {
       "path": "src/lib/automations/schema.ts",
-      "bytes": 5233
+      "bytes": 6031
     },
     {
       "path": "src/lib/automations/events.server.ts",
@@ -3047,7 +3047,7 @@
     },
     {
       "path": "src/lib/automations/functions.ts",
-      "bytes": 19884
+      "bytes": 21307
     },
     {
       "path": "src/lib/automations/inbound-events.server.ts",
@@ -10653,15 +10653,19 @@
     },
     {
       "source": "src/routes/app/automacoes.$workflowId.tsx",
-      "target": "@/components/ui/sheet"
-    },
-    {
-      "source": "src/routes/app/automacoes.$workflowId.tsx",
       "target": "@/components/ui/select"
     },
     {
       "source": "src/routes/app/automacoes.$workflowId.tsx",
       "target": "@/components/ui/tabs"
+    },
+    {
+      "source": "src/routes/app/automacoes.$workflowId.tsx",
+      "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/routes/app/automacoes.$workflowId.tsx",
+      "target": "@/components/ui/dialog"
     },
     {
       "source": "src/routes/app/automacoes.$workflowId.tsx",
