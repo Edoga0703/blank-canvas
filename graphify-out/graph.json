@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T17:15:38.244693+00:00",
+  "generated_at": "2026-11-11T17:59:51.920864+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -15,7 +15,7 @@
     },
     {
       "path": "vite.config.ts",
-      "bytes": 2952
+      "bytes": 3581
     },
     {
       "path": "fix_training_data.sql",
@@ -2075,7 +2075,7 @@
     },
     {
       "path": "src/routes/api/public/chat-media.ts",
-      "bytes": 13157
+      "bytes": 13788
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
