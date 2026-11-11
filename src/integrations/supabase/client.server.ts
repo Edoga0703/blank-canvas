@@ -34,9 +34,11 @@ function createSupabaseAdminClient() {
     (typeof process !== 'undefined' ? process.env['SUPABASE_URL'] : undefined) ||
     (typeof process !== 'undefined' ? process.env['VITE_SUPABASE_URL'] : undefined) ||
     'https://llnfjhqdeeuscyqzoqfz.supabase.co';
-  const SUPABASE_SERVICE_ROLE_KEY =
-    (typeof process !== 'undefined' ? process.env['SUPABASE_SERVICE_ROLE_KEY'] : undefined) ||
+  const FALLBACK_SERVICE_ROLE_KEY =
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsbmZqaHFkZWV1c2N5cXpvcWZ6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTU1ODQ2NywiZXhwIjoyMTA3MTM0NDY3fQ.ylDWCcoxzXhPoshBQGult4ZIK2C6AczihHJLz9vWJfQ';
+  const SUPABASE_SERVICE_ROLE_KEY =
+    (typeof process !== 'undefined' ? (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env['SUPABASE_SERVICE_ROLE_KEY']) : undefined) ||
+    FALLBACK_SERVICE_ROLE_KEY;
   if (!SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY não configurada no ambiente do servidor.');
   }

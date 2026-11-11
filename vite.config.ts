@@ -35,6 +35,12 @@ export default defineConfig({
       "process.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(
         process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_AWtQzPmKl_MS9OWWmSkoZg_-vHK23d5"
       ),
+      "process.env.SUPABASE_SERVICE_ROLE_KEY": JSON.stringify(
+        process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsbmZqaHFkZWV1c2N5cXpvcWZ6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTU1ODQ2NywiZXhwIjoyMTA3MTM0NDY3fQ.ylDWCcoxzXhPoshBQGult4ZIK2C6AczihHJLz9vWJfQ"
+      ),
+      "process.env['SUPABASE_SERVICE_ROLE_KEY']": JSON.stringify(
+        process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsbmZqaHFkZWV1c2N5cXpvcWZ6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTU1ODQ2NywiZXhwIjoyMTA3MTM0NDY3fQ.ylDWCcoxzXhPoshBQGult4ZIK2C6AczihHJLz9vWJfQ"
+      ),
       "process.env.DAPI_BASE_URL": JSON.stringify(process.env.DAPI_BASE_URL || "https://api.d-api.cloud/api/v1"),
       "process.env.PUBLIC_APP_URL": JSON.stringify(process.env.PUBLIC_APP_URL || "https://capiconversa.com"),
       "process.env.MEDIA_SIGNING_SECRET": JSON.stringify(process.env.MEDIA_SIGNING_SECRET || "capiconversa_media_signing_secret_998877"),
