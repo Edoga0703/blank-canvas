@@ -12,6 +12,8 @@ import {
   BarChart3,
   Calendar,
   CheckCircle2,
+  Zap,
+  ArrowUpRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,60 +32,71 @@ interface Props {
 export function OmnichannelAnalytics({ accounts }: Props) {
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("30d");
 
-  // Métricas de cuenta simuladas con datos reales de la empresa
+  // Multiplicadores dinâmicos para simular período selecionado
+  const multiplier = timeRange === "7d" ? 0.35 : timeRange === "30d" ? 1 : 2.8;
+
+  // Métricas de conta com dados e proporções calculadas
   const profileMetrics = useMemo(() => {
     return [
       {
         platform: "tiktok",
         name: "TikTok",
         username: "@cuentastupanas",
-        followers: 18450,
-        views: 142000,
-        growth: "+1,240 este mes",
+        followers: Math.round(18450 * (timeRange === "7d" ? 0.96 : timeRange === "90d" ? 1.12 : 1)),
+        views: Math.round(142000 * multiplier),
+        growth: timeRange === "7d" ? "+380 novos" : timeRange === "90d" ? "+4,120 novos" : "+1,240 este mês",
         icon: TikTokGlyph,
         color: "text-foreground",
+        badgeBg: "bg-foreground/10 border-foreground/20 text-foreground",
+        sharePercent: 33,
       },
       {
         platform: "youtube",
         name: "YouTube Shorts",
         username: "CuentasTuPana",
-        followers: 9210,
-        views: 285000,
-        growth: "+820 este mes",
+        followers: Math.round(9210 * (timeRange === "7d" ? 0.97 : timeRange === "90d" ? 1.09 : 1)),
+        views: Math.round(285000 * multiplier),
+        growth: timeRange === "7d" ? "+240 novos" : timeRange === "90d" ? "+2,680 novos" : "+820 este mês",
         icon: YouTubeGlyph,
         color: "text-[#FF0000]",
+        badgeBg: "bg-[#FF0000]/10 border-[#FF0000]/20 text-[#FF0000]",
+        sharePercent: 16,
       },
       {
         platform: "instagram",
         name: "Instagram",
         username: "cuentastupanas",
-        followers: 12800,
-        views: 68400,
-        growth: "+450 este mes",
+        followers: Math.round(12800 * (timeRange === "7d" ? 0.98 : timeRange === "90d" ? 1.07 : 1)),
+        views: Math.round(68400 * multiplier),
+        growth: timeRange === "7d" ? "+110 novos" : timeRange === "90d" ? "+1,420 novos" : "+450 este mês",
         icon: InstagramGlyph,
         color: "text-[#E1306C]",
+        badgeBg: "bg-[#E1306C]/10 border-[#E1306C]/20 text-[#E1306C]",
+        sharePercent: 23,
       },
       {
         platform: "facebook",
         name: "Facebook Page",
         username: "Cuentastupanas",
-        followers: 15400,
-        views: 32000,
-        growth: "+210 este mes",
+        followers: Math.round(15400 * (timeRange === "7d" ? 0.99 : timeRange === "90d" ? 1.04 : 1)),
+        views: Math.round(32000 * multiplier),
+        growth: timeRange === "7d" ? "+60 novos" : timeRange === "90d" ? "+710 novos" : "+210 este mês",
         icon: FacebookGlyph,
         color: "text-[#0084FF]",
+        badgeBg: "bg-[#0084FF]/10 border-[#0084FF]/20 text-[#0084FF]",
+        sharePercent: 28,
       },
     ];
-  }, []);
+  }, [timeRange, multiplier]);
 
   const totalFollowers = profileMetrics.reduce((acc, m) => acc + m.followers, 0);
   const totalViews = profileMetrics.reduce((acc, m) => acc + m.views, 0);
 
-  // Comparativa de Publicación Multicanal (mismo video en las 4)
+  // Comparativa de Publicação Multicanal (mismo video en las 4 redes)
   const comparativePosts = [
     {
       title: "Promo Streaming 50% OFF (Disney + Max)",
-      date: "Publicado hace 4 días",
+      date: "Publicado há 4 dias",
       tiktokViews: "45.2K",
       tiktokLikes: "3.4K",
       ytViews: "68.1K",
@@ -94,10 +107,11 @@ export function OmnichannelAnalytics({ accounts }: Props) {
       fbLikes: "340",
       totalViews: "138.8K",
       topPlatform: "YouTube Shorts",
+      cpsScore: 94,
     },
     {
-      title: "Cómo tener Gemini Pro + 5TB por 18 meses",
-      date: "Publicado hace 9 días",
+      title: "Como ter Gemini Pro + 5TB por 18 meses",
+      date: "Publicado há 9 dias",
       tiktokViews: "84.0K",
       tiktokLikes: "6.8K",
       ytViews: "41.5K",
@@ -108,10 +122,11 @@ export function OmnichannelAnalytics({ accounts }: Props) {
       fbLikes: "510",
       totalViews: "156.9K",
       topPlatform: "TikTok",
+      cpsScore: 96,
     },
     {
-      title: "Canva Pro Anual Oficial con garantía",
-      date: "Publicado hace 14 días",
+      title: "Canva Pro Anual Oficial com garantia de 12 meses",
+      date: "Publicado há 14 dias",
       tiktokViews: "29.1K",
       tiktokLikes: "2.1K",
       ytViews: "34.0K",
@@ -122,30 +137,35 @@ export function OmnichannelAnalytics({ accounts }: Props) {
       fbLikes: "290",
       totalViews: "84.1K",
       topPlatform: "YouTube Shorts",
+      cpsScore: 87,
     },
   ];
 
   const bestHours = [
-    { day: "Segunda-feira", time: "18:30 - 20:00", score: "88/100", hint: "Pico de visualizações no TikTok" },
-    { day: "Terça-feira", time: "19:00 - 21:00", score: "92/100", hint: "Maior engajamento no YouTube Shorts" },
-    { day: "Quinta-feira", time: "18:00 - 20:30", score: "95/100", hint: "Melhor dia para ofertas comerciais" },
-    { day: "Sábado", time: "13:30 - 16:00", score: "98/100", hint: "Maior viralidade em todas as redes" },
+    { day: "Segunda-feira", time: "18:30 - 20:00", score: "88/100", hint: "Pico de visualizações no TikTok", platform: "TikTok" },
+    { day: "Terça-feira", time: "19:00 - 21:00", score: "92/100", hint: "Maior retenção no YouTube Shorts", platform: "Shorts" },
+    { day: "Quinta-feira", time: "18:00 - 20:30", score: "95/100", hint: "Melhor dia para ofertas comerciais", platform: "Geral" },
+    { day: "Sábado", time: "13:30 - 16:00", score: "98/100", hint: "Maior taxa de viralidade e compartilhamentos", platform: "Multicanal" },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Seletor de Período */}
-      <div className="flex items-center justify-between">
+      {/* Seletor de Período & Cabeçalho */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-bold text-foreground">
-            Painel Geral de Redes & Inteligência Capiversa
+          <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+            <span>Painel Geral de Redes & Inteligência Capiversa</span>
+            <Badge variant="outline" className="text-[10px] font-bold text-primary border-primary/30 uppercase">
+              Algoritmo Propietário
+            </Badge>
           </h2>
-          <p className="text-xs text-muted-foreground">
-            Estatísticas oficiais de perfil combinadas com nossos algoritmos de análise comercial.
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Estatísticas oficiais a nível de perfil conectadas com nossos algoritmos de conversão e intenção comercial.
           </p>
         </div>
 
-        <div className="inline-flex p-1 rounded-xl bg-muted/50 border border-[color:var(--hairline)]">
+        {/* Seletor de Período 7d / 30d / 90d */}
+        <div className="inline-flex p-1 rounded-xl bg-muted/50 border border-[color:var(--hairline)] self-start sm:self-auto">
           <button
             type="button"
             onClick={() => setTimeRange("7d")}
@@ -176,12 +196,12 @@ export function OmnichannelAnalytics({ accounts }: Props) {
         </div>
       </div>
 
-      {/* 1. KPIs de Perfil (Seguidores & Visualizações Acumuladas) */}
+      {/* 1. KPIs Gerais de Perfil (Seguidores & Visualizações Acumuladas) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Seguidores */}
         <div className="p-4 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] shadow-sm space-y-1">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-medium">Audiência Total</span>
+            <span className="text-xs font-medium">Audiência Total (4 Redes)</span>
             <Users className="size-4 text-primary" />
           </div>
           <div className="text-2xl font-extrabold text-foreground tracking-tight">
@@ -189,7 +209,7 @@ export function OmnichannelAnalytics({ accounts }: Props) {
           </div>
           <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
             <TrendingUp className="size-3" />
-            <span>+2,720 seguidores no período</span>
+            <span>+{timeRange === "7d" ? "790" : timeRange === "90d" ? "8,930" : "2,720"} seguidores no período</span>
           </p>
         </div>
 
@@ -204,11 +224,11 @@ export function OmnichannelAnalytics({ accounts }: Props) {
           </div>
           <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
             <TrendingUp className="size-3" />
-            <span>+34.8% vs. mês anterior</span>
+            <span>+34.8% vs. período anterior</span>
           </p>
         </div>
 
-        {/* Content Performance Score (Métrica Propietaria) */}
+        {/* Content Performance Score (Métrica Propietaria de Capiversa) */}
         <div className="p-4 rounded-2xl bg-[var(--panel)] border border-primary/30 shadow-sm space-y-1 ring-1 ring-primary/20">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-xs font-medium flex items-center gap-1">
@@ -222,16 +242,19 @@ export function OmnichannelAnalytics({ accounts }: Props) {
             <span>89</span>
             <span className="text-xs font-semibold text-muted-foreground">/ 100</span>
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            Top 10% no nicho de assinaturas
+          <div className="w-full bg-muted/50 rounded-full h-1.5 overflow-hidden mt-1">
+            <div className="bg-primary h-full rounded-full transition-all duration-500" style={{ width: "89%" }} />
+          </div>
+          <p className="text-[10.5px] text-muted-foreground pt-0.5">
+            Top 10% no nicho de assinaturas digitais
           </p>
         </div>
 
-        {/* Taxa de Intenção Comercial (Métrica Propietaria) */}
-        <div className="p-4 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] shadow-sm space-y-1">
+        {/* Taxa de Intenção Comercial (Métrica Propietaria de Vendas) */}
+        <div className="p-4 rounded-2xl bg-[var(--panel)] border border-amber-500/30 shadow-sm space-y-1 ring-1 ring-amber-500/10">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-medium flex items-center gap-1">
-              <Flame className="size-3.5 text-amber-500" /> Intenção de Compra
+            <span className="text-xs font-medium flex items-center gap-1 text-amber-600">
+              <Flame className="size-3.5 text-amber-500 fill-amber-500" /> Intenção de Compra
             </span>
             <span className="text-xs font-bold text-amber-500">14.6%</span>
           </div>
@@ -239,12 +262,40 @@ export function OmnichannelAnalytics({ accounts }: Props) {
             1 em 7
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Comentam perguntando preço ou método de pagamento
+            Comentam perguntando preço ou forma de pagamento
           </p>
         </div>
       </div>
 
-      {/* 2. Estatísticas Individuais de Cada Perfil */}
+      {/* Barra de Distribuição de Audiência por Plataforma */}
+      <div className="p-4 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] space-y-2 shadow-sm">
+        <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
+          <span>Distribuição de Audiência por Rede Social</span>
+          <span className="text-foreground font-bold">{totalFollowers.toLocaleString()} seguidores</span>
+        </div>
+        <div className="w-full h-3 rounded-full flex overflow-hidden gap-0.5 bg-muted/40">
+          <div style={{ width: "33%" }} className="bg-foreground" title="TikTok: 33%" />
+          <div style={{ width: "28%" }} className="bg-[#0084FF]" title="Facebook: 28%" />
+          <div style={{ width: "23%" }} className="bg-[#E1306C]" title="Instagram: 23%" />
+          <div style={{ width: "16%" }} className="bg-[#FF0000]" title="YouTube: 16%" />
+        </div>
+        <div className="flex flex-wrap items-center gap-4 text-[11px] pt-1">
+          <span className="flex items-center gap-1.5 font-medium">
+            <span className="size-2 rounded-full bg-foreground" /> TikTok (33%)
+          </span>
+          <span className="flex items-center gap-1.5 font-medium text-[#0084FF]">
+            <span className="size-2 rounded-full bg-[#0084FF]" /> Facebook (28%)
+          </span>
+          <span className="flex items-center gap-1.5 font-medium text-[#E1306C]">
+            <span className="size-2 rounded-full bg-[#E1306C]" /> Instagram (23%)
+          </span>
+          <span className="flex items-center gap-1.5 font-medium text-[#FF0000]">
+            <span className="size-2 rounded-full bg-[#FF0000]" /> YouTube (16%)
+          </span>
+        </div>
+      </div>
+
+      {/* 2. Estatísticas Individuais de Cada Perfil Conectado */}
       <div className="space-y-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           Estatísticas Detalhadas por Perfil Conectado
@@ -258,8 +309,8 @@ export function OmnichannelAnalytics({ accounts }: Props) {
                 className="p-4 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] space-y-3 shadow-sm hover:border-primary/40 transition-colors"
               >
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-muted/60 shrink-0">
-                    <Icon className={`size-4 ${pm.color}`} />
+                  <div className={`p-2 rounded-xl border shrink-0 ${pm.badgeBg}`}>
+                    <Icon className="size-4.5" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs font-bold text-foreground truncate">{pm.name}</p>
@@ -273,14 +324,17 @@ export function OmnichannelAnalytics({ accounts }: Props) {
                     <p className="text-sm font-bold text-foreground">{pm.followers.toLocaleString()}</p>
                   </div>
                   <div>
-                    <span className="text-[10.5px] text-muted-foreground font-medium">Views</span>
+                    <span className="text-[10.5px] text-muted-foreground font-medium">Views Acumuladas</span>
                     <p className="text-sm font-bold text-foreground">{pm.views.toLocaleString()}</p>
                   </div>
                 </div>
 
-                <p className="text-[10.5px] text-emerald-600 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md inline-block">
-                  {pm.growth}
-                </p>
+                <div className="flex items-center justify-between text-[10.5px] pt-1">
+                  <span className="text-emerald-600 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                    {pm.growth}
+                  </span>
+                  <span className="text-muted-foreground font-medium">{pm.sharePercent}% do total</span>
+                </div>
               </div>
             );
           })}
@@ -293,14 +347,14 @@ export function OmnichannelAnalytics({ accounts }: Props) {
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             Comparativo de Publicações Multicanal (Mesmo Vídeo nas 4 Redes)
           </h3>
-          <span className="text-xs text-muted-foreground">Onde seu público mais engaja</span>
+          <span className="text-xs text-muted-foreground">Onde seu conteúdo mais converte</span>
         </div>
 
         <div className="overflow-x-auto rounded-2xl border border-[color:var(--hairline)] bg-[var(--panel)] shadow-sm">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-[color:var(--hairline)] bg-muted/20 text-muted-foreground font-semibold">
-                <th className="p-3.5 min-w-[200px]">Título da Campanha</th>
+                <th className="p-3.5 min-w-[220px]">Título da Campanha</th>
                 <th className="p-3.5 text-center min-w-[100px]">
                   <span className="inline-flex items-center gap-1 font-bold">
                     <TikTokGlyph className="size-3" /> TikTok
@@ -321,7 +375,8 @@ export function OmnichannelAnalytics({ accounts }: Props) {
                     <FacebookGlyph className="size-3" /> Facebook
                   </span>
                 </th>
-                <th className="p-3.5 text-center font-bold min-w-[110px]">Total Acumulado</th>
+                <th className="p-3.5 text-center font-bold min-w-[100px]">Total Acumulado</th>
+                <th className="p-3.5 text-center min-w-[90px]">Score CPS</th>
                 <th className="p-3.5 min-w-[120px]">Rede Campeã</th>
               </tr>
             </thead>
@@ -351,6 +406,11 @@ export function OmnichannelAnalytics({ accounts }: Props) {
                   <td className="p-3.5 text-center font-extrabold text-primary">
                     {post.totalViews}
                   </td>
+                  <td className="p-3.5 text-center">
+                    <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold">
+                      {post.cpsScore}/100
+                    </Badge>
+                  </td>
                   <td className="p-3.5">
                     <Badge variant="secondary" className="font-semibold text-[10px]">
                       🏆 {post.topPlatform}
@@ -365,15 +425,15 @@ export function OmnichannelAnalytics({ accounts }: Props) {
 
       {/* 4. Mapa de Calor Propietario (Melhores Horários de Postagem) */}
       <div className="p-5 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] space-y-4 shadow-sm">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
           <div className="flex items-center gap-2">
             <Clock className="size-4 text-primary" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-              Mapa de Calor: Melhores Horários para Publicar
+              Mapa de Calor: Melhores Horários Recomendados
             </h3>
           </div>
           <span className="text-[11px] text-muted-foreground">
-            Calculado com base nas primeiras 3 horas de alcance dos seus posts
+            Calculado com base nas primeiras 3 horas de alcance e interações dos seus posts
           </span>
         </div>
 
@@ -381,7 +441,7 @@ export function OmnichannelAnalytics({ accounts }: Props) {
           {bestHours.map((bh, idx) => (
             <div
               key={idx}
-              className="p-3 rounded-xl bg-muted/40 border border-[color:var(--hairline)] space-y-1"
+              className="p-3.5 rounded-xl bg-muted/40 border border-[color:var(--hairline)] space-y-1 hover:border-primary/40 transition-colors"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-foreground">{bh.day}</span>

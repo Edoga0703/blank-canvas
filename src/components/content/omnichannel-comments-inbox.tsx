@@ -14,6 +14,11 @@ import {
   ShoppingBag,
   CreditCard,
   Phone,
+  Heart,
+  Copy,
+  Smile,
+  BadgeAlert,
+  Flame,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,7 +32,12 @@ import {
 } from "@/components/ui/channel-icons";
 import type { ContentComment, SocialPlatform } from "@/lib/social-content.types";
 
-const INITIAL_COMMENTS: ContentComment[] = [
+interface ExtendedComment extends ContentComment {
+  isLiked?: boolean;
+  intent?: "commercial" | "positive" | "question";
+}
+
+const INITIAL_COMMENTS: ExtendedComment[] = [
   {
     id: "c-1",
     platform: "tiktok",
@@ -36,6 +46,8 @@ const INITIAL_COMMENTS: ContentComment[] = [
     author_username: "carlos_mendoza98",
     text: "¿Tienen disponible Paramount+ y a qué precio en bolívares a la tasa de hoy?",
     like_count: 14,
+    isLiked: false,
+    intent: "commercial",
     status: "pending",
     commented_at: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
   },
@@ -43,10 +55,12 @@ const INITIAL_COMMENTS: ContentComment[] = [
     id: "c-2",
     platform: "youtube",
     external_comment_id: "yt-202",
-    author_name: "Tech Reviewer",
+    author_name: "Tech Reviewer Pro",
     author_username: "TechReviewerPro",
     text: "Excelente servicio, la cuenta de Gemini Pro de 5TB me funcionó perfecto. ¿La anualidad de Canva Pro está en $8?",
     like_count: 32,
+    isLiked: true,
+    intent: "positive",
     status: "pending",
     commented_at: new Date(Date.now() - 42 * 60 * 1000).toISOString(),
   },
@@ -58,6 +72,8 @@ const INITIAL_COMMENTS: ContentComment[] = [
     author_username: "valengomez_fit",
     text: "Hola! ¿Aceptan pago por Binance (USDT)? ¿Cómo hago para comprar?",
     like_count: 8,
+    isLiked: false,
+    intent: "commercial",
     status: "pending",
     commented_at: new Date(Date.now() - 95 * 60 * 1000).toISOString(),
   },
@@ -69,6 +85,8 @@ const INITIAL_COMMENTS: ContentComment[] = [
     author_username: "roberto.dasilva",
     text: "Me interesa el combo de Disney+ y Max. ¿Dónde puedo contactar a un asesor?",
     like_count: 5,
+    isLiked: false,
+    intent: "commercial",
     status: "replied",
     commented_at: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
     replied_at: new Date(Date.now() - 2.5 * 3600 * 1000).toISOString(),
@@ -77,7 +95,7 @@ const INITIAL_COMMENTS: ContentComment[] = [
 
 const QUICK_RESPONSES = [
   {
-    label: "Precios Streaming",
+    label: "Preços Streaming",
     icon: ShoppingBag,
     text: "¡Hola! Precios en USD (o Bs tasa del día): Paramount+ $1.00/mes | Max $1.50/mes | Disney+ $1.50/mes | Prime Video $1.50/mes. Escríbenos al WhatsApp para activarla de inmediato.",
   },
@@ -93,8 +111,10 @@ const QUICK_RESPONSES = [
   },
 ];
 
+const REPLY_EMOJIS = ["👍", "❤️", "🔥", "🚀", "🍿", "👋", "💬", "⚡"];
+
 export function OmnichannelCommentsInbox() {
-  const [comments, setComments] = useState<ContentComment[]>(INITIAL_COMMENTS);
+  const [comments, setComments] = useState<ExtendedComment[]>(INITIAL_COMMENTS);
   const [activeFilter, setActiveFilter] = useState<"all" | "pending" | "replied">("pending");
   const [platformFilter, setPlatformFilter] = useState<SocialPlatform | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -123,7 +143,40 @@ export function OmnichannelCommentsInbox() {
     return comments.filter((c) => c.status === "pending").length;
   }, [comments]);
 
-  // Enviar resposta pública
+  // Curtir/Descurtir comentário
+  const handleToggleLike = (commentId: string) => {
+    setComments((prev) =>
+      prev.map((c) => {
+        if (c.id === commentId) {
+          const isLiked = !c.isLiked;
+          const currentCount = c.like_count || 0;
+          return {
+            ...c,
+            isLiked,
+            like_count: isLiked ? currentCount + 1 : Math.max(0, currentCount - 1),
+          };
+        }
+        return c;
+      })
+    );
+  };
+
+  // Inserir emoji no campo de resposta
+  const handleInsertEmoji = (commentId: string, emoji: string) => {
+    setReplyTextMap((prev) => ({
+      ...prev,
+      [commentId]: (prev[commentId] || "") + emoji,
+    }));
+  };
+
+  // Copiar resposta gerada
+  const handleCopyReply = (text: string) => {
+    if (!text.trim()) return;
+    navigator.clipboard.writeText(text);
+    toast.success("Resposta copiada para a área de transferência!");
+  };
+
+  // Enviar resposta pública oficial
   const handleSendReply = (commentId: string) => {
     const text = replyTextMap[commentId]?.trim();
     if (!text) {
@@ -142,28 +195,28 @@ export function OmnichannelCommentsInbox() {
       );
       setReplyTextMap((prev) => ({ ...prev, [commentId]: "" }));
       setSendingId(null);
-      toast.success("Resposta pública enviada com sucesso!");
+      toast.success("Resposta pública enviada com sucesso no comentário!");
     }, 600);
   };
 
-  // Preencher resposta rápida
+  // Aplicar template rápido
   const applyQuickResponse = (commentId: string, text: string) => {
     setReplyTextMap((prev) => ({ ...prev, [commentId]: text }));
   };
 
-  // Sugerir resposta com IA
-  const handleAiSuggest = (comment: ContentComment) => {
+  // Sugestão com IA comercial
+  const handleAiSuggest = (comment: ExtendedComment) => {
     let suggested = `¡Hola ${comment.author_name || ""}! Con gusto te damos información. `;
-    if (comment.text.toLowerCase().includes("binance") || comment.text.toLowerCase().includes("pago")) {
-      suggested += "Aceptamos Binance USDT y Pago Móvil con entrega en 5 minutos. Escríbenos al WhatsApp para activar tu cuenta: https://wa.me/584122146880";
+    if (comment.text.toLowerCase().includes("binance") || comment.text.toLowerCase().includes("pago") || comment.text.toLowerCase().includes("precio") || comment.text.toLowerCase().includes("tasa")) {
+      suggested += "Aceptamos Binance USDT y Pago Móvil (a tasa del día) con entrega en 5 minutos. Escríbenos al WhatsApp para activar tu cuenta ahora: https://wa.me/584122146880";
     } else if (comment.text.toLowerCase().includes("canva")) {
-      suggested += "Sí, Canva Pro Anual está en $8.00 con garantía total de 12 meses. Escríbenos al WhatsApp para activarla al instante: https://wa.me/584122146880";
+      suggested += "Sí, Canva Pro Anual Oficial está disponible en $8.00 con garantía total de 12 meses. Escríbenos al WhatsApp para activarla al instante: https://wa.me/584122146880";
     } else {
-      suggested += "Tenemos promociones activas en streaming y software. Escríbenos por WhatsApp para enviarte el catálogo completo: https://wa.me/584122146880";
+      suggested += "Tenemos promociones activas en streaming y software con activación garantizada. Escríbenos al WhatsApp para enviarte la lista completa: https://wa.me/584122146880";
     }
 
     setReplyTextMap((prev) => ({ ...prev, [comment.id]: suggested }));
-    toast.success("Resposta comercial sugerida pela IA!");
+    toast.success("Resposta comercial de alta conversão gerada pela IA!");
   };
 
   return (
@@ -213,13 +266,13 @@ export function OmnichannelCommentsInbox() {
             </button>
           </div>
 
-          {/* Platform Filter */}
+          {/* Platform Filter com logos oficiais */}
           <div className="hidden sm:flex items-center gap-1 pl-2 border-l border-[color:var(--hairline)]">
             <button
               type="button"
               onClick={() => setPlatformFilter("all")}
-              className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                platformFilter === "all" ? "bg-muted font-bold text-foreground" : "text-muted-foreground"
+              className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
+                platformFilter === "all" ? "bg-muted font-bold text-foreground" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Todas
@@ -227,40 +280,40 @@ export function OmnichannelCommentsInbox() {
             <button
               type="button"
               onClick={() => setPlatformFilter("tiktok")}
-              className={`p-1.5 rounded-lg transition-colors ${
-                platformFilter === "tiktok" ? "bg-foreground text-background" : "hover:bg-muted text-muted-foreground"
+              className={`p-1.5 rounded-lg transition ${
+                platformFilter === "tiktok" ? "bg-foreground text-background shadow-xs" : "hover:bg-muted text-muted-foreground"
               }`}
-              title="TikTok"
+              title="Filtrar por TikTok"
             >
               <TikTokGlyph className="size-3.5" />
             </button>
             <button
               type="button"
               onClick={() => setPlatformFilter("instagram")}
-              className={`p-1.5 rounded-lg transition-colors ${
-                platformFilter === "instagram" ? "bg-[#E1306C] text-white" : "hover:bg-muted text-muted-foreground"
+              className={`p-1.5 rounded-lg transition ${
+                platformFilter === "instagram" ? "bg-[#E1306C] text-white shadow-xs" : "hover:bg-muted text-muted-foreground"
               }`}
-              title="Instagram"
+              title="Filtrar por Instagram"
             >
               <InstagramGlyph className="size-3.5" />
             </button>
             <button
               type="button"
               onClick={() => setPlatformFilter("youtube")}
-              className={`p-1.5 rounded-lg transition-colors ${
-                platformFilter === "youtube" ? "bg-[#FF0000] text-white" : "hover:bg-muted text-muted-foreground"
+              className={`p-1.5 rounded-lg transition ${
+                platformFilter === "youtube" ? "bg-[#FF0000] text-white shadow-xs" : "hover:bg-muted text-muted-foreground"
               }`}
-              title="YouTube"
+              title="Filtrar por YouTube"
             >
               <YouTubeGlyph className="size-3.5" />
             </button>
             <button
               type="button"
               onClick={() => setPlatformFilter("facebook")}
-              className={`p-1.5 rounded-lg transition-colors ${
-                platformFilter === "facebook" ? "bg-[#0084FF] text-white" : "hover:bg-muted text-muted-foreground"
+              className={`p-1.5 rounded-lg transition ${
+                platformFilter === "facebook" ? "bg-[#0084FF] text-white shadow-xs" : "hover:bg-muted text-muted-foreground"
               }`}
-              title="Facebook"
+              title="Filtrar por Facebook"
             >
               <FacebookGlyph className="size-3.5" />
             </button>
@@ -273,7 +326,7 @@ export function OmnichannelCommentsInbox() {
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar comentários ou autores..."
+            placeholder="Buscar por cliente ou palavra-chave..."
             className="pl-8 h-8 text-xs bg-muted/40 rounded-xl"
           />
         </div>
@@ -282,11 +335,11 @@ export function OmnichannelCommentsInbox() {
       {/* Lista de Comentários */}
       <div className="space-y-3">
         {filteredComments.length === 0 ? (
-          <div className="p-12 text-center bg-[var(--panel)] border border-[color:var(--hairline)] rounded-2xl">
+          <div className="p-12 text-center bg-[var(--panel)] border border-[color:var(--hairline)] rounded-2xl shadow-sm">
             <CheckCircle2 className="size-10 text-emerald-500 mx-auto mb-2 opacity-80" />
             <p className="text-sm font-semibold text-foreground">Todos os comentários estão atendidos!</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Nenhuma mensagem pendente no momento. As vendas e o engajamento estão em dia.
+              Nenhuma mensagem pendente no momento com os filtros selecionados.
             </p>
           </div>
         ) : (
@@ -306,16 +359,26 @@ export function OmnichannelCommentsInbox() {
                 {/* Cabeçalho do Comentário */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    {/* Badge da Rede Social */}
-                    <span className="p-1.5 rounded-lg bg-muted shrink-0">
-                      {comment.platform === "tiktok" && <TikTokGlyph className="size-3.5" />}
-                      {comment.platform === "youtube" && <YouTubeGlyph className="size-3.5 text-[#FF0000]" />}
-                      {comment.platform === "instagram" && <InstagramGlyph className="size-3.5 text-[#E1306C]" />}
-                      {comment.platform === "facebook" && <FacebookGlyph className="size-3.5 text-[#0084FF]" />}
+                    {/* Badge da Rede Social com cor oficial */}
+                    <span
+                      className={`p-1.5 rounded-xl border shrink-0 ${
+                        comment.platform === "tiktok"
+                          ? "bg-foreground/5 border-foreground/20 text-foreground"
+                          : comment.platform === "youtube"
+                          ? "bg-[#FF0000]/10 border-[#FF0000]/20 text-[#FF0000]"
+                          : comment.platform === "instagram"
+                          ? "bg-[#E1306C]/10 border-[#E1306C]/20 text-[#E1306C]"
+                          : "bg-[#0084FF]/10 border-[#0084FF]/20 text-[#0084FF]"
+                      }`}
+                    >
+                      {comment.platform === "tiktok" && <TikTokGlyph className="size-4" />}
+                      {comment.platform === "youtube" && <YouTubeGlyph className="size-4" />}
+                      {comment.platform === "instagram" && <InstagramGlyph className="size-4" />}
+                      {comment.platform === "facebook" && <FacebookGlyph className="size-4" />}
                     </span>
 
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-foreground truncate">
                           {comment.author_name || comment.author_username}
                         </span>
@@ -329,26 +392,55 @@ export function OmnichannelCommentsInbox() {
                     </div>
                   </div>
 
-                  {isPending ? (
-                    <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] font-semibold">
-                      Pendente
-                    </Badge>
-                  ) : (
-                    <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] font-semibold flex items-center gap-1">
-                      <CheckCircle2 className="size-3" />
-                      <span>Respondido</span>
-                    </Badge>
-                  )}
+                  {/* Badges de Intenção Comercial e Status */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {comment.intent === "commercial" && (
+                      <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] font-bold flex items-center gap-1">
+                        <Flame className="size-3" />
+                        <span>Intenção de Compra</span>
+                      </Badge>
+                    )}
+                    {comment.intent === "positive" && (
+                      <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] font-bold">
+                        ⭐ Avaliação Positiva
+                      </Badge>
+                    )}
+
+                    {isPending ? (
+                      <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] font-semibold">
+                        Pendente
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] font-semibold flex items-center gap-1">
+                        <CheckCircle2 className="size-3" />
+                        <span>Respondido</span>
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
-                {/* Texto do Comentário do Cliente */}
-                <div className="my-3 pl-3 border-l-2 border-primary/40 py-0.5">
+                {/* Texto do Comentário do Cliente & Botão de Like Interativo */}
+                <div className="my-3 flex items-start justify-between gap-4 pl-3 border-l-2 border-primary/40 py-1">
                   <p className="text-xs text-foreground font-medium leading-relaxed">
                     "{comment.text}"
                   </p>
+
+                  <button
+                    type="button"
+                    onClick={() => handleToggleLike(comment.id)}
+                    className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-lg border transition-all shrink-0 ${
+                      comment.isLiked
+                        ? "bg-red-500/10 border-red-500/20 text-red-500 font-bold"
+                        : "bg-muted/30 border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                    title={comment.isLiked ? "Remover curtida" : "Curtir comentário publicamente"}
+                  >
+                    <Heart className={`size-3 ${comment.isLiked ? "fill-red-500 text-red-500" : ""}`} />
+                    <span>{comment.like_count || 0}</span>
+                  </button>
                 </div>
 
-                {/* Barra de Ações Rápidas (Plantillas & IA) */}
+                {/* Barra de Ações Rápidas (Templates & IA) */}
                 <div className="pt-2 border-t border-[color:var(--hairline)] space-y-2.5">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-[10.5px] font-semibold text-muted-foreground mr-1 flex items-center gap-1">
@@ -374,11 +466,26 @@ export function OmnichannelCommentsInbox() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleAiSuggest(comment)}
-                      className="h-6 text-[10.5px] gap-1 px-2 ml-auto text-primary border-primary/20 hover:bg-primary/10"
+                      className="h-6 text-[10.5px] gap-1 px-2 ml-auto text-primary border-primary/20 hover:bg-primary/10 font-bold"
                     >
                       <Sparkles className="size-3" />
                       <span>Sugerir com IA</span>
                     </Button>
+                  </div>
+
+                  {/* Barra de Emojis de Resposta Rápida */}
+                  <div className="flex items-center gap-1 px-1">
+                    <span className="text-[10px] text-muted-foreground">Adicionar emoji:</span>
+                    {REPLY_EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => handleInsertEmoji(comment.id, emoji)}
+                        className="size-5 text-xs hover:scale-125 transition-transform flex items-center justify-center rounded hover:bg-muted"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
                   </div>
 
                   {/* Campo de Resposta Pública */}
@@ -398,6 +505,20 @@ export function OmnichannelCommentsInbox() {
                       placeholder={`Responder publicamente a @${comment.author_username} em ${comment.platform}...`}
                       className="h-9 text-xs bg-muted/30 rounded-xl"
                     />
+
+                    {replyValue.trim() && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleCopyReply(replyValue)}
+                        className="h-9 px-2 text-muted-foreground hover:text-foreground shrink-0"
+                        title="Copiar texto da resposta"
+                      >
+                        <Copy className="size-3.5" />
+                      </Button>
+                    )}
+
                     <Button
                       type="button"
                       size="sm"
