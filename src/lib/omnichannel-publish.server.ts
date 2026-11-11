@@ -4,6 +4,7 @@ export interface TargetExecutionItem {
   id?: string;
   platform: string;
   socialAccountId?: string | null;
+  assetId?: string | null;
   customTitle?: string | null;
   customCaption?: string | null;
   platformSettings?: any;
@@ -12,6 +13,7 @@ export interface TargetExecutionItem {
 export interface PublishPostParams {
   postId: string;
   companyId: string;
+  assetId?: string | null;
   mediaUrl: string | null;
   mediaType: string;
   baseCaption: string | null;
@@ -43,6 +45,21 @@ export async function executePostTargetsPublishing(
     try {
       const caption = target.customCaption?.trim() || baseCaption || "";
 
+      // Resolve mídia duradoura em URL temporária fresca no momento exato do envio
+      let effectiveMediaUrl = mediaUrl;
+      const effectiveAssetId = target.assetId || params.assetId;
+      if (effectiveAssetId) {
+        try {
+          const { resolveProviderMedia } = await import("./content/assets.server");
+          const resolved = await resolveProviderMedia(effectiveAssetId, companyId, target.platform as any, 3600);
+          if (resolved?.publicUrl) {
+            effectiveMediaUrl = resolved.publicUrl;
+          }
+        } catch (mediaErr: any) {
+          console.warn(`[executePostTargetsPublishing] Falha ao resolver ativo ${effectiveAssetId}:`, mediaErr?.message);
+        }
+      }
+
       if (target.platform === "instagram" && target.socialAccountId) {
         const { data: acc } = await (supabaseAdmin as any)
           .from("meta_social_accounts")
@@ -67,12 +84,12 @@ export async function executePostTargetsPublishing(
         }
 
         const { metaPublishInstagramVideo, metaPublishInstagramPhoto } = await import("./meta-publish.server");
-        if (mediaType === "video" && mediaUrl) {
-          const res = await metaPublishInstagramVideo(inst.instance_token, acc.ig_user_id, mediaUrl, caption);
+        if (mediaType === "video" && effectiveMediaUrl) {
+          const res = await metaPublishInstagramVideo(inst.instance_token, acc.ig_user_id, effectiveMediaUrl, caption);
           status = "published";
           publishedUrl = res?.id;
-        } else if (mediaUrl) {
-          const res = await metaPublishInstagramPhoto(inst.instance_token, acc.ig_user_id, mediaUrl, caption);
+        } else if (effectiveMediaUrl) {
+          const res = await metaPublishInstagramPhoto(inst.instance_token, acc.ig_user_id, effectiveMediaUrl, caption);
           status = "published";
           publishedUrl = res?.id;
         } else {
@@ -102,7 +119,7 @@ export async function executePostTargetsPublishing(
         }
 
         const { metaPublishFacebookPost } = await import("./meta-publish.server");
-        const res = await metaPublishFacebookPost(inst.instance_token, acc.page_id, caption, mediaUrl || undefined);
+        const res = await metaPublishFacebookPost(inst.instance_token, acc.page_id, caption, effectiveMediaUrl || undefined);
         status = "published";
         publishedUrl = res?.id;
       } else {

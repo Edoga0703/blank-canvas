@@ -254,6 +254,27 @@ export async function resolveR2DownloadUrlAsync(
   return `${endpoint}?${canonicalQuery}&X-Amz-Signature=${signature}`;
 }
 
+/** Verifica se um objeto já foi carregado e está íntegro no R2 através de HEAD HTTP. */
+export async function verifyR2ObjectExists(
+  storageKey: string,
+  storageAccountId?: string | null,
+): Promise<{ exists: boolean; sizeBytes?: number; mimeType?: string }> {
+  try {
+    const downloadUrl = await resolveR2DownloadUrlAsync(storageKey, 300, storageAccountId);
+    const res = await fetch(downloadUrl, { method: "HEAD" });
+    if (res.ok) {
+      const lengthHeader = res.headers.get("content-length");
+      const sizeBytes = lengthHeader ? parseInt(lengthHeader, 10) : undefined;
+      const mimeType = res.headers.get("content-type") || undefined;
+      return { exists: true, sizeBytes, mimeType };
+    }
+    return { exists: false };
+  } catch (e) {
+    console.warn("[verifyR2ObjectExists] Erro ao checar objeto R2:", e);
+    return { exists: false };
+  }
+}
+
 export async function createR2UploadTarget(input: {
   companyId: string;
   fileName?: string | null;

@@ -104,6 +104,8 @@ import { Route as AppTreinamentosCourseIdRouteImport } from './routes/app/treina
 import { Route as OauthDriveReturnRouteImport } from './routes/oauth/drive/return'
 import { Route as OauthSheetsReturnRouteImport } from './routes/oauth/sheets/return'
 import { Route as ApiPublicBillingWebhookRouteImport } from './routes/api/public/billing/webhook'
+import { Route as ApiPublicContentDraftsRouteImport } from './routes/api/public/content/drafts'
+import { Route as ApiPublicContentStatusRouteImport } from './routes/api/public/content/status'
 import { Route as ApiPublicHooksTokenRouteImport } from './routes/api/public/hooks/$token'
 import { Route as ApiPublicHooksAdminCrmTickRouteImport } from './routes/api/public/hooks/admin-crm-tick'
 import { Route as ApiPublicHooksAgendamentosDispatchRouteImport } from './routes/api/public/hooks/agendamentos-dispatch'
@@ -115,6 +117,7 @@ import { Route as ApiPublicHooksMetaSyncRouteImport } from './routes/api/public/
 import { Route as ApiPublicHooksProcessAgendamentosRouteImport } from './routes/api/public/hooks/process-agendamentos'
 import { Route as ApiPublicHooksProcessAutomationJobsRouteImport } from './routes/api/public/hooks/process-automation-jobs'
 import { Route as ApiPublicHooksProcessCampaignsRouteImport } from './routes/api/public/hooks/process-campaigns'
+import { Route as ApiPublicHooksProcessContentPostsRouteImport } from './routes/api/public/hooks/process-content-posts'
 import { Route as ApiPublicHooksProcessInboundFallbacksRouteImport } from './routes/api/public/hooks/process-inbound-fallbacks'
 import { Route as ApiPublicHooksProcessKanbanReguasRouteImport } from './routes/api/public/hooks/process-kanban-reguas'
 import { Route as ApiPublicHooksProcessMetaLeadsRouteImport } from './routes/api/public/hooks/process-meta-leads'
@@ -611,6 +614,16 @@ const ApiPublicBillingWebhookRoute = ApiPublicBillingWebhookRouteImport.update({
   path: '/api/public/billing/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicContentDraftsRoute = ApiPublicContentDraftsRouteImport.update({
+  id: '/api/public/content/drafts',
+  path: '/api/public/content/drafts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicContentStatusRoute = ApiPublicContentStatusRouteImport.update({
+  id: '/api/public/content/status',
+  path: '/api/public/content/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksTokenRoute = ApiPublicHooksTokenRouteImport.update({
   id: '/api/public/hooks/$token',
   path: '/api/public/hooks/$token',
@@ -673,6 +686,12 @@ const ApiPublicHooksProcessCampaignsRoute =
   ApiPublicHooksProcessCampaignsRouteImport.update({
     id: '/api/public/hooks/process-campaigns',
     path: '/api/public/hooks/process-campaigns',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksProcessContentPostsRoute =
+  ApiPublicHooksProcessContentPostsRouteImport.update({
+    id: '/api/public/hooks/process-content-posts',
+    path: '/api/public/hooks/process-content-posts',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksProcessInboundFallbacksRoute =
@@ -841,6 +860,8 @@ export interface FileRoutesByFullPath {
   '/app/automacoes/': typeof AppAutomacoesIndexRoute
   '/app/treinamentos/': typeof AppTreinamentosIndexRoute
   '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
+  '/api/public/content/drafts': typeof ApiPublicContentDraftsRoute
+  '/api/public/content/status': typeof ApiPublicContentStatusRoute
   '/api/public/hooks/$token': typeof ApiPublicHooksTokenRoute
   '/api/public/hooks/admin-crm-tick': typeof ApiPublicHooksAdminCrmTickRoute
   '/api/public/hooks/agendamentos-dispatch': typeof ApiPublicHooksAgendamentosDispatchRoute
@@ -852,6 +873,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/process-agendamentos': typeof ApiPublicHooksProcessAgendamentosRoute
   '/api/public/hooks/process-automation-jobs': typeof ApiPublicHooksProcessAutomationJobsRoute
   '/api/public/hooks/process-campaigns': typeof ApiPublicHooksProcessCampaignsRoute
+  '/api/public/hooks/process-content-posts': typeof ApiPublicHooksProcessContentPostsRoute
   '/api/public/hooks/process-inbound-fallbacks': typeof ApiPublicHooksProcessInboundFallbacksRoute
   '/api/public/hooks/process-kanban-reguas': typeof ApiPublicHooksProcessKanbanReguasRoute
   '/api/public/hooks/process-meta-leads': typeof ApiPublicHooksProcessMetaLeadsRoute
@@ -958,6 +980,8 @@ export interface FileRoutesByTo {
   '/app/automacoes': typeof AppAutomacoesIndexRoute
   '/app/treinamentos': typeof AppTreinamentosIndexRoute
   '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
+  '/api/public/content/drafts': typeof ApiPublicContentDraftsRoute
+  '/api/public/content/status': typeof ApiPublicContentStatusRoute
   '/api/public/hooks/$token': typeof ApiPublicHooksTokenRoute
   '/api/public/hooks/admin-crm-tick': typeof ApiPublicHooksAdminCrmTickRoute
   '/api/public/hooks/agendamentos-dispatch': typeof ApiPublicHooksAgendamentosDispatchRoute
@@ -969,6 +993,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/process-agendamentos': typeof ApiPublicHooksProcessAgendamentosRoute
   '/api/public/hooks/process-automation-jobs': typeof ApiPublicHooksProcessAutomationJobsRoute
   '/api/public/hooks/process-campaigns': typeof ApiPublicHooksProcessCampaignsRoute
+  '/api/public/hooks/process-content-posts': typeof ApiPublicHooksProcessContentPostsRoute
   '/api/public/hooks/process-inbound-fallbacks': typeof ApiPublicHooksProcessInboundFallbacksRoute
   '/api/public/hooks/process-kanban-reguas': typeof ApiPublicHooksProcessKanbanReguasRoute
   '/api/public/hooks/process-meta-leads': typeof ApiPublicHooksProcessMetaLeadsRoute
@@ -1079,6 +1104,8 @@ export interface FileRoutesById {
   '/app/automacoes/': typeof AppAutomacoesIndexRoute
   '/app/treinamentos/': typeof AppTreinamentosIndexRoute
   '/api/public/billing/webhook': typeof ApiPublicBillingWebhookRoute
+  '/api/public/content/drafts': typeof ApiPublicContentDraftsRoute
+  '/api/public/content/status': typeof ApiPublicContentStatusRoute
   '/api/public/hooks/$token': typeof ApiPublicHooksTokenRoute
   '/api/public/hooks/admin-crm-tick': typeof ApiPublicHooksAdminCrmTickRoute
   '/api/public/hooks/agendamentos-dispatch': typeof ApiPublicHooksAgendamentosDispatchRoute
@@ -1090,6 +1117,7 @@ export interface FileRoutesById {
   '/api/public/hooks/process-agendamentos': typeof ApiPublicHooksProcessAgendamentosRoute
   '/api/public/hooks/process-automation-jobs': typeof ApiPublicHooksProcessAutomationJobsRoute
   '/api/public/hooks/process-campaigns': typeof ApiPublicHooksProcessCampaignsRoute
+  '/api/public/hooks/process-content-posts': typeof ApiPublicHooksProcessContentPostsRoute
   '/api/public/hooks/process-inbound-fallbacks': typeof ApiPublicHooksProcessInboundFallbacksRoute
   '/api/public/hooks/process-kanban-reguas': typeof ApiPublicHooksProcessKanbanReguasRoute
   '/api/public/hooks/process-meta-leads': typeof ApiPublicHooksProcessMetaLeadsRoute
@@ -1201,6 +1229,8 @@ export interface FileRouteTypes {
     | '/app/automacoes/'
     | '/app/treinamentos/'
     | '/api/public/billing/webhook'
+    | '/api/public/content/drafts'
+    | '/api/public/content/status'
     | '/api/public/hooks/$token'
     | '/api/public/hooks/admin-crm-tick'
     | '/api/public/hooks/agendamentos-dispatch'
@@ -1212,6 +1242,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/process-agendamentos'
     | '/api/public/hooks/process-automation-jobs'
     | '/api/public/hooks/process-campaigns'
+    | '/api/public/hooks/process-content-posts'
     | '/api/public/hooks/process-inbound-fallbacks'
     | '/api/public/hooks/process-kanban-reguas'
     | '/api/public/hooks/process-meta-leads'
@@ -1318,6 +1349,8 @@ export interface FileRouteTypes {
     | '/app/automacoes'
     | '/app/treinamentos'
     | '/api/public/billing/webhook'
+    | '/api/public/content/drafts'
+    | '/api/public/content/status'
     | '/api/public/hooks/$token'
     | '/api/public/hooks/admin-crm-tick'
     | '/api/public/hooks/agendamentos-dispatch'
@@ -1329,6 +1362,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/process-agendamentos'
     | '/api/public/hooks/process-automation-jobs'
     | '/api/public/hooks/process-campaigns'
+    | '/api/public/hooks/process-content-posts'
     | '/api/public/hooks/process-inbound-fallbacks'
     | '/api/public/hooks/process-kanban-reguas'
     | '/api/public/hooks/process-meta-leads'
@@ -1438,6 +1472,8 @@ export interface FileRouteTypes {
     | '/app/automacoes/'
     | '/app/treinamentos/'
     | '/api/public/billing/webhook'
+    | '/api/public/content/drafts'
+    | '/api/public/content/status'
     | '/api/public/hooks/$token'
     | '/api/public/hooks/admin-crm-tick'
     | '/api/public/hooks/agendamentos-dispatch'
@@ -1449,6 +1485,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/process-agendamentos'
     | '/api/public/hooks/process-automation-jobs'
     | '/api/public/hooks/process-campaigns'
+    | '/api/public/hooks/process-content-posts'
     | '/api/public/hooks/process-inbound-fallbacks'
     | '/api/public/hooks/process-kanban-reguas'
     | '/api/public/hooks/process-meta-leads'
@@ -1504,6 +1541,8 @@ export interface RootRouteChildren {
   OauthDriveReturnRoute: typeof OauthDriveReturnRoute
   OauthSheetsReturnRoute: typeof OauthSheetsReturnRoute
   ApiPublicBillingWebhookRoute: typeof ApiPublicBillingWebhookRoute
+  ApiPublicContentDraftsRoute: typeof ApiPublicContentDraftsRoute
+  ApiPublicContentStatusRoute: typeof ApiPublicContentStatusRoute
   ApiPublicHooksTokenRoute: typeof ApiPublicHooksTokenRoute
   ApiPublicHooksAdminCrmTickRoute: typeof ApiPublicHooksAdminCrmTickRoute
   ApiPublicHooksAgendamentosDispatchRoute: typeof ApiPublicHooksAgendamentosDispatchRoute
@@ -1515,6 +1554,7 @@ export interface RootRouteChildren {
   ApiPublicHooksProcessAgendamentosRoute: typeof ApiPublicHooksProcessAgendamentosRoute
   ApiPublicHooksProcessAutomationJobsRoute: typeof ApiPublicHooksProcessAutomationJobsRoute
   ApiPublicHooksProcessCampaignsRoute: typeof ApiPublicHooksProcessCampaignsRoute
+  ApiPublicHooksProcessContentPostsRoute: typeof ApiPublicHooksProcessContentPostsRoute
   ApiPublicHooksProcessInboundFallbacksRoute: typeof ApiPublicHooksProcessInboundFallbacksRoute
   ApiPublicHooksProcessKanbanReguasRoute: typeof ApiPublicHooksProcessKanbanReguasRoute
   ApiPublicHooksProcessMetaLeadsRoute: typeof ApiPublicHooksProcessMetaLeadsRoute
@@ -2196,6 +2236,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBillingWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/content/drafts': {
+      id: '/api/public/content/drafts'
+      path: '/api/public/content/drafts'
+      fullPath: '/api/public/content/drafts'
+      preLoaderRoute: typeof ApiPublicContentDraftsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/content/status': {
+      id: '/api/public/content/status'
+      path: '/api/public/content/status'
+      fullPath: '/api/public/content/status'
+      preLoaderRoute: typeof ApiPublicContentStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/$token': {
       id: '/api/public/hooks/$token'
       path: '/api/public/hooks/$token'
@@ -2271,6 +2325,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/hooks/process-campaigns'
       fullPath: '/api/public/hooks/process-campaigns'
       preLoaderRoute: typeof ApiPublicHooksProcessCampaignsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/process-content-posts': {
+      id: '/api/public/hooks/process-content-posts'
+      path: '/api/public/hooks/process-content-posts'
+      fullPath: '/api/public/hooks/process-content-posts'
+      preLoaderRoute: typeof ApiPublicHooksProcessContentPostsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/process-inbound-fallbacks': {
@@ -2549,6 +2610,8 @@ const rootRouteChildren: RootRouteChildren = {
   OauthDriveReturnRoute: OauthDriveReturnRoute,
   OauthSheetsReturnRoute: OauthSheetsReturnRoute,
   ApiPublicBillingWebhookRoute: ApiPublicBillingWebhookRoute,
+  ApiPublicContentDraftsRoute: ApiPublicContentDraftsRoute,
+  ApiPublicContentStatusRoute: ApiPublicContentStatusRoute,
   ApiPublicHooksTokenRoute: ApiPublicHooksTokenRoute,
   ApiPublicHooksAdminCrmTickRoute: ApiPublicHooksAdminCrmTickRoute,
   ApiPublicHooksAgendamentosDispatchRoute:
@@ -2564,6 +2627,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksProcessAutomationJobsRoute:
     ApiPublicHooksProcessAutomationJobsRoute,
   ApiPublicHooksProcessCampaignsRoute: ApiPublicHooksProcessCampaignsRoute,
+  ApiPublicHooksProcessContentPostsRoute:
+    ApiPublicHooksProcessContentPostsRoute,
   ApiPublicHooksProcessInboundFallbacksRoute:
     ApiPublicHooksProcessInboundFallbacksRoute,
   ApiPublicHooksProcessKanbanReguasRoute:

@@ -25,16 +25,61 @@ export interface SocialAccount {
   created_at: string;
 }
 
+export type ContentAssetState =
+  | "prepared"
+  | "uploading"
+  | "uploaded"
+  | "validating"
+  | "ready"
+  | "failed";
+
+export interface ContentAsset {
+  id: string;
+  company_id: string;
+  storage_key: string;
+  storage_account_id?: string | null;
+  original_name: string;
+  mime_type: string;
+  size_bytes: number;
+  sha256?: string | null;
+  width?: number | null;
+  height?: number | null;
+  duration_seconds?: number | null;
+  state: ContentAssetState;
+  error_message?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReadyAsset {
+  id: string;
+  companyId: string;
+  storageKey: string;
+  storageAccountId: string | null;
+  mimeType: string;
+  sizeBytes: number;
+  sha256: string | null;
+  width?: number | null;
+  height?: number | null;
+  durationSeconds?: number | null;
+}
+
 export type ContentMediaType = "video" | "image" | "carousel" | "text";
 
 export type ContentPostStatus =
   | "draft"
+  | "awaiting_approval"
+  | "approved"
   | "scheduled"
   | "publishing"
   | "published"
   | "partial"
   | "failed"
   | "cancelled";
+
+export type ContentApprovalState = "draft" | "awaiting_approval" | "approved" | "rejected";
+
+export type ContentPostSource = "human" | "external_ai" | "automation";
 
 export interface ContentPost {
   id: string;
@@ -53,12 +98,27 @@ export interface ContentPost {
   base_caption?: string | null;
   scheduled_at?: string | null;
   status: ContentPostStatus;
+  source?: ContentPostSource;
+  approval_state?: ContentApprovalState;
+  timezone?: string | null;
+  idempotency_key?: string | null;
   created_at: string;
   updated_at: string;
   targets?: ContentPostTarget[];
 }
 
-export type PostTargetStatus = "pending" | "publishing" | "published" | "failed";
+export type PostTargetStatus =
+  | "pending"
+  | "leased"
+  | "uploading"
+  | "processing"
+  | "awaiting_creator_post"
+  | "published"
+  | "retry_wait"
+  | "failed_terminal"
+  | "cancelled"
+  | "publishing"
+  | "failed";
 
 export interface ContentPostTarget {
   id: string;
@@ -66,6 +126,7 @@ export interface ContentPostTarget {
   company_id: string;
   social_account_id?: string | null;
   platform: SocialPlatform;
+  asset_id?: string | null;
   custom_title?: string | null;
   custom_caption?: string | null;
   platform_settings?: {
@@ -77,10 +138,17 @@ export interface ContentPostTarget {
     allow_stitch?: boolean;
   };
   status: PostTargetStatus;
+  provider_job_id?: string | null;
   external_post_id?: string | null;
   external_url?: string | null;
   error_message?: string | null;
+  attempts?: number;
+  next_attempt_at?: string | null;
+  lease_owner?: string | null;
+  lease_until?: string | null;
   published_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ContentComment {

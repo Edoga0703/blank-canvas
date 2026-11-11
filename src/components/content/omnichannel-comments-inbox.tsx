@@ -201,7 +201,7 @@ export function OmnichannelCommentsInbox() {
       );
       setReplyTextMap((prev) => ({ ...prev, [commentId]: "" }));
       setSendingId(null);
-      toast.success("Resposta pública enviada com sucesso no comentário!");
+      toast.info("Modo demonstração: a resposta simulada foi registrada na visualização local. O disparo em produção requer aprovação de app pelas redes.");
     }, 600);
   };
 
@@ -243,6 +243,19 @@ export function OmnichannelCommentsInbox() {
 
   return (
     <div className="space-y-4">
+      {/* Banner de Homologação / Demonstração */}
+      <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400">
+        <Sparkles className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+        <div>
+          <span className="font-bold uppercase tracking-wider text-[10px] mr-1.5 px-1.5 py-0.5 rounded bg-amber-500/20">
+            DEMO / Em Homologação
+          </span>
+          <span>
+            Esta bandeja ilustra o fluxo de triagem e respostas inteligentes. A sincronização e resposta em tempo real serão habilitadas após a homologação das permissões oficiais de comentários com as plataformas.
+          </span>
+        </div>
+      </div>
+
       {/* Barra de Filtros e Busca */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-[var(--panel)] border border-[color:var(--hairline)] rounded-2xl shadow-sm">
         <div className="flex items-center gap-2">

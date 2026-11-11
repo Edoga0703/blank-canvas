@@ -332,6 +332,19 @@ export function OmnichannelAnalytics({ accounts }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* Banner de Demonstração / Homologação */}
+      <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-primary/10 border border-primary/20 text-xs text-primary-900 dark:text-primary-200">
+        <Sparkles className="size-4 shrink-0 text-primary" />
+        <div>
+          <span className="font-bold uppercase tracking-wider text-[10px] mr-1.5 px-1.5 py-0.5 rounded bg-primary/20">
+            DEMO / Métricas Simuladas
+          </span>
+          <span>
+            Os dados consolidados abaixo exibem uma prévia da inteligência e análise comparativa de conteúdo. A sincronização de métricas reais será ativada conforme cada conta for conectada com permissões oficiais de Insights (Meta Graph, YouTube Analytics e TikTok Display).
+          </span>
+        </div>
+      </div>
+
       {/* Cabeçalho, Filtros de Período & Ações */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-5 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] shadow-sm">
         <div>

@@ -46,8 +46,11 @@ import {
   TikTokGlyph,
   YouTubeGlyph,
 } from "@/components/ui/channel-icons";
-import { prepareR2Upload, uploadR2Direct } from "@/lib/storage/r2.functions";
-import { createOmnichannelPost } from "@/lib/omnichannel-content.functions";
+import {
+  createOmnichannelPost,
+  prepareContentAssetFn,
+  completeContentAssetFn,
+} from "@/lib/omnichannel-content.functions";
 import type { SocialAccount, SocialPlatform } from "@/lib/social-content.types";
 
 interface Props {
@@ -74,9 +77,10 @@ const DEMO_MEDIA_SAMPLES = {
 };
 
 export function OmnichannelPublisher({ accounts, onPublished }: Props) {
-  const prepareUploadFn = useServerFn(prepareR2Upload);
-  const uploadFn = useServerFn(uploadR2Direct);
+  const prepareAssetFn = useServerFn(prepareContentAssetFn);
+  const completeAssetFn = useServerFn(completeContentAssetFn);
   const publishFn = useServerFn(createOmnichannelPost);
+  const [assetId, setAssetId] = useState<string | null>(null);
 
   // Nome e identificador dinâmicos da empresa
   const companyHandle = useMemo(() => {
@@ -203,64 +207,47 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
       imgEl.src = URL.createObjectURL(file);
     }
 
-    // 1. Tenta upload em streaming direto assinado via PUT (sem base64, bitrate original intacto)
+    // 1. Registra ativo com ciclo de vida (state: 'prepared') e obtém URL assinada R2
     try {
-      const target = await prepareUploadFn({
+      const prepared = await prepareAssetFn({
         data: {
-          fileName: file.name,
+          originalName: file.name,
           mimeType: file.type,
           sizeBytes: file.size,
+          width: undefined,
+          height: undefined,
+          durationSeconds: undefined,
         },
       });
 
-      if (target?.uploadUrl) {
-        const putRes = await fetch(target.uploadUrl, {
+      if (prepared?.uploadUrl) {
+        const putRes = await fetch(prepared.uploadUrl, {
           method: "PUT",
           headers: { "Content-Type": file.type },
           body: file,
         });
 
-        if (putRes.ok && target.downloadUrl) {
-          setMediaUrl(target.downloadUrl);
+        if (putRes.ok) {
+          // Validação HEAD no R2 promovendo o ativo para state: 'ready'
+          const readyAsset = await completeAssetFn({
+            data: { assetId: prepared.assetId },
+          });
+
+          setAssetId(readyAsset.id);
+          setMediaUrl(URL.createObjectURL(file));
           toast.success(
             isVid
-              ? "Vídeo carregado com bitrate original e máxima qualidade preservada!"
-              : "Imagem de alta resolução carregada com sucesso!",
+              ? "Vídeo carregado e verificado no R2 (bitrate e resolução originais preservados)!"
+              : "Imagem de alta resolução carregada e verificada com sucesso!",
           );
           setUploading(false);
           return;
         }
       }
     } catch (err: any) {
-      console.warn("Tentando fallback de upload direto...", err);
-    }
-
-    // 2. Fallback resiliente com uploadR2Direct
-    try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          const base64 = reader.result as string;
-          const res = await uploadFn({
-            data: {
-              fileName: file.name,
-              mimeType: file.type,
-              base64,
-            },
-          });
-          if (res?.downloadUrl) {
-            setMediaUrl(res.downloadUrl);
-            toast.success("Arquivo carregado com sucesso!");
-          }
-        } catch (err: any) {
-          toast.error("Erro no upload do arquivo: " + err?.message);
-        } finally {
-          setUploading(false);
-        }
-      };
-      reader.readAsDataURL(file);
-    } catch (err: any) {
-      toast.error("Falha ao ler o arquivo selecionado.");
+      console.error("Falha no upload do ativo:", err);
+      toast.error(err?.message || "Falha no envio do arquivo para o armazenamento.");
+    } finally {
       setUploading(false);
     }
   };
@@ -380,6 +367,7 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
 
       const res = await publishFn({
         data: {
+          assetId,
           mediaUrl,
           mediaType,
           baseCaption,
@@ -392,7 +380,19 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
         if (isScheduled) {
           toast.success("Publicação agendada com sucesso para os canais selecionados!");
         } else {
-          toast.success("Publicação iniciada com sucesso em todas as plataformas!");
+          const results = res.results || [];
+          const publishedCount = results.filter((r) => r.status === "published").length;
+          const failedCount = results.filter((r) => r.status === "failed").length;
+
+          if (publishedCount > 0 && failedCount === 0) {
+            toast.success(`Publicado com sucesso em ${publishedCount} ${publishedCount === 1 ? "canal" : "canais"}!`);
+          } else if (publishedCount > 0 && failedCount > 0) {
+            const failedNames = results.filter((r) => r.status === "failed").map((r) => r.platform).join(", ");
+            toast.warning(`Publicado parcialmente (${publishedCount} sucesso, falha em: ${failedNames}).`);
+          } else {
+            const firstError = results.find((r) => r.error)?.error || "Erro no envio.";
+            toast.error(`Falha ao publicar nos canais: ${firstError}`);
+          }
         }
         onPublished?.();
       }
@@ -628,6 +628,7 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
                   onClick={() => {
                     setMediaUrl(null);
                     setMediaFile(null);
+                    setAssetId(null);
                   }}
                   className="text-muted-foreground hover:text-red-500 h-8 px-2"
                 >

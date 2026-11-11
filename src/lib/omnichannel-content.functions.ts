@@ -50,22 +50,33 @@ export const createOmnichannelPost = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator(
     (d: {
+      assetId?: string | null;
       mediaUrl?: string | null;
       mediaType: "video" | "image" | "carousel" | "text";
       baseCaption?: string | null;
       scheduledAt?: string | null;
+      source?: "human" | "external_ai" | "automation";
+      approvalState?: "draft" | "awaiting_approval" | "approved";
+      timezone?: string | null;
+      idempotencyKey?: string | null;
       targets: Array<{
         platform: "instagram" | "facebook" | "tiktok" | "youtube";
         socialAccountId?: string | null;
+        assetId?: string | null;
         customTitle?: string | null;
         customCaption?: string | null;
         platformSettings?: Record<string, any>;
       }>;
     }) => ({
+      assetId: d?.assetId ? String(d.assetId).trim() : null,
       mediaUrl: d?.mediaUrl ? String(d.mediaUrl).trim() : null,
       mediaType: d?.mediaType ?? "video",
       baseCaption: d?.baseCaption ? String(d.baseCaption).trim() : null,
       scheduledAt: d?.scheduledAt ? String(d.scheduledAt).trim() : null,
+      source: d?.source ?? "human",
+      approvalState: d?.approvalState ?? "approved",
+      timezone: d?.timezone ? String(d.timezone).trim() : null,
+      idempotencyKey: d?.idempotencyKey ? String(d.idempotencyKey).trim() : null,
       targets: Array.isArray(d?.targets) ? d.targets : [],
     }),
   )
@@ -77,15 +88,39 @@ export const createOmnichannelPost = createServerFn({ method: "POST" })
       throw new Error("Selecione ao menos uma rede social para publicar.");
     }
 
-    // Validações por plataforma
+    // Regra F0: Rejeitar destinos não homologados diretamente no servidor
+    const implementedPublishers = new Set(["instagram", "facebook"]);
+    const unsupported = data.targets.filter((t) => !implementedPublishers.has(t.platform));
+    if (unsupported.length > 0) {
+      const unsupportedNames = unsupported.map((t) => t.platform).join(", ");
+      throw new Error(`Publicação direta para ${unsupportedNames} está em fase de homologação OAuth.`);
+    }
+
+    // Validações por plataforma e ownership de tenant
     for (const target of data.targets) {
+      if (target.socialAccountId) {
+        const { data: verifiedAcc } = await (supabaseAdmin as any)
+          .from("meta_social_accounts")
+          .select("id, network, company_id")
+          .eq("id", target.socialAccountId)
+          .eq("company_id", companyId)
+          .maybeSingle();
+
+        if (!verifiedAcc) {
+          throw new Error(`A conta ${target.socialAccountId} não pertence à sua empresa ou não existe.`);
+        }
+        if (verifiedAcc.network !== target.platform) {
+          throw new Error(`A conta selecionada pertence à rede ${verifiedAcc.network}, incompatível com o destino ${target.platform}.`);
+        }
+      }
+
       if (target.platform === "youtube") {
         if (!target.customTitle?.trim()) {
           throw new Error("YouTube exige um título obrigatório para o vídeo.");
         }
       }
       if (target.platform === "instagram") {
-        if (!data.mediaUrl) {
+        if (!data.mediaUrl && !data.assetId) {
           throw new Error("Instagram exige uma foto ou vídeo para publicação.");
         }
       }
@@ -105,6 +140,10 @@ export const createOmnichannelPost = createServerFn({ method: "POST" })
         base_caption: data.baseCaption,
         scheduled_at: isScheduled ? data.scheduledAt : null,
         status: initialStatus,
+        source: data.source,
+        approval_state: data.approvalState,
+        timezone: data.timezone,
+        idempotency_key: data.idempotencyKey,
       })
       .select("id")
       .single();
@@ -123,10 +162,11 @@ export const createOmnichannelPost = createServerFn({ method: "POST" })
         company_id: companyId,
         platform: t.platform,
         social_account_id: t.socialAccountId || null,
+        asset_id: t.assetId || data.assetId || null,
         custom_title: t.customTitle || null,
         custom_caption: t.customCaption || null,
         platform_settings: t.platformSettings || {},
-        status: isScheduled ? "pending" : "publishing",
+        status: "pending",
       }));
 
       const { error: targetErr } = await (supabaseAdmin as any)
@@ -134,23 +174,28 @@ export const createOmnichannelPost = createServerFn({ method: "POST" })
         .insert(targetRows);
 
       if (targetErr) {
-        console.warn("[createOmnichannelPost] Erro insert content_post_targets:", targetErr.message);
+        console.error("[createOmnichannelPost] Erro insert content_post_targets:", targetErr.message);
+        await (supabaseAdmin as any)
+          .from("content_posts")
+          .update({ status: "failed" })
+          .eq("id", postId);
+        throw new Error(`Falha ao registrar alvos da publicação: ${targetErr.message}`);
       }
     }
 
     let targetResults: Array<{ platform: string; status: string; error?: string; url?: string }> = [];
 
-    // 2. Se for imediato, orquestra publicação real
+    // 2. Se for imediato, orquestra publicação via fila atômica duradoura
     if (!isScheduled) {
-      const { executePostTargetsPublishing } = await import("./omnichannel-publish.server");
-      targetResults = await executePostTargetsPublishing({
-        postId,
-        companyId,
-        mediaUrl: data.mediaUrl || null,
-        mediaType: data.mediaType,
-        baseCaption: data.baseCaption || null,
-        targets: data.targets,
-      });
+      const { processContentTargetsBatch } = await import("./content/queue.server");
+      const workerId = `direct-${crypto.randomUUID().slice(0, 8)}`;
+      const batch = await processContentTargetsBatch(workerId, data.targets.length);
+      targetResults = batch.results.map((r) => ({
+        platform: r.platform,
+        status: r.status,
+        error: r.error,
+        url: r.externalPostId,
+      }));
     }
 
     return {
@@ -162,22 +207,186 @@ export const createOmnichannelPost = createServerFn({ method: "POST" })
   });
 
 /**
- * 3. Lista histórico unificado de publicações
+ * 3. Lista histórico unificado de publicações com alvos por plataforma
  */
 export const listOmnichannelPosts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<{ posts: ContentPost[] }> => {
+  .handler(async ({ context }): Promise<{ posts: any[] }> => {
     const companyId = await resolveCompanyId(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: posts } = await (supabaseAdmin as any)
       .from("content_posts")
-      .select("id,company_id,user_id,media_url,media_type,media_metadata,base_caption,scheduled_at,status,created_at,updated_at")
+      .select(`
+        id, company_id, user_id, source, approval_state, media_url, media_type,
+        media_metadata, base_caption, scheduled_at, timezone, idempotency_key,
+        status, published_at, created_at, updated_at,
+        targets:content_post_targets(
+          id, platform, social_account_id, asset_id, custom_title, custom_caption,
+          platform_settings, status, attempts, next_attempt_at, lease_until,
+          external_post_id, external_url, error_message, published_at
+        )
+      `)
       .eq("company_id", companyId)
       .order("created_at", { ascending: false })
       .limit(50);
 
     return { posts: posts ?? [] };
+  });
+
+/**
+ * 3.1 Aprova uma publicação mestre (humano ou operador com permissão)
+ */
+export const approveOmnichannelPost = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { postId: string }) => d)
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: post, error } = await (supabaseAdmin as any)
+      .from("content_posts")
+      .update({
+        approval_state: "approved",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.postId)
+      .eq("company_id", companyId)
+      .select("id, status, scheduled_at")
+      .single();
+
+    if (error || !post) {
+      throw new Error(`Falha ao aprovar postagem: ${error?.message || "Postagem não encontrada"}`);
+    }
+
+    // Se a postagem for de envio imediato (scheduled_at nulo ou passado), dispara worker para processar
+    if (!post.scheduled_at || new Date(post.scheduled_at).getTime() <= Date.now()) {
+      const { processContentTargetsBatch } = await import("./content/queue.server");
+      const workerId = `approve-${crypto.randomUUID().slice(0, 8)}`;
+      await processContentTargetsBatch(workerId, 5).catch(() => {});
+    }
+
+    return { ok: true, postId: post.id };
+  });
+
+/**
+ * 3.2 Reprova uma publicação mestre
+ */
+export const rejectOmnichannelPost = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { postId: string; reason?: string }) => d)
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { error } = await (supabaseAdmin as any)
+      .from("content_posts")
+      .update({
+        approval_state: "rejected",
+        status: "failed",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.postId)
+      .eq("company_id", companyId);
+
+    if (error) {
+      throw new Error(`Falha ao rejeitar postagem: ${error.message}`);
+    }
+
+    await (supabaseAdmin as any)
+      .from("content_post_targets")
+      .update({
+        status: "cancelled",
+        error_message: data.reason || "Rejeitado pelo operador",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("post_id", data.postId)
+      .eq("company_id", companyId);
+
+    return { ok: true };
+  });
+
+/**
+ * 3.3 Cancela uma postagem agendada ou pendente
+ */
+export const cancelOmnichannelPost = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { postId: string }) => d)
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { error } = await (supabaseAdmin as any)
+      .from("content_posts")
+      .update({
+        status: "cancelled",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.postId)
+      .eq("company_id", companyId)
+      .in("status", ["scheduled", "draft", "publishing"]);
+
+    if (error) {
+      throw new Error(`Falha ao cancelar postagem: ${error.message}`);
+    }
+
+    await (supabaseAdmin as any)
+      .from("content_post_targets")
+      .update({
+        status: "cancelled",
+        error_message: "Publicação cancelada pelo usuário",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("post_id", data.postId)
+      .eq("company_id", companyId)
+      .in("status", ["pending", "retry_wait", "leased"]);
+
+    return { ok: true };
+  });
+
+/**
+ * 3.4 Reenfileira um target que falhou (reintento manual)
+ */
+export const retryOmnichannelTarget = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { targetId: string }) => d)
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: target, error } = await (supabaseAdmin as any)
+      .from("content_post_targets")
+      .update({
+        status: "pending",
+        attempts: 0,
+        next_attempt_at: null,
+        error_message: null,
+        lease_owner: null,
+        lease_until: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.targetId)
+      .eq("company_id", companyId)
+      .select("id, post_id")
+      .single();
+
+    if (error || !target) {
+      throw new Error(`Falha ao redefinir target para reenvio: ${error?.message || "não encontrado"}`);
+    }
+
+    // Atualiza post master para publishing
+    await (supabaseAdmin as any)
+      .from("content_posts")
+      .update({ status: "publishing", updated_at: new Date().toISOString() })
+      .eq("id", target.post_id)
+      .eq("company_id", companyId);
+
+    // Dispara worker imediato
+    const { processContentTargetsBatch } = await import("./content/queue.server");
+    const workerId = `retry-${crypto.randomUUID().slice(0, 8)}`;
+    await processContentTargetsBatch(workerId, 2).catch(() => {});
+
+    return { ok: true };
   });
 
 /**
@@ -236,4 +445,51 @@ export const getOmnichannelIntelligence = createServerFn({ method: "POST" })
       heatmapBestHours,
       accounts: accounts ?? [],
     };
+  });
+
+/**
+ * 5. Prepara o upload direto de um ativo de mídia em R2 com registro no banco (estado 'prepared')
+ */
+export const prepareContentAssetFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(
+    (d: {
+      originalName: string;
+      mimeType: string;
+      sizeBytes: number;
+      width?: number;
+      height?: number;
+      durationSeconds?: number;
+      storageAccountId?: string | null;
+    }) => d,
+  )
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { prepareContentAsset } = await import("./content/assets.server");
+    return prepareContentAsset({
+      companyId,
+      originalName: data.originalName,
+      mimeType: data.mimeType,
+      sizeBytes: data.sizeBytes,
+      width: data.width,
+      height: data.height,
+      durationSeconds: data.durationSeconds,
+      storageAccountId: data.storageAccountId,
+    });
+  });
+
+/**
+ * 6. Confirma a conclusão do upload direto no R2 e valida o objeto via HEAD (estado 'ready')
+ */
+export const completeContentAssetFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { assetId: string; sha256?: string | null }) => d)
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { completeContentAsset } = await import("./content/assets.server");
+    return completeContentAsset({
+      companyId,
+      assetId: data.assetId,
+      sha256: data.sha256,
+    });
   });
