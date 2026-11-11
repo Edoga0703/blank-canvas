@@ -57,15 +57,52 @@ export async function tgGetWebhookInfo(token: string) {
   return tg(token, "getWebhookInfo") as Promise<any>;
 }
 
-export async function tgSendText(token: string, chatId: string, text: string) {
-  const r: any = await tg(token, "sendMessage", { chat_id: chatId, text });
+export async function tgSendText(
+  token: string,
+  chatId: string,
+  text: string,
+  options?: {
+    businessConnectionId?: string | null;
+    replyToMessageId?: string | number | null;
+  },
+) {
+  const payload: any = { chat_id: chatId, text };
+  if (options?.businessConnectionId) {
+    payload.business_connection_id = options.businessConnectionId;
+  }
+  if (options?.replyToMessageId) {
+    payload.reply_parameters = { message_id: Number(options.replyToMessageId) };
+  }
+  const r: any = await tg(token, "sendMessage", payload);
   return { key: { id: String(r?.message_id ?? "") }, messageId: r?.message_id };
 }
 
-export async function tgSendPresence(token: string, chatId: string, presence: string) {
+export async function tgSendBusinessText(
+  token: string,
+  businessConnectionId: string,
+  chatId: string,
+  text: string,
+  replyToMessageId?: string | number | null,
+) {
+  return tgSendText(token, chatId, text, {
+    businessConnectionId,
+    replyToMessageId,
+  });
+}
+
+export async function tgSendPresence(
+  token: string,
+  chatId: string,
+  presence: string,
+  businessConnectionId?: string | null,
+) {
   if (presence !== "composing") return { ok: true };
   try {
-    await tg(token, "sendChatAction", { chat_id: chatId, action: "typing" });
+    const payload: any = { chat_id: chatId, action: "typing" };
+    if (businessConnectionId) {
+      payload.business_connection_id = businessConnectionId;
+    }
+    await tg(token, "sendChatAction", payload);
   } catch {
     /* presença é best-effort */
   }
@@ -79,7 +116,13 @@ async function sendFile(
   method: "sendPhoto" | "sendVideo" | "sendDocument" | "sendVoice",
   field: "photo" | "video" | "document" | "voice",
   media: string,
-  opts?: { caption?: string; fileName?: string; mimetype?: string },
+  opts?: {
+    caption?: string;
+    fileName?: string;
+    mimetype?: string;
+    businessConnectionId?: string | null;
+    replyToMessageId?: string | number | null;
+  },
 ) {
   let blob: Blob;
   const filename =
@@ -102,11 +145,18 @@ async function sendFile(
       blob = new Blob([arrayBuffer], { type: cType });
     } catch (e: any) {
       console.warn(`[tg sendFile] Falha ao baixar mídia no servidor (${e?.message}), tentando URL direta...`);
-      const r: any = await tg(token, method, {
+      const payload: any = {
         chat_id: chatId,
         [field]: media,
         ...(opts?.caption ? { caption: opts.caption } : {}),
-      });
+      };
+      if (opts?.businessConnectionId) {
+        payload.business_connection_id = opts.businessConnectionId;
+      }
+      if (opts?.replyToMessageId) {
+        payload.reply_parameters = { message_id: Number(opts.replyToMessageId) };
+      }
+      const r: any = await tg(token, method, payload);
       return { key: { id: String(r?.message_id ?? "") }, messageId: r?.message_id };
     }
   } else {
@@ -119,7 +169,13 @@ async function sendFile(
 
   const form = new FormData();
   form.append("chat_id", chatId);
+  if (opts?.businessConnectionId) {
+    form.append("business_connection_id", opts.businessConnectionId);
+  }
   if (opts?.caption) form.append("caption", opts.caption);
+  if (opts?.replyToMessageId) {
+    form.append("reply_parameters", JSON.stringify({ message_id: Number(opts.replyToMessageId) }));
+  }
   form.append(field, blob, filename);
 
   const res = await fetch(`${API}/bot${cleanToken(token)}/${method}`, {
@@ -137,7 +193,15 @@ async function sendFile(
 export async function tgSendMedia(
   token: string,
   chatId: string,
-  params: { mediatype: "image" | "video" | "document" | "audio"; media: string; mimetype?: string; fileName?: string; caption?: string },
+  params: {
+    mediatype: "image" | "video" | "document" | "audio";
+    media: string;
+    mimetype?: string;
+    fileName?: string;
+    caption?: string;
+    businessConnectionId?: string | null;
+    replyToMessageId?: string | number | null;
+  },
 ) {
   const map = {
     image: ["sendPhoto", "photo"],
@@ -150,17 +214,105 @@ export async function tgSendMedia(
     caption: params.caption,
     fileName: params.fileName,
     mimetype: params.mimetype,
+    businessConnectionId: params.businessConnectionId,
+    replyToMessageId: params.replyToMessageId,
   });
 }
 
-export async function tgSendAudio(token: string, chatId: string, audio: string) {
+export async function tgSendBusinessMedia(
+  token: string,
+  businessConnectionId: string,
+  chatId: string,
+  params: {
+    mediatype: "image" | "video" | "document" | "audio";
+    media: string;
+    mimetype?: string;
+    fileName?: string;
+    caption?: string;
+    replyToMessageId?: string | number | null;
+  },
+) {
+  return tgSendMedia(token, chatId, {
+    ...params,
+    businessConnectionId,
+  });
+}
+
+export async function tgSendAudio(
+  token: string,
+  chatId: string,
+  audio: string,
+  options?: {
+    businessConnectionId?: string | null;
+    replyToMessageId?: string | number | null;
+  },
+) {
   return sendFile(token, chatId, "sendVoice", "voice", audio, {
     fileName: "audio.ogg",
     mimetype: "audio/ogg",
+    businessConnectionId: options?.businessConnectionId,
+    replyToMessageId: options?.replyToMessageId,
   });
 }
 
-/** URL pública de download de um file_id do Telegram. */
+/**
+ * Pipeline Seguro R2 Media Vault:
+ * Descarga medios de Telegram en el servidor y los persiste en Cloudflare R2 (capiversa-media).
+ * NUNCA almacena ni expone tokens de bot (api.telegram.org/file/bot<TOKEN>) en la BD ni al cliente.
+ */
+export async function tgDownloadAndStoreMedia(input: {
+  botToken: string;
+  fileId: string;
+  companyId: string;
+  fileName?: string | null;
+  mimeType?: string | null;
+}): Promise<import("@/lib/storage/r2.server").StoredMediaObject | null> {
+  const { botToken, fileId, companyId, fileName, mimeType } = input;
+  try {
+    const fileInfo: any = await tg(botToken, "getFile", { file_id: fileId });
+    if (!fileInfo?.file_path) return null;
+
+    const fileDownloadUrl = `${API}/file/bot${cleanToken(botToken)}/${fileInfo.file_path}`;
+    const resp = await fetch(fileDownloadUrl, {
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!resp.ok) {
+      console.warn(`[tgDownloadAndStoreMedia] Download failed HTTP ${resp.status}`);
+      return null;
+    }
+
+    const arrayBuffer = await resp.arrayBuffer();
+    const finalMime =
+      mimeType ||
+      resp.headers.get("content-type") ||
+      (fileInfo.file_path.endsWith(".jpg") || fileInfo.file_path.endsWith(".jpeg")
+        ? "image/jpeg"
+        : fileInfo.file_path.endsWith(".png")
+        ? "image/png"
+        : fileInfo.file_path.endsWith(".oga") || fileInfo.file_path.endsWith(".ogg")
+        ? "audio/ogg"
+        : fileInfo.file_path.endsWith(".mp4")
+        ? "video/mp4"
+        : "application/octet-stream");
+
+    const safeName = fileName || fileInfo.file_path.split("/").pop() || "archivo";
+
+    const { storeMediaObject } = await import("@/lib/storage/r2.server");
+    const stored = await storeMediaObject({
+      companyId,
+      bytes: arrayBuffer,
+      mimeType: finalMime,
+      fileName: safeName,
+    });
+
+    return stored;
+  } catch (err: any) {
+    console.warn("[tgDownloadAndStoreMedia] Error downloading/storing Telegram media:", err?.message);
+    return null;
+  }
+}
+
+/** URL pública de download de um file_id do Telegram (best-effort interna). */
 export async function tgFileUrl(token: string, fileId: string): Promise<string | null> {
   try {
     const f: any = await tg(token, "getFile", { file_id: fileId });

@@ -123,14 +123,34 @@ async function assertMetaWindowForInstance(inst: WaInstance, numero: string) {
   });
 }
 
+async function getTelegramBusinessConnection(inst: WaInstance): Promise<string | null> {
+  if (!inst.company_id) return null;
+  try {
+    const { data } = await (supabaseAdmin as any)
+      .from("telegram_business_bindings")
+      .select("business_connection_id, can_reply, is_active")
+      .eq("company_id", inst.company_id)
+      .eq("is_active", true)
+      .eq("can_reply", true)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return data?.business_connection_id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function waPresenceTyping(inst: WaInstance, numero: string, _ms: number) {
   try {
     if (isMetaProvider(inst.provider) && inst.instance_token) {
       const { metaSendPresence } = await import("./meta.server");
       await metaSendPresence(inst.instance_token, numero, "composing");
     } else if (inst.provider === "telegram" && inst.instance_token) {
+      const businessConnectionId = await getTelegramBusinessConnection(inst);
       const { tgSendPresence } = await import("./telegram.server");
-      await tgSendPresence(inst.instance_token, numero, "composing");
+      await tgSendPresence(inst.instance_token, numero, "composing", businessConnectionId);
     } else if (inst.provider === "dapi") {
       const { dapiSendPresence } = await import("./dapi.server");
       await dapiSendPresence(inst.instance_name, numero, "composing", 4000, inst.instance_token);
@@ -180,8 +200,20 @@ export async function waSendText(
     return metaSendText(inst.instance_token, numero, texto);
   }
   if (inst.provider === "telegram") {
-    const { tgSendText } = await import("./telegram.server");
-    return tgSendText(inst.instance_token || "", numero, texto);
+    const businessConnectionId = await getTelegramBusinessConnection(inst);
+    const { tgSendText, tgSendBusinessText } = await import("./telegram.server");
+    if (businessConnectionId) {
+      return tgSendBusinessText(
+        inst.instance_token || "",
+        businessConnectionId,
+        numero,
+        texto,
+        options?.replyToExternalMessageId,
+      );
+    }
+    return tgSendText(inst.instance_token || "", numero, texto, {
+      replyToMessageId: options?.replyToExternalMessageId,
+    });
   }
   if (inst.provider === "dapi_official") {
     await assertMetaWindowForInstance(inst, numero);
@@ -216,7 +248,22 @@ export async function waSendMedia(
   }
   if (inst.provider === "telegram") {
     if (!inst.instance_token) throw new Error(`Token do Telegram ausente para conexão ${inst.instance_name}`);
-    const { tgSendMedia } = await import("./telegram.server");
+    const businessConnectionId = await getTelegramBusinessConnection(inst);
+    const { tgSendMedia, tgSendBusinessMedia } = await import("./telegram.server");
+    if (businessConnectionId) {
+      return tgSendBusinessMedia(
+        inst.instance_token,
+        businessConnectionId,
+        numero,
+        {
+          mediatype: media.type,
+          media: media.url,
+          caption: media.caption,
+          fileName: media.fileName,
+          mimetype: media.mime,
+        },
+      );
+    }
     return tgSendMedia(inst.instance_token, numero, {
       mediatype: media.type,
       media: media.url,
@@ -245,7 +292,21 @@ export async function waSendAudio(inst: WaInstance, numero: string, audioBase64O
   }
   if (inst.provider === "telegram") {
     if (!inst.instance_token) throw new Error(`Token do Telegram ausente para conexão ${inst.instance_name}`);
-    const { tgSendAudio } = await import("./telegram.server");
+    const businessConnectionId = await getTelegramBusinessConnection(inst);
+    const { tgSendAudio, tgSendBusinessMedia } = await import("./telegram.server");
+    if (businessConnectionId) {
+      return tgSendBusinessMedia(
+        inst.instance_token,
+        businessConnectionId,
+        numero,
+        {
+          mediatype: "audio",
+          media: audioBase64OrUrl,
+          fileName: "audio.ogg",
+          mimetype: "audio/ogg",
+        },
+      );
+    }
     return tgSendAudio(inst.instance_token, numero, audioBase64OrUrl);
   }
   if (inst.provider === "dapi_official") {
