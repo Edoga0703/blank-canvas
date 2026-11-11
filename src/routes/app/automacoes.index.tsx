@@ -103,13 +103,22 @@ export function AutomacoesPage() {
   }
 
   async function handleToggleStatus(wf: any) {
-    const nextStatus = wf.status === "published" ? "draft" : "published";
+    if (wf.status === "draft" && !wf.active_version_id) {
+      toast.info("Abra o fluxo no editor e clique em 'Publicar Fluxo' para ativá-lo pela primeira vez.");
+      navigate({
+        to: "/app/automacoes/$workflowId",
+        params: { workflowId: wf.id },
+      });
+      return;
+    }
+
+    const nextStatus = wf.status === "published" ? "paused" : "published";
     try {
       await toggleStatus({
         data: { workflowId: wf.id, status: nextStatus },
       });
       toast.success(
-        nextStatus === "published" ? "Fluxo ativado com sucesso" : "Fluxo desativado (em rascunho)"
+        nextStatus === "published" ? "Fluxo ativado com sucesso" : "Fluxo pausado com sucesso"
       );
       loadData();
     } catch (e: any) {
@@ -182,12 +191,14 @@ export function AutomacoesPage() {
                   <div className="flex items-start justify-between gap-2">
                     <span
                       className={`text-[11px] font-semibold px-2 py-0.5 rounded-full inline-block ${
-                        isPublished
+                        wf.status === "published"
                           ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
-                          : "bg-muted text-muted-foreground"
+                          : wf.status === "paused"
+                            ? "bg-amber-500/10 text-amber-600 border border-amber-500/20"
+                            : "bg-muted text-muted-foreground border"
                       }`}
                     >
-                      {isPublished ? "Ativo" : "Rascunho"}
+                      {wf.status === "published" ? "Publicado (Ativo)" : wf.status === "paused" ? "Pausado" : "Rascunho"}
                     </span>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

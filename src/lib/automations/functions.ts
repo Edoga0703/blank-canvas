@@ -65,14 +65,30 @@ export const getWorkflowFn = createServerFn({ method: "GET" })
 
     if (error || !wf) throw new Error("Flujo de automatización no encontrado");
 
-    // Obtener la versión activa o el último borrador
+    // A04: Obter versão ativa e versão de rascunho por separado para evitar falsos "Publicado (vN)"
     let graph: WorkflowGraph | null = null;
     let versionNumber = 1;
+    let activeVersionNumber: number | null = null;
+    let activeVersion: any = null;
 
-    // Cargar la versión más reciente (borrador en edición o publicada) bajo este tenant
+    if (wf.active_version_id) {
+      const { data: actVer } = await (supabaseAdmin as any)
+        .from("automation_workflow_versions")
+        .select("id, graph, version_number, published_at")
+        .eq("company_id", companyId)
+        .eq("id", wf.active_version_id)
+        .maybeSingle();
+
+      if (actVer) {
+        activeVersion = actVer;
+        activeVersionNumber = actVer.version_number;
+      }
+    }
+
+    // Carregar o rascunho mais recente (maior version_number)
     const { data: latestVer } = await (supabaseAdmin as any)
       .from("automation_workflow_versions")
-      .select("graph, version_number")
+      .select("id, graph, version_number, published_at")
       .eq("company_id", companyId)
       .eq("workflow_id", wf.id)
       .order("version_number", { ascending: false })
@@ -82,9 +98,18 @@ export const getWorkflowFn = createServerFn({ method: "GET" })
     if (latestVer) {
       graph = latestVer.graph;
       versionNumber = latestVer.version_number;
+    } else if (activeVersion) {
+      graph = activeVersion.graph;
+      versionNumber = activeVersion.version_number;
     }
 
-    // Grafo predeterminado si es nuevo
+    // Calcula se há alterações pendentes de publicação
+    const hasUnpublishedChanges =
+      !wf.active_version_id ||
+      wf.status !== "published" ||
+      (latestVer && activeVersion && latestVer.id !== activeVersion.id);
+
+    // Grafo predeterminado se for novo (alinhamento vertical intuitivo)
     if (!graph) {
       graph = {
         schemaVersion: 1,
@@ -93,7 +118,7 @@ export const getWorkflowFn = createServerFn({ method: "GET" })
             id: "trigger_inbound",
             type: "messaging.inbound_received",
             version: 1,
-            position: { x: 100, y: 150 },
+            position: { x: 250, y: 80 },
             config: {
               connectionMode: "any",
               instanceIds: [],
@@ -106,7 +131,7 @@ export const getWorkflowFn = createServerFn({ method: "GET" })
             id: "send_welcome",
             type: "messaging.send_text",
             version: 1,
-            position: { x: 450, y: 150 },
+            position: { x: 250, y: 260 },
             config: {
               text: "¡Hola! Gracias por comunicarte con nosotros. ¿En qué podemos ayudarte hoy?",
               connectionPolicy: "same_as_trigger",
@@ -133,7 +158,11 @@ export const getWorkflowFn = createServerFn({ method: "GET" })
     return {
       workflow: wf,
       graph: graph as any,
+      activeVersion,
+      draftVersion: latestVer,
+      hasUnpublishedChanges,
       versionNumber,
+      activeVersionNumber,
     };
   });
 
@@ -154,7 +183,7 @@ export const createWorkflowFn = createServerFn({ method: "POST" })
           id: "trigger_inbound",
           type: "messaging.inbound_received",
           version: 1,
-          position: { x: 100, y: 150 },
+          position: { x: 250, y: 80 },
           config: {
             connectionMode: "any",
             instanceIds: [],
@@ -167,7 +196,7 @@ export const createWorkflowFn = createServerFn({ method: "POST" })
           id: "send_welcome",
           type: "messaging.send_text",
           version: 1,
-          position: { x: 450, y: 150 },
+          position: { x: 250, y: 260 },
           config: {
             text: "¡Hola! Gracias por comunicarte con nosotros. ¿En qué podemos ayudarte hoy?",
             connectionPolicy: "same_as_trigger",
@@ -300,7 +329,12 @@ export const saveWorkflowDraftFn = createServerFn({ method: "POST" })
       throw new Error(`Error al actualizar el flujo: ${upErr.message}`);
     }
 
-    return { ok: true, versionNumber: savedVer.version_number, versionId: savedVer.id };
+    return {
+      ok: true,
+      versionNumber: savedVer.version_number,
+      versionId: savedVer.id,
+      hasUnpublishedChanges: true,
+    };
   });
 
 export const publishWorkflowFn = createServerFn({ method: "POST" })
@@ -430,7 +464,12 @@ export const publishWorkflowFn = createServerFn({ method: "POST" })
       throw new Error(`Error al activar la versión publicada: ${pubErr.message}`);
     }
 
-    return { ok: true, versionNumber: publishedVer.version_number, versionId: publishedVer.id };
+    return {
+      ok: true,
+      versionNumber: publishedVer.version_number,
+      versionId: publishedVer.id,
+      hasUnpublishedChanges: false,
+    };
   });
 
 export const toggleWorkflowStatusFn = createServerFn({ method: "POST" })
@@ -534,7 +573,7 @@ export const getAvailableChannelsAndConnectionsFn = createServerFn({ method: "GE
   .handler(async ({ context }) => {
     const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
 
-    const [{ data: instances }, { data: stages }, { data: pipelines }] = await Promise.all([
+    const [{ data: instances }, { data: stages }, { data: pipelines }, { data: owners }] = await Promise.all([
       (supabaseAdmin as any)
         .from("whatsapp_instances")
         .select("id, instance_name, display_name, provider, status")
@@ -550,11 +589,17 @@ export const getAvailableChannelsAndConnectionsFn = createServerFn({ method: "GE
         .select("id, nome")
         .eq("company_id", companyId)
         .order("ordem", { ascending: true }),
+      (supabaseAdmin as any)
+        .from("company_user")
+        .select("user_id, role")
+        .eq("company_id", companyId)
+        .eq("ativo", true),
     ]);
 
     return {
       instances: (instances || []) as any[],
       stages: (stages || []) as any[],
       pipelines: (pipelines || []) as any[],
+      owners: (owners || []).map((o: any) => ({ id: o.user_id, name: `Usuário (${o.role})` })),
     };
   });

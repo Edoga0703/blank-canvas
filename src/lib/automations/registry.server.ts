@@ -434,10 +434,15 @@ registerNode({
     const prevTags = Array.isArray(card?.tags) ? card.tags : [];
     const newTag = config.tag.trim();
     if (!prevTags.includes(newTag)) {
-      await (supabaseAdmin as any)
+      const { error: upErr } = await (supabaseAdmin as any)
         .from("crm_cards")
         .update({ tags: [...prevTags, newTag], updated_at: new Date().toISOString() })
-        .eq("id", cardId);
+        .eq("id", cardId)
+        .eq("company_id", ctx.companyId);
+
+      if (upErr) {
+        throw new Error(`Falha ao adicionar etiqueta no CRM: ${upErr.message}`);
+      }
     }
 
     return { kind: "next", port: "next" };
@@ -458,6 +463,7 @@ registerNode({
       await handoffToAi({
         companyId: ctx.companyId,
         externalConversationId: ctx.externalConversationId,
+        instanceId: ctx.sourceInstanceId || null,
       });
     }
     return { kind: "next", port: "next" };
@@ -471,7 +477,7 @@ registerNode({
   name: "Derivar a Asesor Humano",
   description: "Pausa el bot y notifica a los asesores que un cliente requiere atención humana.",
   icon: "UserCheck",
-  outputPorts: ["next"],
+  outputPorts: [], // Nodo terminal sin salidas
   configSchema: z.object({
     reason: z.string().default("Cliente solicitó asesor humano"),
   }),

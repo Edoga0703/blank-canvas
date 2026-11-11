@@ -77,13 +77,33 @@ export function validateWorkflowGraphStructure(graph: WorkflowGraph): { valid: b
   }
 
   const seenEdges = new Set<string>();
+  const seenSourcePorts = new Set<string>();
 
   for (const edge of graph.edges) {
+    const portKey = `${edge.source}:${edge.sourcePort || "next"}`;
+    if (seenSourcePorts.has(portKey)) {
+      errors.push({
+        edgeId: edge.id,
+        message: `O motor sequencial v1 suporta apenas uma conexão por porta de saída. A porta "${edge.sourcePort || "next"}" do nó "${edge.source}" possui múltiplos destinos conectados.`,
+      });
+    }
+    seenSourcePorts.add(portKey);
+
     const edgeKey = `${edge.source}:${edge.sourcePort}->${edge.target}`;
     if (seenEdges.has(edgeKey)) {
-      errors.push({ edgeId: edge.id, message: `Conexión duplicada entre nodos: ${edgeKey}` });
+      errors.push({ edgeId: edge.id, message: `Conexão duplicada entre nodos: ${edgeKey}` });
     }
     seenEdges.add(edgeKey);
+
+    const sourceNode = nodeMap.get(edge.source);
+    if (sourceNode) {
+      if (sourceNode.type === "control.end" || sourceNode.type === "messaging.route_to_human") {
+        errors.push({
+          edgeId: edge.id,
+          message: `O nó terminal "${edge.source}" (${sourceNode.type}) não pode possuir conexões de saída.`,
+        });
+      }
+    }
 
     if (!nodeMap.has(edge.source)) {
       errors.push({ edgeId: edge.id, message: `El enlace apunta desde un nodo inexistente: "${edge.source}"` });

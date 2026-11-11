@@ -184,24 +184,40 @@ export async function runOneAutomationJob(params: {
   };
 
   try {
-    const parsedConfig = handler.configSchema.parse(node.config || {});
-    const result = await handler.execute(execContext, parsedConfig);
-    const durationMs = Date.now() - startTime;
+    // A12: Verificar se este passo já foi executado e confirmado com sucesso anteriormente
+    // (impede envio duplicado para WhatsApp/Meta caso ocorra falha de rede/banco posterior)
+    const { data: priorStepRun } = await (supabaseAdmin as any)
+      .from("automation_step_runs")
+      .select("status, selected_port")
+      .eq("execution_id", exec.id)
+      .eq("node_id", node.id)
+      .eq("status", "succeeded")
+      .maybeSingle();
 
-    // Registrar paso ejecutado
-    await (supabaseAdmin as any).from("automation_step_runs").insert({
-      company_id: job.company_id,
-      execution_id: exec.id,
-      node_id: node.id,
-      attempt: job.attempts + 1,
-      status: result.kind === "wait" ? "waiting" : "succeeded",
-      input_redacted: { configKeys: Object.keys(node.config || {}) },
-      output_redacted: { outputKeys: Object.keys(result.output || {}) },
-      selected_port: (result as any).port || null,
-      started_at: nowIso,
-      finished_at: new Date().toISOString(),
-      duration_ms: durationMs,
-    });
+    let result: any;
+    if (priorStepRun) {
+      console.log(`[runOneAutomationJob] Passo "${node.id}" já executado anteriormente com sucesso; reutilizando transição.`);
+      result = { kind: "next", port: priorStepRun.selected_port || "next" };
+    } else {
+      const parsedConfig = handler.configSchema.parse(node.config || {});
+      result = await handler.execute(execContext, parsedConfig);
+      const durationMs = Date.now() - startTime;
+
+      // Registrar passo executado
+      await (supabaseAdmin as any).from("automation_step_runs").insert({
+        company_id: job.company_id,
+        execution_id: exec.id,
+        node_id: node.id,
+        attempt: job.attempts + 1,
+        status: result.kind === "wait" ? "waiting" : "succeeded",
+        input_redacted: { configKeys: Object.keys(node.config || {}) },
+        output_redacted: { outputKeys: Object.keys(result.output || {}) },
+        selected_port: (result as any).port || null,
+        started_at: nowIso,
+        finished_at: new Date().toISOString(),
+        duration_ms: durationMs,
+      });
+    }
 
     if (result.kind === "finish") {
       await (supabaseAdmin as any)
@@ -248,9 +264,10 @@ export async function runOneAutomationJob(params: {
 
       if (edge?.target) {
         const nextStepCount = currentStepCount + 1;
-        const jobKey = `job_${exec.id}_${edge.target}_s${nextStepCount}_${Date.now()}`;
+        // Chave estável e idempotente de transição (sem Date.now() aleatório)
+        const jobKey = `job_${exec.id}_${node.id}_to_${edge.target}_s${nextStepCount}`;
 
-        // Encolar job primero
+        // Encolar job primeiro
         const { error: jobErr } = await (supabaseAdmin as any).from("automation_jobs").insert({
           company_id: job.company_id,
           execution_id: exec.id,
@@ -260,7 +277,7 @@ export async function runOneAutomationJob(params: {
           idempotency_key: jobKey,
         });
 
-        if (jobErr) {
+        if (jobErr && !jobErr.message?.includes("duplicate") && !jobErr.message?.includes("unique")) {
           console.error(`[runOneAutomationJob] Fallo al encolar job siguiente:`, jobErr.message);
           throw new Error(`Fallo al encolar job siguiente: ${jobErr.message}`);
         }
