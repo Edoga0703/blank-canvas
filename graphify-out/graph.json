@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T10:38:21.821627+00:00",
+  "generated_at": "2026-11-11T11:11:41.283746+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -83,7 +83,7 @@
     },
     {
       "path": "src/routeTree.gen.ts",
-      "bytes": 104876
+      "bytes": 108192
     },
     {
       "path": "src/styles.css",
@@ -522,6 +522,10 @@
       "bytes": 2630
     },
     {
+      "path": "supabase/migrations/20261111030000_content_assets_and_durable_targets.sql",
+      "bytes": 4804
+    },
+    {
       "path": "supabase/migrations/20261023100000_dapi_whatsapp_integration.sql",
       "bytes": 649
     },
@@ -596,6 +600,10 @@
     {
       "path": "docs/sql/20261029120000_multichannel_automations_fixes.sql",
       "bytes": 2624
+    },
+    {
+      "path": "docs/sql/20261111030000_content_assets_and_durable_targets.sql",
+      "bytes": 4804
     },
     {
       "path": "docs/sql/MASTER_V1.3.01_CONSOLIDATED_DATABASE_MIGRATION.sql",
@@ -707,7 +715,7 @@
     },
     {
       "path": "src/lib/social-content.types.ts",
-      "bytes": 3974
+      "bytes": 5496
     },
     {
       "path": "src/lib/business-hours.ts",
@@ -1011,7 +1019,7 @@
     },
     {
       "path": "src/lib/omnichannel-publish.server.ts",
-      "bytes": 5641
+      "bytes": 6449
     },
     {
       "path": "src/lib/olist.server.ts",
@@ -1391,7 +1399,7 @@
     },
     {
       "path": "src/lib/omnichannel-content.functions.ts",
-      "bytes": 9039
+      "bytes": 18472
     },
     {
       "path": "src/lib/meta-response-window.server.ts",
@@ -2138,12 +2146,16 @@
       "bytes": 781
     },
     {
+      "path": "src/routes/api/public/hooks/process-content-posts.ts",
+      "bytes": 1708
+    },
+    {
       "path": "src/routes/api/public/hooks/process-kanban-reguas.ts",
       "bytes": 1273
     },
     {
       "path": "src/routes/api/public/hooks/process-scheduled-posts.ts",
-      "bytes": 5136
+      "bytes": 1698
     },
     {
       "path": "src/routes/api/public/hooks/google-calendar.ts",
@@ -2164,6 +2176,14 @@
     {
       "path": "src/routes/api/public/billing/webhook.ts",
       "bytes": 2642
+    },
+    {
+      "path": "src/routes/api/public/content/drafts.ts",
+      "bytes": 8677
+    },
+    {
+      "path": "src/routes/api/public/content/status.ts",
+      "bytes": 3463
     },
     {
       "path": "src/routes/lovable/email/auth/preview.ts",
@@ -2719,15 +2739,15 @@
     },
     {
       "path": "src/components/content/omnichannel-comments-inbox.tsx",
-      "bytes": 23905
+      "bytes": 24756
     },
     {
       "path": "src/components/content/omnichannel-publisher.tsx",
-      "bytes": 54308
+      "bytes": 54809
     },
     {
       "path": "src/components/content/omnichannel-analytics.tsx",
-      "bytes": 40169
+      "bytes": 40980
     },
     {
       "path": "src/components/master/nova-empresa-form.tsx",
@@ -3091,7 +3111,7 @@
     },
     {
       "path": "src/lib/storage/r2.server.ts",
-      "bytes": 12032
+      "bytes": 12904
     },
     {
       "path": "src/lib/email-templates/recovery.tsx",
@@ -3118,6 +3138,14 @@
       "bytes": 2331
     },
     {
+      "path": "src/lib/content/queue.server.ts",
+      "bytes": 12277
+    },
+    {
+      "path": "src/lib/content/assets.server.ts",
+      "bytes": 6362
+    },
+    {
       "path": "src/lib/mcp/index.ts",
       "bytes": 756
     },
@@ -3140,6 +3168,26 @@
     {
       "path": "src/lib/mcp/tools/list-conversations.ts",
       "bytes": 1917
+    },
+    {
+      "path": "src/lib/content/providers/youtube.server.ts",
+      "bytes": 9117
+    },
+    {
+      "path": "src/lib/content/providers/types.ts",
+      "bytes": 1707
+    },
+    {
+      "path": "src/lib/content/providers/index.ts",
+      "bytes": 816
+    },
+    {
+      "path": "src/lib/content/providers/meta.server.ts",
+      "bytes": 5531
+    },
+    {
+      "path": "src/lib/content/providers/tiktok.server.ts",
+      "bytes": 9988
     },
     {
       "path": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
@@ -3593,6 +3641,14 @@
     },
     {
       "source": "src/routeTree.gen.ts",
+      "target": "./routes/api/public/content/drafts"
+    },
+    {
+      "source": "src/routeTree.gen.ts",
+      "target": "./routes/api/public/content/status"
+    },
+    {
+      "source": "src/routeTree.gen.ts",
       "target": "./routes/api/public/hooks/$token"
     },
     {
@@ -3634,6 +3690,10 @@
     {
       "source": "src/routeTree.gen.ts",
       "target": "./routes/api/public/hooks/process-campaigns"
+    },
+    {
+      "source": "src/routeTree.gen.ts",
+      "target": "./routes/api/public/hooks/process-content-posts"
     },
     {
       "source": "src/routeTree.gen.ts",
@@ -5741,6 +5801,10 @@
     },
     {
       "source": "src/lib/omnichannel-publish.server.ts",
+      "target": "./content/assets.server"
+    },
+    {
+      "source": "src/lib/omnichannel-publish.server.ts",
       "target": "./meta-publish.server"
     },
     {
@@ -7549,7 +7613,7 @@
     },
     {
       "source": "src/lib/omnichannel-content.functions.ts",
-      "target": "./omnichannel-publish.server"
+      "target": "./content/queue.server"
     },
     {
       "source": "src/lib/omnichannel-content.functions.ts",
@@ -7558,6 +7622,38 @@
     {
       "source": "src/lib/omnichannel-content.functions.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "./content/queue.server"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "./content/queue.server"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "./content/assets.server"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "./content/assets.server"
     },
     {
       "source": "src/lib/csat-config.functions.ts",
@@ -12328,6 +12424,18 @@
       "target": "@/lib/meta-lead-deliveries.server"
     },
     {
+      "source": "src/routes/api/public/hooks/process-content-posts.ts",
+      "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/api/public/hooks/process-content-posts.ts",
+      "target": "@/lib/cron-auth.server"
+    },
+    {
+      "source": "src/routes/api/public/hooks/process-content-posts.ts",
+      "target": "@/lib/content/queue.server"
+    },
+    {
       "source": "src/routes/api/public/hooks/process-kanban-reguas.ts",
       "target": "@tanstack/react-router"
     },
@@ -12357,11 +12465,7 @@
     },
     {
       "source": "src/routes/api/public/hooks/process-scheduled-posts.ts",
-      "target": "@/integrations/supabase/client.server"
-    },
-    {
-      "source": "src/routes/api/public/hooks/process-scheduled-posts.ts",
-      "target": "@/lib/omnichannel-publish.server"
+      "target": "@/lib/content/queue.server"
     },
     {
       "source": "src/routes/api/public/hooks/google-calendar.ts",
@@ -12445,6 +12549,22 @@
     },
     {
       "source": "src/routes/api/public/billing/webhook.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/routes/api/public/content/drafts.ts",
+      "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/api/public/content/drafts.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/routes/api/public/content/status.ts",
+      "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/api/public/content/status.ts",
       "target": "@/integrations/supabase/client.server"
     },
     {
@@ -16001,10 +16121,6 @@
     },
     {
       "source": "src/components/content/omnichannel-publisher.tsx",
-      "target": "@/lib/storage/r2.functions"
-    },
-    {
-      "source": "src/components/content/omnichannel-publisher.tsx",
       "target": "@/lib/omnichannel-content.functions"
     },
     {
@@ -18140,6 +18256,30 @@
       "target": "@react-email/components"
     },
     {
+      "source": "src/lib/content/queue.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/content/queue.server.ts",
+      "target": "./assets.server"
+    },
+    {
+      "source": "src/lib/content/queue.server.ts",
+      "target": "./providers"
+    },
+    {
+      "source": "src/lib/content/assets.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/content/assets.server.ts",
+      "target": "@/lib/storage/r2.server"
+    },
+    {
+      "source": "src/lib/content/assets.server.ts",
+      "target": "@/lib/social-content.types"
+    },
+    {
       "source": "src/lib/mcp/index.ts",
       "target": "@lovable.dev/mcp-js"
     },
@@ -18210,6 +18350,66 @@
     {
       "source": "src/lib/mcp/tools/list-conversations.ts",
       "target": "zod"
+    },
+    {
+      "source": "src/lib/content/providers/youtube.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/content/providers/youtube.server.ts",
+      "target": "./types"
+    },
+    {
+      "source": "src/lib/content/providers/index.ts",
+      "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/content/providers/index.ts",
+      "target": "./tiktok.server"
+    },
+    {
+      "source": "src/lib/content/providers/index.ts",
+      "target": "./youtube.server"
+    },
+    {
+      "source": "src/lib/content/providers/index.ts",
+      "target": "./types"
+    },
+    {
+      "source": "src/lib/content/providers/index.ts",
+      "target": "./types"
+    },
+    {
+      "source": "src/lib/content/providers/index.ts",
+      "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/content/providers/index.ts",
+      "target": "./youtube.server"
+    },
+    {
+      "source": "src/lib/content/providers/index.ts",
+      "target": "./tiktok.server"
+    },
+    {
+      "source": "src/lib/content/providers/meta.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/content/providers/meta.server.ts",
+      "target": "@/lib/meta-publish.server"
+    },
+    {
+      "source": "src/lib/content/providers/meta.server.ts",
+      "target": "./types"
+    },
+    {
+      "source": "src/lib/content/providers/tiktok.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/content/providers/tiktok.server.ts",
+      "target": "./types"
     },
     {
       "source": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
