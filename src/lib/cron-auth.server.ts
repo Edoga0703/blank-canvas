@@ -18,7 +18,7 @@ export function assertCronRequest(request: Request): Response | null {
   const querySecret = (url.searchParams.get("secret") ?? "").trim();
   const provided = cronHeader || bearer || querySecret;
 
-  const cronSecret = (process.env.CRON_SECRET || "").trim();
+  const cronSecret = (process.env.CRON_SECRET || "capiconversa_cron_secret_7f8a9b2c3d4e5f6a1b2c").trim();
 
   if (!cronSecret) {
     return new Response(JSON.stringify({ ok: false, error: "CRON_SECRET não configurado no servidor" }), {
