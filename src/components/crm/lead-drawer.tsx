@@ -177,9 +177,54 @@ export function LeadDetailsPanel({
     setLocal((p) => ({ ...p, [k]: v }));
   }
 
-  function changePipeline(pid: string) {
+  async function handleStageChange(newStageId: string) {
+    if (!newStageId || newStageId === local.stage_id) return;
+    const stageObj = (allStages.length ? allStages : stages).find((s) => s.id === newStageId);
+    setLocal((p) => ({ ...p, stage_id: newStageId, status: stageObj?.nome ?? p.status }));
+    try {
+      await moveStageFn({
+        data: {
+          cardId: local.id,
+          stageId: newStageId,
+          reason: "Cambio de etapa desde cabecera del lead",
+        },
+      });
+      toast.success(
+        stageObj?.nome
+          ? `Etapa actualizada a "${translateDefaultStageName(stageObj.nome)}"`
+          : t("crm.stage_updated", undefined, "Embudo / etapa actualizados")
+      );
+      setFunilOpen(false);
+      onChanged();
+    } catch (err: any) {
+      toast.error(err?.message || "Error al mover etapa");
+    }
+  }
+
+  async function changePipeline(pid: string) {
     const firstStage = allStages.find((s) => s.pipeline_id === pid);
-    setLocal((p) => ({ ...p, pipeline_id: pid, stage_id: firstStage?.id ?? null, status: firstStage?.nome ?? p.status }));
+    if (!firstStage) {
+      setLocal((p) => ({ ...p, pipeline_id: pid }));
+      return;
+    }
+    setLocal((p) => ({ ...p, pipeline_id: pid, stage_id: firstStage.id, status: firstStage.nome }));
+    try {
+      await moveStageFn({
+        data: {
+          cardId: local.id,
+          stageId: firstStage.id,
+          reason: "Cambio de embudo desde cabecera del lead",
+        },
+      });
+      const pName = pipelines.find((x) => x.id === pid)?.nome;
+      toast.success(
+        `Movido a ${pName ? translateDefaultPipelineName(pName) : "embudo"} • ${translateDefaultStageName(firstStage.nome)}`
+      );
+      setFunilOpen(false);
+      onChanged();
+    } catch (err: any) {
+      toast.error(err?.message || "Error al cambiar de embudo");
+    }
   }
 
   async function save() {
@@ -330,7 +375,7 @@ export function LeadDetailsPanel({
             )}
             <div className="space-y-1.5">
               <Label className="text-xs">Etapa</Label>
-              <Select value={local.stage_id ?? ""} onValueChange={(v) => set("stage_id", v)}>
+              <Select value={local.stage_id ?? ""} onValueChange={handleStageChange}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Seleccionar etapa" /></SelectTrigger>
                 <SelectContent>
                   {pipelineStages.map((s) => (
@@ -762,9 +807,11 @@ export function LeadDetailsPanel({
             }}
           />
 
-          <Button onClick={save} className="w-full h-8.5 text-xs font-semibold">
-            <Save className="size-3.5 mr-1.5" />Guardar cambios
-          </Button>
+          <div className="sticky bottom-0 bg-[var(--panel)]/95 backdrop-blur-sm pt-2 pb-1 border-t border-[var(--border)] mt-2 z-10">
+            <Button onClick={save} className="w-full h-8.5 text-xs font-semibold shadow-sm">
+              <Save className="size-3.5 mr-1.5" />Guardar cambios
+            </Button>
+          </div>
 
           <EncaminharDialog
             open={encaminharOpen}

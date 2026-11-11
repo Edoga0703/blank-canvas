@@ -965,6 +965,17 @@ function ConversasPage() {
     });
   }
 
+  /**
+   * Atualização leve dos dados do lead (cards e pausas de IA)
+   * sem recarregar o histórico de mensagens nem causar flickering no chat ativo.
+   */
+  async function refreshLeadData(cid: string) {
+    await Promise.all([
+      loadCards(cid),
+      loadPauses(cid),
+    ]);
+  }
+
   async function load(cid: string) {
     // Tags (cards/etapas/pausas) precisam chegar JUNTO com a primeira pintura
     // da lista — por isso disparam em paralelo com o recorte rápido.
@@ -2815,7 +2826,7 @@ function ConversasPage() {
                       <LeadTagsInline
                         cardId={activeCard.id}
                         tags={activeCard.tags ?? []}
-                        onChanged={() => { if (companyId) void load(companyId); }}
+                        onChanged={() => { if (companyId) void refreshLeadData(companyId); }}
                       />
                     </div>
                     <div className="text-[11px] text-muted-foreground font-mono truncate">{activeCard.numero}</div>
@@ -2828,10 +2839,10 @@ function ConversasPage() {
                       stages={stages}
                       members={members}
                       companyId={companyId}
-                      onChanged={() => { if (companyId) void load(companyId); }}
+                      onChanged={() => { if (companyId) void refreshLeadData(companyId); }}
                       onDeleted={() => {
                         setActive(null);
-                        if (companyId) void load(companyId);
+                        if (companyId) void refreshLeadData(companyId);
                       }}
                       hideConversation
                       operationalMode={operationalMode}
@@ -2853,7 +2864,7 @@ function ConversasPage() {
           card={drawerCard} stages={stages} members={members} companyId={companyId}
           operationalMode={operationalMode}
           onClose={() => setDrawerCard(null)}
-          onChanged={() => { if (companyId) void load(companyId); }}
+          onChanged={() => { if (companyId) void refreshLeadData(companyId); }}
         />
       )}
 
