@@ -35,6 +35,7 @@ import {
   Server,
   FolderArchive,
   ArrowRightLeft,
+  Save,
 } from "lucide-react";
 import {
   getStoragePoolSummary,
@@ -170,8 +171,8 @@ export function StorageVaultsTab() {
   };
 
   const handleSaveDriveAccount = async () => {
-    if (!r2Form.label && !driveForm.credentialsJson) {
-      toast.error("Cole o JSON da Service Account do Google");
+    if (!driveForm.label || !driveForm.credentialsJson) {
+      toast.error("Preencha o nome da bóveda e cole o JSON da Service Account");
       return;
     }
     setSavingDrive(true);
@@ -770,8 +771,4 @@ export function StorageVaultsTab() {
       </Dialog>
     </div>
   );
-}
-
-function Save(props: any) {
-  return <CheckCircle2 {...props} />;
 }
