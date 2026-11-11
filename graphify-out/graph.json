@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T07:36:34.888999+00:00",
+  "generated_at": "2026-11-11T07:54:05.020279+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -1370,6 +1370,10 @@
       "bytes": 23003
     },
     {
+      "path": "src/lib/omnichannel-content.functions.ts",
+      "bytes": 10983
+    },
+    {
       "path": "src/lib/meta-response-window.server.ts",
       "bytes": 2989
     },
@@ -1959,7 +1963,7 @@
     },
     {
       "path": "src/routes/app/conteudo.tsx",
-      "bytes": 2177
+      "bytes": 5946
     },
     {
       "path": "src/routes/app/publicacoes.tsx",
@@ -2199,7 +2203,7 @@
     },
     {
       "path": "src/components/ui/channel-icons.tsx",
-      "bytes": 3313
+      "bytes": 4846
     },
     {
       "path": "src/components/ui/avatar.tsx",
@@ -2688,6 +2692,18 @@
     {
       "path": "src/components/content/meta-social-intelligence.tsx",
       "bytes": 11884
+    },
+    {
+      "path": "src/components/content/omnichannel-comments-inbox.tsx",
+      "bytes": 17713
+    },
+    {
+      "path": "src/components/content/omnichannel-publisher.tsx",
+      "bytes": 33193
+    },
+    {
+      "path": "src/components/content/omnichannel-analytics.tsx",
+      "bytes": 16498
     },
     {
       "path": "src/components/master/nova-empresa-form.tsx",
@@ -7460,6 +7476,46 @@
       "target": "@/integrations/supabase/client.server"
     },
     {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "./company-cache"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "./social-content.types"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "./meta-publish.server"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "./meta-publish.server"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
       "source": "src/lib/csat-config.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -11077,7 +11133,19 @@
     },
     {
       "source": "src/routes/app/conteudo.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/routes/app/conteudo.tsx",
       "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/app/conteudo.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/routes/app/conteudo.tsx",
+      "target": "lucide-react"
     },
     {
       "source": "src/routes/app/conteudo.tsx",
@@ -11089,11 +11157,31 @@
     },
     {
       "source": "src/routes/app/conteudo.tsx",
+      "target": "@/components/content/omnichannel-publisher"
+    },
+    {
+      "source": "src/routes/app/conteudo.tsx",
+      "target": "@/components/content/omnichannel-comments-inbox"
+    },
+    {
+      "source": "src/routes/app/conteudo.tsx",
+      "target": "@/components/content/omnichannel-analytics"
+    },
+    {
+      "source": "src/routes/app/conteudo.tsx",
+      "target": "@/lib/omnichannel-content.functions"
+    },
+    {
+      "source": "src/routes/app/conteudo.tsx",
       "target": "@/components/ui/tabs"
     },
     {
       "source": "src/routes/app/conteudo.tsx",
       "target": "@/config/brand"
+    },
+    {
+      "source": "src/routes/app/conteudo.tsx",
+      "target": "@/lib/social-content.types"
     },
     {
       "source": "src/routes/app/publicacoes.tsx",
@@ -15766,6 +15854,118 @@
     {
       "source": "src/components/content/meta-social-intelligence.tsx",
       "target": "@/components/ui/table"
+    },
+    {
+      "source": "src/components/content/omnichannel-comments-inbox.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/components/content/omnichannel-comments-inbox.tsx",
+      "target": "lucide-react"
+    },
+    {
+      "source": "src/components/content/omnichannel-comments-inbox.tsx",
+      "target": "sonner"
+    },
+    {
+      "source": "src/components/content/omnichannel-comments-inbox.tsx",
+      "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/components/content/omnichannel-comments-inbox.tsx",
+      "target": "@/components/ui/input"
+    },
+    {
+      "source": "src/components/content/omnichannel-comments-inbox.tsx",
+      "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/components/content/omnichannel-comments-inbox.tsx",
+      "target": "@/components/ui/channel-icons"
+    },
+    {
+      "source": "src/components/content/omnichannel-comments-inbox.tsx",
+      "target": "@/lib/social-content.types"
+    },
+    {
+      "source": "src/components/content/omnichannel-publisher.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/components/content/omnichannel-publisher.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/components/content/omnichannel-publisher.tsx",
+      "target": "lucide-react"
+    },
+    {
+      "source": "src/components/content/omnichannel-publisher.tsx",
+      "target": "sonner"
+    },
+    {
+      "source": "src/components/content/omnichannel-publisher.tsx",
+      "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/components/content/omnichannel-publisher.tsx",
+      "target": "@/components/ui/input"
+    },
+    {
+      "source": "src/components/content/omnichannel-publisher.tsx",
+      "target": "@/components/ui/label"
+    },
+    {
+      "source": "src/components/content/omnichannel-publisher.tsx",
+      "target": "@/components/ui/textarea"
+    },
+    {
+      "source": "src/components/content/omnichannel-publisher.tsx",
+      "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/components/content/omnichannel-publisher.tsx",
+      "target": "@/components/ui/switch"
+    },
+    {
+      "source": "src/components/content/omnichannel-publisher.tsx",
+      "target": "@/components/ui/channel-icons"
+    },
+    {
+      "source": "src/components/content/omnichannel-publisher.tsx",
+      "target": "@/lib/storage/r2.functions"
+    },
+    {
+      "source": "src/components/content/omnichannel-publisher.tsx",
+      "target": "@/lib/omnichannel-content.functions"
+    },
+    {
+      "source": "src/components/content/omnichannel-publisher.tsx",
+      "target": "@/lib/social-content.types"
+    },
+    {
+      "source": "src/components/content/omnichannel-analytics.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/components/content/omnichannel-analytics.tsx",
+      "target": "lucide-react"
+    },
+    {
+      "source": "src/components/content/omnichannel-analytics.tsx",
+      "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/components/content/omnichannel-analytics.tsx",
+      "target": "@/components/ui/card"
+    },
+    {
+      "source": "src/components/content/omnichannel-analytics.tsx",
+      "target": "@/components/ui/channel-icons"
+    },
+    {
+      "source": "src/components/content/omnichannel-analytics.tsx",
+      "target": "@/lib/social-content.types"
     },
     {
       "source": "src/components/master/nova-empresa-form.tsx",
