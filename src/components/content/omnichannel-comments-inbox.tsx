@@ -19,6 +19,7 @@ import {
   Smile,
   BadgeAlert,
   Flame,
+  Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -42,9 +43,9 @@ const INITIAL_COMMENTS: ExtendedComment[] = [
     id: "c-1",
     platform: "tiktok",
     external_comment_id: "tt-101",
-    author_name: "Carlos Mendoza",
-    author_username: "carlos_mendoza98",
-    text: "¿Tienen disponible Paramount+ y a qué precio en bolívares a la tasa de hoy?",
+    author_name: "Carlos Silveira",
+    author_username: "carlos.silveira",
+    text: "Qual o valor do plano e como funciona a contratação para empresas? Têm desconto anual?",
     like_count: 14,
     isLiked: false,
     intent: "commercial",
@@ -55,12 +56,12 @@ const INITIAL_COMMENTS: ExtendedComment[] = [
     id: "c-2",
     platform: "youtube",
     external_comment_id: "yt-202",
-    author_name: "Tech Reviewer Pro",
-    author_username: "TechReviewerPro",
-    text: "Excelente servicio, la cuenta de Gemini Pro de 5TB me funcionó perfecto. ¿La anualidad de Canva Pro está en $8?",
+    author_name: "Mariana Costa",
+    author_username: "mariana_costa",
+    text: "Excelente apresentação das novidades! Vocês emitem nota fiscal e aceitam pagamento via Pix ou boleto?",
     like_count: 32,
     isLiked: true,
-    intent: "positive",
+    intent: "commercial",
     status: "pending",
     commented_at: new Date(Date.now() - 42 * 60 * 1000).toISOString(),
   },
@@ -68,12 +69,12 @@ const INITIAL_COMMENTS: ExtendedComment[] = [
     id: "c-3",
     platform: "instagram",
     external_comment_id: "ig-303",
-    author_name: "Valentina Gómez",
-    author_username: "valengomez_fit",
-    text: "Hola! ¿Aceptan pago por Binance (USDT)? ¿Cómo hago para comprar?",
-    like_count: 8,
-    isLiked: false,
-    intent: "commercial",
+    author_name: "Rodrigo Almeida",
+    author_username: "rodrigoalmeida",
+    text: "Excelente atendimento da equipe! A ativação e suporte foram muito rápidos. Parabéns pelo serviço!",
+    like_count: 19,
+    isLiked: true,
+    intent: "positive",
     status: "pending",
     commented_at: new Date(Date.now() - 95 * 60 * 1000).toISOString(),
   },
@@ -81,9 +82,9 @@ const INITIAL_COMMENTS: ExtendedComment[] = [
     id: "c-4",
     platform: "facebook",
     external_comment_id: "fb-404",
-    author_name: "Roberto Da Silva",
-    author_username: "roberto.dasilva",
-    text: "Me interesa el combo de Disney+ y Max. ¿Dónde puedo contactar a un asesor?",
+    author_name: "Beatriz Santos",
+    author_username: "beatriz.santos",
+    text: "Gostei muito da demonstração das ferramentas. Onde posso agendar uma reunião com um especialista?",
     like_count: 5,
     isLiked: false,
     intent: "commercial",
@@ -95,23 +96,28 @@ const INITIAL_COMMENTS: ExtendedComment[] = [
 
 const QUICK_RESPONSES = [
   {
-    label: "Preços Streaming",
+    label: "Planos e Preços",
     icon: ShoppingBag,
-    text: "¡Hola! Precios en USD (o Bs tasa del día): Paramount+ $1.00/mes | Max $1.50/mes | Disney+ $1.50/mes | Prime Video $1.50/mes. Escríbenos al WhatsApp para activarla de inmediato.",
+    text: "Olá! Nossos planos atendem desde profissionais autônomos até grandes empresas. Entre em contato com nossa equipe pelo WhatsApp para receber a proposta completa sob medida!",
   },
   {
-    label: "Enlace WhatsApp",
+    label: "Falar no WhatsApp",
     icon: Phone,
-    text: "¡Hola! Con gusto te atendemos directamente por WhatsApp con entrega inmediata: https://wa.me/584122146880",
+    text: "Olá! Com certeza, nossa equipe comercial está à disposição no WhatsApp para tirar suas dúvidas e liberar sua demonstração agora mesmo.",
   },
   {
-    label: "Métodos de Pago",
+    label: "Formas de Pagamento",
     icon: CreditCard,
-    text: "¡Hola! Aceptamos Pago Móvil (a tasa del día), Binance Pay (USDT), Zinli y Wally con activación inmediata.",
+    text: "Olá! Aceitamos Pix com desconto, Cartão de Crédito em até 12x e Boleto Bancário faturado para pessoa jurídica, com emissão de nota fiscal.",
+  },
+  {
+    label: "Agendar Demonstração",
+    icon: Calendar,
+    text: "Olá! Será um prazer demonstrar as soluções na prática. Acesse o link da nossa bio ou mande mensagem direta para agendarmos o melhor horário para você.",
   },
 ];
 
-const REPLY_EMOJIS = ["👍", "❤️", "🔥", "🚀", "🍿", "👋", "💬", "⚡"];
+const REPLY_EMOJIS = ["👍", "❤️", "🔥", "🚀", "✨", "👋", "💬", "✅"];
 
 export function OmnichannelCommentsInbox() {
   const [comments, setComments] = useState<ExtendedComment[]>(INITIAL_COMMENTS);
@@ -204,19 +210,35 @@ export function OmnichannelCommentsInbox() {
     setReplyTextMap((prev) => ({ ...prev, [commentId]: text }));
   };
 
-  // Sugestão com IA comercial
+  // Sugestão com IA comercial em português profissional
   const handleAiSuggest = (comment: ExtendedComment) => {
-    let suggested = `¡Hola ${comment.author_name || ""}! Con gusto te damos información. `;
-    if (comment.text.toLowerCase().includes("binance") || comment.text.toLowerCase().includes("pago") || comment.text.toLowerCase().includes("precio") || comment.text.toLowerCase().includes("tasa")) {
-      suggested += "Aceptamos Binance USDT y Pago Móvil (a tasa del día) con entrega en 5 minutos. Escríbenos al WhatsApp para activar tu cuenta ahora: https://wa.me/584122146880";
-    } else if (comment.text.toLowerCase().includes("canva")) {
-      suggested += "Sí, Canva Pro Anual Oficial está disponible en $8.00 con garantía total de 12 meses. Escríbenos al WhatsApp para activarla al instante: https://wa.me/584122146880";
+    let suggested = `Olá ${comment.author_name || ""}! Ficamos felizes com seu contato. `;
+    if (
+      comment.text.toLowerCase().includes("preço") ||
+      comment.text.toLowerCase().includes("valor") ||
+      comment.text.toLowerCase().includes("plano") ||
+      comment.text.toLowerCase().includes("contratação")
+    ) {
+      suggested += "Nossos planos são totalmente personalizados para o tamanho da sua operação. Fale com nosso time de especialistas pelo WhatsApp ou envie uma mensagem direta para receber uma proposta exclusiva!";
+    } else if (
+      comment.text.toLowerCase().includes("pix") ||
+      comment.text.toLowerCase().includes("pagamento") ||
+      comment.text.toLowerCase().includes("nota fiscal") ||
+      comment.text.toLowerCase().includes("boleto")
+    ) {
+      suggested += "Sim! Emitimos nota fiscal para todos os serviços e aceitamos Pix com desconto, Cartão de Crédito e Boleto. Fale conosco pelo canal de atendimento para emitir sua fatura com facilidade.";
+    } else if (
+      comment.text.toLowerCase().includes("agendar") ||
+      comment.text.toLowerCase().includes("demonstração") ||
+      comment.text.toLowerCase().includes("reunião")
+    ) {
+      suggested += "Com certeza! Será um prazer agendar uma demonstração exclusiva com nossa equipe. Chame no WhatsApp ou acesse o link da nossa bio para escolher o melhor horário.";
     } else {
-      suggested += "Tenemos promociones activas en streaming y software con activación garantizada. Escríbenos al WhatsApp para enviarte la lista completa: https://wa.me/584122146880";
+      suggested += "Agradecemos muito pelo carinho e feedback positivo! Nossa equipe está sempre à disposição para o que você precisar.";
     }
 
     setReplyTextMap((prev) => ({ ...prev, [comment.id]: suggested }));
-    toast.success("Resposta comercial de alta conversão gerada pela IA!");
+    toast.success("Resposta comercial sugerida pela IA!");
   };
 
   return (

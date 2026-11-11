@@ -58,14 +58,14 @@ interface Props {
 const QUICK_EMOJIS = ["🔥", "⚡", "🚀", "👉", "💬", "✨", "🍿", "🎬", "💎", "✅", "🏷️", "📲"];
 
 const QUICK_HASHTAGS = [
-  "#streaming",
+  "#novidades",
   "#promocao",
-  "#netflix",
-  "#disneyplus",
-  "#canvapro",
-  "#ofertas",
-  "#cuentastupana",
+  "#negocios",
+  "#vendas",
+  "#marketing",
+  "#sucesso",
   "#tecnologia",
+  "#inovacao",
 ];
 
 const DEMO_MEDIA_SAMPLES = {
@@ -76,6 +76,17 @@ const DEMO_MEDIA_SAMPLES = {
 export function OmnichannelPublisher({ accounts, onPublished }: Props) {
   const uploadFn = useServerFn(uploadR2Direct);
   const publishFn = useServerFn(createOmnichannelPost);
+
+  // Nome e identificador dinâmicos da empresa
+  const companyHandle = useMemo(() => {
+    const acc = accounts.find((a) => a.username);
+    return acc?.username ? `@${acc.username.replace(/^@/, "")}` : "@suaempresa";
+  }, [accounts]);
+
+  const companyName = useMemo(() => {
+    const acc = accounts.find((a) => a.display_name);
+    return acc?.display_name || "Sua Empresa";
+  }, [accounts]);
 
   // Seleção de redes
   const [selectedPlatforms, setSelectedPlatforms] = useState<SocialPlatform[]>([
@@ -104,17 +115,17 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
   const [previewLiked, setPreviewLiked] = useState(false);
   const [previewLikeCount, setPreviewLikeCount] = useState(14200);
 
-  // Texto mestre
+  // Texto mestre genérico e profissional
   const [baseCaption, setBaseCaption] = useState(
-    "🔥 MEGA OFERTA: Assinaturas de streaming e software com até 50% de desconto e ativação imediata!\n\n🍿 Disney+, Max, Paramount+, Canva Pro e muito mais.\n👉 Clique no link ou fale conosco no WhatsApp para garantir sua vaga hoje!",
+    "🚀 Novidade imperdível! Confira nossos lançamentos e soluções desenvolvidas para acelerar seus resultados neste mês.\n\n👉 Acesse o link da bio ou envie uma mensagem direta para atendimento exclusivo!",
   );
 
   // Requisitos específicos por rede
-  const [youtubeTitle, setYoutubeTitle] = useState("Assinaturas Streaming & Software com 50% OFF | Capi Conversa");
+  const [youtubeTitle, setYoutubeTitle] = useState("Lançamento Oficial | Conheça Nossas Soluções Exclusivas");
   const [youtubeMadeForKids, setYoutubeMadeForKids] = useState(false);
   const [tiktokPrivacy, setTiktokPrivacy] = useState<"PUBLIC_TO_EVERYONE" | "MUTUAL_FOLLOW_FRIENDS" | "SELF_ONLY">("PUBLIC_TO_EVERYONE");
   const [tiktokIsCommercial, setTiktokIsCommercial] = useState(true);
-  const [facebookLink, setFacebookLink] = useState("https://cuentastupana.com/promo-streaming");
+  const [facebookLink, setFacebookLink] = useState("https://suaempresa.com.br/novidades");
 
   // Programação
   const [isScheduled, setIsScheduled] = useState(false);
@@ -212,7 +223,7 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
     }
 
     if (!baseCaption.includes("#")) {
-      setBaseCaption((prev) => prev.trim() + "\n\n#streaming #ofertas #netflix #disneyplus #tecnologia");
+      setBaseCaption((prev) => prev.trim() + "\n\n#novidades #oferta #qualidade #sucesso #marketing");
     }
 
     toast.success("Textos, títulos e hashtags otimizados com inteligência comercial para cada rede!");
@@ -595,7 +606,7 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
                 <Input
                   value={youtubeTitle}
                   onChange={(e) => setYoutubeTitle(e.target.value.slice(0, 100))}
-                  placeholder="Ex: 50% OFF em Streaming | Oferta Capi Conversa"
+                  placeholder="Ex: Conheça as Novidades Oficiais da Semana"
                   className="mt-1 h-8 text-xs bg-background"
                 />
                 <div className="flex justify-between items-center text-[10px] text-muted-foreground mt-1">
@@ -657,7 +668,7 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
               <Input
                 value={facebookLink}
                 onChange={(e) => setFacebookLink(e.target.value)}
-                placeholder="https://cuentastupana.com/promo-streaming"
+                placeholder="https://suaempresa.com.br/novidades"
                 className="h-8 text-xs bg-background"
               />
               <p className="text-[10px] text-muted-foreground">
@@ -914,8 +925,8 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
 
               {/* Botões Laterais */}
               <div className="ml-auto flex flex-col items-center gap-3 text-center drop-shadow-lg pb-8 pointer-events-auto">
-                <div className="size-9 rounded-full bg-zinc-800 border-2 border-white flex items-center justify-center text-xs font-bold shadow-md">
-                  CT
+                <div className="size-9 rounded-full bg-zinc-800 border-2 border-white flex items-center justify-center text-xs font-bold shadow-md uppercase">
+                  {companyName.slice(0, 2)}
                 </div>
                 <button
                   type="button"
@@ -945,7 +956,7 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
               {/* Legenda e Perfil */}
               <div className="space-y-1.5 drop-shadow-md pr-14 pb-2">
                 <p className="text-xs font-bold flex items-center gap-1">
-                  <span>@cuentastupanas</span>
+                  <span>{companyHandle}</span>
                   {tiktokIsCommercial && (
                     <span className="text-[9px] px-1.5 py-0.2 rounded bg-white/20 text-white font-semibold">
                       Comercial
@@ -957,7 +968,7 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
                 </p>
                 <div className="flex items-center gap-1.5 text-[10px] opacity-80">
                   <Music2 className="size-2.5 shrink-0" />
-                  <span className="truncate">Som original - Capi Conversa Oficial</span>
+                  <span className="truncate">Som original - {companyName}</span>
                 </div>
               </div>
             </div>
@@ -1002,10 +1013,10 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
                   {youtubeTitle || "Título obrigatório do Short aparecerá aqui"}
                 </p>
                 <div className="flex items-center gap-2 pt-0.5">
-                  <span className="size-5 rounded-full bg-[#FF0000] text-[9px] font-bold flex items-center justify-center text-white">
-                    C
+                  <span className="size-5 rounded-full bg-[#FF0000] text-[9px] font-bold flex items-center justify-center text-white uppercase">
+                    {companyName.slice(0, 1)}
                   </span>
-                  <p className="text-[10.5px] font-semibold truncate">@CapiConversa</p>
+                  <p className="text-[10.5px] font-semibold truncate">{companyName}</p>
                   <span className="text-[9px] px-2 py-0.5 rounded-full bg-white text-black font-bold">
                     Inscrever-se
                   </span>
@@ -1048,11 +1059,11 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
               <div className="space-y-1.5 drop-shadow-md pr-12 pb-2">
                 <div className="flex items-center gap-1.5">
                   <div className="size-5 rounded-full p-[1px] bg-gradient-to-tr from-[#F56040] to-[#833AB4]">
-                    <div className="size-full rounded-full bg-black flex items-center justify-center text-[8px] font-bold">
-                      C
+                    <div className="size-full rounded-full bg-black flex items-center justify-center text-[8px] font-bold uppercase">
+                      {companyName.slice(0, 1)}
                     </div>
                   </div>
-                  <p className="text-xs font-bold">cuentastupanas</p>
+                  <p className="text-xs font-bold">{companyHandle.replace(/^@/, "")}</p>
                   <span className="text-[9px] text-white/70">• Seguir</span>
                 </div>
                 <p className="text-[11px] leading-tight line-clamp-2">
@@ -1072,10 +1083,10 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
 
               <div className="mt-auto space-y-1.5 drop-shadow-md pb-2">
                 <div className="flex items-center gap-1.5">
-                  <div className="size-5 rounded-full bg-[#0084FF] text-white flex items-center justify-center text-[9px] font-bold">
-                    f
+                  <div className="size-5 rounded-full bg-[#0084FF] text-white flex items-center justify-center text-[9px] font-bold uppercase">
+                    {companyName.slice(0, 1)}
                   </div>
-                  <p className="text-xs font-bold">CuentasTuPana Oficial</p>
+                  <p className="text-xs font-bold">{companyName}</p>
                 </div>
                 <p className="text-[11px] leading-tight line-clamp-3">
                   {baseCaption || "Publicação com alcance orgânico no Facebook..."}
