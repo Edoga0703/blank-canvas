@@ -51,15 +51,16 @@ export async function requireConversationAccess(
   }
 
   // Modo operacional restrito: atendente só pode acessar números de cards atribuídos a ele
-  const { data: card } = await supabaseAdmin
+  // P1.7: Usa limit(1) em vez de maybeSingle() para evitar erro quando existem múltiplos cards com o mesmo número
+  const { data: cards, error: cardErr } = await supabaseAdmin
     .from("crm_cards")
-    .select("id, owner_id")
+    .select("id")
     .eq("company_id", companyId)
     .eq("numero", numero)
     .eq("owner_id", userId)
-    .maybeSingle();
+    .limit(1);
 
-  if (!card) {
+  if (cardErr || !cards || cards.length === 0) {
     throw new Error("Acesso negado: esta conversa não está atribuída ao seu usuário.");
   }
 
@@ -100,63 +101,90 @@ export const searchMessagesGlobal = createServerFn({ method: "POST" })
 
     const isAtendente = membership?.role === "atendente";
     const isOperational = company?.atendimento_operacional === true;
+    const isRestricted = isAtendente && isOperational;
 
-    let allowedNumbers: string[] | null = null;
-    if (isAtendente && isOperational) {
-      // Busca todos os leads pertencentes a este atendente com paginação para superar limite de 1000
-      const allNumbers: string[] = [];
-      let page = 0;
-      const PAGE_SIZE = 1000;
-      while (true) {
-        const { data: userCards } = await supabaseAdmin
-          .from("crm_cards")
-          .select("numero")
-          .eq("company_id", companyId)
-          .eq("owner_id", userId)
-          .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+    // P1.7: Tenta primeiro via RPC atômica search_company_messages (filtra carteira no banco antes do LIMIT)
+    let rows: any[] = [];
+    const { data: rpcRows, error: rpcErr } = await (supabaseAdmin as any).rpc("search_company_messages", {
+      p_company_id: companyId,
+      p_user_id: userId,
+      p_query: query,
+      p_limit: limit,
+      p_is_restricted: isRestricted,
+    });
 
-        if (!userCards || userCards.length === 0) break;
-        for (const c of userCards) {
-          if (c.numero) allNumbers.push(c.numero);
-        }
-        if (userCards.length < PAGE_SIZE) break;
-        page++;
-      }
-
-      allowedNumbers = allNumbers;
-      if (allowedNumbers.length === 0) {
-        return { results: [] };
-      }
-    }
-
-    let msgQuery = supabaseAdmin
-      .from("mensagens")
-      .select("id,numero,contato_nome,texto,created_at,direcao,autor,midia_tipo")
-      .eq("company_id", companyId)
-      .ilike("texto", `%${query}%`)
-      .order("created_at", { ascending: false });
-
-    if (allowedNumbers) {
-      if (allowedNumbers.length <= 300) {
-        msgQuery = msgQuery.in("numero", allowedNumbers).limit(limit);
-      } else {
-        // Para carteiras extensas (>300), busca janela maior e filtra com Set em memória
-        // para prevenir erro 414 URI Too Long no PostgREST
-        msgQuery = msgQuery.limit(Math.min(limit * 5, 300));
-      }
+    if (!rpcErr && Array.isArray(rpcRows)) {
+      rows = rpcRows;
     } else {
-      msgQuery = msgQuery.limit(limit);
-    }
+      // Fallback em código caso a RPC não esteja aplicada no ambiente
+      let allowedNumbers: string[] | null = null;
+      if (isRestricted) {
+        const allNumbers: string[] = [];
+        let page = 0;
+        const PAGE_SIZE = 1000;
+        while (true) {
+          const { data: userCards, error: pageErr } = await supabaseAdmin
+            .from("crm_cards")
+            .select("numero")
+            .eq("company_id", companyId)
+            .eq("owner_id", userId)
+            .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
-    const { data: rawRows, error } = await msgQuery;
-    if (error || !rawRows) {
-      return { results: [] };
-    }
+          if (pageErr || !userCards || userCards.length === 0) break;
+          for (const c of userCards) {
+            if (c.numero) allNumbers.push(c.numero);
+          }
+          if (userCards.length < PAGE_SIZE) break;
+          page++;
+        }
 
-    let rows = rawRows;
-    if (allowedNumbers && allowedNumbers.length > 300) {
-      const allowedSet = new Set(allowedNumbers);
-      rows = rawRows.filter((r: any) => allowedSet.has(r.numero)).slice(0, limit);
+        allowedNumbers = allNumbers;
+        if (allowedNumbers.length === 0) {
+          return { results: [] };
+        }
+      }
+
+      if (allowedNumbers && allowedNumbers.length > 150) {
+        // Divide em blocos de até 150 números para não estourar URL do PostgREST
+        const chunks: string[][] = [];
+        for (let i = 0; i < allowedNumbers.length; i += 150) {
+          chunks.push(allowedNumbers.slice(i, i + 150));
+        }
+
+        const chunkPromises = chunks.slice(0, 10).map((chunk) =>
+          supabaseAdmin
+            .from("mensagens")
+            .select("id,numero,contato_nome,texto,created_at,direcao,autor,midia_tipo")
+            .eq("company_id", companyId)
+            .in("numero", chunk)
+            .ilike("texto", `%${query}%`)
+            .order("created_at", { ascending: false })
+            .limit(limit)
+        );
+
+        const chunkResults = await Promise.all(chunkPromises);
+        const collected: any[] = [];
+        for (const res of chunkResults) {
+          if (res.data) collected.push(...res.data);
+        }
+        collected.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        rows = collected.slice(0, limit);
+      } else {
+        let msgQuery = supabaseAdmin
+          .from("mensagens")
+          .select("id,numero,contato_nome,texto,created_at,direcao,autor,midia_tipo")
+          .eq("company_id", companyId)
+          .ilike("texto", `%${query}%`)
+          .order("created_at", { ascending: false })
+          .limit(limit);
+
+        if (allowedNumbers && allowedNumbers.length > 0) {
+          msgQuery = msgQuery.in("numero", allowedNumbers);
+        }
+
+        const { data: rawRows } = await msgQuery;
+        rows = rawRows || [];
+      }
     }
 
     const uniqueNumeros = Array.from(new Set(rows.map((r: any) => r.numero)));

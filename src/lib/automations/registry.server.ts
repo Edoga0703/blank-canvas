@@ -307,10 +307,34 @@ registerNode({
     }
 
     if (!targetInstanceId) {
-      const { getActiveInstance } = await import("@/lib/wa-dispatch.server");
-      const activeInst = await getActiveInstance(ctx.companyId).catch(() => null);
-      if (activeInst) {
-        targetInstanceId = (activeInst as any).id || activeInst.instance_name;
+      const channel = String(ctx.sourceChannel || ctx.context.trigger?.channel || ctx.context.card?.canal || "").toLowerCase();
+      // P1: Se houver canal identificado (Instagram, Telegram, Messenger), busca conexão daquele canal
+      if (channel && channel !== "whatsapp") {
+        let provPattern = channel;
+        if (channel.includes("instagram")) provPattern = "instagram";
+        else if (channel.includes("messenger")) provPattern = "messenger";
+        else if (channel.includes("telegram")) provPattern = "telegram";
+
+        const { data: instCandidate } = await (supabaseAdmin as any)
+          .from("whatsapp_instances")
+          .select("id, instance_name")
+          .eq("company_id", ctx.companyId)
+          .ilike("provider", `%${provPattern}%`)
+          .in("status", ["connected", "ativo", "open", "ready"])
+          .limit(1)
+          .maybeSingle();
+
+        if (instCandidate) {
+          targetInstanceId = instCandidate.id;
+        }
+      }
+
+      if (!targetInstanceId) {
+        const { getActiveInstance } = await import("@/lib/wa-dispatch.server");
+        const activeInst = await getActiveInstance(ctx.companyId).catch(() => null);
+        if (activeInst) {
+          targetInstanceId = (activeInst as any).id || activeInst.instance_name;
+        }
       }
     }
 

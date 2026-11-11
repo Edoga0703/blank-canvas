@@ -87,34 +87,75 @@ export const Route = createFileRoute("/api/public/content/drafts")({
           const rawAssetIds = Array.isArray(body.assetIds) ? body.assetIds : body.assetId ? [body.assetId] : [];
           const primaryAssetId = rawAssetIds[0] || null;
 
-          if (!masterText && !primaryAssetId) {
+          const rawTargets = Array.isArray(body.targets) && body.targets.length > 0
+            ? body.targets
+            : [{ platform: "instagram" }, { platform: "facebook" }];
+
+          if (!masterText && !primaryAssetId && !rawTargets.some((t: any) => t.assetId)) {
             return new Response(
               JSON.stringify({ ok: false, error: "Texto mestre (masterText) ou ativo de mídia (assetId) obrigatório." }),
               { status: 400, headers: { "Content-Type": "application/json" } }
             );
           }
 
-          // Se informou assetId, valida isolamento tenant e estado 'ready'
-          if (primaryAssetId) {
-            const { data: assetCheck, error: assetErr } = await (supabaseAdmin as any)
+          // P1.11: Valida TODOS os ativos de mídia (primários e específicos de destinos)
+          const allAssetIds = new Set<string>();
+          if (primaryAssetId) allAssetIds.add(primaryAssetId);
+          rawTargets.forEach((t: any) => {
+            if (t.assetId) allAssetIds.add(t.assetId);
+          });
+
+          if (allAssetIds.size > 0) {
+            const assetIdArray = Array.from(allAssetIds);
+            const { data: assetChecks, error: assetErr } = await (supabaseAdmin as any)
               .from("content_assets")
               .select("id, state, company_id")
-              .eq("id", primaryAssetId)
-              .eq("company_id", companyId)
-              .maybeSingle();
+              .in("id", assetIdArray)
+              .eq("company_id", companyId);
 
-            if (assetErr || !assetCheck) {
+            if (assetErr || !assetChecks || assetChecks.length !== assetIdArray.length) {
               return new Response(
-                JSON.stringify({ ok: false, error: "Ativo de mídia (assetId) não encontrado ou não pertence a esta empresa." }),
+                JSON.stringify({ ok: false, error: "Um ou mais ativos de mídia informados não pertencem a esta empresa ou não existem." }),
                 { status: 400, headers: { "Content-Type": "application/json" } }
               );
             }
 
-            if (assetCheck.state !== "ready") {
+            const notReady = assetChecks.find((a: any) => a.state !== "ready");
+            if (notReady) {
               return new Response(
-                JSON.stringify({ ok: false, error: `Ativo de mídia ainda não concluído (estado: ${assetCheck.state}).` }),
+                JSON.stringify({ ok: false, error: `Ativo de mídia ${notReady.id} ainda não concluído (estado: ${notReady.state}).` }),
                 { status: 400, headers: { "Content-Type": "application/json" } }
               );
+            }
+          }
+
+          // P1.11: Valida TODAS as contas sociais contra tenant e rede
+          const allSocialAccountIds = Array.from(new Set(rawTargets.map((t: any) => t.socialAccountId).filter(Boolean)));
+          if (allSocialAccountIds.length > 0) {
+            const { data: accChecks, error: accErr } = await (supabaseAdmin as any)
+              .from("meta_social_accounts")
+              .select("id, network, company_id")
+              .in("id", allSocialAccountIds)
+              .eq("company_id", companyId);
+
+            if (accErr || !accChecks || accChecks.length !== allSocialAccountIds.length) {
+              return new Response(
+                JSON.stringify({ ok: false, error: "Uma ou mais contas sociais informadas não pertencem a esta empresa ou não existem." }),
+                { status: 400, headers: { "Content-Type": "application/json" } }
+              );
+            }
+
+            const accMap = new Map(accChecks.map((a: any) => [a.id, a.network]));
+            for (const t of rawTargets) {
+              if (t.socialAccountId) {
+                const net = accMap.get(t.socialAccountId);
+                if (net && net !== t.platform) {
+                  return new Response(
+                    JSON.stringify({ ok: false, error: `A conta ${t.socialAccountId} pertence à rede ${net}, incompatível com o destino ${t.platform}.` }),
+                    { status: 400, headers: { "Content-Type": "application/json" } }
+                  );
+                }
+              }
             }
           }
 
@@ -153,15 +194,35 @@ export const Route = createFileRoute("/api/public/content/drafts")({
             .single();
 
           if (postErr || !post) {
+            // P1.11: Tratamento elegante de corrida idempotente (código 23505)
+            if (postErr?.code === "23505" && idempotencyKey) {
+              const { data: existing } = await (supabaseAdmin as any)
+                .from("content_posts")
+                .select("id, approval_state, status, created_at, content_post_targets(id, platform, status)")
+                .eq("idempotency_key", idempotencyKey)
+                .eq("company_id", companyId)
+                .maybeSingle();
+
+              if (existing) {
+                return new Response(
+                  JSON.stringify({
+                    ok: true,
+                    postId: existing.id,
+                    state: existing.approval_state,
+                    status: existing.status,
+                    idempotent: true,
+                    targets: existing.content_post_targets || [],
+                  }),
+                  { status: 200, headers: { "Content-Type": "application/json" } }
+                );
+              }
+            }
+
             return new Response(
               JSON.stringify({ ok: false, error: `Erro ao criar post mestre: ${postErr?.message || "falha no banco"}` }),
               { status: 500, headers: { "Content-Type": "application/json" } }
             );
           }
-
-          const rawTargets = Array.isArray(body.targets) && body.targets.length > 0
-            ? body.targets
-            : [{ platform: "instagram" }, { platform: "facebook" }];
 
           const targetRows = rawTargets.map((t: any) => ({
             post_id: post.id,

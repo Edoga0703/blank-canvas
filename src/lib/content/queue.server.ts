@@ -48,44 +48,61 @@ export async function reconcileMasterPostStatus(postId: string, companyId: strin
     return "publishing";
   }
 
-  const allPublished = statuses.every((s: string) => ["published", "awaiting_creator_post"].includes(s));
-  const hasPublished = statuses.some((s: string) => ["published", "awaiting_creator_post"].includes(s));
+  const allPublished = statuses.every((s: string) => s === "published");
+  const hasPublished = statuses.some((s: string) => s === "published");
+  const allAwaitingCreator = statuses.every((s: string) => s === "awaiting_creator_post");
+  const hasAwaitingCreator = statuses.some((s: string) => s === "awaiting_creator_post");
   const allFailed = statuses.every((s: string) => ["failed_terminal", "failed", "cancelled"].includes(s));
 
   let aggregateStatus = "draft";
   if (allPublished) {
     aggregateStatus = "published";
+  } else if (allAwaitingCreator) {
+    aggregateStatus = "awaiting_creator_post";
   } else if (allFailed) {
     aggregateStatus = "failed";
   } else if (hasPublished) {
     aggregateStatus = "partial";
+  } else if (hasAwaitingCreator) {
+    aggregateStatus = "awaiting_creator_post";
   } else {
     aggregateStatus = "failed";
   }
 
-  await (supabaseAdmin as any)
+  const { error: postUpdErr } = await (supabaseAdmin as any)
     .from("content_posts")
     .update({
       status: aggregateStatus,
-      published_at: aggregateStatus === "published" || aggregateStatus === "partial" ? new Date().toISOString() : null,
+      published_at: aggregateStatus === "published" || (aggregateStatus === "partial" && hasPublished) ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", postId)
     .eq("company_id", companyId);
+
+  if (postUpdErr) {
+    console.error(`[queue.server] Erro ao atualizar status do post mestre ${postId}:`, postUpdErr);
+  }
 
   return aggregateStatus;
 }
 
 /**
  * Reclama um único target pronto via RPC atômica (FOR UPDATE SKIP LOCKED) e executa o envio seguro.
+ * Suporta filtros opcionais de isolamento de tenant (companyIdFilter) e post (postIdFilter).
  */
-export async function claimAndProcessTarget(workerId: string): Promise<{
+export async function claimAndProcessTarget(
+  workerId: string,
+  companyIdFilter?: string | null,
+  postIdFilter?: string | null
+): Promise<{
   claimed: boolean;
   outcome?: ProcessedTargetOutcome;
 }> {
   // 1. RPC atômica que trava exclusivamente 1 linha e incrementa attempts
   const { data: claimedRows, error: claimErr } = await (supabaseAdmin as any).rpc("claim_content_target", {
     p_worker: workerId,
+    p_company_id: companyIdFilter || null,
+    p_post_id: postIdFilter || null,
   });
 
   if (claimErr) {
@@ -199,16 +216,16 @@ export async function claimAndProcessTarget(workerId: string): Promise<{
 
     let result: ProviderResult;
 
-    // Se o target já estava em processamento e o adaptador suporta reconciliação
-    if (target.status === "processing" && target.provider_job_id && adapter.reconcile) {
+    // Se o target já possui provider_job_id (iniciado previamente) e o adaptador suporta reconciliação
+    if (target.provider_job_id && adapter.reconcile) {
       result = await adapter.reconcile(target.provider_job_id, companyId, target.social_account_id);
     } else {
       result = await adapter.publish(publishCtx);
     }
 
-    // 5. Persiste resultado do provedor
+    // 5. Persiste resultado do provedor com verificação estrita de posse de lease (P0.3)
     if (result.state === "published" || result.state === "scheduled_on_provider") {
-      await (supabaseAdmin as any)
+      const { error: updErr } = await (supabaseAdmin as any)
         .from("content_post_targets")
         .update({
           status: "published",
@@ -221,7 +238,13 @@ export async function claimAndProcessTarget(workerId: string): Promise<{
           updated_at: new Date().toISOString(),
         })
         .eq("id", targetId)
-        .eq("company_id", companyId);
+        .eq("company_id", companyId)
+        .eq("lease_owner", workerId);
+
+      if (updErr) {
+        console.error(`[queue.server] Erro crítico ao persistir status published para ${targetId}:`, updErr);
+        throw updErr;
+      }
 
       await reconcileMasterPostStatus(postId, companyId);
       return {
@@ -235,7 +258,7 @@ export async function claimAndProcessTarget(workerId: string): Promise<{
         },
       };
     } else if (result.state === "awaiting_creator_post") {
-      await (supabaseAdmin as any)
+      const { error: updErr } = await (supabaseAdmin as any)
         .from("content_post_targets")
         .update({
           status: "awaiting_creator_post",
@@ -246,7 +269,13 @@ export async function claimAndProcessTarget(workerId: string): Promise<{
           updated_at: new Date().toISOString(),
         })
         .eq("id", targetId)
-        .eq("company_id", companyId);
+        .eq("company_id", companyId)
+        .eq("lease_owner", workerId);
+
+      if (updErr) {
+        console.error(`[queue.server] Erro ao persistir awaiting_creator_post para ${targetId}:`, updErr);
+        throw updErr;
+      }
 
       await reconcileMasterPostStatus(postId, companyId);
       return {
@@ -260,17 +289,26 @@ export async function claimAndProcessTarget(workerId: string): Promise<{
         },
       };
     } else if (result.state === "processing") {
-      await (supabaseAdmin as any)
+      // P0.2: Agenda próxima reconciliação em 1 minuto
+      const nextAttemptAt = new Date(Date.now() + 60000).toISOString();
+      const { error: updErr } = await (supabaseAdmin as any)
         .from("content_post_targets")
         .update({
           status: "processing",
           provider_job_id: result.providerJobId,
+          next_attempt_at: nextAttemptAt,
           lease_owner: null,
           lease_until: null,
           updated_at: new Date().toISOString(),
         })
         .eq("id", targetId)
-        .eq("company_id", companyId);
+        .eq("company_id", companyId)
+        .eq("lease_owner", workerId);
+
+      if (updErr) {
+        console.error(`[queue.server] Erro ao persistir processamento para ${targetId}:`, updErr);
+        throw updErr;
+      }
 
       await reconcileMasterPostStatus(postId, companyId);
       return {
@@ -284,7 +322,7 @@ export async function claimAndProcessTarget(workerId: string): Promise<{
       };
     } else {
       // failed_terminal
-      await (supabaseAdmin as any)
+      const { error: updErr } = await (supabaseAdmin as any)
         .from("content_post_targets")
         .update({
           status: "failed_terminal",
@@ -294,7 +332,12 @@ export async function claimAndProcessTarget(workerId: string): Promise<{
           updated_at: new Date().toISOString(),
         })
         .eq("id", targetId)
-        .eq("company_id", companyId);
+        .eq("company_id", companyId)
+        .eq("lease_owner", workerId);
+
+      if (updErr) {
+        console.error(`[queue.server] Erro ao persistir failed_terminal para ${targetId}:`, updErr);
+      }
 
       await reconcileMasterPostStatus(postId, companyId);
       return {
@@ -328,7 +371,8 @@ export async function claimAndProcessTarget(workerId: string): Promise<{
           updated_at: new Date().toISOString(),
         })
         .eq("id", targetId)
-        .eq("company_id", companyId);
+        .eq("company_id", companyId)
+        .eq("lease_owner", workerId);
 
       await reconcileMasterPostStatus(postId, companyId);
       return {
@@ -357,7 +401,8 @@ export async function claimAndProcessTarget(workerId: string): Promise<{
           updated_at: new Date().toISOString(),
         })
         .eq("id", targetId)
-        .eq("company_id", companyId);
+        .eq("company_id", companyId)
+        .eq("lease_owner", workerId);
 
       await reconcileMasterPostStatus(postId, companyId);
       return {
@@ -376,15 +421,18 @@ export async function claimAndProcessTarget(workerId: string): Promise<{
 
 /**
  * Processa um lote de targets pendentes usando leases atômicos.
+ * Suporta isolamento estrito de tenant (companyIdFilter) e post (postIdFilter).
  */
 export async function processContentTargetsBatch(
   workerId: string,
-  maxItems = 5
+  maxItems = 5,
+  companyIdFilter?: string | null,
+  postIdFilter?: string | null
 ): Promise<{ processedCount: number; results: ProcessedTargetOutcome[] }> {
   const results: ProcessedTargetOutcome[] = [];
 
   for (let i = 0; i < maxItems; i++) {
-    const step = await claimAndProcessTarget(workerId);
+    const step = await claimAndProcessTarget(workerId, companyIdFilter, postIdFilter);
     if (!step.claimed) {
       break; // Não há mais itens prontos para claim
     }

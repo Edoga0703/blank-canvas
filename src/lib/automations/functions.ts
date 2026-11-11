@@ -564,6 +564,7 @@ export const getExecutionDetailFn = createServerFn({ method: "GET" })
 
     return {
       execution: exec,
+      exec: exec, // P1.8: Compatibilidade total de contrato em ambas as propriedades
       steps: stepRuns || [],
     };
   });

@@ -56,9 +56,9 @@ export class YouTubePublisherAdapter implements SocialPublisherAdapter {
       throw new PermanentProviderError("URL do vídeo ausente para o YouTube.", "MISSING_MEDIA");
     }
 
-    // 1. Busca conta do canal no company_social_accounts isolada por empresa
+    // 1. Busca conta do canal no meta_social_accounts isolada por empresa
     const { data: acc, error: accErr } = await (supabaseAdmin as any)
-      .from("company_social_accounts")
+      .from("meta_social_accounts")
       .select("id, company_id, network, external_id, username, display_name, credentials, status")
       .eq("id", socialAccountId)
       .eq("company_id", companyId)
@@ -68,6 +68,13 @@ export class YouTubePublisherAdapter implements SocialPublisherAdapter {
       throw new PermanentProviderError(
         "Conta de YouTube não encontrada ou sem permissão de acesso nesta empresa.",
         "ACCOUNT_NOT_FOUND"
+      );
+    }
+
+    if (acc.network !== "youtube") {
+      throw new PermanentProviderError(
+        "A conta selecionada não pertence ao YouTube.",
+        "NETWORK_MISMATCH"
       );
     }
 
@@ -132,7 +139,7 @@ export class YouTubePublisherAdapter implements SocialPublisherAdapter {
           activeToken = tokenData.access_token;
           const newExpiresAt = Date.now() + (tokenData.expires_in || 3600) * 1000;
           await (supabaseAdmin as any)
-            .from("company_social_accounts")
+            .from("meta_social_accounts")
             .update({
               credentials: {
                 ...credentials,

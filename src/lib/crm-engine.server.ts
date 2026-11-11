@@ -406,6 +406,7 @@ export async function moveCardToStage(
   if (stage?.nome) patch.status = stage.nome;
 
   // Si la etapa tiene configurado un disparador hacia otro embudo (trigger_pipeline_destino)
+  let transferDescription: string | null = null;
   if (stage?.trigger_pipeline_destino) {
     const { data: firstStageDest } = await admin
       .from("crm_stage")
@@ -419,18 +420,7 @@ export async function moveCardToStage(
       patch.pipeline_id = firstStageDest.pipeline_id;
       patch.stage_id = firstStageDest.id;
       patch.status = firstStageDest.nome;
-      if (cardInfo?.company_id) {
-        try {
-          await admin.from("lead_evento").insert({
-            company_id: cardInfo.company_id,
-            card_id: cardId,
-            tipo: "mudanca_etapa",
-            descricao: `Transferido automáticamente al embudo destino por la etapa "${stage.nome}"`,
-          });
-        } catch {
-          // best-effort
-        }
-      }
+      transferDescription = `Transferido automáticamente al embudo destino por la etapa "${stage.nome}"`;
     }
   }
 
@@ -462,8 +452,26 @@ export async function moveCardToStage(
   }
 
   if (!updatedCard) {
-    // Trava de versão otimista acionada: o card foi alterado concorrentemente (humano ou novo chat)
-    return false;
+    // Se foram passadas condições de concorrência (CAS), retorna false para o worker otimista
+    if (conditions?.expectedStageId !== undefined || conditions?.expectedUltimaEm !== undefined) {
+      return false;
+    }
+    // Para chamadores normais que esperam que o card exista, lança erro para evitar falso sucesso
+    throw new Error(`Cartão CRM ${cardId} não encontrado para alteração de etapa.`);
+  }
+
+  // Registra evento de transferência apenas após o UPDATE ser confirmado com sucesso no banco (P1.6)
+  if (transferDescription && cardInfo?.company_id) {
+    try {
+      await admin.from("lead_evento").insert({
+        company_id: cardInfo.company_id,
+        card_id: cardId,
+        tipo: "mudanca_etapa",
+        descricao: transferDescription,
+      });
+    } catch {
+      // best-effort
+    }
   }
 
   // Webhooks de saída: venda ganha / lead perdido.

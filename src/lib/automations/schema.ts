@@ -9,6 +9,8 @@ export const NodePositionSchema = z.object({
 export const NodeBaseSchema = z.object({
   id: z.string().min(1).max(100),
   type: z.string().min(1),
+  name: z.string().trim().max(120).optional(),
+  label: z.string().trim().max(120).optional(),
   version: z.number().int().positive().default(1),
   position: NodePositionSchema,
   config: z.record(z.string(), z.unknown()).default({}),

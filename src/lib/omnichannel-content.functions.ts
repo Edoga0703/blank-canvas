@@ -185,11 +185,11 @@ export const createOmnichannelPost = createServerFn({ method: "POST" })
 
     let targetResults: Array<{ platform: string; status: string; error?: string; url?: string }> = [];
 
-    // 2. Se for imediato, orquestra publicação via fila atômica duradoura
+    // 2. Se for imediato, orquestra publicação via fila atômica duradoura isolada por tenant e post (P0.4)
     if (!isScheduled) {
       const { processContentTargetsBatch } = await import("./content/queue.server");
       const workerId = `direct-${crypto.randomUUID().slice(0, 8)}`;
-      const batch = await processContentTargetsBatch(workerId, data.targets.length);
+      const batch = await processContentTargetsBatch(workerId, data.targets.length, companyId, postId);
       targetResults = batch.results.map((r) => ({
         platform: r.platform,
         status: r.status,
@@ -259,11 +259,11 @@ export const approveOmnichannelPost = createServerFn({ method: "POST" })
       throw new Error(`Falha ao aprovar postagem: ${error?.message || "Postagem não encontrada"}`);
     }
 
-    // Se a postagem for de envio imediato (scheduled_at nulo ou passado), dispara worker para processar
+    // Se a postagem for de envio imediato (scheduled_at nulo ou passado), dispara worker para processar isolado por tenant e post
     if (!post.scheduled_at || new Date(post.scheduled_at).getTime() <= Date.now()) {
       const { processContentTargetsBatch } = await import("./content/queue.server");
       const workerId = `approve-${crypto.randomUUID().slice(0, 8)}`;
-      await processContentTargetsBatch(workerId, 5).catch(() => {});
+      await processContentTargetsBatch(workerId, 5, companyId, post.id).catch(() => {});
     }
 
     return { ok: true, postId: post.id };
@@ -354,6 +354,7 @@ export const retryOmnichannelTarget = createServerFn({ method: "POST" })
     const companyId = await resolveCompanyId(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    // P1.5: Restringe reenvio estritamente a destinos que falharam (impede reenvio acidental de já publicados)
     const { data: target, error } = await (supabaseAdmin as any)
       .from("content_post_targets")
       .update({
@@ -367,11 +368,12 @@ export const retryOmnichannelTarget = createServerFn({ method: "POST" })
       })
       .eq("id", data.targetId)
       .eq("company_id", companyId)
+      .in("status", ["failed", "failed_terminal"])
       .select("id, post_id")
       .single();
 
     if (error || !target) {
-      throw new Error(`Falha ao redefinir target para reenvio: ${error?.message || "não encontrado"}`);
+      throw new Error(`Falha ao redefinir target para reenvio: apenas destinos com falha podem ser reenviados.`);
     }
 
     // Atualiza post master para publishing
@@ -381,10 +383,10 @@ export const retryOmnichannelTarget = createServerFn({ method: "POST" })
       .eq("id", target.post_id)
       .eq("company_id", companyId);
 
-    // Dispara worker imediato
+    // Dispara worker imediato isolado por tenant e post
     const { processContentTargetsBatch } = await import("./content/queue.server");
     const workerId = `retry-${crypto.randomUUID().slice(0, 8)}`;
-    await processContentTargetsBatch(workerId, 2).catch(() => {});
+    await processContentTargetsBatch(workerId, 1, companyId, target.post_id).catch(() => {});
 
     return { ok: true };
   });

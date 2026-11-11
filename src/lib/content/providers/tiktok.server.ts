@@ -52,9 +52,9 @@ export class TikTokPublisherAdapter implements SocialPublisherAdapter {
       throw new PermanentProviderError("URL do vídeo ausente para o TikTok.", "MISSING_MEDIA");
     }
 
-    // 1. Busca conta do TikTok no company_social_accounts isolada por empresa
+    // 1. Busca conta do TikTok no meta_social_accounts isolada por empresa
     const { data: acc, error: accErr } = await (supabaseAdmin as any)
-      .from("company_social_accounts")
+      .from("meta_social_accounts")
       .select("id, company_id, network, external_id, username, display_name, credentials, status")
       .eq("id", socialAccountId)
       .eq("company_id", companyId)
@@ -64,6 +64,13 @@ export class TikTokPublisherAdapter implements SocialPublisherAdapter {
       throw new PermanentProviderError(
         "Conta do TikTok não encontrada ou sem permissão de acesso nesta empresa.",
         "ACCOUNT_NOT_FOUND"
+      );
+    }
+
+    if (acc.network !== "tiktok") {
+      throw new PermanentProviderError(
+        "A conta selecionada não é uma conta do TikTok.",
+        "NETWORK_MISMATCH"
       );
     }
 
@@ -109,7 +116,7 @@ export class TikTokPublisherAdapter implements SocialPublisherAdapter {
             const newRefreshExpiresAt = Date.now() + (resData.data.refresh_expires_in || 31536000) * 1000;
 
             await (supabaseAdmin as any)
-              .from("company_social_accounts")
+              .from("meta_social_accounts")
               .update({
                 credentials: {
                   ...credentials,
@@ -231,7 +238,7 @@ export class TikTokPublisherAdapter implements SocialPublisherAdapter {
     }
 
     const { data: acc } = await (supabaseAdmin as any)
-      .from("company_social_accounts")
+      .from("meta_social_accounts")
       .select("credentials")
       .eq("id", socialAccountId)
       .eq("company_id", companyId)

@@ -92,6 +92,7 @@ export async function processPendingAutomationEvents(batchLimit = 15): Promise<n
  */
 export async function dispatchDomainEvent(event: DomainEvent): Promise<{ triggered: number }> {
   const { companyId, name, payload } = event;
+  let triggeredCount = 0;
 
   // 1. Verificar si hay ejecuciones esperando respuesta en este mismo hilo de conversación
   if (name === "messaging.inbound_received.v1" && payload?.externalConversationId) {
@@ -151,7 +152,9 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
           if (woke) wokeCount++;
         }
       }
-      if (wokeCount > 0) return { triggered: wokeCount };
+      if (wokeCount > 0) {
+        triggeredCount += wokeCount;
+      }
     }
   }
 
@@ -168,7 +171,7 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
   }
 
   if (!workflows || workflows.length === 0) {
-    return { triggered: 0 };
+    return { triggered: triggeredCount };
   }
 
   const activeVersionIds = workflows
@@ -176,7 +179,7 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
     .filter(Boolean);
 
   if (activeVersionIds.length === 0) {
-    return { triggered: 0 };
+    return { triggered: triggeredCount };
   }
 
   const { data: versions, error: verErr } = await (supabaseAdmin as any)
@@ -194,7 +197,7 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
     if (v.id && v.graph) versionMap.set(v.id, v.graph as WorkflowGraph);
   }
 
-  let triggeredCount = 0;
+  // triggeredCount já foi inicializado no topo (acumula wakes + novos starts)
 
   for (const wf of workflows) {
     const graph = versionMap.get(wf.active_version_id);

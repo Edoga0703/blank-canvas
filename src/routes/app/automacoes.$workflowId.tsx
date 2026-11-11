@@ -60,6 +60,7 @@ import {
   KanbanSquare,
   Check,
   Sparkles,
+  Users,
 } from "lucide-react";
 
 export const Route = createFileRoute("/app/automacoes/$workflowId")({
@@ -481,8 +482,9 @@ function AutomacaoCanvasPage() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const [executions, setExecutions] = useState<any[]>([]);
-  const [selectedExecDetail, setSelectedExecDetail] = useState<{ exec: any; steps: any[] } | null>(null);
+  const [selectedExecDetail, setSelectedExecDetail] = useState<{ execution?: any; exec?: any; steps: any[] } | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [quickPicker, setQuickPicker] = useState<{ sourceId: string; sourcePort: string } | null>(null);
 
   const selectedNode = useMemo(
     () => nodes.find((n) => n.id === selectedNodeId) || null,
@@ -508,38 +510,83 @@ function AutomacaoCanvasPage() {
     );
   }, [setNodes]);
 
-  // A02: Conexão rápida com botão '+' a partir de uma porta
+  // P1.9: Conexão rápida com botão '+' abre o seletor modal de tipo de nó em vez de forçar mensagem de texto fixa
   const handleAddNextNode = useCallback(
     (sourceId: string, sourcePort: string) => {
       const sourceNode = nodes.find((n) => n.id === sourceId);
       if (!sourceNode) return;
+      setQuickPicker({ sourceId, sourcePort });
+    },
+    [nodes]
+  );
 
-      // Impede múltiplas saídas pela mesma porta no motor v1 (A03)
-      const existingEdge = edges.find((e) => e.source === sourceId && (e.sourceHandle || "next") === sourcePort);
-      if (existingEdge) {
-        toast.info("Esta saída já possui uma conexão. Conecte outro ramo ou exclua a linha atual.");
-        return;
-      }
+  const handleAddSpecificNode = useCallback(
+    (sourceId: string, sourcePort: string, typeKey: string) => {
+      const sourceNode = nodes.find((n) => n.id === sourceId);
+      if (!sourceNode) return;
 
       const newId = `node_${crypto.randomUUID().slice(0, 8)}`;
       const newPos = {
         x: sourceNode.position.x + (sourcePort === "false" || sourcePort === "timeout" ? 140 : 0),
-        y: sourceNode.position.y + 180,
+        y: sourceNode.position.y + 190,
       };
+
+      let nodeType = "actionNode";
+      let nodeName = "Ação";
+      let initialConfig: Record<string, any> = {};
+
+      if (typeKey === "messaging.send_text") {
+        nodeType = "actionNode";
+        nodeName = "Enviar Mensagem";
+        initialConfig = { text: "Olá! Como podemos te ajudar?", connectionPolicy: "same_as_trigger" };
+      } else if (typeKey === "messaging.handoff_to_ai") {
+        nodeType = "actionNode";
+        nodeName = "Transmitir para IA";
+        initialConfig = { promptOverride: "" };
+      } else if (typeKey === "messaging.route_to_human") {
+        nodeType = "actionNode";
+        nodeName = "Transferir para Atendente";
+        initialConfig = { queue: "default" };
+      } else if (typeKey === "crm.add_tag") {
+        nodeType = "actionNode";
+        nodeName = "Adicionar Tag CRM";
+        initialConfig = { tag: "interessado" };
+      } else if (typeKey === "crm.remove_tag") {
+        nodeType = "actionNode";
+        nodeName = "Remover Tag CRM";
+        initialConfig = { tag: "lead" };
+      } else if (typeKey === "crm.move_card_stage") {
+        nodeType = "actionNode";
+        nodeName = "Mover Etapa CRM";
+        initialConfig = {};
+      } else if (typeKey === "crm.assign_card") {
+        nodeType = "actionNode";
+        nodeName = "Atribuir Responsável";
+        initialConfig = {};
+      } else if (typeKey === "flow.condition") {
+        nodeType = "conditionNode";
+        nodeName = "Condição Se / Senão";
+        initialConfig = { field: "text", operator: "contains", value: "" };
+      } else if (typeKey === "messaging.wait_for_reply") {
+        nodeType = "waitNode";
+        nodeName = "Aguardar Resposta";
+        initialConfig = { timeoutMinutes: 60 };
+      } else if (typeKey === "control.wait_duration") {
+        nodeType = "delayNode";
+        nodeName = "Aguardar Tempo";
+        initialConfig = { durationMinutes: 15 };
+      }
 
       const newNode: Node = {
         id: newId,
-        type: "actionNode",
+        type: nodeType,
         position: newPos,
         data: {
           id: newId,
-          type: "messaging.send_text",
+          type: typeKey,
           version: 1,
-          name: "Enviar Mensagem",
-          config: {
-            text: "Olá! Como podemos te ajudar?",
-            connectionPolicy: "same_as_trigger",
-          },
+          name: nodeName,
+          config: initialConfig,
         },
       };
 
@@ -553,13 +600,21 @@ function AutomacaoCanvasPage() {
         animated: true,
       };
 
+      // Substitui aresta existente daquela mesma porta, se houver
+      setEdges((eds) => {
+        const filtered = eds.filter(
+          (e) => !(e.source === sourceId && (e.sourceHandle || "next") === sourcePort)
+        );
+        return [...filtered, newEdge];
+      });
+
       setNodes((nds) => [...nds, newNode]);
-      setEdges((eds) => [...eds, newEdge]);
       setSelectedNodeId(newId);
       setIsDirty(true);
-      toast.success("Novo passo conectado com sucesso!");
+      setQuickPicker(null);
+      toast.success(`Passo "${nodeName}" adicionado e conectado!`);
     },
-    [nodes, edges, setNodes, setEdges]
+    [nodes, setNodes, setEdges]
   );
 
   // Injeta callback de adicionar próximo passo em cada nó
@@ -650,12 +705,16 @@ function AutomacaoCanvasPage() {
         return false;
       }
 
-      // Motor sequencial v1: no máximo 1 aresta por porta de saída!
+      // P1: Permite que onConnect substitua a conexão daquela porta para o novo destino.
+      // Bloqueia apenas conexões idênticas duplicadas (mesmo source, porta e target).
       const port = connection.sourceHandle || "next";
-      const existing = edges.some(
-        (e) => e.source === connection.source && (e.sourceHandle || "next") === port
+      const isDuplicate = edges.some(
+        (e) =>
+          e.source === connection.source &&
+          (e.sourceHandle || "next") === port &&
+          e.target === connection.target
       );
-      if (existing) {
+      if (isDuplicate) {
         return false;
       }
 
@@ -1665,14 +1724,14 @@ function AutomacaoCanvasPage() {
             </div>
           )}
 
-          {/* Modal com Rastro Detalhado da Execução (A14) */}
+          {/* Modal com Rastro Detalhado da Execução (A14 / P1.8) */}
           <Dialog open={Boolean(selectedExecDetail)} onOpenChange={(o) => !o && setSelectedExecDetail(null)}>
             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-base flex items-center gap-2">
                   <span>Trilha da Execução</span>
                   <Badge variant="outline" className="text-xs">
-                    {selectedExecDetail?.exec?.status}
+                    {(selectedExecDetail?.execution || selectedExecDetail?.exec)?.status || "desconhecido"}
                   </Badge>
                 </DialogTitle>
               </DialogHeader>
@@ -1686,11 +1745,15 @@ function AutomacaoCanvasPage() {
                   <div className="grid grid-cols-2 gap-2 p-3 bg-muted/40 rounded-xl">
                     <div>
                       <span className="text-muted-foreground block text-[10px]">ID da Execução:</span>
-                      <span className="font-mono text-[11px]">{selectedExecDetail?.exec?.id}</span>
+                      <span className="font-mono text-[11px]">{(selectedExecDetail?.execution || selectedExecDetail?.exec)?.id}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground block text-[10px]">Iniciado em:</span>
-                      <span>{selectedExecDetail?.exec?.created_at ? new Date(selectedExecDetail.exec.created_at).toLocaleString() : "—"}</span>
+                      <span>
+                        {(selectedExecDetail?.execution || selectedExecDetail?.exec)?.created_at
+                          ? new Date((selectedExecDetail?.execution || selectedExecDetail?.exec).created_at).toLocaleString()
+                          : "—"}
+                      </span>
                     </div>
                   </div>
 
@@ -1736,6 +1799,137 @@ function AutomacaoCanvasPage() {
                   </div>
                 </div>
               )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Modal Seletor de Próximo Passo ao clicar no botão '+' (P1.9) */}
+          <Dialog open={Boolean(quickPicker)} onOpenChange={(o) => !o && setQuickPicker(null)}>
+            <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-base flex items-center gap-2">
+                  <Plus className="size-5 text-primary" />
+                  <span>Escolha o Próximo Passo do Fluxo</span>
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-2">
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Mensagens & Atendimento</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "messaging.send_text")}
+                      className="p-3 text-left border rounded-xl hover:border-primary hover:bg-primary/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <MessageSquare className="size-3.5 text-primary" /> Enviar Mensagem
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Dispara texto no canal da conversa.</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "messaging.handoff_to_ai")}
+                      className="p-3 text-left border rounded-xl hover:border-primary hover:bg-primary/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <Sparkles className="size-3.5 text-purple-600" /> Transmitir para IA
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Transfere para o Agente IA inteligente.</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "messaging.route_to_human")}
+                      className="p-3 text-left border rounded-xl hover:border-primary hover:bg-primary/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <UserCheck className="size-3.5 text-amber-600" /> Transferir para Humano
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Pausa automação e chama atendente (terminal).</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Ações de CRM & Leads</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "crm.add_tag")}
+                      className="p-3 text-left border rounded-xl hover:border-primary hover:bg-primary/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <Tag className="size-3.5 text-emerald-600" /> Adicionar Tag CRM
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Aplica etiqueta ao lead.</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "crm.remove_tag")}
+                      className="p-3 text-left border rounded-xl hover:border-primary hover:bg-primary/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <Tag className="size-3.5 text-rose-600" /> Remover Tag CRM
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Remove etiqueta específica.</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "crm.move_card_stage")}
+                      className="p-3 text-left border rounded-xl hover:border-primary hover:bg-primary/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <Layers className="size-3.5 text-blue-600" /> Mover Etapa Funil
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Avança o cartão no pipeline de vendas.</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "crm.assign_card")}
+                      className="p-3 text-left border rounded-xl hover:border-primary hover:bg-primary/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <Users className="size-3.5 text-teal-600" /> Atribuir Responsável
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Define o corretor/atendente do lead.</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Controle de Fluxo & Lógica</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "flow.condition")}
+                      className="p-3 text-left border rounded-xl hover:border-primary hover:bg-primary/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <GitBranch className="size-3.5 text-amber-500" /> Condição (Sim / Não)
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Bifurca o fluxo de acordo com respostas ou tags.</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "messaging.wait_for_reply")}
+                      className="p-3 text-left border rounded-xl hover:border-primary hover:bg-primary/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <Clock className="size-3.5 text-sky-500" /> Aguardar Resposta
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Espera mensagem do lead com ramo de timeout.</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "control.wait_duration")}
+                      className="p-3 text-left border rounded-xl hover:border-primary hover:bg-primary/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <Clock className="size-3.5 text-indigo-500" /> Aguardar Tempo
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Pausa por minutos, horas ou dias.</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </DialogContent>
           </Dialog>
         </div>

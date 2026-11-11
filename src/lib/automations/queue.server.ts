@@ -203,8 +203,8 @@ export async function runOneAutomationJob(params: {
       result = await handler.execute(execContext, parsedConfig);
       const durationMs = Date.now() - startTime;
 
-      // Registrar passo executado
-      await (supabaseAdmin as any).from("automation_step_runs").insert({
+      // Registrar passo executado com verificação estrita de persistência (P1)
+      const { error: stepErr } = await (supabaseAdmin as any).from("automation_step_runs").insert({
         company_id: job.company_id,
         execution_id: exec.id,
         node_id: node.id,
@@ -217,6 +217,10 @@ export async function runOneAutomationJob(params: {
         finished_at: new Date().toISOString(),
         duration_ms: durationMs,
       });
+
+      if (stepErr) {
+        console.error(`[runOneAutomationJob] Erro ao persistir step_run para nó ${node.id}:`, stepErr);
+      }
     }
 
     if (result.kind === "finish") {
