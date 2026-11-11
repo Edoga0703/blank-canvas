@@ -48,7 +48,7 @@ export const listSocialAccounts = createServerFn({ method: "POST" })
  */
 export const createOmnichannelPost = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
+  .validator(
     (d: {
       mediaUrl?: string | null;
       mediaType: "video" | "image" | "carousel" | "text";
@@ -115,6 +115,26 @@ export const createOmnichannelPost = createServerFn({ method: "POST" })
     }
 
     const postId = post?.id ?? `local-${Date.now()}`;
+
+    // Insere os alvos na tabela content_post_targets se o post mestre foi gravado
+    if (post?.id && data.targets.length) {
+      const targetRows = data.targets.map((t) => ({
+        post_id: post.id,
+        company_id: companyId,
+        platform: t.platform,
+        social_account_id: t.socialAccountId || null,
+        custom_title: t.customTitle || null,
+        custom_caption: t.customCaption || null,
+        platform_settings: t.platformSettings || {},
+        status: isScheduled ? "pending" : "publishing",
+      }));
+
+      await (supabaseAdmin as any)
+        .from("content_post_targets")
+        .insert(targetRows)
+        .catch((e: any) => console.warn("[createOmnichannelPost] Erro insert content_post_targets:", e?.message));
+    }
+
     const targetResults: Array<{ platform: string; status: string; error?: string; url?: string }> = [];
 
     // 2. Se for imediato, orquestra publicação
@@ -216,7 +236,7 @@ export const listOmnichannelPosts = createServerFn({ method: "POST" })
  */
 export const getOmnichannelIntelligence = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { socialAccountId?: string | null }) => ({
+  .validator((d: { socialAccountId?: string | null }) => ({
     socialAccountId: d?.socialAccountId || null,
   }))
   .handler(async ({ context, data }) => {

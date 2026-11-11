@@ -7,6 +7,7 @@ import {
   BarChart3,
   Layers,
   Activity,
+  Stethoscope,
   Sparkles,
 } from "lucide-react";
 import { MetaContentCenter } from "@/components/content/meta-content-center";
@@ -41,7 +42,16 @@ function ConteudoPage() {
   const listAccountsFn = useServerFn(listSocialAccounts);
 
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
-  const [activeTab, setActiveTab] = useState<string>(search.tab || "publish");
+  const initialTab = search.tab || (search.channel || search.post ? "live" : "publish");
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
+
+  useEffect(() => {
+    if (search.tab && search.tab !== activeTab) {
+      setActiveTab(search.tab);
+    } else if (!search.tab && (search.channel || search.post) && activeTab !== "live") {
+      setActiveTab("live");
+    }
+  }, [search.tab, search.channel, search.post]);
 
   useEffect(() => {
     let alive = true;
@@ -104,6 +114,10 @@ function ConteudoPage() {
             <Activity className="size-3.5" />
             <span>Histórico Bruto</span>
           </TabsTrigger>
+          <TabsTrigger value="diagnostics" className="rounded-xl text-xs font-semibold gap-1.5 py-2">
+            <Stethoscope className="size-3.5 text-blue-500" />
+            <span>Diagnóstico</span>
+          </TabsTrigger>
         </TabsList>
 
         {/* 1. Publicador e Agendador Multicanal */}
@@ -139,9 +153,14 @@ function ConteudoPage() {
           />
         </TabsContent>
 
-        {/* 5. Histórico e Diagnóstico */}
+        {/* 5. Histórico e Auditoria */}
         <TabsContent value="history" className="mt-0 focus-visible:outline-none">
           <MetaContentHistory />
+        </TabsContent>
+
+        {/* 6. Diagnóstico Técnico de Conexões */}
+        <TabsContent value="diagnostics" className="mt-0 focus-visible:outline-none">
+          <MetaDiagnosticsPanel />
         </TabsContent>
       </Tabs>
     </div>
