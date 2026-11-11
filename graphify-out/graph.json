@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T03:59:48.318995+00:00",
+  "generated_at": "2026-11-11T07:36:34.888999+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -506,6 +506,10 @@
       "bytes": 344509
     },
     {
+      "path": "supabase/migrations/20261111000000_multichannel_content_and_social_hub.sql",
+      "bytes": 5739
+    },
+    {
       "path": "supabase/migrations/20261009060000_full_modules.sql",
       "bytes": 23602
     },
@@ -576,6 +580,10 @@
     {
       "path": "supabase/migrations/20261009050000_rpc_and_auxiliary.sql",
       "bytes": 7438
+    },
+    {
+      "path": "docs/sql/20261111000000_multichannel_content_and_social_hub.sql",
+      "bytes": 5739
     },
     {
       "path": "docs/sql/20261029120000_multichannel_automations_fixes.sql",
@@ -680,6 +688,10 @@
     {
       "path": "src/lib/master-alerts.server.ts",
       "bytes": 7692
+    },
+    {
+      "path": "src/lib/social-content.types.ts",
+      "bytes": 3974
     },
     {
       "path": "src/lib/business-hours.ts",
