@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T17:59:51.920864+00:00",
+  "generated_at": "2026-11-11T19:11:26.160106+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -15,7 +15,7 @@
     },
     {
       "path": "vite.config.ts",
-      "bytes": 3581
+      "bytes": 4270
     },
     {
       "path": "fix_training_data.sql",
@@ -3027,7 +3027,7 @@
     },
     {
       "path": "src/integrations/supabase/client.server.ts",
-      "bytes": 2943
+      "bytes": 3053
     },
     {
       "path": "src/lib/integracoes/catalogo.ts",
