@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T08:53:52.688422+00:00",
+  "generated_at": "2026-11-11T09:49:29.331762+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -536,6 +536,10 @@
     {
       "path": "supabase/migrations/20261022180000_audit_fixes_and_parity.sql",
       "bytes": 1771
+    },
+    {
+      "path": "supabase/migrations/20261111010000_hybrid_storage_pool_and_google_drive.sql",
+      "bytes": 5765
     },
     {
       "path": "supabase/migrations/20261011040000_meta_phase1_assets_content_history.sql",
@@ -1867,7 +1871,7 @@
     },
     {
       "path": "src/routes/master/crm-admin.tsx",
-      "bytes": 4288
+      "bytes": 4563
     },
     {
       "path": "src/routes/master/cadastros.tsx",
@@ -1891,7 +1895,7 @@
     },
     {
       "path": "src/routes/app/configuracoes.tsx",
-      "bytes": 72109
+      "bytes": 72377
     },
     {
       "path": "src/routes/app/agente-avancado.tsx",
@@ -2023,7 +2027,7 @@
     },
     {
       "path": "src/routes/api/public/chat-media.ts",
-      "bytes": 12820
+      "bytes": 12904
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
@@ -2810,6 +2814,10 @@
       "bytes": 20302
     },
     {
+      "path": "src/components/config/storage-vaults-tab.tsx",
+      "bytes": 32455
+    },
+    {
       "path": "src/components/chat/chat-location.tsx",
       "bytes": 1867
     },
@@ -3050,12 +3058,20 @@
       "bytes": 16978
     },
     {
+      "path": "src/lib/storage/storage-admin.functions.ts",
+      "bytes": 14070
+    },
+    {
+      "path": "src/lib/storage/storage-pool.server.ts",
+      "bytes": 13915
+    },
+    {
       "path": "src/lib/storage/r2.functions.ts",
-      "bytes": 2062
+      "bytes": 2372
     },
     {
       "path": "src/lib/storage/r2.server.ts",
-      "bytes": 11115
+      "bytes": 13097
     },
     {
       "path": "src/lib/email-templates/recovery.tsx",
@@ -9636,6 +9652,10 @@
       "target": "@/components/master/crm-admin/historico-tab"
     },
     {
+      "source": "src/routes/master/crm-admin.tsx",
+      "target": "@/components/config/storage-vaults-tab"
+    },
+    {
       "source": "src/routes/master/cadastros.tsx",
       "target": "@tanstack/react-router"
     },
@@ -10114,6 +10134,10 @@
     {
       "source": "src/routes/app/configuracoes.tsx",
       "target": "@/components/config/departamentos-tab"
+    },
+    {
+      "source": "src/routes/app/configuracoes.tsx",
+      "target": "@/components/config/storage-vaults-tab"
     },
     {
       "source": "src/routes/app/configuracoes.tsx",
@@ -17036,6 +17060,62 @@
       "target": "@/lib/lead-forms-types"
     },
     {
+      "source": "src/components/config/storage-vaults-tab.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/components/config/storage-vaults-tab.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/components/config/storage-vaults-tab.tsx",
+      "target": "@/components/ui/card"
+    },
+    {
+      "source": "src/components/config/storage-vaults-tab.tsx",
+      "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/components/config/storage-vaults-tab.tsx",
+      "target": "@/components/ui/input"
+    },
+    {
+      "source": "src/components/config/storage-vaults-tab.tsx",
+      "target": "@/components/ui/label"
+    },
+    {
+      "source": "src/components/config/storage-vaults-tab.tsx",
+      "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/components/config/storage-vaults-tab.tsx",
+      "target": "@/components/ui/progress"
+    },
+    {
+      "source": "src/components/config/storage-vaults-tab.tsx",
+      "target": "@/components/ui/switch"
+    },
+    {
+      "source": "src/components/config/storage-vaults-tab.tsx",
+      "target": "@/components/ui/select"
+    },
+    {
+      "source": "src/components/config/storage-vaults-tab.tsx",
+      "target": "@/components/ui/dialog"
+    },
+    {
+      "source": "src/components/config/storage-vaults-tab.tsx",
+      "target": "sonner"
+    },
+    {
+      "source": "src/components/config/storage-vaults-tab.tsx",
+      "target": "lucide-react"
+    },
+    {
+      "source": "src/components/config/storage-vaults-tab.tsx",
+      "target": "@/lib/storage/storage-admin.functions"
+    },
+    {
       "source": "src/components/chat/chat-location.tsx",
       "target": "lucide-react"
     },
@@ -17912,6 +17992,34 @@
       "target": "@/integrations/supabase/client.server"
     },
     {
+      "source": "src/lib/storage/storage-admin.functions.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/storage/storage-admin.functions.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/storage/storage-admin.functions.ts",
+      "target": "@/lib/company-cache"
+    },
+    {
+      "source": "src/lib/storage/storage-admin.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/storage/storage-admin.functions.ts",
+      "target": "./storage-pool.server"
+    },
+    {
+      "source": "src/lib/storage/storage-pool.server.ts",
+      "target": "node:crypto"
+    },
+    {
+      "source": "src/lib/storage/storage-pool.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
       "source": "src/lib/storage/r2.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -17934,6 +18042,10 @@
     {
       "source": "src/lib/storage/r2.server.ts",
       "target": "node:crypto"
+    },
+    {
+      "source": "src/lib/storage/r2.server.ts",
+      "target": "./storage-pool.server"
     },
     {
       "source": "src/lib/email-templates/recovery.tsx",

@@ -1,6 +1,6 @@
 # Design system
 
-Generated: 2026-11-11T08:53:52.688422+00:00
+Generated: 2026-11-11T09:49:29.331762+00:00
 
 ## Tokens
 - --radius-sm: calc(var(--radius) - 4px) (src/styles.css)
@@ -322,6 +322,7 @@ Generated: 2026-11-11T08:53:52.688422+00:00
 - src/components/config/logs-tab.tsx
 - src/components/config/meta-capi-card.tsx
 - src/components/config/metas-panel.tsx
+- src/components/config/storage-vaults-tab.tsx
 - src/components/config/tags-tab.tsx
 - src/components/config/templates-tab.tsx
 - src/components/content/meta-content-center.tsx
