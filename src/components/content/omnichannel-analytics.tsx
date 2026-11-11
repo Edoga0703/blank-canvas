@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import {
   TrendingUp,
+  TrendingDown,
   Users,
   Eye,
   Flame,
@@ -14,8 +15,18 @@ import {
   CheckCircle2,
   Zap,
   ArrowUpRight,
+  AlertTriangle,
+  Lightbulb,
+  Target,
+  DollarSign,
+  Copy,
+  Film,
+  Image as ImageIcon,
+  Layers,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   InstagramGlyph,
@@ -44,6 +55,8 @@ export function OmnichannelAnalytics({ accounts }: Props) {
         username: "@cuentastupanas",
         followers: Math.round(18450 * (timeRange === "7d" ? 0.96 : timeRange === "90d" ? 1.12 : 1)),
         views: Math.round(142000 * multiplier),
+        interactions: Math.round(16800 * multiplier),
+        leads: Math.round(185 * multiplier),
         growth: timeRange === "7d" ? "+380 novos" : timeRange === "90d" ? "+4,120 novos" : "+1,240 este mês",
         icon: TikTokGlyph,
         color: "text-foreground",
@@ -56,6 +69,8 @@ export function OmnichannelAnalytics({ accounts }: Props) {
         username: "CuentasTuPana",
         followers: Math.round(9210 * (timeRange === "7d" ? 0.97 : timeRange === "90d" ? 1.09 : 1)),
         views: Math.round(285000 * multiplier),
+        interactions: Math.round(14200 * multiplier),
+        leads: Math.round(124 * multiplier),
         growth: timeRange === "7d" ? "+240 novos" : timeRange === "90d" ? "+2,680 novos" : "+820 este mês",
         icon: YouTubeGlyph,
         color: "text-[#FF0000]",
@@ -68,6 +83,8 @@ export function OmnichannelAnalytics({ accounts }: Props) {
         username: "cuentastupanas",
         followers: Math.round(12800 * (timeRange === "7d" ? 0.98 : timeRange === "90d" ? 1.07 : 1)),
         views: Math.round(68400 * multiplier),
+        interactions: Math.round(5100 * multiplier),
+        leads: Math.round(68 * multiplier),
         growth: timeRange === "7d" ? "+110 novos" : timeRange === "90d" ? "+1,420 novos" : "+450 este mês",
         icon: InstagramGlyph,
         color: "text-[#E1306C]",
@@ -80,6 +97,8 @@ export function OmnichannelAnalytics({ accounts }: Props) {
         username: "Cuentastupanas",
         followers: Math.round(15400 * (timeRange === "7d" ? 0.99 : timeRange === "90d" ? 1.04 : 1)),
         views: Math.round(32000 * multiplier),
+        interactions: Math.round(2140 * multiplier),
+        leads: Math.round(35 * multiplier),
         growth: timeRange === "7d" ? "+60 novos" : timeRange === "90d" ? "+710 novos" : "+210 este mês",
         icon: FacebookGlyph,
         color: "text-[#0084FF]",
@@ -89,10 +108,88 @@ export function OmnichannelAnalytics({ accounts }: Props) {
     ];
   }, [timeRange, multiplier]);
 
+  // Sumas Totais Consolidadas
   const totalFollowers = profileMetrics.reduce((acc, m) => acc + m.followers, 0);
   const totalViews = profileMetrics.reduce((acc, m) => acc + m.views, 0);
+  const totalInteractions = profileMetrics.reduce((acc, m) => acc + m.interactions, 0);
+  const totalLeads = profileMetrics.reduce((acc, m) => acc + m.leads, 0);
+  const estimatedRevenue = totalLeads * 12.5; // Ticket médio estimado de $12.50 USD
 
-  // Comparativa de Publicação Multicanal (mismo video en las 4 redes)
+  // Insights Estratégicos & Recomendações
+  const strategicInsights = useMemo(() => {
+    return [
+      {
+        type: "action",
+        title: "Recomendação de Próxima Ação (Next Best Action)",
+        icon: Target,
+        color: "text-primary",
+        border: "border-primary/30",
+        bg: "bg-primary/5",
+        badge: "Alta Prioridade",
+        text: "O vídeo 'Disney+ e Max' gerou 68.1K visualizações no YouTube Shorts com 94% de retenção. Recomendamos publicar um novo vídeo de comparação com a Netflix nesta Quinta-feira às 18:30 para captar mais 120 leads.",
+      },
+      {
+        type: "warning",
+        title: "Alerta de Fadiga de Criativo",
+        icon: AlertTriangle,
+        color: "text-amber-500",
+        border: "border-amber-500/30",
+        bg: "bg-amber-500/5",
+        badge: "Atenção",
+        text: "O vídeo 'Canva Pro Anual' está ativo há mais de 14 dias com queda de 22% nas impressões diárias. Recomendamos atualizar a capa (thumbnail) ou trocar a chamada para ação inicial.",
+      },
+      {
+        type: "conversion",
+        title: "Benchmark de Conversão por Formato",
+        icon: Lightbulb,
+        color: "text-emerald-500",
+        border: "border-emerald-500/30",
+        bg: "bg-emerald-500/5",
+        badge: "Insight de Vendas",
+        text: "Vídeos verticais de 18s a 25s convertem 2.4x mais comentários em conversas no WhatsApp do que vídeos com mais de 45s. Mantenha os preços visíveis logo nos primeiros 5 segundos.",
+      },
+      {
+        type: "channel",
+        title: "Distribuição Estratégica por Canal",
+        icon: Sparkles,
+        color: "text-blue-500",
+        border: "border-blue-500/30",
+        bg: "bg-blue-500/5",
+        badge: "Inteligência Omnicanal",
+        text: "O TikTok é o canal mais eficiente em velocidade de alcance viral (33% da audiência), enquanto o YouTube Shorts retém mais visualizações ao longo dos meses e o Instagram fecha vendas mais rápido via link/direct.",
+      },
+    ];
+  }, []);
+
+  // Comparativa de Formato
+  const formatBenchmarks = [
+    {
+      format: "Vídeo Curto Vertical (9:16)",
+      share: "84% do alcance total",
+      cps: 93,
+      leadsRatio: "14.8%",
+      icon: Film,
+      hint: "Reels, Shorts e TikTok são o principal motor de atração de novos clientes.",
+    },
+    {
+      format: "Imagem Estática / Banner de Oferta",
+      share: "11% do alcance total",
+      cps: 72,
+      leadsRatio: "8.4%",
+      icon: ImageIcon,
+      hint: "Ideal para anúncios diretos de preços e promoções relâmpago no Facebook.",
+    },
+    {
+      format: "Carrossel Explicativo (Passo a Passo)",
+      share: "5% do alcance total",
+      cps: 81,
+      leadsRatio: "11.2%",
+      icon: Layers,
+      hint: "Gera a maior quantidade de posts salvos e compartilhados entre amigos.",
+    },
+  ];
+
+  // Comparativa de Publicações Multicanal
   const comparativePosts = [
     {
       title: "Promo Streaming 50% OFF (Disney + Max)",
@@ -148,6 +245,13 @@ export function OmnichannelAnalytics({ accounts }: Props) {
     { day: "Sábado", time: "13:30 - 16:00", score: "98/100", hint: "Maior taxa de viralidade e compartilhamentos", platform: "Multicanal" },
   ];
 
+  // Copiar resumo executivo para WhatsApp ou relatório
+  const handleCopySummary = () => {
+    const summary = `📊 *RESUMO EXECUTIVO DE REDES SOCIAIS & CONVERSÃO (Capiversa)*\nPeríodo: ${timeRange.toUpperCase()}\n\n👥 Audiência Total: ${totalFollowers.toLocaleString()} seguidores\n👀 Visualizações Totais: ${totalViews.toLocaleString()}\n💬 Interações Totais: ${totalInteractions.toLocaleString()}\n🎯 Oportunidades de Compra: ${totalLeads} leads identificados\n💰 Pipeline Estimado: $${estimatedRevenue.toLocaleString()} USD em vendas potenciais\n🏆 Canal Líder em Vistas: YouTube Shorts (285K)\n🔥 Canal Mais Rápido em Vendas: TikTok\n\nGerado automaticamente pelo Capi Conversa CRM.`;
+    navigator.clipboard.writeText(summary);
+    toast.success("Resumo executivo copiado para a área de transferência!");
+  };
+
   return (
     <div className="space-y-6">
       {/* Seletor de Período & Cabeçalho */}
@@ -160,117 +264,196 @@ export function OmnichannelAnalytics({ accounts }: Props) {
             </Badge>
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Estatísticas oficiais a nível de perfil conectadas com nossos algoritmos de conversão e intenção comercial.
+            Estatísticas oficiais a nível de perfil conectadas com nossos algoritmos de conversão, sumas consolidadas e insights acionáveis.
           </p>
         </div>
 
-        {/* Seletor de Período 7d / 30d / 90d */}
-        <div className="inline-flex p-1 rounded-xl bg-muted/50 border border-[color:var(--hairline)] self-start sm:self-auto">
-          <button
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {/* Botão Copiar Resumo Executivo */}
+          <Button
             type="button"
-            onClick={() => setTimeRange("7d")}
-            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-              timeRange === "7d" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}
+            variant="outline"
+            size="sm"
+            onClick={handleCopySummary}
+            className="h-8 text-xs gap-1.5 border-[color:var(--hairline)] hover:bg-muted font-medium"
+            title="Copiar texto estruturado para envio de relatório"
           >
-            7 dias
-          </button>
-          <button
-            type="button"
-            onClick={() => setTimeRange("30d")}
-            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-              timeRange === "30d" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            30 dias
-          </button>
-          <button
-            type="button"
-            onClick={() => setTimeRange("90d")}
-            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-              timeRange === "90d" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            90 dias
-          </button>
+            <Copy className="size-3.5 text-primary" />
+            <span className="hidden sm:inline">Copiar Relatório</span>
+          </Button>
+
+          {/* Seletor de Período 7d / 30d / 90d */}
+          <div className="inline-flex p-1 rounded-xl bg-muted/50 border border-[color:var(--hairline)]">
+            <button
+              type="button"
+              onClick={() => setTimeRange("7d")}
+              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
+                timeRange === "7d" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              7 dias
+            </button>
+            <button
+              type="button"
+              onClick={() => setTimeRange("30d")}
+              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
+                timeRange === "30d" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              30 dias
+            </button>
+            <button
+              type="button"
+              onClick={() => setTimeRange("90d")}
+              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
+                timeRange === "90d" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              90 dias
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* 1. KPIs Gerais de Perfil (Seguidores & Visualizações Acumuladas) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Seguidores */}
-        <div className="p-4 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-medium">Audiência Total (4 Redes)</span>
-            <Users className="size-4 text-primary" />
-          </div>
-          <div className="text-2xl font-extrabold text-foreground tracking-tight">
-            {totalFollowers.toLocaleString()}
-          </div>
-          <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-            <TrendingUp className="size-3" />
-            <span>+{timeRange === "7d" ? "790" : timeRange === "90d" ? "8,930" : "2,720"} seguidores no período</span>
-          </p>
+      {/* 1. Sumas Totais Consolidadas de Negócio (Executive Totals Grid) */}
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <BarChart3 className="size-3.5 text-primary" />
+            <span>Sumas Totais Consolidadas (Meta, TikTok e YouTube)</span>
+          </h3>
+          <span className="text-[11px] text-muted-foreground">Métricas unificadas sem duplicações</span>
         </div>
 
-        {/* Visualizações Totais */}
-        <div className="p-4 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-medium">Visualizações Totais</span>
-            <Eye className="size-4 text-primary" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+          {/* Total Visualizações */}
+          <div className="p-4 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] shadow-sm space-y-1">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium">Visualizações Totais</span>
+              <Eye className="size-4 text-primary" />
+            </div>
+            <div className="text-2xl font-extrabold text-foreground tracking-tight">
+              {totalViews.toLocaleString()}
+            </div>
+            <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+              <TrendingUp className="size-3" />
+              <span>+34.8% vs. anterior</span>
+            </p>
           </div>
-          <div className="text-2xl font-extrabold text-foreground tracking-tight">
-            {totalViews.toLocaleString()}
-          </div>
-          <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-            <TrendingUp className="size-3" />
-            <span>+34.8% vs. período anterior</span>
-          </p>
-        </div>
 
-        {/* Content Performance Score (Métrica Propietaria de Capiversa) */}
-        <div className="p-4 rounded-2xl bg-[var(--panel)] border border-primary/30 shadow-sm space-y-1 ring-1 ring-primary/20">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-medium flex items-center gap-1">
-              <Award className="size-3.5 text-primary" /> Score Capiversa (CPS)
-            </span>
-            <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold">
-              Excelente
-            </Badge>
+          {/* Total Seguidores / Audiência */}
+          <div className="p-4 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] shadow-sm space-y-1">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium">Audiência Global</span>
+              <Users className="size-4 text-primary" />
+            </div>
+            <div className="text-2xl font-extrabold text-foreground tracking-tight">
+              {totalFollowers.toLocaleString()}
+            </div>
+            <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+              <TrendingUp className="size-3" />
+              <span>+{timeRange === "7d" ? "790" : timeRange === "90d" ? "8,930" : "2,720"} no período</span>
+            </p>
           </div>
-          <div className="text-2xl font-extrabold text-foreground tracking-tight flex items-baseline gap-1">
-            <span>89</span>
-            <span className="text-xs font-semibold text-muted-foreground">/ 100</span>
-          </div>
-          <div className="w-full bg-muted/50 rounded-full h-1.5 overflow-hidden mt-1">
-            <div className="bg-primary h-full rounded-full transition-all duration-500" style={{ width: "89%" }} />
-          </div>
-          <p className="text-[10.5px] text-muted-foreground pt-0.5">
-            Top 10% no nicho de assinaturas digitais
-          </p>
-        </div>
 
-        {/* Taxa de Intenção Comercial (Métrica Propietaria de Vendas) */}
-        <div className="p-4 rounded-2xl bg-[var(--panel)] border border-amber-500/30 shadow-sm space-y-1 ring-1 ring-amber-500/10">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-medium flex items-center gap-1 text-amber-600">
-              <Flame className="size-3.5 text-amber-500 fill-amber-500" /> Intenção de Compra
-            </span>
-            <span className="text-xs font-bold text-amber-500">14.6%</span>
+          {/* Total Interações */}
+          <div className="p-4 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] shadow-sm space-y-1">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium">Interações Totais</span>
+              <MessageSquare className="size-4 text-primary" />
+            </div>
+            <div className="text-2xl font-extrabold text-foreground tracking-tight">
+              {totalInteractions.toLocaleString()}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Likes, comentários e shares
+            </p>
           </div>
-          <div className="text-2xl font-extrabold text-foreground tracking-tight">
-            1 em 7
+
+          {/* Oportunidades / Leads de Vendas */}
+          <div className="p-4 rounded-2xl bg-[var(--panel)] border border-amber-500/30 shadow-sm space-y-1 ring-1 ring-amber-500/15">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium text-amber-600 flex items-center gap-1">
+                <Flame className="size-3.5 fill-amber-500 text-amber-500" /> Leads de Venda
+              </span>
+              <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] font-bold">
+                14.6%
+              </Badge>
+            </div>
+            <div className="text-2xl font-extrabold text-foreground tracking-tight">
+              {totalLeads} leads
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Comentários com intenção de compra
+            </p>
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            Comentam perguntando preço ou forma de pagamento
-          </p>
+
+          {/* Pipeline de Vendas Estimado */}
+          <div className="p-4 rounded-2xl bg-[var(--panel)] border border-emerald-500/30 shadow-sm space-y-1 ring-1 ring-emerald-500/15">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium text-emerald-600 flex items-center gap-1">
+                <DollarSign className="size-3.5 text-emerald-600" /> Pipeline Estimado
+              </span>
+              <span className="text-[10px] text-emerald-600 font-bold bg-emerald-500/10 px-1.5 py-0.2 rounded">
+                Orgânico
+              </span>
+            </div>
+            <div className="text-2xl font-extrabold text-foreground tracking-tight">
+              ${estimatedRevenue.toLocaleString()} <span className="text-xs font-semibold text-muted-foreground">USD</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Sem custo com anúncios pagos
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Barra de Distribuição de Audiência por Plataforma */}
-      <div className="p-4 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] space-y-2 shadow-sm">
+      {/* 2. Motor de Insights e Recomendações Estratégicas com IA */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="size-4 text-primary" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+              Insights Estratégicos & Recomendações da IA Capiversa
+            </h3>
+          </div>
+          <span className="text-[11px] text-muted-foreground">
+            Atualizado a cada nova publicação e sincronização de dados
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          {strategicInsights.map((insight, idx) => {
+            const Icon = insight.icon;
+            return (
+              <div
+                key={idx}
+                className={`p-4 rounded-2xl border ${insight.border} ${insight.bg} space-y-2 transition-all hover:shadow-md`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className={`p-1.5 rounded-lg bg-background border border-[color:var(--hairline)] shrink-0 ${insight.color}`}>
+                      <Icon className="size-4" />
+                    </div>
+                    <span className="text-xs font-bold text-foreground">{insight.title}</span>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] font-bold border-current shrink-0">
+                    {insight.badge}
+                  </Badge>
+                </div>
+                <p className="text-xs text-foreground/90 leading-relaxed font-medium pl-1">
+                  {insight.text}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 3. Distribuição de Audiência por Plataforma */}
+      <div className="p-4 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] space-y-2.5 shadow-sm">
         <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
-          <span>Distribuição de Audiência por Rede Social</span>
+          <span>Distribuição Consolidada de Audiência por Rede Social</span>
           <span className="text-foreground font-bold">{totalFollowers.toLocaleString()} seguidores</span>
         </div>
         <div className="w-full h-3 rounded-full flex overflow-hidden gap-0.5 bg-muted/40">
@@ -281,73 +464,72 @@ export function OmnichannelAnalytics({ accounts }: Props) {
         </div>
         <div className="flex flex-wrap items-center gap-4 text-[11px] pt-1">
           <span className="flex items-center gap-1.5 font-medium">
-            <span className="size-2 rounded-full bg-foreground" /> TikTok (33%)
+            <span className="size-2 rounded-full bg-foreground" /> TikTok (33% • {profileMetrics[0].followers.toLocaleString()})
           </span>
           <span className="flex items-center gap-1.5 font-medium text-[#0084FF]">
-            <span className="size-2 rounded-full bg-[#0084FF]" /> Facebook (28%)
+            <span className="size-2 rounded-full bg-[#0084FF]" /> Facebook (28% • {profileMetrics[3].followers.toLocaleString()})
           </span>
           <span className="flex items-center gap-1.5 font-medium text-[#E1306C]">
-            <span className="size-2 rounded-full bg-[#E1306C]" /> Instagram (23%)
+            <span className="size-2 rounded-full bg-[#E1306C]" /> Instagram (23% • {profileMetrics[2].followers.toLocaleString()})
           </span>
           <span className="flex items-center gap-1.5 font-medium text-[#FF0000]">
-            <span className="size-2 rounded-full bg-[#FF0000]" /> YouTube (16%)
+            <span className="size-2 rounded-full bg-[#FF0000]" /> YouTube (16% • {profileMetrics[1].followers.toLocaleString()})
           </span>
         </div>
       </div>
 
-      {/* 2. Estatísticas Individuais de Cada Perfil Conectado */}
+      {/* 4. Benchmarking por Formato de Conteúdo */}
       <div className="space-y-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          Estatísticas Detalhadas por Perfil Conectado
+          Benchmark de Formatos: O Que Mais Funciona para Sua Empresa
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {profileMetrics.map((pm, idx) => {
-            const Icon = pm.icon;
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+          {formatBenchmarks.map((fb, idx) => {
+            const Icon = fb.icon;
             return (
               <div
                 key={idx}
-                className="p-4 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] space-y-3 shadow-sm hover:border-primary/40 transition-colors"
+                className="p-4 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] space-y-2.5 shadow-sm hover:border-primary/40 transition-colors"
               >
-                <div className="flex items-center gap-2.5">
-                  <div className={`p-2 rounded-xl border shrink-0 ${pm.badgeBg}`}>
-                    <Icon className="size-4.5" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                      <Icon className="size-4" />
+                    </div>
+                    <span className="text-xs font-bold text-foreground">{fb.format}</span>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-foreground truncate">{pm.name}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{pm.username}</p>
+                  <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold">
+                    CPS {fb.cps}
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                  <div>
+                    <span className="text-[10.5px] text-muted-foreground">Participação</span>
+                    <p className="font-semibold text-foreground">{fb.share}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10.5px] text-muted-foreground">Taxa de Compra</span>
+                    <p className="font-semibold text-emerald-600">{fb.leadsRatio}</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[color:var(--hairline)]">
-                  <div>
-                    <span className="text-[10.5px] text-muted-foreground font-medium">Seguidores</span>
-                    <p className="text-sm font-bold text-foreground">{pm.followers.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <span className="text-[10.5px] text-muted-foreground font-medium">Views Acumuladas</span>
-                    <p className="text-sm font-bold text-foreground">{pm.views.toLocaleString()}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-[10.5px] pt-1">
-                  <span className="text-emerald-600 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md">
-                    {pm.growth}
-                  </span>
-                  <span className="text-muted-foreground font-medium">{pm.sharePercent}% do total</span>
-                </div>
+                <p className="text-[11px] text-muted-foreground leading-tight pt-1 border-t border-[color:var(--hairline)]">
+                  {fb.hint}
+                </p>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* 3. Comparador Multicanal (Rendimento do mesmo vídeo nas 4 redes) */}
+      {/* 5. Comparativo de Publicações Multicanal (Mesmo Vídeo nas 4 Redes) */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Comparativo de Publicações Multicanal (Mesmo Vídeo nas 4 Redes)
+            Comparativo de Publicações Multicanal (Mesmo Conteúdo nas 4 Redes)
           </h3>
-          <span className="text-xs text-muted-foreground">Onde seu conteúdo mais converte</span>
+          <span className="text-xs text-muted-foreground">Identifique o canal vencedor de cada post</span>
         </div>
 
         <div className="overflow-x-auto rounded-2xl border border-[color:var(--hairline)] bg-[var(--panel)] shadow-sm">
@@ -423,7 +605,7 @@ export function OmnichannelAnalytics({ accounts }: Props) {
         </div>
       </div>
 
-      {/* 4. Mapa de Calor Propietario (Melhores Horários de Postagem) */}
+      {/* 6. Mapa de Calor Propietario (Melhores Horários Recomendados) */}
       <div className="p-5 rounded-2xl bg-[var(--panel)] border border-[color:var(--hairline)] space-y-4 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
           <div className="flex items-center gap-2">
