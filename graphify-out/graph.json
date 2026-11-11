@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T12:00:05.365407+00:00",
+  "generated_at": "2026-11-11T13:16:30.178598+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -554,6 +554,10 @@
       "bytes": 14026
     },
     {
+      "path": "supabase/migrations/20261111050000_social_accounts_queue_and_search_hardening.sql",
+      "bytes": 4348
+    },
+    {
       "path": "supabase/migrations/20261022190000_storage_buckets_and_cron_parity.sql",
       "bytes": 2342
     },
@@ -624,6 +628,10 @@
     {
       "path": "docs/sql/20261111020000_scheduled_posts_and_crm_worker_hardening.sql",
       "bytes": 1022
+    },
+    {
+      "path": "docs/sql/20261111050000_social_accounts_queue_and_search_hardening.sql",
+      "bytes": 4348
     },
     {
       "path": "docs/sql/20261029140000_automations_remediation.sql",
@@ -951,7 +959,7 @@
     },
     {
       "path": "src/lib/crm-engine.server.ts",
-      "bytes": 20887
+      "bytes": 21357
     },
     {
       "path": "src/lib/company-reset.functions.ts",
@@ -1339,7 +1347,7 @@
     },
     {
       "path": "src/lib/message-search.functions.ts",
-      "bytes": 7536
+      "bytes": 8837
     },
     {
       "path": "src/lib/cron-auth.server.ts",
@@ -1399,7 +1407,7 @@
     },
     {
       "path": "src/lib/omnichannel-content.functions.ts",
-      "bytes": 18472
+      "bytes": 18796
     },
     {
       "path": "src/lib/meta-response-window.server.ts",
@@ -1947,7 +1955,7 @@
     },
     {
       "path": "src/routes/app/automacoes.$workflowId.tsx",
-      "bytes": 74233
+      "bytes": 85842
     },
     {
       "path": "src/routes/app/treinamentos.index.tsx",
@@ -2179,7 +2187,7 @@
     },
     {
       "path": "src/routes/api/public/content/drafts.ts",
-      "bytes": 8677
+      "bytes": 11677
     },
     {
       "path": "src/routes/api/public/content/status.ts",
@@ -3019,11 +3027,11 @@
     },
     {
       "path": "src/lib/automations/registry.server.ts",
-      "bytes": 17383
+      "bytes": 18411
     },
     {
       "path": "src/lib/automations/queue.server.ts",
-      "bytes": 16996
+      "bytes": 17206
     },
     {
       "path": "src/lib/automations/conversation-control.server.ts",
@@ -3039,15 +3047,15 @@
     },
     {
       "path": "src/lib/automations/schema.ts",
-      "bytes": 6031
+      "bytes": 6126
     },
     {
       "path": "src/lib/automations/events.server.ts",
-      "bytes": 12744
+      "bytes": 12864
     },
     {
       "path": "src/lib/automations/functions.ts",
-      "bytes": 21307
+      "bytes": 21393
     },
     {
       "path": "src/lib/automations/inbound-events.server.ts",
@@ -3139,7 +3147,7 @@
     },
     {
       "path": "src/lib/content/queue.server.ts",
-      "bytes": 12277
+      "bytes": 14291
     },
     {
       "path": "src/lib/content/assets.server.ts",
@@ -3171,7 +3179,7 @@
     },
     {
       "path": "src/lib/content/providers/youtube.server.ts",
-      "bytes": 9117
+      "bytes": 9285
     },
     {
       "path": "src/lib/content/providers/types.ts",
@@ -3187,7 +3195,7 @@
     },
     {
       "path": "src/lib/content/providers/tiktok.server.ts",
-      "bytes": 9988
+      "bytes": 10155
     },
     {
       "path": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
