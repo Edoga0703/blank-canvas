@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T16:46:40.393171+00:00",
+  "generated_at": "2026-11-11T17:15:38.244693+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -1367,7 +1367,7 @@
     },
     {
       "path": "src/lib/cron-auth.server.ts",
-      "bytes": 1428
+      "bytes": 1473
     },
     {
       "path": "src/lib/meta-message-media.server.ts",
@@ -2075,7 +2075,7 @@
     },
     {
       "path": "src/routes/api/public/chat-media.ts",
-      "bytes": 13097
+      "bytes": 13157
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
@@ -3027,7 +3027,7 @@
     },
     {
       "path": "src/integrations/supabase/client.server.ts",
-      "bytes": 2712
+      "bytes": 2943
     },
     {
       "path": "src/lib/integracoes/catalogo.ts",
@@ -3127,7 +3127,7 @@
     },
     {
       "path": "src/lib/storage/storage-pool.server.ts",
-      "bytes": 13918
+      "bytes": 14119
     },
     {
       "path": "src/lib/storage/r2.functions.ts",
@@ -3135,7 +3135,7 @@
     },
     {
       "path": "src/lib/storage/r2.server.ts",
-      "bytes": 12904
+      "bytes": 13105
     },
     {
       "path": "src/lib/email-templates/recovery.tsx",
