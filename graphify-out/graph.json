@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T19:11:26.160106+00:00",
+  "generated_at": "2026-11-11T21:51:41.680696+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -586,6 +586,10 @@
       "bytes": 13828
     },
     {
+      "path": "supabase/migrations/20261111080000_telegram_foundation_and_dual_transport.sql",
+      "bytes": 13736
+    },
+    {
       "path": "supabase/migrations/20261009070000_company_full_columns.sql",
       "bytes": 2532
     },
@@ -656,6 +660,10 @@
     {
       "path": "docs/sql/20261029150000_automation_v1301.sql",
       "bytes": 13822
+    },
+    {
+      "path": "docs/sql/20261111080000_telegram_foundation_and_dual_transport.sql",
+      "bytes": 13736
     },
     {
       "path": "docs/sql/20261029100000_multichannel_automations.sql",
@@ -739,7 +747,7 @@
     },
     {
       "path": "src/lib/social-content.types.ts",
-      "bytes": 5524
+      "bytes": 5537
     },
     {
       "path": "src/lib/business-hours.ts",
@@ -1067,7 +1075,7 @@
     },
     {
       "path": "src/lib/wa-dispatch.server.ts",
-      "bytes": 13010
+      "bytes": 14895
     },
     {
       "path": "src/lib/agendamentos-dispatch.server.ts",
@@ -1171,7 +1179,7 @@
     },
     {
       "path": "src/lib/telegram.server.ts",
-      "bytes": 6014
+      "bytes": 10491
     },
     {
       "path": "src/lib/department-menu.functions.ts",
@@ -1347,7 +1355,7 @@
     },
     {
       "path": "src/lib/telegram.functions.ts",
-      "bytes": 3773
+      "bytes": 4630
     },
     {
       "path": "src/lib/lovable-ai.server.ts",
@@ -1423,7 +1431,7 @@
     },
     {
       "path": "src/lib/omnichannel-content.functions.ts",
-      "bytes": 28463
+      "bytes": 28415
     },
     {
       "path": "src/lib/meta-response-window.server.ts",
@@ -2107,7 +2115,7 @@
     },
     {
       "path": "src/routes/api/public/telegram-webhook.ts",
-      "bytes": 6201
+      "bytes": 13920
     },
     {
       "path": "src/routes/api/public/track-click.ts",
@@ -2699,7 +2707,7 @@
     },
     {
       "path": "src/components/conexao/telegram-connect-dialog.tsx",
-      "bytes": 2716
+      "bytes": 8250
     },
     {
       "path": "src/components/conexao/nova-conexao-dialog.tsx",
@@ -3030,6 +3038,10 @@
       "bytes": 3053
     },
     {
+      "path": "src/lib/telegram/contracts.ts",
+      "bytes": 1500
+    },
+    {
       "path": "src/lib/integracoes/catalogo.ts",
       "bytes": 9155
     },
@@ -3199,15 +3211,19 @@
     },
     {
       "path": "src/lib/content/providers/types.ts",
-      "bytes": 1707
+      "bytes": 1720
     },
     {
       "path": "src/lib/content/providers/index.ts",
-      "bytes": 816
+      "bytes": 933
     },
     {
       "path": "src/lib/content/providers/meta.server.ts",
       "bytes": 5531
+    },
+    {
+      "path": "src/lib/content/providers/telegram.server.ts",
+      "bytes": 992
     },
     {
       "path": "src/lib/content/providers/tiktok.server.ts",
@@ -6502,6 +6518,14 @@
     {
       "source": "src/lib/billing-checkout.functions.ts",
       "target": "@/lib/billing/charges.server"
+    },
+    {
+      "source": "src/lib/telegram.server.ts",
+      "target": "@/lib/storage/r2.server"
+    },
+    {
+      "source": "src/lib/telegram.server.ts",
+      "target": "@/lib/storage/r2.server"
     },
     {
       "source": "src/lib/department-menu.functions.ts",
@@ -12229,6 +12253,10 @@
     },
     {
       "source": "src/routes/api/public/telegram-webhook.ts",
+      "target": "@/routes/api/public/chat-media"
+    },
+    {
+      "source": "src/routes/api/public/telegram-webhook.ts",
       "target": "@/lib/automations/inbound-events.server"
     },
     {
@@ -15389,6 +15417,14 @@
     },
     {
       "source": "src/components/conexao/telegram-connect-dialog.tsx",
+      "target": "@/components/ui/tabs"
+    },
+    {
+      "source": "src/components/conexao/telegram-connect-dialog.tsx",
+      "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/components/conexao/telegram-connect-dialog.tsx",
       "target": "lucide-react"
     },
     {
@@ -18445,6 +18481,10 @@
     },
     {
       "source": "src/lib/content/providers/index.ts",
+      "target": "./telegram.server"
+    },
+    {
+      "source": "src/lib/content/providers/index.ts",
       "target": "./types"
     },
     {
@@ -18464,6 +18504,10 @@
       "target": "./tiktok.server"
     },
     {
+      "source": "src/lib/content/providers/index.ts",
+      "target": "./telegram.server"
+    },
+    {
       "source": "src/lib/content/providers/meta.server.ts",
       "target": "@/integrations/supabase/client.server"
     },
@@ -18473,6 +18517,10 @@
     },
     {
       "source": "src/lib/content/providers/meta.server.ts",
+      "target": "./types"
+    },
+    {
+      "source": "src/lib/content/providers/telegram.server.ts",
       "target": "./types"
     },
     {
