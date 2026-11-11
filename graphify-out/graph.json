@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T07:54:05.020279+00:00",
+  "generated_at": "2026-11-11T08:10:22.120477+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -1371,7 +1371,7 @@
     },
     {
       "path": "src/lib/omnichannel-content.functions.ts",
-      "bytes": 10983
+      "bytes": 11731
     },
     {
       "path": "src/lib/meta-response-window.server.ts",
@@ -1627,7 +1627,7 @@
     },
     {
       "path": "src/components/app-shell.tsx",
-      "bytes": 37795
+      "bytes": 37815
     },
     {
       "path": "src/components/trial-banner.tsx",
@@ -1963,7 +1963,7 @@
     },
     {
       "path": "src/routes/app/conteudo.tsx",
-      "bytes": 5946
+      "bytes": 6736
     },
     {
       "path": "src/routes/app/publicacoes.tsx",
