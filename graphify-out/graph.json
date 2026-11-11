@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T09:49:29.331762+00:00",
+  "generated_at": "2026-11-11T09:55:13.655934+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -2815,7 +2815,7 @@
     },
     {
       "path": "src/components/config/storage-vaults-tab.tsx",
-      "bytes": 32455
+      "bytes": 32416
     },
     {
       "path": "src/components/chat/chat-location.tsx",
