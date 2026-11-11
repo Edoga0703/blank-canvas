@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T09:55:13.655934+00:00",
+  "generated_at": "2026-11-11T10:38:21.821627+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -15,7 +15,7 @@
     },
     {
       "path": "vite.config.ts",
-      "bytes": 4905
+      "bytes": 2952
     },
     {
       "path": "fix_training_data.sql",
@@ -83,7 +83,7 @@
     },
     {
       "path": "src/routeTree.gen.ts",
-      "bytes": 103520
+      "bytes": 104876
     },
     {
       "path": "src/styles.css",
@@ -539,7 +539,11 @@
     },
     {
       "path": "supabase/migrations/20261111010000_hybrid_storage_pool_and_google_drive.sql",
-      "bytes": 5765
+      "bytes": 7324
+    },
+    {
+      "path": "supabase/migrations/20261111020000_scheduled_posts_and_crm_worker_hardening.sql",
+      "bytes": 1022
     },
     {
       "path": "supabase/migrations/20261011040000_meta_phase1_assets_content_history.sql",
@@ -604,6 +608,14 @@
     {
       "path": "docs/sql/20261011_meta_phase1_assets_content_history.sql",
       "bytes": 14040
+    },
+    {
+      "path": "docs/sql/20261111010000_hybrid_storage_pool_and_google_drive.sql",
+      "bytes": 7324
+    },
+    {
+      "path": "docs/sql/20261111020000_scheduled_posts_and_crm_worker_hardening.sql",
+      "bytes": 1022
     },
     {
       "path": "docs/sql/20261029140000_automations_remediation.sql",
@@ -755,7 +767,7 @@
     },
     {
       "path": "src/lib/crm-analysis-worker.server.ts",
-      "bytes": 16405
+      "bytes": 17063
     },
     {
       "path": "src/lib/agent-copilot.functions.ts",
@@ -771,7 +783,7 @@
     },
     {
       "path": "src/lib/crm-contacts-import.server.ts",
-      "bytes": 11100
+      "bytes": 11335
     },
     {
       "path": "src/lib/wa-interactive.ts",
@@ -879,7 +891,7 @@
     },
     {
       "path": "src/lib/crm-contacts-import.functions.ts",
-      "bytes": 5780
+      "bytes": 6035
     },
     {
       "path": "src/lib/crm-copilot.server.ts",
@@ -931,7 +943,7 @@
     },
     {
       "path": "src/lib/crm-engine.server.ts",
-      "bytes": 20309
+      "bytes": 20887
     },
     {
       "path": "src/lib/company-reset.functions.ts",
@@ -996,6 +1008,10 @@
     {
       "path": "src/lib/plugins-fixos.ts",
       "bytes": 211
+    },
+    {
+      "path": "src/lib/omnichannel-publish.server.ts",
+      "bytes": 5641
     },
     {
       "path": "src/lib/olist.server.ts",
@@ -1263,7 +1279,7 @@
     },
     {
       "path": "src/lib/google.server.ts",
-      "bytes": 19084
+      "bytes": 18829
     },
     {
       "path": "src/lib/plan.functions.ts",
@@ -1307,7 +1323,7 @@
     },
     {
       "path": "src/lib/whatsapp.functions.ts",
-      "bytes": 48751
+      "bytes": 47996
     },
     {
       "path": "src/lib/training.functions.ts",
@@ -1315,11 +1331,11 @@
     },
     {
       "path": "src/lib/message-search.functions.ts",
-      "bytes": 4877
+      "bytes": 7536
     },
     {
       "path": "src/lib/cron-auth.server.ts",
-      "bytes": 1255
+      "bytes": 1428
     },
     {
       "path": "src/lib/meta-message-media.server.ts",
@@ -1375,7 +1391,7 @@
     },
     {
       "path": "src/lib/omnichannel-content.functions.ts",
-      "bytes": 11731
+      "bytes": 9039
     },
     {
       "path": "src/lib/meta-response-window.server.ts",
@@ -2027,7 +2043,7 @@
     },
     {
       "path": "src/routes/api/public/chat-media.ts",
-      "bytes": 12904
+      "bytes": 13097
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
@@ -2124,6 +2140,10 @@
     {
       "path": "src/routes/api/public/hooks/process-kanban-reguas.ts",
       "bytes": 1273
+    },
+    {
+      "path": "src/routes/api/public/hooks/process-scheduled-posts.ts",
+      "bytes": 5136
     },
     {
       "path": "src/routes/api/public/hooks/google-calendar.ts",
@@ -2703,7 +2723,7 @@
     },
     {
       "path": "src/components/content/omnichannel-publisher.tsx",
-      "bytes": 53578
+      "bytes": 54308
     },
     {
       "path": "src/components/content/omnichannel-analytics.tsx",
@@ -2963,7 +2983,7 @@
     },
     {
       "path": "src/integrations/supabase/client.server.ts",
-      "bytes": 2928
+      "bytes": 2712
     },
     {
       "path": "src/lib/integracoes/catalogo.ts",
@@ -3059,11 +3079,11 @@
     },
     {
       "path": "src/lib/storage/storage-admin.functions.ts",
-      "bytes": 14070
+      "bytes": 16540
     },
     {
       "path": "src/lib/storage/storage-pool.server.ts",
-      "bytes": 13915
+      "bytes": 13918
     },
     {
       "path": "src/lib/storage/r2.functions.ts",
@@ -3071,7 +3091,7 @@
     },
     {
       "path": "src/lib/storage/r2.server.ts",
-      "bytes": 13097
+      "bytes": 12032
     },
     {
       "path": "src/lib/email-templates/recovery.tsx",
@@ -3634,6 +3654,10 @@
     {
       "source": "src/routeTree.gen.ts",
       "target": "./routes/api/public/hooks/process-retry-queue"
+    },
+    {
+      "source": "src/routeTree.gen.ts",
+      "target": "./routes/api/public/hooks/process-scheduled-posts"
     },
     {
       "source": "src/routeTree.gen.ts",
@@ -5712,6 +5736,18 @@
       "target": "crypto"
     },
     {
+      "source": "src/lib/omnichannel-publish.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/omnichannel-publish.server.ts",
+      "target": "./meta-publish.server"
+    },
+    {
+      "source": "src/lib/omnichannel-publish.server.ts",
+      "target": "./meta-publish.server"
+    },
+    {
       "source": "src/lib/drive.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -7261,11 +7297,7 @@
     },
     {
       "source": "src/lib/message-search.functions.ts",
-      "target": "./whatsapp-helpers"
-    },
-    {
-      "source": "src/lib/message-search.functions.ts",
-      "target": "@/integrations/supabase/client.server"
+      "target": "@/lib/company-cache"
     },
     {
       "source": "src/lib/message-search.functions.ts",
@@ -7517,11 +7549,7 @@
     },
     {
       "source": "src/lib/omnichannel-content.functions.ts",
-      "target": "./meta-publish.server"
-    },
-    {
-      "source": "src/lib/omnichannel-content.functions.ts",
-      "target": "./meta-publish.server"
+      "target": "./omnichannel-publish.server"
     },
     {
       "source": "src/lib/omnichannel-content.functions.ts",
@@ -12318,6 +12346,22 @@
     {
       "source": "src/routes/api/public/hooks/process-kanban-reguas.ts",
       "target": "@/lib/crm-lead-analyzer.server"
+    },
+    {
+      "source": "src/routes/api/public/hooks/process-scheduled-posts.ts",
+      "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/api/public/hooks/process-scheduled-posts.ts",
+      "target": "@/lib/cron-auth.server"
+    },
+    {
+      "source": "src/routes/api/public/hooks/process-scheduled-posts.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/routes/api/public/hooks/process-scheduled-posts.ts",
+      "target": "@/lib/omnichannel-publish.server"
     },
     {
       "source": "src/routes/api/public/hooks/google-calendar.ts",
