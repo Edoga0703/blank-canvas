@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T23:26:36.696456+00:00",
+  "generated_at": "2026-11-12T04:41:50.945035+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -506,6 +506,10 @@
       "bytes": 344509
     },
     {
+      "path": "supabase/migrations/20261112000000_telegram_content_publishing_and_backfill.sql",
+      "bytes": 1643
+    },
+    {
       "path": "supabase/migrations/20261111000000_multichannel_content_and_social_hub.sql",
       "bytes": 5739
     },
@@ -608,6 +612,10 @@
     {
       "path": "supabase/migrations/20261009050000_rpc_and_auxiliary.sql",
       "bytes": 7438
+    },
+    {
+      "path": "docs/sql/20261112000000_telegram_content_publishing_and_backfill.sql",
+      "bytes": 1643
     },
     {
       "path": "docs/sql/20261111000000_multichannel_content_and_social_hub.sql",
@@ -787,7 +795,7 @@
     },
     {
       "path": "src/lib/meta-history.functions.ts",
-      "bytes": 19774
+      "bytes": 21077
     },
     {
       "path": "src/lib/master-admin.functions.ts",
@@ -1083,7 +1091,7 @@
     },
     {
       "path": "src/lib/telegram-mtproto.functions.ts",
-      "bytes": 13492
+      "bytes": 14127
     },
     {
       "path": "src/lib/billing.functions.ts",
@@ -1386,6 +1394,10 @@
       "bytes": 4281
     },
     {
+      "path": "src/lib/telegram-content-sync.server.ts",
+      "bytes": 7423
+    },
+    {
       "path": "src/lib/announcements.functions.ts",
       "bytes": 4312
     },
@@ -1435,7 +1447,7 @@
     },
     {
       "path": "src/lib/omnichannel-content.functions.ts",
-      "bytes": 28415
+      "bytes": 28678
     },
     {
       "path": "src/lib/meta-response-window.server.ts",
@@ -2767,7 +2779,7 @@
     },
     {
       "path": "src/components/content/meta-content-history.tsx",
-      "bytes": 44648
+      "bytes": 45105
     },
     {
       "path": "src/components/content/meta-social-intelligence.tsx",
@@ -2779,7 +2791,7 @@
     },
     {
       "path": "src/components/content/omnichannel-publisher.tsx",
-      "bytes": 55681
+      "bytes": 58510
     },
     {
       "path": "src/components/content/omnichannel-analytics.tsx",
@@ -3043,7 +3055,7 @@
     },
     {
       "path": "src/lib/telegram/mtproto-client.server.ts",
-      "bytes": 7927
+      "bytes": 12048
     },
     {
       "path": "src/lib/telegram/contracts.ts",
@@ -3231,7 +3243,7 @@
     },
     {
       "path": "src/lib/content/providers/telegram.server.ts",
-      "bytes": 992
+      "bytes": 7781
     },
     {
       "path": "src/lib/content/providers/tiktok.server.ts",
@@ -3255,7 +3267,7 @@
     },
     {
       "path": "services/telegram-gateway/src/index.js",
-      "bytes": 13922
+      "bytes": 19757
     }
   ],
   "dependencies": [
@@ -4386,6 +4398,10 @@
     {
       "source": "src/lib/meta-history.functions.ts",
       "target": "./meta-content-sync.server"
+    },
+    {
+      "source": "src/lib/meta-history.functions.ts",
+      "target": "./telegram-content-sync.server"
     },
     {
       "source": "src/lib/meta-history.functions.ts",
@@ -6108,6 +6124,10 @@
       "target": "./telegram/mtproto-client.server"
     },
     {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "./telegram-content-sync.server"
+    },
+    {
       "source": "src/lib/billing.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -7518,6 +7538,14 @@
     {
       "source": "src/lib/meta-message-media.server.ts",
       "target": "@/lib/storage/r2.server"
+    },
+    {
+      "source": "src/lib/telegram-content-sync.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/telegram-content-sync.server.ts",
+      "target": "@/lib/telegram/mtproto-client.server"
     },
     {
       "source": "src/lib/announcements.functions.ts",
@@ -18638,6 +18666,14 @@
     {
       "source": "src/lib/content/providers/telegram.server.ts",
       "target": "./types"
+    },
+    {
+      "source": "src/lib/content/providers/telegram.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/content/providers/telegram.server.ts",
+      "target": "@/lib/telegram/mtproto-client.server"
     },
     {
       "source": "src/lib/content/providers/tiktok.server.ts",
