@@ -645,6 +645,155 @@ app.post("/api/gateway/logout/:connectionId", requireGatewayAuth, async (req, re
   res.json({ success: true, message: "Disconnected successfully" });
 });
 
+/**
+ * POST /api/gateway/comments
+ * Obtiene los comentarios de un hilo de discusión vinculado a una publicación de canal
+ */
+app.post("/api/gateway/comments", requireGatewayAuth, async (req, res) => {
+  const { connectionId, channelId, messageId, limit = 50, offsetId } = req.body;
+  if (!connectionId || !channelId || !messageId) {
+    return res.status(400).json({ error: "connectionId, channelId and messageId are required" });
+  }
+
+  const clientInfo = await getOrRestoreClient(connectionId);
+  const cleanChannelId = String(channelId);
+
+  // Modo simulación
+  if (!clientInfo || clientInfo.isSimulation) {
+    const mockComments = [
+      {
+        id: "2001",
+        text: "Qual o valor desse produto com frete para São Paulo?",
+        date: new Date(Date.now() - 3600 * 1000 * 2).toISOString(),
+        authorId: "987654321",
+        authorName: "Carlos Silva",
+        authorUsername: "carlossilva_sp",
+        replyToMsgId: null,
+      },
+      {
+        id: "2002",
+        text: "Ainda tem disponível a pronta entrega? Gostaria de fechar agora.",
+        date: new Date(Date.now() - 3600 * 1000).toISOString(),
+        authorId: "987654322",
+        authorName: "Mariana Costa",
+        authorUsername: "mari_costa",
+        replyToMsgId: null,
+      },
+      {
+        id: "2003",
+        text: "Excelente! Acabei de recomendar para o meu sócio.",
+        date: new Date(Date.now() - 1800 * 1000).toISOString(),
+        authorId: "987654323",
+        authorName: "Roberto Lima",
+        authorUsername: null,
+        replyToMsgId: null,
+      },
+    ];
+
+    return res.json({
+      comments: mockComments,
+      totalCount: mockComments.length,
+      hasMore: false,
+      isSimulation: true,
+    });
+  }
+
+  try {
+    const client = clientInfo.client;
+    const msgIdNum = Number(messageId);
+
+    // En MTProto (GramJS), getMessages con replyTo consulta el supergrupo de discusión vinculado
+    const messages = await client.getMessages(cleanChannelId, {
+      replyTo: msgIdNum,
+      limit: Math.min(Number(limit) || 50, 100),
+      offsetId: offsetId ? Number(offsetId) : undefined,
+    });
+
+    const comments = (messages || []).map((m) => {
+      let authorName = "Usuário";
+      let authorUsername = null;
+      let authorId = "";
+
+      if (m.sender) {
+        authorName = [m.sender.firstName, m.sender.lastName].filter(Boolean).join(" ") || m.sender.title || "Usuário";
+        authorUsername = m.sender.username || null;
+        authorId = String(m.sender.id || "");
+      } else if (m.fromId) {
+        authorId = String(m.fromId.userId || m.fromId.channelId || "");
+      }
+
+      return {
+        id: String(m.id),
+        text: m.message || "",
+        date: new Date(m.date * 1000).toISOString(),
+        authorId,
+        authorName,
+        authorUsername,
+        replyToMsgId: m.replyTo?.replyToMsgId ? String(m.replyTo.replyToMsgId) : null,
+      };
+    });
+
+    res.json({
+      comments,
+      totalCount: comments.length,
+      hasMore: comments.length >= (Number(limit) || 50),
+      isSimulation: false,
+    });
+  } catch (err) {
+    console.error(`[Gateway Comments Error] Error obteniendo comentarios del post ${messageId}:`, err);
+    res.status(500).json({ error: err.message || "Failed to fetch post comments" });
+  }
+});
+
+/**
+ * POST /api/gateway/reply-comment
+ * Responde a un comentario en el hilo de discusión del canal
+ */
+app.post("/api/gateway/reply-comment", requireGatewayAuth, async (req, res) => {
+  const { connectionId, channelId, messageId, commentId, text } = req.body;
+  if (!connectionId || !channelId || !messageId || !text?.trim()) {
+    return res.status(400).json({ error: "connectionId, channelId, messageId and text are required" });
+  }
+
+  const clientInfo = await getOrRestoreClient(connectionId);
+  const cleanChannelId = String(channelId);
+
+  // Modo simulación
+  if (!clientInfo || clientInfo.isSimulation) {
+    const mockId = String(3000 + Math.floor(Math.random() * 9000));
+    console.log(`[Gateway Reply Sim] Respondiendo comentario ${commentId || messageId} en canal ${channelId}: "${text}"`);
+    return res.json({
+      success: true,
+      commentId: mockId,
+      date: new Date().toISOString(),
+      isSimulation: true,
+    });
+  }
+
+  try {
+    const client = clientInfo.client;
+    const msgIdNum = Number(messageId);
+    const commentIdNum = commentId ? Number(commentId) : undefined;
+
+    // GramJS permite enviar con commentTo para dirigir el mensaje al hilo del post en el grupo de discusión
+    const sent = await client.sendMessage(cleanChannelId, {
+      message: text.trim(),
+      commentTo: msgIdNum,
+      replyTo: commentIdNum,
+    });
+
+    res.json({
+      success: true,
+      commentId: String(sent.id),
+      date: new Date().toISOString(),
+      isSimulation: false,
+    });
+  } catch (err) {
+    console.error(`[Gateway Reply Error] Error respondiendo comentario ${commentId || messageId}:`, err);
+    res.status(500).json({ error: err.message || "Failed to send comment reply" });
+  }
+});
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`======================================================`);
   console.log(` Capiversa Telegram MTProto Gateway Sidecar v1.3.07  `);

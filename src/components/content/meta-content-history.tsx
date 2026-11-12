@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Activity, AlertTriangle, Archive, CheckCircle2, CircleSlash, ExternalLink, Film, Grid3x3, HardDrive, ImageIcon, Inbox, Layers, LayoutList, Loader2, PlayCircle, RefreshCw, Stethoscope, XCircle } from "lucide-react";
+import { Activity, AlertTriangle, Archive, CheckCircle2, CircleSlash, ExternalLink, Film, Grid3x3, HardDrive, ImageIcon, Inbox, Layers, LayoutList, Loader2, PlayCircle, RefreshCw, Stethoscope, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,11 @@ import {
   syncMetaContentHistory,
 } from "@/lib/meta-history.functions";
 import { replyMetaComment } from "@/lib/meta-content.functions";
+import {
+  replySocialComment,
+  syncPostComments,
+  createLeadFromComment,
+} from "@/lib/telegram-comments.functions";
 import { MetaSocialIntelligence } from "@/components/content/meta-social-intelligence";
 
 type Account = { id: string; network: string; username: string | null; display_name: string | null; status: string; last_synced_at: string | null; last_error: string | null; instance_name: string | null };
@@ -392,7 +397,9 @@ export function MetaContentHistory() {
 
 function PostDetailDialog({ post, account, onClose }: { post: Post | null; account: Account | null; onClose: () => void }) {
   const getDetail = useServerFn(getStoredMetaPost);
-  const reply = useServerFn(replyMetaComment);
+  const reply = useServerFn(replySocialComment);
+  const syncComments = useServerFn(syncPostComments);
+  const createLead = useServerFn(createLeadFromComment);
   const [detail, setDetail] = useState<{
     snapshots: any[];
     media: any[];
@@ -402,9 +409,21 @@ function PostDetailDialog({ post, account, onClose }: { post: Post | null; accou
     nextCommentsOffset?: number;
   } | null>(null);
   const [loadingComments, setLoadingComments] = useState(false);
+  const [refreshingComments, setRefreshingComments] = useState(false);
+  const [convertingLeadId, setConvertingLeadId] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+
+  const fetchPostDetail = useCallback(async () => {
+    if (!post) return;
+    try {
+      const d = await getDetail({ data: { postId: post.id, commentsLimit: 100, commentsOffset: 0 } });
+      setDetail(d);
+    } catch {
+      setDetail({ snapshots: [], media: [], comments: [], totalComments: 0, hasMoreComments: false });
+    }
+  }, [post, getDetail]);
 
   useEffect(() => {
     if (!post) { setDetail(null); return; }
@@ -440,13 +459,62 @@ function PostDetailDialog({ post, account, onClose }: { post: Post | null; accou
     }
   };
 
+  const handleRefreshComments = async () => {
+    if (!post || refreshingComments) return;
+    setRefreshingComments(true);
+    try {
+      const res: any = await syncComments({ data: { postId: post.id } });
+      toast.success(res?.count ? `${res.count} comentários sincronizados do canal!` : "Comentários atualizados.");
+      await fetchPostDetail();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao sincronizar comentários.");
+    } finally {
+      setRefreshingComments(false);
+    }
+  };
+
+  const handleCreateLead = async (c: any) => {
+    setConvertingLeadId(c.id);
+    try {
+      const res: any = await createLead({
+        data: {
+          commentId: c.external_comment_id || c.id,
+          notes: `Convertido do ${post?.network || "canal"}: "${c.text.slice(0, 100)}"`,
+        },
+      });
+      if (res?.leadCreated) {
+        toast.success(`Lead criado no CRM com sucesso (${c.author_name || c.author_username || "Social"})!`);
+      } else if (res?.alreadyExists) {
+        toast.info("Este comentário já possui um Lead vinculado no CRM.");
+      }
+      setDetail((prev) => prev ? ({
+        ...prev,
+        comments: prev.comments.map((item) => (item.id === c.id ? { ...item, status: "lead_created" } : item)),
+      }) : prev);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao converter comentário em Lead.");
+    } finally {
+      setConvertingLeadId(null);
+    }
+  };
+
   async function send() {
-    if (!replyTo || !text.trim() || !account?.instance_name) return;
+    if (!replyTo || !text.trim() || !post) return;
     setSending(true);
     try {
-      await reply({ data: { instanceName: account.instance_name, commentId: replyTo, message: text.trim() } });
-      toast.success("Resposta enviada pela API oficial. Ela aparece aqui após a próxima sincronização.");
-      setText(""); setReplyTo(null);
+      await reply({
+        data: {
+          instanceName: account?.instance_name ?? undefined,
+          commentId: replyTo,
+          message: text.trim(),
+          postId: post.id,
+          network: post.network,
+        },
+      });
+      toast.success("Resposta enviada com sucesso!");
+      setText("");
+      setReplyTo(null);
+      await fetchPostDetail();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao responder.");
     } finally {
@@ -458,6 +526,8 @@ function PostDetailDialog({ post, account, onClose }: { post: Post | null; accou
   const repliesOf = (id: string) => (detail?.comments ?? []).filter((c) => c.parent_external_id === id);
   const series = (detail?.snapshots ?? []).map((s) => ({ date: s.collected_date, reach: s.reach, views: s.views, interactions: s.total_interactions ?? s.likes }));
   const last = detail?.snapshots?.[detail.snapshots.length - 1];
+
+  const canReplyToAny = Boolean(account?.instance_name || post?.network === "telegram");
 
   return (
     <Dialog open={Boolean(post)} onOpenChange={(o) => !o && onClose()}>
@@ -500,21 +570,57 @@ function PostDetailDialog({ post, account, onClose }: { post: Post | null; accou
                 )}
               </div>
               <div>
-                <h4 className="mb-2 text-sm font-semibold">
-                  Comentários armazenados ({detail?.comments.length ?? 0}{detail?.totalComments ? ` de ${detail.totalComments}` : ""})
-                </h4>
+                <div className="mb-2 flex items-center justify-between">
+                  <h4 className="text-sm font-semibold">
+                    Comentários armazenados ({detail?.comments.length ?? 0}{detail?.totalComments ? ` de ${detail.totalComments}` : ""})
+                  </h4>
+                  {post.network === "telegram" && (
+                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={handleRefreshComments} disabled={refreshingComments}>
+                      <RefreshCw className={`h-3 w-3 ${refreshingComments ? "animate-spin" : ""}`} />
+                      Sincronizar
+                    </Button>
+                  )}
+                </div>
                 {!detail ? <Loader2 className="h-4 w-4 animate-spin" /> : top.length === 0 ? <p className="text-xs text-muted-foreground">Sem comentários armazenados.</p> : (
                   <ul className="space-y-2">
                     {top.map((c) => (
                       <li key={c.id} className="rounded-md border p-2 text-sm">
-                        <div className="text-xs text-muted-foreground">{c.author_username ? `@${c.author_username}` : c.author_name ?? "—"} · {c.commented_at ? new Date(c.commented_at).toLocaleString("pt-BR") : ""}{c.like_count ? ` · ❤ ${c.like_count}` : ""}{c.status === "hidden" ? " · oculto" : ""}</div>
-                        <div>{c.text}</div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>{c.author_username ? `@${c.author_username}` : c.author_name ?? "—"} · {c.commented_at ? new Date(c.commented_at).toLocaleString("pt-BR") : ""}{c.like_count ? ` · ❤ ${c.like_count}` : ""}{c.status === "hidden" ? " · oculto" : ""}</span>
+                          {c.status === "lead_created" && <Badge variant="secondary" className="h-4 text-[10px] px-1 bg-primary/10 text-primary">Lead no CRM</Badge>}
+                        </div>
+                        <div className="mt-1">{c.text}</div>
                         {repliesOf(c.external_comment_id).map((r) => (
                           <div key={r.id} className="ml-4 mt-1 border-l pl-2 text-xs"><span className="text-muted-foreground">{r.is_own ? "Você" : r.author_username ? `@${r.author_username}` : r.author_name}:</span> {r.text}</div>
                         ))}
-                        {account?.instance_name && <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => setReplyTo(c.external_comment_id)}>Responder</Button>}
+                        <div className="mt-2 flex items-center gap-2">
+                          {canReplyToAny && (
+                            <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => setReplyTo(c.external_comment_id)}>
+                              Responder
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 text-[11px] gap-1 px-2"
+                            onClick={() => handleCreateLead(c)}
+                            disabled={convertingLeadId === c.id || c.status === "lead_created"}
+                          >
+                            {convertingLeadId === c.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserPlus className="h-3 w-3" />}
+                            {c.status === "lead_created" ? "Lead Vinculado" : "Criar Lead no CRM"}
+                          </Button>
+                        </div>
                         {replyTo === c.external_comment_id && (
-                          <div className="mt-1 space-y-1"><Textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={2000} /><Button size="sm" onClick={send} disabled={sending || !text.trim()}>{sending && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}Enviar</Button></div>
+                          <div className="mt-2 space-y-1">
+                            <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={2000} placeholder="Escreva uma resposta oficial ao comentário..." />
+                            <div className="flex justify-end gap-1">
+                              <Button size="sm" variant="ghost" onClick={() => { setReplyTo(null); setText(""); }}>Cancelar</Button>
+                              <Button size="sm" onClick={send} disabled={sending || !text.trim()}>
+                                {sending && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                                Enviar
+                              </Button>
+                            </div>
+                          </div>
                         )}
                       </li>
                     ))}
