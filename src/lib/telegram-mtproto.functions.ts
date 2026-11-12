@@ -394,3 +394,18 @@ export const disconnectTelegramQrAccount = createServerFn({ method: "POST" })
 
     return { success: true };
   });
+
+/**
+ * 8. Sincroniza o histórico de publicações de um canal do Telegram (Backfill duradouro)
+ */
+export const syncTelegramChannelHistory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { socialAccountId: string; full?: boolean }) => d)
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const companyId = await resolveCompanyIdCached(supabase, userId);
+
+    const { syncTelegramChannelContent } = await import("./telegram-content-sync.server");
+    return await syncTelegramChannelContent(companyId, data.socialAccountId, { full: data.full });
+  });
+

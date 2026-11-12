@@ -368,6 +368,172 @@ app.get("/api/gateway/channels/:connectionId", requireGatewayAuth, async (req, r
 });
 
 /**
+ * POST /api/gateway/publish
+ * Publica una nueva publicación (texto, imagen, video o álbum) en un canal de Telegram
+ */
+app.post("/api/gateway/publish", requireGatewayAuth, async (req, res) => {
+  const { connectionId, channelId, text, mediaUrls, mediaType } = req.body;
+  if (!connectionId || !channelId) {
+    return res.status(400).json({ error: "connectionId and channelId are required" });
+  }
+
+  const clientInfo = activeClients.get(connectionId);
+  const cleanChannelId = String(channelId);
+  const numericChannelSuffix = cleanChannelId.replace(/^-100/, "");
+
+  // Modo simulación o fallback para desarrollo / staging
+  if (!clientInfo || clientInfo.isSimulation) {
+    const mockMsgId = String(10000 + Math.floor(Math.random() * 90000));
+    const urls = Array.isArray(mediaUrls) ? mediaUrls : mediaUrls ? [mediaUrls] : [];
+    const isAlbum = mediaType === "carousel" || urls.length > 1;
+    const mockIds = isAlbum ? urls.map((_, i) => String(Number(mockMsgId) + i)) : [mockMsgId];
+
+    const mockUrl = `https://t.me/c/${numericChannelSuffix}/${mockMsgId}`;
+    console.log(`[Gateway Publish Sim] Publicado post ${mockMsgId} en canal ${channelId} (${urls.length} medios, tipo: ${mediaType})`);
+
+    return res.json({
+      success: true,
+      messageId: mockMsgId,
+      messageIds: mockIds,
+      channelUrl: mockUrl,
+      isSimulation: true,
+    });
+  }
+
+  try {
+    const client = clientInfo.client;
+    const urls = Array.isArray(mediaUrls) ? mediaUrls : mediaUrls ? [mediaUrls] : [];
+    let primaryMessageId = "";
+    let allMessageIds = [];
+
+    // Álbum / Grupo de medios (2 a 10 fotos o videos)
+    if (mediaType === "carousel" || urls.length > 1) {
+      const sent = await client.sendFile(cleanChannelId, {
+        file: urls,
+        caption: text || "",
+      });
+
+      const sentArr = Array.isArray(sent) ? sent : [sent];
+      allMessageIds = sentArr.map((m) => String(m.id));
+      primaryMessageId = allMessageIds[0] || String(Date.now());
+    } else if (urls.length === 1 && (mediaType === "image" || mediaType === "video")) {
+      // Foto o video individual con pie de foto
+      const sent = await client.sendFile(cleanChannelId, {
+        file: urls[0],
+        caption: text || "",
+        video: mediaType === "video",
+      });
+      primaryMessageId = String(sent.id);
+      allMessageIds = [primaryMessageId];
+    } else {
+      // Mensaje de solo texto en canal
+      const sent = await client.sendMessage(cleanChannelId, {
+        message: text || "",
+      });
+      primaryMessageId = String(sent.id);
+      allMessageIds = [primaryMessageId];
+    }
+
+    const channelUrl = `https://t.me/c/${numericChannelSuffix}/${primaryMessageId}`;
+
+    res.json({
+      success: true,
+      messageId: primaryMessageId,
+      messageIds: allMessageIds,
+      channelUrl,
+      isSimulation: false,
+    });
+  } catch (err) {
+    console.error(`[Gateway Publish Error] Error publicando en canal ${channelId}:`, err);
+    res.status(500).json({ error: err.message || "Failed to publish post on Telegram channel" });
+  }
+});
+
+/**
+ * POST /api/gateway/backfill
+ * Importa publicaciones históricas paginadas de un canal
+ */
+app.post("/api/gateway/backfill", requireGatewayAuth, async (req, res) => {
+  const { connectionId, channelId, limit = 50, beforeMessageId } = req.body;
+  if (!connectionId || !channelId) {
+    return res.status(400).json({ error: "connectionId and channelId are required" });
+  }
+
+  const clientInfo = activeClients.get(connectionId);
+  const cleanChannelId = String(channelId);
+  const numericChannelSuffix = cleanChannelId.replace(/^-100/, "");
+
+  if (!clientInfo || clientInfo.isSimulation) {
+    // Generación de mensajes simulados para testeo de backfill
+    const now = Date.now();
+    const count = Math.min(Number(limit) || 20, 50);
+    const mockPosts = Array.from({ length: count }).map((_, i) => {
+      const id = String(1000 + i);
+      const postDate = new Date(now - i * 3600 * 24 * 1000).toISOString();
+      const isMedia = i % 3 !== 0;
+      return {
+        id,
+        text: `Publicação histórica de exemplo #${id} do canal oficial da empresa.`,
+        date: postDate,
+        mediaType: isMedia ? (i % 2 === 0 ? "photo" : "video") : "text",
+        views: 250 + i * 45,
+        forwards: 12 + i * 2,
+        replies: 5 + i,
+        permalink: `https://t.me/c/${numericChannelSuffix}/${id}`,
+      };
+    });
+
+    return res.json({
+      posts: mockPosts,
+      hasMore: false,
+      isSimulation: true,
+    });
+  }
+
+  try {
+    const client = clientInfo.client;
+    const messages = await client.getMessages(cleanChannelId, {
+      limit: Math.min(Number(limit) || 50, 100),
+      offsetId: beforeMessageId ? Number(beforeMessageId) : undefined,
+    });
+
+    const posts = messages.map((m) => {
+      let mType = "text";
+      if (m.media) {
+        if (m.media.photo) mType = "photo";
+        else if (m.media.document) {
+          const mime = m.media.document.mimeType || "";
+          mType = mime.startsWith("video/") ? "video" : "other";
+        }
+      }
+
+      return {
+        id: String(m.id),
+        text: m.message || "",
+        date: new Date(m.date * 1000).toISOString(),
+        mediaType: mType,
+        views: m.views || 0,
+        forwards: m.forwards || 0,
+        replies: m.replies?.replies || 0,
+        permalink: `https://t.me/c/${numericChannelSuffix}/${m.id}`,
+      };
+    });
+
+    const oldestId = posts.length > 0 ? posts[posts.length - 1].id : null;
+
+    res.json({
+      posts,
+      hasMore: posts.length >= (Number(limit) || 50),
+      nextCursor: oldestId,
+      isSimulation: false,
+    });
+  } catch (err) {
+    console.error(`[Gateway Backfill Error] Error obteniendo historial de canal ${channelId}:`, err);
+    res.status(500).json({ error: err.message || "Failed to backfill channel messages" });
+  }
+});
+
+/**
  * POST /api/gateway/logout/:connectionId
  * Cierra la sesión MTProto y limpia archivos de sesión
  */

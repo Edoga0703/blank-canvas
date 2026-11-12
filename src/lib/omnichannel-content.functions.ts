@@ -90,7 +90,7 @@ export const createOmnichannelPost = createServerFn({ method: "POST" })
     }
 
     // Regra F0: Rejeitar destinos não homologados diretamente no servidor
-    const implementedPublishers = new Set(["instagram", "facebook"]);
+    const implementedPublishers = new Set(["instagram", "facebook", "telegram"]);
     const unsupported = data.targets.filter((t) => !implementedPublishers.has(t.platform));
     if (unsupported.length > 0) {
       const unsupportedNames = unsupported.map((t) => t.platform).join(", ");
@@ -123,6 +123,11 @@ export const createOmnichannelPost = createServerFn({ method: "POST" })
       if (target.platform === "instagram") {
         if (!data.mediaUrl && !data.assetId) {
           throw new Error("Instagram exige uma foto ou vídeo para publicação.");
+        }
+      }
+      if (target.platform === "telegram") {
+        if (!data.baseCaption?.trim() && !data.mediaUrl && !data.assetId && !target.customCaption?.trim()) {
+          throw new Error("Telegram exige texto ou mídia para publicação.");
         }
       }
     }

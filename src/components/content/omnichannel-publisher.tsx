@@ -45,6 +45,7 @@ import {
   FacebookGlyph,
   TikTokGlyph,
   YouTubeGlyph,
+  TelegramGlyph,
 } from "@/components/ui/channel-icons";
 import {
   createOmnichannelPost,
@@ -327,6 +328,9 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
     if (selectedPlatforms.includes("instagram") && !mediaUrl) {
       errors.push("Instagram exige imagem ou vídeo para publicação.");
     }
+    if (selectedPlatforms.includes("telegram") && !mediaUrl && !baseCaption.trim()) {
+      errors.push("Telegram exige texto ou mídia para publicação.");
+    }
     if (isScheduled && (!scheduledDate || !scheduledTime)) {
       errors.push("Defina a data e horário para a programação.");
     }
@@ -429,7 +433,7 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
             {/* Instagram */}
             <button
               type="button"
@@ -456,6 +460,20 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
             >
               <FacebookGlyph className="size-4 text-[#0084FF] shrink-0" />
               <span className="truncate">Facebook</span>
+            </button>
+
+            {/* Telegram (MTProto Oficial) */}
+            <button
+              type="button"
+              onClick={() => togglePlatform("telegram")}
+              className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                selectedPlatforms.includes("telegram")
+                  ? "bg-[#229ED9]/10 border-[#229ED9] text-foreground shadow-sm ring-1 ring-[#229ED9]"
+                  : "bg-muted/30 border-transparent text-muted-foreground opacity-60 hover:opacity-100"
+              }`}
+            >
+              <TelegramGlyph className="size-4 text-[#229ED9] shrink-0" />
+              <span className="truncate">Telegram</span>
             </button>
 
             {/* TikTok (Homologação OAuth) */}
@@ -949,6 +967,16 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
               >
                 <FacebookGlyph className="size-3.5" />
               </button>
+              <button
+                type="button"
+                onClick={() => setPreviewPlatform("telegram")}
+                className={`p-1.5 rounded-md text-xs transition-colors ${
+                  previewPlatform === "telegram" ? "bg-[#229ED9] text-white shadow-xs" : "hover:bg-muted text-muted-foreground"
+                }`}
+                title="Prévia Canal Telegram"
+              >
+                <TelegramGlyph className="size-3.5" />
+              </button>
             </div>
           </div>
         </div>
@@ -1230,6 +1258,31 @@ export function OmnichannelPublisher({ accounts, onPublished }: Props) {
                     👉 {facebookLink}
                   </p>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Superposição: Telegram Canal */}
+          {previewPlatform === "telegram" && (
+            <div className="absolute inset-0 z-10 flex flex-col justify-between p-3.5 pointer-events-none text-white select-none bg-gradient-to-t from-black/90 via-transparent to-black/40">
+              <div className="pt-2 text-xs font-bold drop-shadow-md flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <TelegramGlyph className="size-4 text-[#229ED9]" />
+                  <span>{companyName}</span>
+                </div>
+                <span className="text-[10px] text-white/70">Canal Oficial</span>
+              </div>
+
+              <div className="mt-auto space-y-2 drop-shadow-md pb-2">
+                <div className="p-3 rounded-2xl bg-black/60 backdrop-blur-xs border border-white/10 space-y-1.5">
+                  <p className="text-[11px] leading-relaxed line-clamp-4">
+                    {baseCaption || "Mensagem oficial de transmissão para o canal do Telegram..."}
+                  </p>
+                  <div className="flex items-center justify-between text-[10px] text-white/60 pt-1">
+                    <span>1.2K visualizações</span>
+                    <span>{new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}

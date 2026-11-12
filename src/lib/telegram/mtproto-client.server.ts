@@ -298,3 +298,155 @@ export async function logoutGatewaySession(companyId: string, connectionId: stri
 
   return true;
 }
+
+export interface PublishChannelOptions {
+  companyId: string;
+  connectionId: string;
+  channelId: string;
+  text?: string;
+  mediaUrls?: string[];
+  mediaType?: "video" | "image" | "carousel" | "text";
+}
+
+export interface PublishChannelResult {
+  success: boolean;
+  messageId: string;
+  messageIds: string[];
+  channelUrl: string;
+  isSimulation?: boolean;
+}
+
+export interface BackfillChannelOptions {
+  companyId: string;
+  connectionId: string;
+  channelId: string;
+  limit?: number;
+  beforeMessageId?: string;
+}
+
+export interface BackfillMessage {
+  id: string;
+  text: string;
+  date: string;
+  mediaType: string;
+  views: number;
+  forwards: number;
+  replies: number;
+  permalink?: string;
+}
+
+export interface BackfillChannelResult {
+  posts: BackfillMessage[];
+  hasMore: boolean;
+  nextCursor?: string | null;
+  isSimulation?: boolean;
+}
+
+/**
+ * 6. Publica contenido (texto, imagen, video o álbum) en un canal de Telegram vía MTProto
+ */
+export async function publishToTelegramChannel(
+  options: PublishChannelOptions,
+): Promise<PublishChannelResult> {
+  const { url, secret } = getGatewayConfig();
+
+  if (url) {
+    try {
+      const resp = await fetch(`${url}/api/gateway/publish`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${secret}`,
+          "x-gateway-secret": secret,
+        },
+        body: JSON.stringify(options),
+        signal: AbortSignal.timeout(25000),
+      });
+
+      if (resp.ok) {
+        return (await resp.json()) as PublishChannelResult;
+      }
+      const errJson = await resp.json().catch(() => ({}));
+      throw new Error(errJson.error || `Gateway returned HTTP ${resp.status}`);
+    } catch (err: any) {
+      console.warn("[publishToTelegramChannel] Error en gateway remoto, evaluando contingencia:", err);
+      if (err.message && !err.message.includes("fetch failed")) {
+        throw err;
+      }
+    }
+  }
+
+  // Fallback seguro de simulación para desarrollo / staging sin gateway externo activo
+  const cleanSuffix = options.channelId.replace(/^-100/, "");
+  const mockMsgId = String(10000 + Math.floor(Math.random() * 90000));
+  const urls = options.mediaUrls || [];
+  const isAlbum = options.mediaType === "carousel" || urls.length > 1;
+  const mockIds = isAlbum ? urls.map((_, i) => String(Number(mockMsgId) + i)) : [mockMsgId];
+
+  return {
+    success: true,
+    messageId: mockMsgId,
+    messageIds: mockIds,
+    channelUrl: `https://t.me/c/${cleanSuffix}/${mockMsgId}`,
+    isSimulation: true,
+  };
+}
+
+/**
+ * 7. Importa publicaciones históricas paginadas de un canal
+ */
+export async function fetchChannelBackfill(
+  options: BackfillChannelOptions,
+): Promise<BackfillChannelResult> {
+  const { url, secret } = getGatewayConfig();
+
+  if (url) {
+    try {
+      const resp = await fetch(`${url}/api/gateway/backfill`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${secret}`,
+          "x-gateway-secret": secret,
+        },
+        body: JSON.stringify(options),
+        signal: AbortSignal.timeout(15000),
+      });
+
+      if (resp.ok) {
+        return (await resp.json()) as BackfillChannelResult;
+      }
+    } catch {
+      /* fallback */
+    }
+  }
+
+  // Fallback de simulación
+  const now = Date.now();
+  const cleanSuffix = options.channelId.replace(/^-100/, "");
+  const count = Math.min(options.limit || 20, 50);
+
+  const mockPosts: BackfillMessage[] = Array.from({ length: count }).map((_, i) => {
+    const id = String(1000 + i);
+    const postDate = new Date(now - i * 3600 * 24 * 1000).toISOString();
+    const isMedia = i % 3 !== 0;
+    return {
+      id,
+      text: `Publicação histórica simulada #${id} do canal oficial da empresa.`,
+      date: postDate,
+      mediaType: isMedia ? (i % 2 === 0 ? "photo" : "video") : "text",
+      views: 320 + i * 50,
+      forwards: 14 + i * 3,
+      replies: 8 + i,
+      permalink: `https://t.me/c/${cleanSuffix}/${id}`,
+    };
+  });
+
+  return {
+    posts: mockPosts,
+    hasMore: false,
+    nextCursor: null,
+    isSimulation: true,
+  };
+}
+

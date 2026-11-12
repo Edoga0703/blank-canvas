@@ -48,10 +48,36 @@ export const syncMetaContentHistory = createServerFn({ method: "POST" })
     const { reconcileSocialAccounts, syncAccountContent } = await import("./meta-content-sync.server");
     try {
       const { accounts, warnings } = await reconcileSocialAccounts(supabaseAdmin, companyId);
-      const targets = data.accountId ? accounts.filter((a) => a.id === data.accountId) : accounts;
-      if (!targets.length) return { ok: false as const, error: "Nenhuma conta Meta conectada.", warnings, results: [] };
+
+      // Inclui também contas sociais persistidas diretamente (ex: canais de Telegram)
+      const { data: dbAccs } = await (supabaseAdmin as any)
+        .from("meta_social_accounts")
+        .select("id, company_id, network, provider, external_id, page_id, username, display_name")
+        .eq("company_id", companyId);
+
+      const allAccountsMap = new Map<string, any>();
+      for (const a of accounts) allAccountsMap.set(a.id, a);
+      for (const a of dbAccs ?? []) {
+        if (!allAccountsMap.has(a.id)) allAccountsMap.set(a.id, a);
+      }
+
+      const allAccounts = Array.from(allAccountsMap.values());
+      const targets = data.accountId ? allAccounts.filter((a) => a.id === data.accountId) : allAccounts;
+      if (!targets.length) return { ok: false as const, error: "Nenhuma conta social conectada.", warnings, results: [] };
       const results = [];
-      for (const account of targets) results.push(await syncAccountContent(supabaseAdmin, account, { full: data.full, trigger: "manual" }));
+      for (const account of targets) {
+        if (account.network === "telegram") {
+          try {
+            const { syncTelegramChannelContent } = await import("./telegram-content-sync.server");
+            const telRes = await syncTelegramChannelContent(companyId, account.id, { full: data.full });
+            results.push({ accountId: account.id, network: "telegram", ok: telRes.ok, imported: telRes.importedCount, message: telRes.message });
+          } catch (tErr: any) {
+            results.push({ accountId: account.id, network: "telegram", ok: false, error: tErr?.message || "Falha ao sincronizar Telegram" });
+          }
+        } else {
+          results.push(await syncAccountContent(supabaseAdmin, account, { full: data.full, trigger: "manual" }));
+        }
+      }
       return { ok: true as const, error: null, warnings, results };
     } catch (e) {
       return { ok: false as const, error: tableError(e instanceof Error ? e.message : String(e)), warnings: [], results: [] };
@@ -70,7 +96,7 @@ export const listStoredMetaPosts = createServerFn({ method: "POST" })
     limit?: number;
     offset?: number;
   }) => ({
-    network: ["facebook", "instagram"].includes(String(d?.network)) ? String(d!.network) : undefined,
+    network: ["facebook", "instagram", "tiktok", "youtube", "telegram"].includes(String(d?.network)) ? String(d!.network) : undefined,
     accountId: d?.accountId || undefined,
     format: ["photo", "video", "reel", "story", "carousel", "text", "link", "other"].includes(String(d?.format)) ? String(d!.format) : undefined,
     since: d?.since || undefined,

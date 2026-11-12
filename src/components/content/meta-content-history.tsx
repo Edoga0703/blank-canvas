@@ -36,7 +36,11 @@ type Post = {
 const FORMAT_LABEL: Record<string, string> = { photo: "Foto", video: "Vídeo", reel: "Reel", story: "Story", carousel: "Carrossel", text: "Texto", link: "Link", other: "Outro" };
 const METRIC_LABEL: Record<string, string> = { likes: "Curtidas", comments: "Comentários", shares: "Compart.", saves: "Salvos", reach: "Alcance", impressions: "Impressões", views: "Visualizações", total_interactions: "Interações", replies: "Respostas", avg_watch_time_ms: "Tempo médio (s)", total_watch_time_ms: "Tempo total (min)" };
 const fmt = (v: number | null | undefined) => (v === null || v === undefined ? "—" : v.toLocaleString("pt-BR"));
-const accountLabel = (a: Account) => `${a.network === "instagram" ? "Instagram" : "Facebook"} · ${a.username ? (a.network === "instagram" ? `@${a.username}` : a.username) : a.display_name ?? "conta"}`;
+const accountLabel = (a: Account) => {
+  const net = a.network === "instagram" ? "Instagram" : a.network === "telegram" ? "Telegram" : a.network === "youtube" ? "YouTube" : a.network === "tiktok" ? "TikTok" : "Facebook";
+  const user = a.username ? (a.network === "instagram" || a.network === "telegram" ? `@${a.username}` : a.username) : a.display_name ?? "canal";
+  return `${net} · ${user}`;
+};
 const engagement = (m: Metrics) => (m.total_interactions ?? (m.likes ?? 0) + (m.comments ?? 0) + (m.shares ?? 0) + (m.saves ?? 0));
 
 function isVideo(p: Post) { return p.format === "video" || p.format === "reel" || /\.mp4|video/i.test(p.media_url ?? ""); }
@@ -224,7 +228,14 @@ export function MetaContentHistory() {
           <div className="space-y-1"><span className="text-xs text-muted-foreground">Rede</span>
             <Select value={network} onValueChange={(v) => { setNetwork(v); setAccountId("all"); }}>
               <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="all">Todas</SelectItem><SelectItem value="instagram">Instagram</SelectItem><SelectItem value="facebook">Facebook</SelectItem></SelectContent>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="telegram">Telegram</SelectItem>
+                <SelectItem value="instagram">Instagram</SelectItem>
+                <SelectItem value="facebook">Facebook</SelectItem>
+                <SelectItem value="youtube">YouTube</SelectItem>
+                <SelectItem value="tiktok">TikTok</SelectItem>
+              </SelectContent>
             </Select>
           </div>
           <div className="space-y-1"><span className="text-xs text-muted-foreground">Conta</span>
