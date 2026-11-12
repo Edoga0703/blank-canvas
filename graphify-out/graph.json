@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-12T04:41:50.945035+00:00",
+  "generated_at": "2026-11-12T05:09:25.734080+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -1395,7 +1395,7 @@
     },
     {
       "path": "src/lib/telegram-content-sync.server.ts",
-      "bytes": 7423
+      "bytes": 7636
     },
     {
       "path": "src/lib/announcements.functions.ts",
@@ -2723,7 +2723,7 @@
     },
     {
       "path": "src/components/conexao/telegram-connect-dialog.tsx",
-      "bytes": 32605
+      "bytes": 32668
     },
     {
       "path": "src/components/conexao/nova-conexao-dialog.tsx",
@@ -3267,7 +3267,7 @@
     },
     {
       "path": "services/telegram-gateway/src/index.js",
-      "bytes": 19757
+      "bytes": 22364
     }
   ],
   "dependencies": [
@@ -18722,6 +18722,14 @@
     {
       "source": "services/telegram-gateway/src/index.js",
       "target": "node:crypto"
+    },
+    {
+      "source": "services/telegram-gateway/src/index.js",
+      "target": "telegram"
+    },
+    {
+      "source": "services/telegram-gateway/src/index.js",
+      "target": "telegram/sessions/index.js"
     },
     {
       "source": "services/telegram-gateway/src/index.js",
