@@ -105,12 +105,15 @@ export function TelegramConnectDialog({
     }
   }, [open, activeTab]);
 
-  // Limpeza de intervalos ao desmontar
+  // Limpeza de intervalos ao fechar ou desmontar
   useEffect(() => {
+    if (!open) {
+      limparIntervalos();
+    }
     return () => {
       limparIntervalos();
     };
-  }, []);
+  }, [open]);
 
   function limparIntervalos() {
     if (pollIntervalRef.current) {

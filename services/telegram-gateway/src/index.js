@@ -27,11 +27,88 @@ app.use(express.json());
 // Map<sessionId, { companyId, connectionId, status, qrLink, expiresAt, actorId, username, displayName, client, passwordPromiseResolver, timer }>
 const qrSessions = new Map();
 
-// Map<connectionId, { client, stringSession, companyId, actorId, username, displayName }>
+// Map<connectionId, { client, stringSession, companyId, actorId, username, displayName, isSimulation }>
 const activeClients = new Map();
 
 // Ensure sessions directory exists
 await fs.mkdir(SESSIONS_DIR, { recursive: true }).catch(() => {});
+
+/**
+ * Obtiene el cliente MTProto activo o lo restaura desde el archivo .session en disco
+ */
+async function getOrRestoreClient(connectionId) {
+  if (!connectionId) return null;
+  let clientInfo = activeClients.get(connectionId);
+  if (clientInfo) return clientInfo;
+
+  if (!TELEGRAM_API_ID || !TELEGRAM_API_HASH) {
+    return null;
+  }
+
+  try {
+    const files = await fs.readdir(SESSIONS_DIR);
+    const sessionFileName = files.find(
+      (f) => f.endsWith(`_${connectionId}.session`) || f === `${connectionId}.session`
+    );
+
+    if (sessionFileName) {
+      const sessionPath = path.join(SESSIONS_DIR, sessionFileName);
+      const savedSessionStr = (await fs.readFile(sessionPath, "utf-8")).trim();
+
+      if (savedSessionStr) {
+        const { TelegramClient } = await import("telegram");
+        const { StringSession } = await import("telegram/sessions/index.js");
+
+        const stringSession = new StringSession(savedSessionStr);
+        const client = new TelegramClient(stringSession, TELEGRAM_API_ID, TELEGRAM_API_HASH, {
+          connectionRetries: 5,
+        });
+
+        await client.connect();
+        const me = await client.getMe().catch(() => null);
+
+        clientInfo = {
+          client,
+          stringSession: savedSessionStr,
+          actorId: me?.id ? String(me.id) : null,
+          username: me?.username || null,
+          displayName: me
+            ? [me.firstName, me.lastName].filter(Boolean).join(" ") || "Telegram User"
+            : "Telegram User",
+          isSimulation: false,
+        };
+
+        activeClients.set(connectionId, clientInfo);
+        console.log(`[Gateway] Sesión MTProto restaurada con éxito desde disco para connectionId=${connectionId}`);
+        return clientInfo;
+      }
+    }
+  } catch (err) {
+    console.warn(`[Gateway] No se pudo restaurar sesión en disco para connectionId=${connectionId}:`, err.message);
+  }
+
+  return null;
+}
+
+// Carga inicial de sesiones guardadas
+(async function hydrateSessionsOnBoot() {
+  if (!TELEGRAM_API_ID || !TELEGRAM_API_HASH) return;
+  try {
+    const files = await fs.readdir(SESSIONS_DIR);
+    for (const file of files) {
+      if (file.endsWith(".session")) {
+        const rawName = file.replace(".session", "");
+        const parts = rawName.split("_");
+        const connId = parts.length > 1 ? parts[1] : parts[0];
+        if (connId) {
+          await getOrRestoreClient(connId).catch(() => {});
+        }
+      }
+    }
+  } catch {
+    /* best-effort */
+  }
+})();
 
 // Middleware: Autenticación por cabecera secreta
 function requireGatewayAuth(req, res, next) {
@@ -293,7 +370,7 @@ app.post("/api/gateway/complete-password", requireGatewayAuth, async (req, res) 
  */
 app.get("/api/gateway/channels/:connectionId", requireGatewayAuth, async (req, res) => {
   const { connectionId } = req.params;
-  const clientInfo = activeClients.get(connectionId);
+  const clientInfo = await getOrRestoreClient(connectionId);
 
   // Fallback simulado si no hay cliente MTProto real cargado
   if (!clientInfo || clientInfo.isSimulation) {
@@ -344,8 +421,10 @@ app.get("/api/gateway/channels/:connectionId", requireGatewayAuth, async (req, r
         const canPost = Boolean(entity.creator || entity.adminRights?.postMessages);
 
         if (isBroadcast && isAdmin && canPost) {
+          const rawIdStr = String(entity.id);
+          const channelIdFormatted = rawIdStr.startsWith("-100") ? rawIdStr : `-100${rawIdStr}`;
           channels.push({
-            telegramChannelId: String(entity.id.startsWith("-100") ? entity.id : `-100${entity.id}`),
+            telegramChannelId: channelIdFormatted,
             title: entity.title || "Canal sem título",
             username: entity.username || null,
             visibility: entity.username ? "public" : "private",
@@ -377,7 +456,7 @@ app.post("/api/gateway/publish", requireGatewayAuth, async (req, res) => {
     return res.status(400).json({ error: "connectionId and channelId are required" });
   }
 
-  const clientInfo = activeClients.get(connectionId);
+  const clientInfo = await getOrRestoreClient(connectionId);
   const cleanChannelId = String(channelId);
   const numericChannelSuffix = cleanChannelId.replace(/^-100/, "");
 
@@ -459,7 +538,7 @@ app.post("/api/gateway/backfill", requireGatewayAuth, async (req, res) => {
     return res.status(400).json({ error: "connectionId and channelId are required" });
   }
 
-  const clientInfo = activeClients.get(connectionId);
+  const clientInfo = await getOrRestoreClient(connectionId);
   const cleanChannelId = String(channelId);
   const numericChannelSuffix = cleanChannelId.replace(/^-100/, "");
 

@@ -122,7 +122,8 @@ export async function syncTelegramChannelContent(
   // 6. Persistir publicaciones en meta_content_posts y social_post_identity
   for (const p of posts) {
     try {
-      // Upsert en meta_content_posts
+      // Upsert en meta_content_posts adaptado al esquema real de producción
+      const postFormat = p.mediaType === "photo" ? "photo" : p.mediaType === "video" ? "video" : "text";
       const { data: insertedPost } = await (supabaseAdmin as any)
         .from("meta_content_posts")
         .upsert(
@@ -130,20 +131,21 @@ export async function syncTelegramChannelContent(
             company_id: companyId,
             social_account_id: socialAccountId,
             network: "telegram",
-            external_id: p.id,
-            caption: p.text || null,
+            external_post_id: p.id,
+            format: postFormat,
             media_type: p.mediaType,
+            caption: p.text || null,
             permalink: p.permalink || null,
             published_at: p.date,
-            metrics: {
+            metrics_latest: {
               views: p.views,
-              forwards: p.forwards,
+              shares: p.forwards,
               replies: p.replies,
             },
-            status: "published",
+            last_synced_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           },
-          { onConflict: "company_id,network,external_id" },
+          { onConflict: "company_id,network,external_post_id" },
         )
         .select("id")
         .maybeSingle();
