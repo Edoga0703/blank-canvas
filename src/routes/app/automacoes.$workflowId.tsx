@@ -61,6 +61,9 @@ import {
   Check,
   Sparkles,
   Users,
+  Radio,
+  MessageCircle,
+  Share2,
 } from "lucide-react";
 
 export const Route = createFileRoute("/app/automacoes/$workflowId")({
@@ -77,6 +80,9 @@ function TriggerNodeCard({ data, id }: NodeProps) {
   const isStage = data.type === "crm.card_stage_changed";
   const isOwner = data.type === "crm.card_owner_changed";
   const isTag = data.type === "crm.card_tags_changed";
+  const isTgMsg = data.type === "telegram.business_message_received";
+  const isTgPost = data.type === "telegram.channel_post_published";
+  const isTgComment = data.type === "telegram.channel_comment_received";
 
   const onAddNext = (data as any)?.onAddNext;
 
@@ -89,6 +95,9 @@ function TriggerNodeCard({ data, id }: NodeProps) {
           {isStage && <ArrowRightLeft className="size-4" />}
           {isOwner && <UserCheck className="size-4" />}
           {isTag && <Tag className="size-4" />}
+          {isTgMsg && <Send className="size-4 text-sky-500" />}
+          {isTgPost && <Radio className="size-4 text-sky-500" />}
+          {isTgComment && <MessageCircle className="size-4 text-sky-500" />}
           <span className="truncate">{String(data.name || "Gatilho")}</span>
         </div>
         <Badge variant="outline" className="text-[9px] bg-indigo-500/10 text-indigo-700 border-indigo-200">
@@ -105,7 +114,15 @@ function TriggerNodeCard({ data, id }: NodeProps) {
               ? "Dispara quando o lead avança de etapa"
               : isOwner
                 ? "Dispara na reatribuição de vendedor"
-                : "Dispara ao modificar tags"}
+                : isTag
+                  ? "Dispara ao modificar tags"
+                  : isTgMsg
+                    ? "Dispara com mensagem direta no Telegram Business"
+                    : isTgPost
+                      ? "Dispara com nova publicação no canal Telegram"
+                      : isTgComment
+                        ? "Dispara com novo comentário em post do Telegram"
+                        : "Gatilho de automação"}
       </p>
 
       {/* Porta de saída ampliada para 20px com etiqueta e botão + rápido */}
@@ -143,7 +160,10 @@ function ActionNodeCard({ data, id }: NodeProps) {
   const isAi = data.type === "messaging.handoff_to_ai";
   const isHuman = data.type === "messaging.route_to_human";
   const isAddTag = data.type === "crm.add_tag";
-  const isTerminal = isHuman; // A11: Derivar a humano é terminal
+  const isTgReply = data.type === "telegram.send_business_reply";
+  const isTgPublish = data.type === "telegram.publish_to_channel";
+  const isTgHuman = data.type === "telegram.route_to_human";
+  const isTerminal = isHuman || isTgHuman; // Ambos derivar a humano são terminais
 
   const onAddNext = (data as any)?.onAddNext;
 
@@ -164,6 +184,9 @@ function ActionNodeCard({ data, id }: NodeProps) {
           {isAi && <Bot className="size-4" />}
           {isHuman && <UserCheck className="size-4" />}
           {isAddTag && <Tag className="size-4" />}
+          {isTgReply && <Send className="size-4 text-sky-500" />}
+          {isTgPublish && <Share2 className="size-4 text-sky-500" />}
+          {isTgHuman && <UserCheck className="size-4 text-rose-500" />}
           <span className="truncate">{String(data.name || "Ação")}</span>
         </div>
         {isTerminal ? (
@@ -188,7 +211,13 @@ function ActionNodeCard({ data, id }: NodeProps) {
                 ? "Pausa bot e notifica atendente (Terminal)"
                 : isAddTag
                   ? `Adicionar tag: "${(data.config as any)?.tag || "..."}"`
-                  : "Ação configurada"}
+                  : isTgReply
+                    ? `Telegram: ${(data.config as any)?.text || "Responder em Business..."}`
+                    : isTgPublish
+                      ? `Telegram Canal: ${(data.config as any)?.text || "Publicar no canal..."}`
+                      : isTgHuman
+                        ? "Telegram: Pausa bot e deriva para atendente (Terminal)"
+                        : "Ação configurada"}
       </p>
 
       {/* Se for terminal (A11), não desenha porta de saída 'next' enganosa */}
@@ -576,6 +605,18 @@ function AutomacaoCanvasPage() {
         nodeType = "waitNode";
         nodeName = "Aguardar Tempo";
         initialConfig = { unit: "minutes", amount: 15 };
+      } else if (typeKey === "telegram.send_business_reply") {
+        nodeType = "actionNode";
+        nodeName = "Telegram: Responder em Business";
+        initialConfig = { text: "Olá! Obrigado pelo contato via Telegram." };
+      } else if (typeKey === "telegram.publish_to_channel") {
+        nodeType = "actionNode";
+        nodeName = "Telegram: Publicar no Canal";
+        initialConfig = { text: "Comunicado oficial no canal...", mediaType: "text", pinMessage: false };
+      } else if (typeKey === "telegram.route_to_human") {
+        nodeType = "actionNode";
+        nodeName = "Telegram: Derivar a Atendente";
+        initialConfig = { reason: "Solicitação de atendimento humano via Telegram" };
       }
 
       const newNode: Node = {
@@ -608,7 +649,7 @@ function AutomacaoCanvasPage() {
         (e) => e.source === sourceId && (e.sourceHandle || "next") === sourcePort
       );
 
-      const hasOutputPort = nodeType !== "endNode" && typeKey !== "messaging.route_to_human";
+      const hasOutputPort = nodeType !== "endNode" && typeKey !== "messaging.route_to_human" && typeKey !== "telegram.route_to_human";
       let chainedEdge: Edge | null = null;
 
       if (existingEdge && hasOutputPort) {
@@ -688,7 +729,12 @@ function AutomacaoCanvasPage() {
 
       const flowNodes: Node[] = (resWf.graph?.nodes || []).map((n: any) => {
         let nType = "actionNode";
-        if (n.type.startsWith("messaging.inbound") || n.type.startsWith("crm.card")) nType = "triggerNode";
+        if (
+          n.type.startsWith("messaging.inbound") ||
+          n.type.startsWith("crm.card") ||
+          n.type.startsWith("telegram.business_message") ||
+          n.type.startsWith("telegram.channel_")
+        ) nType = "triggerNode";
         else if (n.type.startsWith("condition.")) nType = "conditionNode";
         else if (n.type.startsWith("control.wait") || n.type.startsWith("messaging.wait")) nType = "waitNode";
         else if (n.type === "control.end") nType = "endNode";
@@ -741,7 +787,11 @@ function AutomacaoCanvasPage() {
       if (targetNode.type === "triggerNode") return false;
 
       // Nodos terminais não podem ter conexões de saída
-      if (sourceNode.type === "endNode" || sourceNode.data?.type === "messaging.route_to_human") {
+      if (
+        sourceNode.type === "endNode" ||
+        sourceNode.data?.type === "messaging.route_to_human" ||
+        sourceNode.data?.type === "telegram.route_to_human"
+      ) {
         return false;
       }
 
@@ -802,7 +852,12 @@ function AutomacaoCanvasPage() {
   function addNodeFromPalette(type: string, label: string) {
     const id = `node_${crypto.randomUUID().slice(0, 8)}`;
     let nType = "actionNode";
-    if (type.startsWith("messaging.inbound") || type.startsWith("crm.card")) nType = "triggerNode";
+    if (
+      type.startsWith("messaging.inbound") ||
+      type.startsWith("crm.card") ||
+      type.startsWith("telegram.business_message") ||
+      type.startsWith("telegram.channel_")
+    ) nType = "triggerNode";
     else if (type.startsWith("condition.")) nType = "conditionNode";
     else if (type.startsWith("control.wait") || type.startsWith("messaging.wait")) nType = "waitNode";
     else if (type === "control.end") nType = "endNode";
@@ -1109,6 +1164,62 @@ function AutomacaoCanvasPage() {
                   className="w-full justify-start text-xs gap-2 border-emerald-500/30 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950"
                 >
                   <Tag className="size-3.5" /> Adicionar Etiqueta
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-sky-600 dark:text-sky-400 uppercase text-[10px] tracking-wider mb-2 flex items-center gap-1.5">
+                <Send className="size-3" /> Telegram Oficial
+              </h4>
+              <div className="space-y-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addNodeFromPalette("telegram.business_message_received", "Telegram: Mensagem Recebida")}
+                  className="w-full justify-start text-xs gap-2 border-sky-500/30 text-sky-700 hover:bg-sky-50 dark:hover:bg-sky-950 dark:text-sky-300"
+                >
+                  <Send className="size-3.5" /> Telegram Business (Gatilho)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addNodeFromPalette("telegram.channel_post_published", "Telegram: Post em Canal")}
+                  className="w-full justify-start text-xs gap-2 border-sky-500/30 text-sky-700 hover:bg-sky-50 dark:hover:bg-sky-950 dark:text-sky-300"
+                >
+                  <Radio className="size-3.5" /> Post em Canal (Gatilho)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addNodeFromPalette("telegram.channel_comment_received", "Telegram: Comentário em Canal")}
+                  className="w-full justify-start text-xs gap-2 border-sky-500/30 text-sky-700 hover:bg-sky-50 dark:hover:bg-sky-950 dark:text-sky-300"
+                >
+                  <MessageCircle className="size-3.5" /> Comentário Canal (Gatilho)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addNodeFromPalette("telegram.send_business_reply", "Telegram: Responder em Business")}
+                  className="w-full justify-start text-xs gap-2 border-sky-500/30 text-sky-700 hover:bg-sky-50 dark:hover:bg-sky-950 dark:text-sky-300"
+                >
+                  <Send className="size-3.5" /> Responder Business
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addNodeFromPalette("telegram.publish_to_channel", "Telegram: Publicar no Canal")}
+                  className="w-full justify-start text-xs gap-2 border-sky-500/30 text-sky-700 hover:bg-sky-50 dark:hover:bg-sky-950 dark:text-sky-300"
+                >
+                  <Share2 className="size-3.5" /> Publicar no Canal
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addNodeFromPalette("telegram.route_to_human", "Telegram: Derivar a Atendente")}
+                  className="w-full justify-start text-xs gap-2 border-rose-500/30 text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950 dark:text-rose-300"
+                >
+                  <UserCheck className="size-3.5" /> Derivar para Atendente
                 </Button>
               </div>
             </div>
@@ -1664,6 +1775,225 @@ function AutomacaoCanvasPage() {
                   </div>
                 )}
 
+                {/* telegram.business_message_received (Trigger) */}
+                {selectedNode.data.type === "telegram.business_message_received" && (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label>Modo de Conexão Telegram</Label>
+                      <Select
+                        value={((selectedNode.data.config as any)?.connectionMode as string) || "any"}
+                        onValueChange={(val) => updateNodeConfig(selectedNode.id, "connectionMode", val)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="any">Qualquer conexão Telegram da empresa</SelectItem>
+                          <SelectItem value="selected">Conexão Telegram específica</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {((selectedNode.data.config as any)?.connectionMode === "selected") && (
+                      <div className="space-y-1.5">
+                        <Label>Linha Telegram Business *</Label>
+                        <Select
+                          value={((selectedNode.data.config as any)?.instanceIds?.[0] as string) || ""}
+                          onValueChange={(val) => updateNodeConfig(selectedNode.id, "instanceIds", val ? [val] : [])}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a linha Telegram..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {auxData.instances.filter((i) => i.provider?.toLowerCase().includes("telegram")).map((inst) => (
+                              <SelectItem key={inst.id} value={inst.id}>
+                                {inst.display_name || inst.instance_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    <div className="space-y-1.5">
+                      <Label>Tipo de Conversa</Label>
+                      <Select
+                        value={((selectedNode.data.config as any)?.conversationType as string) || "direct"}
+                        onValueChange={(val) => updateNodeConfig(selectedNode.id, "conversationType", val)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="direct">Apenas conversas diretas (1 a 1)</SelectItem>
+                          <SelectItem value="group">Apenas grupos / supergrupos</SelectItem>
+                          <SelectItem value="all">Todas as conversas</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label>Palavras-chave (opcional, separadas por vírgula)</Label>
+                      <Input
+                        placeholder="Ex: orcamento, comprar, suporte, catalogo"
+                        value={(((selectedNode.data.config as any)?.keywords as string[]) || []).join(", ")}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const arr = raw.split(",").map((s) => s.trim()).filter(Boolean);
+                          updateNodeConfig(selectedNode.id, "keywords", arr);
+                        }}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* telegram.channel_post_published (Trigger) */}
+                {selectedNode.data.type === "telegram.channel_post_published" && (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label>Identificador do Canal (opcional)</Label>
+                      <Input
+                        placeholder="Ex: -1002244668899 ou em branco para qualquer canal"
+                        value={((selectedNode.data.config as any)?.channelId as string) || ""}
+                        onChange={(e) => updateNodeConfig(selectedNode.id, "channelId", e.target.value || null)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Formato do Post</Label>
+                      <Select
+                        value={((selectedNode.data.config as any)?.postFormat as string) || "all"}
+                        onValueChange={(val) => updateNodeConfig(selectedNode.id, "postFormat", val)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos os formatos (Texto, Fotos, Vídeos, Álbuns)</SelectItem>
+                          <SelectItem value="photo">Apenas Fotos</SelectItem>
+                          <SelectItem value="video">Apenas Vídeos</SelectItem>
+                          <SelectItem value="text">Apenas Mensagens de Texto</SelectItem>
+                          <SelectItem value="carousel">Apenas Carrosséis / Álbuns</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
+
+                {/* telegram.channel_comment_received (Trigger) */}
+                {selectedNode.data.type === "telegram.channel_comment_received" && (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label>Identificador do Canal (opcional)</Label>
+                      <Input
+                        placeholder="Ex: -1002244668899 ou em branco para todos"
+                        value={((selectedNode.data.config as any)?.channelId as string) || ""}
+                        onChange={(e) => updateNodeConfig(selectedNode.id, "channelId", e.target.value || null)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Filtrar Palavras-chave no Comentário (opcional)</Label>
+                      <Input
+                        placeholder="Ex: valor, comprar, quero, preco"
+                        value={(((selectedNode.data.config as any)?.keywords as string[]) || []).join(", ")}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const arr = raw.split(",").map((s) => s.trim()).filter(Boolean);
+                          updateNodeConfig(selectedNode.id, "keywords", arr);
+                        }}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* telegram.send_business_reply (Action) */}
+                {selectedNode.data.type === "telegram.send_business_reply" && (
+                  <div className="space-y-1.5">
+                    <Label>Texto da Resposta Oficial *</Label>
+                    <Textarea
+                      rows={4}
+                      placeholder="Olá {{contact.name}}! Como podemos te ajudar hoje?"
+                      value={((selectedNode.data.config as any)?.text as string) || ""}
+                      onChange={(e) => updateNodeConfig(selectedNode.id, "text", e.target.value)}
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Suporta variáveis dinâmicas como {'{{contact.name}}'}, {'{{card.nome}}'} e {'{{trigger.text}}'}.
+                    </p>
+                  </div>
+                )}
+
+                {/* telegram.publish_to_channel (Action) */}
+                {selectedNode.data.type === "telegram.publish_to_channel" && (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label>Canal de Destino (opcional)</Label>
+                      <Input
+                        placeholder="Em branco para usar o canal oficial da empresa"
+                        value={((selectedNode.data.config as any)?.channelId as string) || ""}
+                        onChange={(e) => updateNodeConfig(selectedNode.id, "channelId", e.target.value || null)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Conteúdo da Publicação *</Label>
+                      <Textarea
+                        rows={4}
+                        placeholder="Escreva o texto ou comunicado para o canal..."
+                        value={((selectedNode.data.config as any)?.text as string) || ""}
+                        onChange={(e) => updateNodeConfig(selectedNode.id, "text", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Tipo de Mídia</Label>
+                      <Select
+                        value={((selectedNode.data.config as any)?.mediaType as string) || "text"}
+                        onValueChange={(val) => updateNodeConfig(selectedNode.id, "mediaType", val)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="text">Apenas Texto</SelectItem>
+                          <SelectItem value="photo">Foto com Legenda</SelectItem>
+                          <SelectItem value="video">Vídeo com Legenda</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {((selectedNode.data.config as any)?.mediaType !== "text") && (
+                      <div className="space-y-1.5">
+                        <Label>URL da Mídia (R2 ou pública)</Label>
+                        <Input
+                          placeholder="https://..."
+                          value={((selectedNode.data.config as any)?.mediaUrl as string) || ""}
+                          onChange={(e) => updateNodeConfig(selectedNode.id, "mediaUrl", e.target.value || null)}
+                        />
+                      </div>
+                    )}
+                    <label className="flex items-center gap-2 cursor-pointer text-xs pt-1">
+                      <input
+                        type="checkbox"
+                        className="rounded border-gray-300 text-primary"
+                        checked={Boolean((selectedNode.data.config as any)?.pinMessage)}
+                        onChange={(e) => updateNodeConfig(selectedNode.id, "pinMessage", e.target.checked)}
+                      />
+                      <span>Fixar mensagem no topo do canal (Pin)</span>
+                    </label>
+                  </>
+                )}
+
+                {/* telegram.route_to_human (Terminal Handoff) */}
+                {selectedNode.data.type === "telegram.route_to_human" && (
+                  <div className="space-y-1.5">
+                    <Label>Motivo da Derivação Humana</Label>
+                    <Input
+                      placeholder="Ex: Cliente solicitou atendente no Telegram"
+                      value={((selectedNode.data.config as any)?.reason as string) || "Solicitação de atendimento humano via Telegram"}
+                      onChange={(e) => updateNodeConfig(selectedNode.id, "reason", e.target.value)}
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Pausa o bot e agentes de IA no Telegram e encaminha o atendimento. Este nó é terminal e encerra o fluxo automaticamente.
+                    </p>
+                  </div>
+                )}
+
                 <div className="pt-4 border-t flex justify-between gap-2">
                   <Button
                     variant="destructive"
@@ -1884,6 +2214,44 @@ function AutomacaoCanvasPage() {
                         <UserCheck className="size-3.5 text-amber-600" /> Transferir para Humano
                       </span>
                       <span className="text-[11px] text-muted-foreground">Pausa automação e chama atendente (terminal).</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-xs font-semibold text-sky-600 dark:text-sky-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                    <Send className="size-3" /> Ações Telegram
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "telegram.send_business_reply")}
+                      className="p-3 text-left border rounded-xl hover:border-sky-500 hover:bg-sky-500/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <Send className="size-3.5 text-sky-500" /> Responder Business
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Dispara resposta oficial no chat Telegram Business.</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "telegram.publish_to_channel")}
+                      className="p-3 text-left border rounded-xl hover:border-sky-500 hover:bg-sky-500/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <Share2 className="size-3.5 text-sky-500" /> Publicar no Canal
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Emite comunicado ou mídia no canal oficial.</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "telegram.route_to_human")}
+                      className="p-3 text-left border rounded-xl hover:border-rose-500 hover:bg-rose-500/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <UserCheck className="size-3.5 text-rose-500" /> Derivar para Humano
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Pausa IA e notifica equipe no Telegram (Terminal).</span>
                     </button>
                   </div>
                 </div>

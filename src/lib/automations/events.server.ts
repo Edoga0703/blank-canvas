@@ -95,7 +95,10 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
   let triggeredCount = 0;
 
   // 1. Verificar si hay ejecuciones esperando respuesta en este mismo hilo de conversación
-  if (name === "messaging.inbound_received.v1" && payload?.externalConversationId) {
+  if (
+    (name === "messaging.inbound_received.v1" || name === "telegram.business_message_received.v1") &&
+    payload?.externalConversationId
+  ) {
     let query = (supabaseAdmin as any)
       .from("automation_executions")
       .select("id, workflow_version_id, current_node_id, context, source_instance_id")
@@ -204,7 +207,12 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
     if (!graph || !graph.nodes) continue;
 
     const triggerNode = graph.nodes.find(
-      (n) => n.type === "messaging.inbound_received" || n.type.startsWith("crm.card")
+      (n) =>
+        n.type === "messaging.inbound_received" ||
+        n.type.startsWith("crm.card") ||
+        n.type === "telegram.business_message_received" ||
+        n.type === "telegram.channel_post_published" ||
+        n.type === "telegram.channel_comment_received"
     );
     if (!triggerNode) continue;
 
@@ -239,6 +247,42 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
       }
 
       matches = Boolean(chOk && instOk && convOk && kwOk);
+    } else if (
+      (name === "telegram.business_message_received.v1" || (name === "messaging.inbound_received.v1" && payload.channel === "telegram")) &&
+      triggerNode.type === "telegram.business_message_received"
+    ) {
+      const cfg = (triggerNode.config || {}) as any;
+      const instOk =
+        cfg.connectionMode !== "selected" ||
+        (Array.isArray(cfg.instanceIds) && cfg.instanceIds.includes(payload.instanceId));
+
+      const convType = cfg.conversationType || "direct";
+      const isGroup = Boolean(payload.isGroup || (payload.externalConversationId && String(payload.externalConversationId).includes("@g.us")));
+      let convOk = true;
+      if (convType === "direct") convOk = !isGroup;
+      else if (convType === "group") convOk = isGroup;
+
+      let kwOk = true;
+      if (Array.isArray(cfg.keywords) && cfg.keywords.length > 0) {
+        const text = String(payload.text || "").toLowerCase();
+        kwOk = cfg.keywords.some((k: string) => text.includes(String(k).toLowerCase().trim()));
+      }
+
+      matches = Boolean(instOk && convOk && kwOk);
+    } else if (name === "telegram.channel_post_published.v1" && triggerNode.type === "telegram.channel_post_published") {
+      const cfg = (triggerNode.config || {}) as any;
+      const chOk = !cfg.channelId || String(cfg.channelId).trim() === String(payload.channelId).trim();
+      const formatOk = !cfg.postFormat || cfg.postFormat === "all" || cfg.postFormat === payload.format;
+      matches = Boolean(chOk && formatOk);
+    } else if (name === "telegram.channel_comment_received.v1" && triggerNode.type === "telegram.channel_comment_received") {
+      const cfg = (triggerNode.config || {}) as any;
+      const chOk = !cfg.channelId || String(cfg.channelId).trim() === String(payload.channelId).trim();
+      let kwOk = true;
+      if (Array.isArray(cfg.keywords) && cfg.keywords.length > 0) {
+        const text = String(payload.text || "").toLowerCase();
+        kwOk = cfg.keywords.some((k: string) => text.includes(String(k).toLowerCase().trim()));
+      }
+      matches = Boolean(chOk && kwOk);
     } else if (name === "crm.card.stage_changed.v1" && triggerNode.type === "crm.card_stage_changed") {
       const cfg = (triggerNode.config || {}) as any;
       const pipeOk = !cfg.pipelineId || cfg.pipelineId === payload.pipelineId;

@@ -650,3 +650,251 @@ registerNode({
     return { kind: "finish" };
   },
 });
+
+// ============================================================================
+// 4. NODOS ESPECÍFICOS DE TELEGRAM (FASE 5)
+// ============================================================================
+
+// Trigger 1: telegram.business_message_received
+registerNode({
+  type: "telegram.business_message_received",
+  version: 1,
+  category: "trigger",
+  name: "Telegram: Mensagem Recebida",
+  description: "Dispara quando um cliente envia mensagem para o Telegram Business oficial da empresa.",
+  icon: "Send",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    connectionMode: z.enum(["any", "selected"]).default("any"),
+    instanceIds: z.array(z.string()).default([]),
+    keywords: z.array(z.string()).default([]),
+    conversationType: z.enum(["all", "direct", "group"]).default("direct"),
+  }),
+  async execute(ctx) {
+    if (ctx.externalConversationId) {
+      await acquireWorkflowControl({
+        companyId: ctx.companyId,
+        externalConversationId: ctx.externalConversationId,
+        executionId: ctx.executionId,
+        instanceId: ctx.sourceInstanceId,
+        cardId: ctx.subject?.id,
+        leaseMinutes: 120,
+      });
+    }
+    return { kind: "next", port: "next" };
+  },
+});
+
+// Trigger 2: telegram.channel_post_published
+registerNode({
+  type: "telegram.channel_post_published",
+  version: 1,
+  category: "trigger",
+  name: "Telegram: Publicação no Canal",
+  description: "Dispara quando uma nova publicação ou álbum é emitido no canal oficial de Telegram.",
+  icon: "Radio",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    channelId: z.string().optional().nullable(),
+    postFormat: z.enum(["all", "photo", "video", "text", "carousel"]).default("all"),
+  }),
+  async execute() {
+    return { kind: "next", port: "next" };
+  },
+});
+
+// Trigger 3: telegram.channel_comment_received
+registerNode({
+  type: "telegram.channel_comment_received",
+  version: 1,
+  category: "trigger",
+  name: "Telegram: Comentário no Canal",
+  description: "Dispara quando um seguidor comenta em uma publicação do canal de Telegram.",
+  icon: "MessageCircle",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    channelId: z.string().optional().nullable(),
+    keywords: z.array(z.string()).default([]),
+  }),
+  async execute() {
+    return { kind: "next", port: "next" };
+  },
+});
+
+// Action 1: telegram.send_business_reply
+registerNode({
+  type: "telegram.send_business_reply",
+  version: 1,
+  category: "action",
+  name: "Telegram: Responder em Business",
+  description: "Envia uma resposta oficial ao cliente através da conexão de Telegram Business.",
+  icon: "Send",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    text: z.string().min(1, "O texto da mensagem é obrigatório"),
+  }),
+  async execute(ctx, config) {
+    const interpolated = interpolateVariables(config.text, ctx.context);
+    const destination =
+      ctx.externalConversationId ||
+      ctx.context.trigger?.phone ||
+      ctx.context.card?.numero;
+
+    if (!destination) {
+      throw new Error("Destinatário ou conversa do Telegram não encontrada no contexto de execução.");
+    }
+
+    // Buscar a conexão de Telegram Business da empresa
+    const { data: instanceRow } = await (supabaseAdmin as any)
+      .from("whatsapp_instances")
+      .select("id, company_id, instance_name, instance_token, provider, status, paused")
+      .eq("company_id", ctx.companyId)
+      .ilike("provider", "%telegram%")
+      .in("status", ["connected", "ativo", "open", "ready"])
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!instanceRow) {
+      throw new Error("Nenhuma conexão de Telegram Business ativa encontrada para enviar a resposta.");
+    }
+
+    if (instanceRow.paused) {
+      throw new Error(`A conexão de Telegram ${instanceRow.instance_name} está pausada.`);
+    }
+
+    const { waSendText } = await import("@/lib/wa-dispatch.server");
+    const result = await waSendText(instanceRow, destination, interpolated);
+
+    return {
+      kind: "next",
+      port: "next",
+      output: {
+        messageId: (result as any)?.id || (result as any)?.key?.id || null,
+        instanceId: instanceRow.id,
+      },
+    };
+  },
+});
+
+// Action 2: telegram.publish_to_channel
+registerNode({
+  type: "telegram.publish_to_channel",
+  version: 1,
+  category: "action",
+  name: "Telegram: Publicar no Canal",
+  description: "Publica comunicado, texto ou imagem no canal oficial de Telegram via MTProto Sidecar.",
+  icon: "Share2",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    channelId: z.string().optional().nullable(),
+    text: z.string().min(1, "O conteúdo da publicação é obrigatório"),
+    mediaUrl: z.string().optional().nullable(),
+    mediaType: z.enum(["text", "photo", "video"]).default("text"),
+    pinMessage: z.boolean().default(false),
+  }),
+  async execute(ctx, config) {
+    const interpolatedText = interpolateVariables(config.text, ctx.context);
+    let targetChannelId = config.channelId;
+
+    if (!targetChannelId) {
+      const { data: acc } = await (supabaseAdmin as any)
+        .from("meta_social_accounts")
+        .select("external_id")
+        .eq("company_id", ctx.companyId)
+        .eq("network", "telegram")
+        .limit(1)
+        .maybeSingle();
+      targetChannelId = acc?.external_id || "-1002244668899";
+    }
+
+    const { publishToTelegramChannel } = await import("@/lib/telegram/mtproto-client.server");
+    const { data: conn } = await (supabaseAdmin as any)
+      .from("telegram_connections")
+      .select("id")
+      .eq("company_id", ctx.companyId)
+      .eq("connection_type", "personal_qr")
+      .in("status", ["connected", "authorized"])
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const connectionId = conn?.id || "simulated_connection";
+    const mediaUrls = config.mediaUrl ? [config.mediaUrl] : [];
+
+    const result = await publishToTelegramChannel({
+      companyId: ctx.companyId,
+      connectionId,
+      channelId: targetChannelId,
+      text: interpolatedText,
+      mediaType: config.mediaType === "photo" ? "image" : (config.mediaType || (mediaUrls.length ? "image" : "text")),
+      mediaUrls,
+      pinMessage: Boolean(config.pinMessage),
+    });
+
+    return {
+      kind: "next",
+      port: "next",
+      output: {
+        messageId: result.messageId,
+        channelUrl: result.channelUrl,
+        isSimulation: Boolean(result.isSimulation),
+      },
+    };
+  },
+});
+
+// Action 3: telegram.route_to_human
+registerNode({
+  type: "telegram.route_to_human",
+  version: 1,
+  category: "action",
+  name: "Telegram: Derivar a Atendente",
+  description: "Pausa automações e agentes de IA no Telegram e encaminha a conversa a um operador humano.",
+  icon: "UserCheck",
+  outputPorts: [], // Nodo terminal
+  configSchema: z.object({
+    reason: z.string().default("Solicitação de atendimento humano via Telegram"),
+  }),
+  async execute(ctx, config) {
+    if (ctx.externalConversationId) {
+      await handoffToHuman({
+        companyId: ctx.companyId,
+        externalConversationId: ctx.externalConversationId,
+        instanceId: ctx.sourceInstanceId || null,
+        reason: config.reason,
+      });
+
+      try {
+        const cardId = ctx.subject?.id || ctx.context.card?.id || ctx.context.trigger?.cardId;
+        if (cardId) {
+          await (supabaseAdmin as any).from("lead_evento").insert({
+            company_id: ctx.companyId,
+            card_id: cardId,
+            tipo: "handoff",
+            descricao: `Derivado a atención humana desde Telegram: ${config.reason || "Sin motivo"}`,
+          });
+        }
+      } catch {
+        // best-effort
+      }
+
+      try {
+        await (supabaseAdmin as any).from("contact_pause").upsert(
+          {
+            company_id: ctx.companyId,
+            numero: ctx.externalConversationId,
+            pausado: true,
+            pausado_por: "workflow_telegram_route_to_human",
+            pausado_em: new Date().toISOString(),
+          },
+          { onConflict: "company_id,numero" }
+        );
+      } catch {
+        // best-effort
+      }
+    }
+    return { kind: "finish" };
+  },
+});
+

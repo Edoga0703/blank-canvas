@@ -306,6 +306,7 @@ export interface PublishChannelOptions {
   text?: string;
   mediaUrls?: string[];
   mediaType?: "video" | "image" | "carousel" | "text";
+  pinMessage?: boolean;
 }
 
 export interface PublishChannelResult {

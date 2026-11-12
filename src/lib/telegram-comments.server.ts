@@ -155,6 +155,35 @@ export async function syncTelegramPostComments(
       })
       .eq("id", post.id)
       .catch(() => null);
+
+    // Disparar eventos para o motor de automações (Fase 5 Trigger: telegram.channel_comment_received)
+    try {
+      const { dispatchDomainEvent } = await import("./automations/events.server");
+      for (const c of commentsToUpsert) {
+        if (!c.is_own) {
+          await dispatchDomainEvent({
+            id: crypto.randomUUID(),
+            companyId,
+            name: "telegram.channel_comment_received.v1",
+            occurredAt: c.commented_at || new Date().toISOString(),
+            entity: { type: "comment", id: c.external_comment_id },
+            source: "telegram",
+            idempotencyKey: `comment_received_${c.external_comment_id}`,
+            payload: {
+              channelId,
+              postId: post.id,
+              externalPostId: post.external_post_id,
+              commentId: c.external_comment_id,
+              authorName: c.author_name,
+              authorUsername: c.author_username,
+              text: c.text,
+            },
+          }).catch(() => null);
+        }
+      }
+    } catch (autoErr) {
+      console.warn("[Telegram Comments] Aviso ao notificar motor de automações:", autoErr);
+    }
   }
 
   return {

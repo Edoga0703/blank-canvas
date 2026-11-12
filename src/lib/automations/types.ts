@@ -44,7 +44,10 @@ export type AutomationEventName =
   | "crm.card.stage_changed.v1"
   | "crm.card.owner_changed.v1"
   | "crm.card.tags_changed.v1"
-  | "messaging.inbound_received.v1";
+  | "messaging.inbound_received.v1"
+  | "telegram.business_message_received.v1"
+  | "telegram.channel_post_published.v1"
+  | "telegram.channel_comment_received.v1";
 
 export interface DomainEvent<TPayload = any> {
   id: string;

@@ -207,6 +207,29 @@ export const telegramAdapter: SocialPublisherAdapter = {
         }
       }
 
+      // 7. Notificar el motor de automatizaciones (Fase 5 Trigger: telegram.channel_post_published)
+      try {
+        const { dispatchDomainEvent } = await import("@/lib/automations/events.server");
+        await dispatchDomainEvent({
+          id: crypto.randomUUID(),
+          companyId,
+          name: "telegram.channel_post_published.v1",
+          occurredAt: new Date().toISOString(),
+          entity: { type: "post", id: primaryId },
+          source: "telegram",
+          idempotencyKey: `post_published_${telegramChannelId}_${primaryId}`,
+          payload: {
+            channelId: telegramChannelId,
+            postId: primaryId,
+            format: mediaType || (mediaUrls.length ? "photo" : "text"),
+            caption,
+            url: result.channelUrl,
+          },
+        }).catch(() => null);
+      } catch (evErr) {
+        console.warn("[telegramAdapter] Aviso al despachar evento de automatización:", evErr);
+      }
+
       return {
         state: "published",
         externalPostId: primaryId,

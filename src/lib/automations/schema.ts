@@ -67,7 +67,13 @@ export function validateWorkflowGraphStructure(graph: WorkflowGraph): { valid: b
     inDegree.set(node.id, 0);
     adjList.set(node.id, []);
 
-    if (node.type.startsWith("messaging.inbound") || node.type.startsWith("crm.card")) {
+    if (
+      node.type.startsWith("messaging.inbound") ||
+      node.type.startsWith("crm.card") ||
+      node.type === "telegram.business_message_received" ||
+      node.type === "telegram.channel_post_published" ||
+      node.type === "telegram.channel_comment_received"
+    ) {
       triggers.push(node);
     }
   }
@@ -99,7 +105,11 @@ export function validateWorkflowGraphStructure(graph: WorkflowGraph): { valid: b
 
     const sourceNode = nodeMap.get(edge.source);
     if (sourceNode) {
-      if (sourceNode.type === "control.end" || sourceNode.type === "messaging.route_to_human") {
+      if (
+        sourceNode.type === "control.end" ||
+        sourceNode.type === "messaging.route_to_human" ||
+        sourceNode.type === "telegram.route_to_human"
+      ) {
         errors.push({
           edgeId: edge.id,
           message: `O nó terminal "${edge.source}" (${sourceNode.type}) não pode possuir conexões de saída.`,
