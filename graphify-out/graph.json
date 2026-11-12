@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-12T05:09:25.734080+00:00",
+  "generated_at": "2026-11-12T05:45:56.867307+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -530,6 +530,10 @@
       "bytes": 4804
     },
     {
+      "path": "supabase/migrations/20261112010000_telegram_discussion_and_comment_moderation.sql",
+      "bytes": 2690
+    },
+    {
       "path": "supabase/migrations/20261023100000_dapi_whatsapp_integration.sql",
       "bytes": 649
     },
@@ -628,6 +632,10 @@
     {
       "path": "docs/sql/20261111030000_content_assets_and_durable_targets.sql",
       "bytes": 4804
+    },
+    {
+      "path": "docs/sql/20261112010000_telegram_discussion_and_comment_moderation.sql",
+      "bytes": 2690
     },
     {
       "path": "docs/sql/MASTER_V1.3.01_CONSOLIDATED_DATABASE_MIGRATION.sql",
@@ -946,6 +954,10 @@
       "bytes": 29359
     },
     {
+      "path": "src/lib/telegram-comments.server.ts",
+      "bytes": 13703
+    },
+    {
       "path": "src/lib/session-middleware.ts",
       "bytes": 943
     },
@@ -960,6 +972,10 @@
     {
       "path": "src/lib/lovable-error-reporting.ts",
       "bytes": 830
+    },
+    {
+      "path": "src/lib/telegram-comments.functions.ts",
+      "bytes": 8073
     },
     {
       "path": "src/lib/forward.functions.ts",
@@ -2779,7 +2795,7 @@
     },
     {
       "path": "src/components/content/meta-content-history.tsx",
-      "bytes": 45105
+      "bytes": 49614
     },
     {
       "path": "src/components/content/meta-social-intelligence.tsx",
@@ -3055,7 +3071,7 @@
     },
     {
       "path": "src/lib/telegram/mtproto-client.server.ts",
-      "bytes": 12048
+      "bytes": 15782
     },
     {
       "path": "src/lib/telegram/contracts.ts",
@@ -3267,7 +3283,7 @@
     },
     {
       "path": "services/telegram-gateway/src/index.js",
-      "bytes": 22364
+      "bytes": 27372
     }
   ],
   "dependencies": [
@@ -5368,6 +5384,14 @@
       "target": "./crm-lead-context.server"
     },
     {
+      "source": "src/lib/telegram-comments.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/telegram-comments.server.ts",
+      "target": "./telegram/mtproto-client.server"
+    },
+    {
       "source": "src/lib/session-middleware.ts",
       "target": "@tanstack/react-start"
     },
@@ -5398,6 +5422,46 @@
     {
       "source": "src/lib/lead-photos.functions.ts",
       "target": "@/lib/lead-photo.server"
+    },
+    {
+      "source": "src/lib/telegram-comments.functions.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/telegram-comments.functions.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/telegram-comments.functions.ts",
+      "target": "./company-cache"
+    },
+    {
+      "source": "src/lib/telegram-comments.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/telegram-comments.functions.ts",
+      "target": "./telegram-comments.server"
+    },
+    {
+      "source": "src/lib/telegram-comments.functions.ts",
+      "target": "./meta-content.functions"
+    },
+    {
+      "source": "src/lib/telegram-comments.functions.ts",
+      "target": "./meta-content.functions"
+    },
+    {
+      "source": "src/lib/telegram-comments.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/telegram-comments.functions.ts",
+      "target": "./telegram-comments.server"
+    },
+    {
+      "source": "src/lib/telegram-comments.functions.ts",
+      "target": "./telegram-comments.server"
     },
     {
       "source": "src/lib/forward.functions.ts",
@@ -16238,6 +16302,10 @@
     {
       "source": "src/components/content/meta-content-history.tsx",
       "target": "@/lib/meta-content.functions"
+    },
+    {
+      "source": "src/components/content/meta-content-history.tsx",
+      "target": "@/lib/telegram-comments.functions"
     },
     {
       "source": "src/components/content/meta-content-history.tsx",
