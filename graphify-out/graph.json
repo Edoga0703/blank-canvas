@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-12T05:45:56.867307+00:00",
+  "generated_at": "2026-11-12T20:49:30.995929+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -955,7 +955,7 @@
     },
     {
       "path": "src/lib/telegram-comments.server.ts",
-      "bytes": 13703
+      "bytes": 14853
     },
     {
       "path": "src/lib/session-middleware.ts",
@@ -2011,7 +2011,7 @@
     },
     {
       "path": "src/routes/app/automacoes.$workflowId.tsx",
-      "bytes": 87590
+      "bytes": 108219
     },
     {
       "path": "src/routes/app/treinamentos.index.tsx",
@@ -3071,7 +3071,7 @@
     },
     {
       "path": "src/lib/telegram/mtproto-client.server.ts",
-      "bytes": 15782
+      "bytes": 15806
     },
     {
       "path": "src/lib/telegram/contracts.ts",
@@ -3091,7 +3091,7 @@
     },
     {
       "path": "src/lib/automations/registry.server.ts",
-      "bytes": 21926
+      "bytes": 30065
     },
     {
       "path": "src/lib/automations/queue.server.ts",
@@ -3103,7 +3103,7 @@
     },
     {
       "path": "src/lib/automations/types.ts",
-      "bytes": 2274
+      "bytes": 2402
     },
     {
       "path": "src/lib/automations/fallback.server.ts",
@@ -3111,11 +3111,11 @@
     },
     {
       "path": "src/lib/automations/schema.ts",
-      "bytes": 6126
+      "bytes": 6401
     },
     {
       "path": "src/lib/automations/events.server.ts",
-      "bytes": 13063
+      "bytes": 15407
     },
     {
       "path": "src/lib/automations/functions.ts",
@@ -3259,7 +3259,7 @@
     },
     {
       "path": "src/lib/content/providers/telegram.server.ts",
-      "bytes": 7781
+      "bytes": 8731
     },
     {
       "path": "src/lib/content/providers/tiktok.server.ts",
@@ -5390,6 +5390,10 @@
     {
       "source": "src/lib/telegram-comments.server.ts",
       "target": "./telegram/mtproto-client.server"
+    },
+    {
+      "source": "src/lib/telegram-comments.server.ts",
+      "target": "./automations/events.server"
     },
     {
       "source": "src/lib/session-middleware.ts",
@@ -18232,6 +18236,14 @@
       "target": "@/lib/crm-engine.server"
     },
     {
+      "source": "src/lib/automations/registry.server.ts",
+      "target": "@/lib/wa-dispatch.server"
+    },
+    {
+      "source": "src/lib/automations/registry.server.ts",
+      "target": "@/lib/telegram/mtproto-client.server"
+    },
+    {
       "source": "src/lib/automations/queue.server.ts",
       "target": "@/integrations/supabase/client.server"
     },
@@ -18742,6 +18754,10 @@
     {
       "source": "src/lib/content/providers/telegram.server.ts",
       "target": "@/lib/telegram/mtproto-client.server"
+    },
+    {
+      "source": "src/lib/content/providers/telegram.server.ts",
+      "target": "@/lib/automations/events.server"
     },
     {
       "source": "src/lib/content/providers/tiktok.server.ts",
