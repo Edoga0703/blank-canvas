@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-12T20:49:30.995929+00:00",
+  "generated_at": "2026-11-13T21:57:47.529804+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -11,11 +11,11 @@
     },
     {
       "path": "package.json",
-      "bytes": 4156
+      "bytes": 4207
     },
     {
       "path": "vite.config.ts",
-      "bytes": 4270
+      "bytes": 3043
     },
     {
       "path": "fix_training_data.sql",
@@ -531,7 +531,7 @@
     },
     {
       "path": "supabase/migrations/20261112010000_telegram_discussion_and_comment_moderation.sql",
-      "bytes": 2690
+      "bytes": 3603
     },
     {
       "path": "supabase/migrations/20261023100000_dapi_whatsapp_integration.sql",
@@ -595,7 +595,7 @@
     },
     {
       "path": "supabase/migrations/20261111080000_telegram_foundation_and_dual_transport.sql",
-      "bytes": 13736
+      "bytes": 13701
     },
     {
       "path": "supabase/migrations/20261009070000_company_full_columns.sql",
@@ -635,7 +635,7 @@
     },
     {
       "path": "docs/sql/20261112010000_telegram_discussion_and_comment_moderation.sql",
-      "bytes": 2690
+      "bytes": 3603
     },
     {
       "path": "docs/sql/MASTER_V1.3.01_CONSOLIDATED_DATABASE_MIGRATION.sql",
@@ -679,7 +679,7 @@
     },
     {
       "path": "docs/sql/20261111080000_telegram_foundation_and_dual_transport.sql",
-      "bytes": 13736
+      "bytes": 13701
     },
     {
       "path": "docs/sql/20261029100000_multichannel_automations.sql",
@@ -803,7 +803,7 @@
     },
     {
       "path": "src/lib/meta-history.functions.ts",
-      "bytes": 21077
+      "bytes": 21543
     },
     {
       "path": "src/lib/master-admin.functions.ts",
@@ -955,7 +955,7 @@
     },
     {
       "path": "src/lib/telegram-comments.server.ts",
-      "bytes": 14853
+      "bytes": 16606
     },
     {
       "path": "src/lib/session-middleware.ts",
@@ -1099,7 +1099,7 @@
     },
     {
       "path": "src/lib/wa-dispatch.server.ts",
-      "bytes": 15062
+      "bytes": 15127
     },
     {
       "path": "src/lib/agendamentos-dispatch.server.ts",
@@ -1107,7 +1107,7 @@
     },
     {
       "path": "src/lib/telegram-mtproto.functions.ts",
-      "bytes": 14127
+      "bytes": 15431
     },
     {
       "path": "src/lib/billing.functions.ts",
@@ -1383,7 +1383,7 @@
     },
     {
       "path": "src/lib/telegram.functions.ts",
-      "bytes": 4630
+      "bytes": 4643
     },
     {
       "path": "src/lib/lovable-ai.server.ts",
@@ -1403,7 +1403,7 @@
     },
     {
       "path": "src/lib/cron-auth.server.ts",
-      "bytes": 1473
+      "bytes": 1297
     },
     {
       "path": "src/lib/meta-message-media.server.ts",
@@ -1411,7 +1411,7 @@
     },
     {
       "path": "src/lib/telegram-content-sync.server.ts",
-      "bytes": 7636
+      "bytes": 7881
     },
     {
       "path": "src/lib/announcements.functions.ts",
@@ -2115,7 +2115,7 @@
     },
     {
       "path": "src/routes/api/public/chat-media.ts",
-      "bytes": 16446
+      "bytes": 16219
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
@@ -2147,7 +2147,7 @@
     },
     {
       "path": "src/routes/api/public/telegram-webhook.ts",
-      "bytes": 15741
+      "bytes": 19774
     },
     {
       "path": "src/routes/api/public/track-click.ts",
@@ -3067,11 +3067,11 @@
     },
     {
       "path": "src/integrations/supabase/client.server.ts",
-      "bytes": 3053
+      "bytes": 2767
     },
     {
       "path": "src/lib/telegram/mtproto-client.server.ts",
-      "bytes": 15806
+      "bytes": 19414
     },
     {
       "path": "src/lib/telegram/contracts.ts",
@@ -3091,7 +3091,7 @@
     },
     {
       "path": "src/lib/automations/registry.server.ts",
-      "bytes": 30065
+      "bytes": 30694
     },
     {
       "path": "src/lib/automations/queue.server.ts",
@@ -3175,7 +3175,7 @@
     },
     {
       "path": "src/lib/storage/storage-pool.server.ts",
-      "bytes": 14119
+      "bytes": 13715
     },
     {
       "path": "src/lib/storage/r2.functions.ts",
@@ -3183,7 +3183,7 @@
     },
     {
       "path": "src/lib/storage/r2.server.ts",
-      "bytes": 13105
+      "bytes": 12673
     },
     {
       "path": "src/lib/email-templates/recovery.tsx",
@@ -3231,15 +3231,15 @@
     },
     {
       "path": "src/lib/mcp/tools/list-leads.ts",
-      "bytes": 1849
+      "bytes": 1687
     },
     {
       "path": "src/lib/mcp/tools/send-whatsapp.ts",
-      "bytes": 2771
+      "bytes": 2609
     },
     {
       "path": "src/lib/mcp/tools/list-conversations.ts",
-      "bytes": 1917
+      "bytes": 1755
     },
     {
       "path": "src/lib/content/providers/youtube.server.ts",
@@ -3259,7 +3259,7 @@
     },
     {
       "path": "src/lib/content/providers/telegram.server.ts",
-      "bytes": 8731
+      "bytes": 8601
     },
     {
       "path": "src/lib/content/providers/tiktok.server.ts",
@@ -3283,7 +3283,7 @@
     },
     {
       "path": "services/telegram-gateway/src/index.js",
-      "bytes": 27372
+      "bytes": 30702
     }
   ],
   "dependencies": [
@@ -6178,6 +6178,10 @@
     {
       "source": "src/lib/telegram-mtproto.functions.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/telegram-mtproto.functions.ts",
+      "target": "./telegram/mtproto-client.server"
     },
     {
       "source": "src/lib/telegram-mtproto.functions.ts",
@@ -18822,6 +18826,14 @@
     {
       "source": "services/telegram-gateway/src/index.js",
       "target": "telegram/sessions/index.js"
+    },
+    {
+      "source": "services/telegram-gateway/src/index.js",
+      "target": "telegram"
+    },
+    {
+      "source": "services/telegram-gateway/src/index.js",
+      "target": "telegram"
     },
     {
       "source": "services/telegram-gateway/src/index.js",
