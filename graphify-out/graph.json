@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-13T21:57:47.529804+00:00",
+  "generated_at": "2026-11-13T23:06:40.546248+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -15,7 +15,7 @@
     },
     {
       "path": "vite.config.ts",
-      "bytes": 3043
+      "bytes": 5715
     },
     {
       "path": "fix_training_data.sql",
