@@ -10,7 +10,8 @@
     "build:dev": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build --mode development --configLoader runner",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "verify": "node ./scripts/verify-release.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

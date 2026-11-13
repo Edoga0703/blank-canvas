@@ -218,19 +218,19 @@ export async function waSendText(
   }
   if (inst.provider === "telegram") {
     const businessConnectionId = await getTelegramBusinessConnection(inst);
-    const { tgSendText, tgSendBusinessText } = await import("./telegram.server");
-    if (businessConnectionId) {
-      return tgSendBusinessText(
-        inst.instance_token || "",
-        businessConnectionId,
-        numero,
-        texto,
-        options?.replyToExternalMessageId,
+    if (!businessConnectionId) {
+      throw new Error(
+        "Conexão Telegram Business não vinculada ou sem permissão de resposta ativa (can_reply=false). Conecte o bot à sua conta comercial nas configurações do Telegram para responder clientes.",
       );
     }
-    return tgSendText(inst.instance_token || "", numero, texto, {
-      replyToMessageId: options?.replyToExternalMessageId,
-    });
+    const { tgSendBusinessText } = await import("./telegram.server");
+    return tgSendBusinessText(
+      inst.instance_token || "",
+      businessConnectionId,
+      numero,
+      texto,
+      options?.replyToExternalMessageId,
+    );
   }
   if (inst.provider === "dapi_official") {
     await assertMetaWindowForInstance(inst, numero);
@@ -266,28 +266,24 @@ export async function waSendMedia(
   if (inst.provider === "telegram") {
     if (!inst.instance_token) throw new Error(`Token do Telegram ausente para conexão ${inst.instance_name}`);
     const businessConnectionId = await getTelegramBusinessConnection(inst);
-    const { tgSendMedia, tgSendBusinessMedia } = await import("./telegram.server");
-    if (businessConnectionId) {
-      return tgSendBusinessMedia(
-        inst.instance_token,
-        businessConnectionId,
-        numero,
-        {
-          mediatype: media.type,
-          media: media.url,
-          caption: media.caption,
-          fileName: media.fileName,
-          mimetype: media.mime,
-        },
+    if (!businessConnectionId) {
+      throw new Error(
+        "Conexão Telegram Business não vinculada ou sem permissão de resposta ativa (can_reply=false). Conecte o bot à sua conta comercial nas configurações do Telegram para enviar mídias.",
       );
     }
-    return tgSendMedia(inst.instance_token, numero, {
-      mediatype: media.type,
-      media: media.url,
-      caption: media.caption,
-      fileName: media.fileName,
-      mimetype: media.mime,
-    });
+    const { tgSendBusinessMedia } = await import("./telegram.server");
+    return tgSendBusinessMedia(
+      inst.instance_token,
+      businessConnectionId,
+      numero,
+      {
+        mediatype: media.type,
+        media: media.url,
+        caption: media.caption,
+        fileName: media.fileName,
+        mimetype: media.mime,
+      },
+    );
   }
   if (inst.provider === "dapi_official") {
     await assertMetaWindowForInstance(inst, numero);

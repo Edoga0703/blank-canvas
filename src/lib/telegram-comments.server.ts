@@ -71,31 +71,53 @@ export async function syncTelegramPostComments(
     }
   }
 
-  // Si no se obtuvo de la cuenta, buscar la conexión QR activa
-  const { data: connection } = await admin
-    .from("telegram_connections")
-    .select("id, connection_type, actor_id")
-    .eq("company_id", companyId)
-    .eq("connection_type", "personal_qr")
-    .in("status", ["connected", "authorized"])
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // Tentar resolver a conexão atribuída ao canal via telegram_channel_routes
+  if (channelId) {
+    const { data: chRow } = await admin
+      .from("telegram_channels")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("telegram_channel_id", channelId)
+      .maybeSingle();
 
-  if (connection) {
-    connectionId = connection.id;
-    if (!channelId && connection.actor_id) {
-      channelId = connection.actor_id;
+    if (chRow?.id) {
+      const { data: route } = await admin
+        .from("telegram_channel_routes")
+        .select("connection_id")
+        .eq("company_id", companyId)
+        .eq("channel_id", chRow.id)
+        .order("preferred", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (route?.connection_id) {
+        connectionId = route.connection_id;
+      }
     }
   }
 
-  if (!channelId) {
-    // Si la publicación tiene external_post_id pero no channelId explícito, usar canal por defecto
-    channelId = "-1002244668899";
+  // Se não foi resolvida por rota, buscar conexão MTProto ativa da empresa
+  if (!connectionId) {
+    const { data: connection } = await admin
+      .from("telegram_connections")
+      .select("id, telegram_actor_id")
+      .eq("company_id", companyId)
+      .eq("transport", "mtproto_account")
+      .eq("status", "active")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (connection) {
+      connectionId = connection.id;
+      if (!channelId && connection.telegram_actor_id) {
+        channelId = connection.telegram_actor_id;
+      }
+    }
   }
 
-  if (!connectionId) {
-    connectionId = "simulated_connection";
+  if (!channelId || !connectionId) {
+    throw new Error("Nenhuma conta Telegram MTProto ativa vinculada ao canal desta publicação.");
   }
 
   // 3. Consultar los comentarios vía MTProto Gateway
@@ -235,9 +257,9 @@ export async function replyToTelegramPostComment(
     throw new Error("Publicação de Telegram não encontrada.");
   }
 
-  // 3. Resolver channelId y connectionId
-  let channelId = "-1002244668899";
-  let connectionId = "simulated_connection";
+  // 3. Resolver channelId y connectionId com validação estrita
+  let channelId = "";
+  let connectionId = "";
 
   if (post.social_account_id) {
     const { data: account } = await admin
@@ -248,19 +270,49 @@ export async function replyToTelegramPostComment(
     if (account?.external_id) channelId = account.external_id;
   }
 
-  const { data: connection } = await admin
-    .from("telegram_connections")
-    .select("id, actor_id")
-    .eq("company_id", companyId)
-    .eq("connection_type", "personal_qr")
-    .in("status", ["connected", "authorized"])
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  if (channelId) {
+    const { data: chRow } = await admin
+      .from("telegram_channels")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("telegram_channel_id", channelId)
+      .maybeSingle();
 
-  if (connection) {
-    connectionId = connection.id;
-    if (connection.actor_id && !channelId) channelId = connection.actor_id;
+    if (chRow?.id) {
+      const { data: route } = await admin
+        .from("telegram_channel_routes")
+        .select("connection_id")
+        .eq("company_id", companyId)
+        .eq("channel_id", chRow.id)
+        .order("preferred", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (route?.connection_id) connectionId = route.connection_id;
+    }
+  }
+
+  if (!connectionId) {
+    const { data: connection } = await admin
+      .from("telegram_connections")
+      .select("id, telegram_actor_id")
+      .eq("company_id", companyId)
+      .eq("transport", "mtproto_account")
+      .eq("status", "active")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (connection) {
+      connectionId = connection.id;
+      if (!channelId && connection.telegram_actor_id) {
+        channelId = connection.telegram_actor_id;
+      }
+    }
+  }
+
+  if (!channelId || !connectionId) {
+    throw new Error("Nenhuma conta Telegram MTProto ativa encontrada para responder comentários neste canal.");
   }
 
   // 4. Enviar respuesta vía MTProto Sidecar
@@ -447,25 +499,32 @@ export async function convertCommentToLead(
   });
 
   // 6. Registrar evento na tabela de atribuição comercial
-  await admin.from("content_attribution_events").insert({
-    company_id: companyId,
-    content_post_id: comment.post_id,
-    meta_content_post_id: comment.post_id,
-    event_type: "comment_intent",
-    crm_card_id: newCard.id,
-    source_url: comment.meta_content_posts?.permalink || null,
-    utm_source: comment.network,
-    utm_medium: "channel_comment",
-    utm_campaign: "social_moderation",
-    utm_content: comment.external_comment_id,
-    metadata: {
-      comment_id: comment.id,
-      author: comment.author_name,
-      text_snippet: comment.text.slice(0, 150),
-    },
-  }).catch((attrErr: any) => {
-    console.warn("[CRM Lead Conversion] Erro registrando content_attribution_events:", attrErr);
-  });
+  try {
+    const { error: attrErr } = await admin.from("content_attribution_events").insert({
+      company_id: companyId,
+      content_post_id: null,
+      meta_content_post_id: comment.post_id,
+      event_type: "comment_intent",
+      evidence_type: "manual_verified",
+      confidence: 1.0,
+      crm_card_id: newCard.id,
+      source_url: comment.meta_content_posts?.permalink || null,
+      utm_source: comment.network,
+      utm_medium: "channel_comment",
+      utm_campaign: "social_moderation",
+      utm_content: comment.external_comment_id,
+      metadata: {
+        comment_id: comment.id,
+        author: comment.author_name,
+        text_snippet: comment.text.slice(0, 150),
+      },
+    });
+    if (attrErr) {
+      console.warn("[CRM Lead Conversion] Erro ao registrar content_attribution_events:", attrErr.message);
+    }
+  } catch (attrCatch: any) {
+    console.warn("[CRM Lead Conversion] Exceção registrando content_attribution_events:", attrCatch?.message);
+  }
 
   // 7. Atualizar status do comentário
   await admin

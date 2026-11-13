@@ -302,5 +302,5 @@ SELECT
   wi.webhook_token AS webhook_endpoint_key,
   jsonb_build_object('migrated_from_whatsapp_instances', true, 'legacy_instance_name', wi.instance_name)
 FROM public.whatsapp_instances wi
-WHERE (wi.provider = 'telegram' OR wi.provider_type = 'telegram')
+WHERE wi.provider = 'telegram'
 ON CONFLICT DO NOTHING;

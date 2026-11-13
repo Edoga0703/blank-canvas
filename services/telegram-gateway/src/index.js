@@ -14,9 +14,15 @@ import crypto from "node:crypto";
 dotenv.config();
 
 const PORT = parseInt(process.env.PORT || "3005", 10);
-const GATEWAY_SECRET = process.env.GATEWAY_SECRET || process.env.TELEGRAM_GATEWAY_SECRET || "capiversa-mtproto-dev-secret-2026";
+const GATEWAY_SECRET = (process.env.GATEWAY_SECRET || process.env.TELEGRAM_GATEWAY_SECRET || "").trim();
+
+if (!GATEWAY_SECRET && process.env.NODE_ENV === "production") {
+  console.error("FATAL: GATEWAY_SECRET or TELEGRAM_GATEWAY_SECRET must be set in production");
+  process.exit(1);
+}
+const ACTIVE_GATEWAY_SECRET = GATEWAY_SECRET || "capiversa-mtproto-dev-secret-2026";
 const TELEGRAM_API_ID = parseInt(process.env.TELEGRAM_API_ID || "0", 10);
-const TELEGRAM_API_HASH = process.env.TELEGRAM_API_HASH || "";
+const TELEGRAM_API_HASH = (process.env.TELEGRAM_API_HASH || "").trim();
 const SESSIONS_DIR = process.env.SESSIONS_DATA_DIR || path.resolve(process.cwd(), ".sessions");
 
 const app = express();
@@ -117,7 +123,7 @@ function requireGatewayAuth(req, res, next) {
   const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
   const provided = secretHeader || bearerToken;
 
-  if (!provided || provided !== GATEWAY_SECRET) {
+  if (!provided || provided !== ACTIVE_GATEWAY_SECRET) {
     return res.status(401).json({ error: "Unauthorized: Invalid or missing gateway secret" });
   }
   next();
@@ -152,7 +158,12 @@ app.post("/api/gateway/start-qr", requireGatewayAuth, async (req, res) => {
   // Si no hay credenciales de Telegram API_ID/API_HASH configuradas en este entorno,
   // el gateway responde en modo simulación de desarrollo seguro
   if (!TELEGRAM_API_ID || !TELEGRAM_API_HASH) {
-    console.log(`[Gateway] Simulación QR iniciada para company=${companyId}, conn=${connectionId}, session=${sessionId}`);
+    if (process.env.NODE_ENV === "production") {
+      return res.status(503).json({
+        error: "Credenciais de API do Telegram (TELEGRAM_API_ID / TELEGRAM_API_HASH) não configuradas no gateway em produção.",
+      });
+    }
+    console.log(`[Gateway] Simulação QR iniciada para company=${companyId}, conn=${connectionId}, session=${sessionId}`);
     
     // Token simulado con formato oficial tg://login?token=...
     const mockToken = Buffer.from(`${sessionId}:${Date.now()}`).toString("base64url");
@@ -295,8 +306,8 @@ app.get("/api/gateway/qr-status/:sessionId", requireGatewayAuth, (req, res) => {
     return res.status(404).json({ error: "Session not found or expired" });
   }
 
-  // En modo simulación, si pasaron más de 8 segundos, auto-autorizamos para testeo amigable
-  if (session.isSimulation && session.status === "waiting_qr") {
+  // En modo simulación exclusivo para desarrollo, si pasaron más de 8 segundos, auto-autorizamos
+  if (session.isSimulation && session.status === "waiting_qr" && process.env.NODE_ENV !== "production") {
     const elapsed = Date.now() - new Date(session.expiresAt).getTime() + 60 * 1000;
     if (elapsed > 12000) {
       session.status = "authorized";
@@ -372,8 +383,11 @@ app.get("/api/gateway/channels/:connectionId", requireGatewayAuth, async (req, r
   const { connectionId } = req.params;
   const clientInfo = await getOrRestoreClient(connectionId);
 
-  // Fallback simulado si no hay cliente MTProto real cargado
+  // Fallback simulado si no hay cliente MTProto real cargado (bloqueado en producción)
   if (!clientInfo || clientInfo.isSimulation) {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(404).json({ error: "Sessão MTProto não conectada no gateway." });
+    }
     return res.json({
       channels: [
         {
@@ -460,8 +474,11 @@ app.post("/api/gateway/publish", requireGatewayAuth, async (req, res) => {
   const cleanChannelId = String(channelId);
   const numericChannelSuffix = cleanChannelId.replace(/^-100/, "");
 
-  // Modo simulación o fallback para desarrollo / staging
+  // Modo simulación o fallback para desarrollo / staging (bloqueado en producción)
   if (!clientInfo || clientInfo.isSimulation) {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(400).json({ error: "Sessão MTProto não conectada no gateway para publicação em canais." });
+    }
     const mockMsgId = String(10000 + Math.floor(Math.random() * 90000));
     const urls = Array.isArray(mediaUrls) ? mediaUrls : mediaUrls ? [mediaUrls] : [];
     const isAlbum = mediaType === "carousel" || urls.length > 1;
@@ -543,6 +560,9 @@ app.post("/api/gateway/backfill", requireGatewayAuth, async (req, res) => {
   const numericChannelSuffix = cleanChannelId.replace(/^-100/, "");
 
   if (!clientInfo || clientInfo.isSimulation) {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(400).json({ error: "Sessão MTProto não conectada no gateway para sincronização." });
+    }
     // Generación de mensajes simulados para testeo de backfill
     const now = Date.now();
     const count = Math.min(Number(limit) || 20, 50);
@@ -658,8 +678,11 @@ app.post("/api/gateway/comments", requireGatewayAuth, async (req, res) => {
   const clientInfo = await getOrRestoreClient(connectionId);
   const cleanChannelId = String(channelId);
 
-  // Modo simulación
+  // Modo simulación (bloqueado en producción)
   if (!clientInfo || clientInfo.isSimulation) {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(400).json({ error: "Sessão MTProto não conectada no gateway para comentários." });
+    }
     const mockComments = [
       {
         id: "2001",
@@ -703,11 +726,36 @@ app.post("/api/gateway/comments", requireGatewayAuth, async (req, res) => {
     const msgIdNum = Number(messageId);
 
     // En MTProto (GramJS), getMessages con replyTo consulta el supergrupo de discusión vinculado
-    const messages = await client.getMessages(cleanChannelId, {
-      replyTo: msgIdNum,
-      limit: Math.min(Number(limit) || 50, 100),
-      offsetId: offsetId ? Number(offsetId) : undefined,
-    });
+    let messages = [];
+    try {
+      messages = await client.getMessages(cleanChannelId, {
+        replyTo: msgIdNum,
+        limit: Math.min(Number(limit) || 50, 100),
+        offsetId: offsetId ? Number(offsetId) : undefined,
+      });
+    } catch (discErr) {
+      try {
+        const { Api } = await import("telegram");
+        const discussion = await client.invoke(
+          new Api.messages.GetDiscussionMessage({
+            peer: cleanChannelId,
+            msgId: msgIdNum,
+          })
+        );
+        if (discussion?.messages?.length) {
+          const rootDiscMsg = discussion.messages[0];
+          const peer = discussion.chats?.find((c) => String(c.id) === String(rootDiscMsg.peerId?.channelId || rootDiscMsg.peerId?.chatId)) || cleanChannelId;
+          messages = await client.getMessages(peer, {
+            replyTo: rootDiscMsg.id,
+            limit: Math.min(Number(limit) || 50, 100),
+            offsetId: offsetId ? Number(offsetId) : undefined,
+          });
+        }
+      } catch (innerErr) {
+        console.warn("[Gateway] Erro resolvendo grupo de discussão:", innerErr?.message || innerErr);
+        messages = [];
+      }
+    }
 
     const comments = (messages || []).map((m) => {
       let authorName = "Usuário";
@@ -758,8 +806,11 @@ app.post("/api/gateway/reply-comment", requireGatewayAuth, async (req, res) => {
   const clientInfo = await getOrRestoreClient(connectionId);
   const cleanChannelId = String(channelId);
 
-  // Modo simulación
+  // Modo simulación (bloqueado en producción)
   if (!clientInfo || clientInfo.isSimulation) {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(400).json({ error: "Sessão MTProto não conectada no gateway para responder comentário." });
+    }
     const mockId = String(3000 + Math.floor(Math.random() * 9000));
     console.log(`[Gateway Reply Sim] Respondiendo comentario ${commentId || messageId} en canal ${channelId}: "${text}"`);
     return res.json({
@@ -776,18 +827,44 @@ app.post("/api/gateway/reply-comment", requireGatewayAuth, async (req, res) => {
     const commentIdNum = commentId ? Number(commentId) : undefined;
 
     // GramJS permite enviar con commentTo para dirigir el mensaje al hilo del post en el grupo de discusión
-    const sent = await client.sendMessage(cleanChannelId, {
-      message: text.trim(),
-      commentTo: msgIdNum,
-      replyTo: commentIdNum,
-    });
+    try {
+      const sent = await client.sendMessage(cleanChannelId, {
+        message: text.trim(),
+        commentTo: msgIdNum,
+        replyTo: commentIdNum,
+      });
 
-    res.json({
-      success: true,
-      commentId: String(sent.id),
-      date: new Date().toISOString(),
-      isSimulation: false,
-    });
+      return res.json({
+        success: true,
+        commentId: String(sent.id),
+        date: new Date().toISOString(),
+        isSimulation: false,
+      });
+    } catch (sendErr) {
+      const { Api } = await import("telegram");
+      const discussion = await client.invoke(
+        new Api.messages.GetDiscussionMessage({
+          peer: cleanChannelId,
+          msgId: msgIdNum,
+        })
+      );
+      if (discussion?.messages?.length) {
+        const rootDiscMsg = discussion.messages[0];
+        const peer = discussion.chats?.find((c) => String(c.id) === String(rootDiscMsg.peerId?.channelId || rootDiscMsg.peerId?.chatId)) || cleanChannelId;
+        const sent = await client.sendMessage(peer, {
+          message: text.trim(),
+          replyTo: commentIdNum || rootDiscMsg.id,
+        });
+
+        return res.json({
+          success: true,
+          commentId: String(sent.id),
+          date: new Date().toISOString(),
+          isSimulation: false,
+        });
+      }
+      throw sendErr;
+    }
   } catch (err) {
     console.error(`[Gateway Reply Error] Error respondiendo comentario ${commentId || messageId}:`, err);
     res.status(500).json({ error: err.message || "Failed to send comment reply" });

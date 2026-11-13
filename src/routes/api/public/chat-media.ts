@@ -25,7 +25,6 @@ function verifyMediaToken(messageId: string, sig: string, expStr: string): boole
     getMediaSigningSecret(),
     MEDIA_SECRET_DEFAULT,
     (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim(),
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsbmZqaHFkZWV1c2N5cXpvcWZ6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTU1ODQ2NywiZXhwIjoyMTA3MTM0NDY3fQ.ylDWCcoxzXhPoshBQGult4ZIK2C6AczihHJLz9vWJfQ",
   ].filter(Boolean);
 
   const b = Buffer.from(sig, "hex");

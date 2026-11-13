@@ -11,8 +11,15 @@ function getGatewayConfig() {
   const secret =
     process.env["TELEGRAM_GATEWAY_SECRET"] ||
     process.env["GATEWAY_SECRET"] ||
-    "capiversa-mtproto-dev-secret-2026";
+    "";
   return { url: url.replace(/\/+$/, ""), secret };
+}
+
+function isSimulationAllowed(): boolean {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    process.env["ALLOW_TELEGRAM_SIMULATION"] === "true"
+  );
 }
 
 // In-memory simulation registry for development / environments where the sidecar is not yet spawned
@@ -70,6 +77,9 @@ export async function startQrAuth(companyId: string, connectionId: string): Prom
 
       if (resp.ok) {
         const data = await resp.json();
+        if (data.isSimulation && !isSimulationAllowed()) {
+          throw new Error("A pasarela MTProto respondeu em simulação, o que não é permitido em produção.");
+        }
         return {
           sessionId: data.sessionId,
           connectionId: data.connectionId || connectionId,
@@ -78,13 +88,21 @@ export async function startQrAuth(companyId: string, connectionId: string): Prom
           isSimulation: Boolean(data.isSimulation),
         };
       }
-      console.warn(`[MTProto Gateway] Response status ${resp.status}, cayendo a simulación segura`);
-    } catch (netErr) {
+      const errBody = await resp.json().catch(() => ({}));
+      throw new Error(errBody.error || `Pasarela MTProto retornou HTTP ${resp.status}`);
+    } catch (netErr: any) {
+      if (!isSimulationAllowed()) {
+        throw new Error(`Falha ao contactar a pasarela MTProto (${url}): ${netErr?.message || netErr}`);
+      }
       console.warn("[MTProto Gateway] No se pudo contactar el gateway externo:", netErr);
     }
   }
 
-  // Fallback seguro de simulación para preview / dev
+  if (!isSimulationAllowed()) {
+    throw new Error("TELEGRAM_GATEWAY_URL não configurada no servidor. O microserviço MTProto precisa estar ativo.");
+  }
+
+  // Fallback seguro de simulação exclusivo para preview / dev controlado
   const sessionId = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 60 * 1000).toISOString();
   const mockToken = Buffer.from(`${sessionId}:${Date.now()}`).toString("base64url");
@@ -127,9 +145,15 @@ export async function checkQrAuthStatus(companyId: string, sessionId: string): P
       if (resp.ok) {
         return (await resp.json()) as CheckQrResult;
       }
-    } catch {
-      /* fallback a simulación si existe */
+    } catch (err: any) {
+      if (!isSimulationAllowed()) {
+        return { sessionId, status: "expired", error: "Pasarela MTProto inacessível ou offline." };
+      }
     }
+  }
+
+  if (!isSimulationAllowed()) {
+    return { sessionId, status: "expired", error: "TELEGRAM_GATEWAY_URL não configurada no servidor." };
   }
 
   const sim = simSessions.get(sessionId);
@@ -139,15 +163,8 @@ export async function checkQrAuthStatus(companyId: string, sessionId: string): P
 
   const elapsed = Date.now() - sim.createdAt;
   if (sim.status === "waiting_qr") {
-    // Si pasaron más de 60 segundos, expira
     if (elapsed > 60 * 1000) {
       sim.status = "expired";
-    } else if (elapsed > 10 * 1000) {
-      // Auto-autorizar en simulación para testing fluido
-      sim.status = "authorized";
-      sim.actorId = "874521369";
-      sim.username = "empresa_marketing_oficial";
-      sim.displayName = "Capiversa Canais Brasil";
     }
   }
 
@@ -188,9 +205,17 @@ export async function submit2FaPassword(
         const data = await resp.json();
         return { success: true, status: data.status || "authorized" };
       }
-    } catch {
-      /* fallback */
+      const errBody = await resp.json().catch(() => ({}));
+      throw new Error(errBody.error || "Senha 2FA rejeitada pelo Telegram");
+    } catch (err: any) {
+      if (!isSimulationAllowed()) {
+        throw new Error(`Falha ao submeter 2FA no gateway MTProto: ${err?.message || err}`);
+      }
     }
+  }
+
+  if (!isSimulationAllowed()) {
+    throw new Error("TELEGRAM_GATEWAY_URL não configurada no servidor para 2FA.");
   }
 
   const sim = simSessions.get(sessionId);
@@ -229,12 +254,20 @@ export async function fetchAdminChannels(
           return data.channels;
         }
       }
-    } catch {
-      /* fallback */
+      const errBody = await resp.json().catch(() => ({}));
+      throw new Error(errBody.error || `Gateway retornou status ${resp.status}`);
+    } catch (err: any) {
+      if (!isSimulationAllowed()) {
+        throw new Error(`Falha ao obter canais da pasarela MTProto: ${err?.message || err}`);
+      }
     }
   }
 
-  // Canales simulados de ejemplo para desarrollo/staging
+  if (!isSimulationAllowed()) {
+    throw new Error("TELEGRAM_GATEWAY_URL não configurada no servidor. Pasarela MTProto offline.");
+  }
+
+  // Canales simulados de ejemplo exclusivos para desarrollo/staging local controlado
   return [
     {
       telegramChannelId: "-1002345678901",
@@ -365,19 +398,27 @@ export async function publishToTelegramChannel(
       });
 
       if (resp.ok) {
-        return (await resp.json()) as PublishChannelResult;
+        const data = (await resp.json()) as PublishChannelResult;
+        if (data.isSimulation && !isSimulationAllowed()) {
+          throw new Error("A pasarela MTProto respondeu em modo de simulação. Publicação cancelada em produção.");
+        }
+        return data;
       }
       const errJson = await resp.json().catch(() => ({}));
       throw new Error(errJson.error || `Gateway returned HTTP ${resp.status}`);
     } catch (err: any) {
-      console.warn("[publishToTelegramChannel] Error en gateway remoto, evaluando contingencia:", err);
-      if (err.message && !err.message.includes("fetch failed")) {
+      if (!isSimulationAllowed()) {
         throw err;
       }
+      console.warn("[publishToTelegramChannel] Error en gateway remoto, evaluando contingencia:", err);
     }
   }
 
-  // Fallback seguro de simulación para desarrollo / staging sin gateway externo activo
+  if (!isSimulationAllowed()) {
+    throw new Error("TELEGRAM_GATEWAY_URL não configurada no servidor. Pasarela MTProto offline.");
+  }
+
+  // Fallback seguro de simulación exclusivo para desarrollo / staging local
   const cleanSuffix = options.channelId.replace(/^-100/, "");
   const mockMsgId = String(10000 + Math.floor(Math.random() * 90000));
   const urls = options.mediaUrls || [];
@@ -415,14 +456,25 @@ export async function fetchChannelBackfill(
       });
 
       if (resp.ok) {
-        return (await resp.json()) as BackfillChannelResult;
+        const data = (await resp.json()) as BackfillChannelResult;
+        if (data.isSimulation && !isSimulationAllowed()) {
+          return { posts: [], hasMore: false, nextCursor: null, isSimulation: false };
+        }
+        return data;
       }
-    } catch {
-      /* fallback */
+    } catch (err: any) {
+      if (!isSimulationAllowed()) {
+        console.warn("[fetchChannelBackfill] Erro ao consultar gateway MTProto:", err?.message || err);
+        return { posts: [], hasMore: false, nextCursor: null, isSimulation: false };
+      }
     }
   }
 
-  // Fallback de simulación
+  if (!isSimulationAllowed()) {
+    return { posts: [], hasMore: false, nextCursor: null, isSimulation: false };
+  }
+
+  // Fallback de simulación para desarrollo local
   const now = Date.now();
   const cleanSuffix = options.channelId.replace(/^-100/, "");
   const count = Math.min(options.limit || 20, 50);
@@ -516,14 +568,26 @@ export async function fetchPostComments(
       });
 
       if (resp.ok) {
-        return (await resp.json()) as FetchPostCommentsResult;
+        const data = (await resp.json()) as FetchPostCommentsResult;
+        if (data.isSimulation && !isSimulationAllowed()) {
+          throw new Error("A pasarela MTProto respondeu em modo de simulação.");
+        }
+        return data;
       }
-    } catch {
-      /* fallback */
+      const errJson = await resp.json().catch(() => ({}));
+      throw new Error(errJson.error || `Gateway returned HTTP ${resp.status}`);
+    } catch (err: any) {
+      if (!isSimulationAllowed()) {
+        throw new Error(`Pasarela MTProto offline ou inacessível para carregar comentários: ${err?.message || err}`);
+      }
     }
   }
 
-  // Fallback seguro de simulación
+  if (!isSimulationAllowed()) {
+    throw new Error("TELEGRAM_GATEWAY_URL não configurada no servidor. Pasarela MTProto offline.");
+  }
+
+  // Fallback seguro de simulación exclusivo para desarrollo local
   const mockComments: TelegramPostComment[] = [
     {
       id: "2001",
@@ -584,14 +648,27 @@ export async function replyToPostComment(
       });
 
       if (resp.ok) {
-        return (await resp.json()) as ReplyPostCommentResult;
+        const data = (await resp.json()) as ReplyPostCommentResult;
+        if (data.isSimulation && !isSimulationAllowed()) {
+          throw new Error("A pasarela MTProto respondeu em simulação ao responder comentário.");
+        }
+        return data;
       }
+      const errJson = await resp.json().catch(() => ({}));
+      throw new Error(errJson.error || `Gateway returned HTTP ${resp.status}`);
     } catch (err: any) {
+      if (!isSimulationAllowed()) {
+        throw new Error(`Pasarela MTProto offline para responder comentário: ${err?.message || err}`);
+      }
       console.warn("[MTProto Client] Error respondiendo comentario:", err);
     }
   }
 
-  // Fallback seguro de simulación
+  if (!isSimulationAllowed()) {
+    throw new Error("TELEGRAM_GATEWAY_URL não configurada no servidor. Pasarela MTProto offline.");
+  }
+
+  // Fallback seguro de simulación exclusivo para desarrollo local
   const mockId = String(3000 + Math.floor(Math.random() * 9000));
   return {
     success: true,

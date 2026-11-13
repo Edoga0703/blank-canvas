@@ -102,8 +102,9 @@ export const checkTelegramQrStatus = createServerFn({ method: "POST" })
     const { checkQrAuthStatus } = await import("./telegram/mtproto-client.server");
     const result = await checkQrAuthStatus(companyId, data.sessionId);
 
-    if (result.status === "authorized" && result.actorId) {
-      // Actualizar conexión en base de datos
+    const isSimulatedId = result.actorId === "874521369" || result.actorId === "123456789";
+    if (result.status === "authorized" && result.actorId && !isSimulatedId) {
+      // Actualizar conexión en base de datos únicamente con datos reales del gateway
       try {
         await (supabaseAdmin as any)
           .from("telegram_connections")
@@ -228,9 +229,32 @@ export const linkTelegramChannels = createServerFn({ method: "POST" })
     const companyId = await resolveCompanyIdCached(supabase, userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    // 0. Validação estrita de posse da conexão na empresa (P1.7)
+    const { data: connRecord } = await (supabaseAdmin as any)
+      .from("telegram_connections")
+      .select("id, status")
+      .eq("id", data.connectionId)
+      .eq("company_id", companyId)
+      .eq("transport", "mtproto_account")
+      .maybeSingle();
+
+    if (!connRecord || connRecord.status !== "active") {
+      throw new Error("Conexão Telegram MTProto não autorizada ou não pertence a esta empresa.");
+    }
+
+    // Validação server-side dos direitos de administração dos canais via gateway
+    const { fetchAdminChannels } = await import("./telegram/mtproto-client.server");
+    const adminChannels = await fetchAdminChannels(companyId, data.connectionId);
+    const validChannelIds = new Set(adminChannels.map((c) => String(c.telegramChannelId)));
+
+    const authorizedChannels = data.channels.filter((ch) => validChannelIds.has(String(ch.telegramChannelId)));
+    if (authorizedChannels.length === 0 && data.channels.length > 0) {
+      throw new Error("A conta MTProto conectada não possui permissão de administrador nos canais selecionados.");
+    }
+
     let linkedCount = 0;
 
-    for (const ch of data.channels) {
+    for (const ch of authorizedChannels) {
       try {
         // 1. Upsert en meta_social_accounts para visibilidad en el módulo de contenido
         const { data: socialAccount, error: socErr } = await (supabaseAdmin as any)

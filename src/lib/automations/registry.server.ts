@@ -805,7 +805,25 @@ registerNode({
         .eq("network", "telegram")
         .limit(1)
         .maybeSingle();
-      targetChannelId = acc?.external_id || "-1002244668899";
+      targetChannelId = acc?.external_id || "";
+    }
+
+    if (!targetChannelId) {
+      const { data: tch } = await (supabaseAdmin as any)
+        .from("telegram_channels")
+        .select("telegram_channel_id")
+        .eq("company_id", ctx.companyId)
+        .limit(1)
+        .maybeSingle();
+      targetChannelId = tch?.telegram_channel_id || "";
+    }
+
+    if (!targetChannelId) {
+      return {
+        kind: "next",
+        port: "error",
+        output: { error: "Nenhum canal Telegram configurado ou vinculado nesta empresa." },
+      };
     }
 
     const { publishToTelegramChannel } = await import("@/lib/telegram/mtproto-client.server");
@@ -813,13 +831,21 @@ registerNode({
       .from("telegram_connections")
       .select("id")
       .eq("company_id", ctx.companyId)
-      .eq("connection_type", "personal_qr")
-      .in("status", ["connected", "authorized"])
+      .eq("transport", "mtproto_account")
+      .eq("status", "active")
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    const connectionId = conn?.id || "simulated_connection";
+    if (!conn?.id) {
+      return {
+        kind: "next",
+        port: "error",
+        output: { error: "Nenhuma conta Telegram MTProto ativa encontrada para publicar." },
+      };
+    }
+
+    const connectionId = conn.id;
     const mediaUrls = config.mediaUrl ? [config.mediaUrl] : [];
 
     const result = await publishToTelegramChannel({

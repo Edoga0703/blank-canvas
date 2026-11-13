@@ -68,35 +68,20 @@ export const telegramAdapter: SocialPublisherAdapter = {
       }
 
       if (!telegramChannelId) {
-        // Fallback: buscar el primer canal de la empresa
-        const { data: fallbackCh } = await (supabaseAdmin as any)
-          .from("telegram_channels")
-          .select("id, telegram_channel_id")
-          .eq("company_id", companyId)
-          .limit(1)
-          .maybeSingle();
-
-        if (fallbackCh) {
-          telegramChannelId = fallbackCh.telegram_channel_id;
-          channelDbId = fallbackCh.id;
-        }
-      } else {
-        const { data: chRow } = await (supabaseAdmin as any)
-          .from("telegram_channels")
-          .select("id")
-          .eq("telegram_channel_id", telegramChannelId)
-          .eq("company_id", companyId)
-          .maybeSingle();
-
-        if (chRow) channelDbId = chRow.id;
-      }
-
-      if (!telegramChannelId) {
         throw new PermanentProviderError(
-          "Nenhum canal do Telegram vinculado encontrado para esta empresa.",
-          "TELEGRAM_CHANNEL_NOT_FOUND",
+          "Canal do Telegram de destino não especificado ou não vinculado. Selecione a conta de rede social do canal para publicar.",
+          "TELEGRAM_CHANNEL_NOT_SPECIFIED",
         );
       }
+
+      const { data: chRow } = await (supabaseAdmin as any)
+        .from("telegram_channels")
+        .select("id")
+        .eq("telegram_channel_id", telegramChannelId)
+        .eq("company_id", companyId)
+        .maybeSingle();
+
+      if (chRow) channelDbId = chRow.id;
 
       // 2. Resolver la conexión MTProto autorizada para este canal
       let connectionId: string | null = null;
@@ -157,7 +142,13 @@ export const telegramAdapter: SocialPublisherAdapter = {
         mediaType,
       });
 
-      if (!result?.success || !result.messageId) {
+      if (!result?.success || !result.messageId || result.isSimulation) {
+        if (result?.isSimulation) {
+          throw new PermanentProviderError(
+            "A pasarela MTProto está em modo de simulação. Publicação cancelada para proteger integridade em produção.",
+            "TELEGRAM_GATEWAY_SIMULATION_REJECTED",
+          );
+        }
         throw new RetryableProviderError(
           "A pasarela MTProto não confirmou o identificador da publicação.",
           "TELEGRAM_DISPATCH_UNCONFIRMED",

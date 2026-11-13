@@ -7,18 +7,16 @@ function matches(a: string, b: string): boolean {
 
 /**
  * Autorização compartilhada para endpoints /api/public/hooks/* chamados por pg_cron.
- * Confirma o header `x-cron-secret`, `Authorization: Bearer` ou parâmetro `?secret`
- * contra CRON_SECRET (ou credenciais de serviço do servidor como fallback).
+ * Confirma exclusivamente os headers `x-cron-secret` ou `Authorization: Bearer`
+ * contra CRON_SECRET obrigatório configurado no ambiente do servidor.
  */
 export function assertCronRequest(request: Request): Response | null {
   const authHeader = request.headers.get("authorization") ?? "";
   const bearer = authHeader.replace(/^Bearer\s+/i, "").trim();
   const cronHeader = (request.headers.get("x-cron-secret") ?? "").trim();
-  const url = new URL(request.url);
-  const querySecret = (url.searchParams.get("secret") ?? "").trim();
-  const provided = cronHeader || bearer || querySecret;
+  const provided = cronHeader || bearer;
 
-  const cronSecret = (process.env.CRON_SECRET || "capiconversa_cron_secret_7f8a9b2c3d4e5f6a1b2c").trim();
+  const cronSecret = (process.env.CRON_SECRET || "").trim();
 
   if (!cronSecret) {
     return new Response(JSON.stringify({ ok: false, error: "CRON_SECRET não configurado no servidor" }), {

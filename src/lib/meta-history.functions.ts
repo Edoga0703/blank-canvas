@@ -74,8 +74,17 @@ export const syncMetaContentHistory = createServerFn({ method: "POST" })
           } catch (tErr: any) {
             results.push({ accountId: account.id, network: "telegram", ok: false, error: tErr?.message || "Falha ao sincronizar Telegram" });
           }
-        } else {
+        } else if (account.network === "facebook" || account.network === "instagram") {
           results.push(await syncAccountContent(supabaseAdmin, account, { full: data.full, trigger: "manual" }));
+        } else {
+          // P2.13: Isolamento estrito de redes para não disparar chamadas espúrias à Meta Graph API
+          results.push({
+            accountId: account.id,
+            network: account.network,
+            ok: true,
+            skipped: true,
+            message: `Sincronização de ${account.network} em homologação de conector oficial independente.`,
+          });
         }
       }
       return { ok: true as const, error: null, warnings, results };

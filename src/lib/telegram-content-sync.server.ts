@@ -116,6 +116,15 @@ export async function syncTelegramChannelContent(
     beforeMessageId,
   });
 
+  if (backfillResult.isSimulation) {
+    return {
+      ok: false,
+      importedCount: 0,
+      hasMore: false,
+      message: "A pasarela MTProto está em simulação. Sincronização cancelada para proteger dados de produção.",
+    };
+  }
+
   const posts = backfillResult.posts || [];
   let insertedCount = 0;
 

@@ -10,7 +10,9 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
         const url = new URL(request.url);
         const token = url.searchParams.get("t") ?? "";
         const secret = request.headers.get("x-telegram-bot-api-secret-token") ?? "";
-        if (!token || (secret && secret !== token)) {
+
+        // P1.9: Validação estrita sem bypass: o header x-telegram-bot-api-secret-token deve existir e bater com o token
+        if (!token || !secret || secret !== token) {
           return new Response("Unauthorized", { status: 401 });
         }
 
@@ -74,7 +76,30 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
             }
           }
 
-          // 2. Conexão Telegram Business estabelecida ou revogada
+          // P1.9: Registro e Deduplicação no Outbox de Inbound Events (telegram_inbound_events)
+          if (connectionId && update?.update_id) {
+            const eventKey = String(update.update_id);
+            const { error: dedupeErr } = await (supabaseAdmin as any)
+              .from("telegram_inbound_events")
+              .insert({
+                company_id: companyId,
+                connection_id: connectionId,
+                source: "bot_webhook",
+                event_key: eventKey,
+                payload: update,
+                state: "processing",
+              });
+
+            if (dedupeErr) {
+              if (dedupeErr.code === "23505" || String(dedupeErr.message).includes("duplicate") || String(dedupeErr.message).includes("unique")) {
+                // Evento já recebido e registrado anteriormente, retornar 200 OK sem reprocessar
+                return new Response("ok: deduplicated", { status: 200 });
+              }
+              console.warn("[telegram-webhook] Aviso registrando telegram_inbound_events:", dedupeErr);
+            }
+          }
+
+          // 2. Conexão Telegram Business estabelecida ou revogada (P1.5)
           if (update?.business_connection) {
             const bc = update.business_connection;
             const businessConnectionId = String(bc.id);
@@ -101,6 +126,40 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
                 },
                 { onConflict: "connection_id,business_connection_id" },
               );
+
+              // Atualizar status formal da conexão: ativa somente com can_reply = true
+              const newStatus = (isEnabled && canReply) ? "active" : isEnabled ? "degraded" : "revoked";
+              await (supabaseAdmin as any)
+                .from("telegram_connections")
+                .update({
+                  status: newStatus,
+                  rights: {
+                    can_business_reply: canReply,
+                    business_connection_id: businessConnectionId,
+                    last_business_event_at: new Date().toISOString(),
+                  },
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", connectionId)
+                .eq("company_id", companyId);
+
+              if (instanceId) {
+                await (supabaseAdmin as any)
+                  .from("whatsapp_instances")
+                  .update({
+                    status: (isEnabled && canReply) ? "connected" : "disconnected",
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("id", instanceId);
+              }
+
+              if (update?.update_id) {
+                await (supabaseAdmin as any)
+                  .from("telegram_inbound_events")
+                  .update({ state: "processed" })
+                  .eq("connection_id", connectionId)
+                  .eq("event_key", String(update.update_id));
+              }
             }
             return new Response("ok", { status: 200 });
           }
@@ -118,11 +177,18 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
                 .eq("numero", chatId)
                 .in("whatsapp_message_id", messageIds);
             }
+            if (connectionId && update?.update_id) {
+              await (supabaseAdmin as any)
+                .from("telegram_inbound_events")
+                .update({ state: "processed" })
+                .eq("connection_id", connectionId)
+                .eq("event_key", String(update.update_id));
+            }
             return new Response("ok", { status: 200 });
           }
 
-          // 4. Mensagens editadas (Business ou Diretas)
-          const editedMsg = update?.edited_business_message ?? update?.edited_message;
+          // 4. Mensagens editadas (Apenas Telegram Business)
+          const editedMsg = update?.edited_business_message;
           if (editedMsg) {
             const chatId = String(editedMsg.chat?.id ?? "");
             const providerMessageId = String(editedMsg.message_id ?? "");
@@ -138,18 +204,35 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
                 .eq("numero", chatId)
                 .eq("whatsapp_message_id", providerMessageId);
             }
+            if (connectionId && update?.update_id) {
+              await (supabaseAdmin as any)
+                .from("telegram_inbound_events")
+                .update({ state: "processed" })
+                .eq("connection_id", connectionId)
+                .eq("event_key", String(update.update_id));
+            }
             return new Response("ok", { status: 200 });
           }
 
-          // 5. Mensagens recebidas (Business Message ou Bot Direct)
-          const isBusiness = Boolean(update?.business_message);
-          const msg = update?.business_message ?? update?.message;
-          if (!msg) return new Response("ok", { status: 200 });
+          // 5. Mensagens recebidas: apenas Business Messages no atendimento CRM
+          const msg = update?.business_message;
+          if (!msg) {
+            // Ignorar mensagens simples ao bot direto para não poluir conversas comerciais
+            if (connectionId && update?.update_id) {
+              await (supabaseAdmin as any)
+                .from("telegram_inbound_events")
+                .update({ state: "processed" })
+                .eq("connection_id", connectionId)
+                .eq("event_key", String(update.update_id));
+            }
+            return new Response("ok: ignored non-business message", { status: 200 });
+          }
 
           const chatId = String(msg.chat?.id ?? "");
           if (!chatId) return new Response("ok", { status: 200 });
 
           const businessConnectionId = msg.business_connection_id ? String(msg.business_connection_id) : null;
+          const isBusiness = Boolean(update?.business_message);
 
           // Detecção de eco do atendente: se a mensagem foi enviada pelo dono da conta Business pelo app oficial
           let isMerchantEcho = false;
@@ -354,6 +437,14 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
                 isAudioMessage: mediaType === "audio",
               },
             });
+          }
+
+          if (connectionId && update?.update_id) {
+            await (supabaseAdmin as any)
+              .from("telegram_inbound_events")
+              .update({ state: "processed" })
+              .eq("connection_id", connectionId)
+              .eq("event_key", String(update.update_id));
           }
         } catch (e: any) {
           console.warn("[telegram-webhook]", e?.message);
