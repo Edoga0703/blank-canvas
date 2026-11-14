@@ -124,37 +124,35 @@ async function assertMetaWindowForInstance(inst: WaInstance, numero: string) {
 }
 
 async function getTelegramBusinessConnection(inst: WaInstance): Promise<string | null> {
-  if (!inst.company_id) return null;
+  if (!inst.company_id || !inst.instance_token) return null;
   try {
-    let connectionId: string | null = null;
-    if (inst.instance_token) {
-      const { data: tc } = await (supabaseAdmin as any)
-        .from("telegram_connections")
-        .select("id")
-        .eq("company_id", inst.company_id)
-        .eq("secret_ref", inst.instance_token)
-        .maybeSingle();
-      connectionId = tc?.id ?? null;
+    const { data: tc } = await (supabaseAdmin as any)
+      .from("telegram_connections")
+      .select("id")
+      .eq("company_id", inst.company_id)
+      .eq("secret_ref", inst.instance_token)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (!tc?.id) {
+      console.warn(`[wa-dispatch] Conexão Telegram ativa não encontrada para token da instância ${inst.instance_name || (inst as any).id || "desconhecida"}`);
+      return null;
     }
 
-    let query = (supabaseAdmin as any)
+    const { data } = await (supabaseAdmin as any)
       .from("telegram_business_bindings")
       .select("business_connection_id, can_reply, is_active")
       .eq("company_id", inst.company_id)
+      .eq("connection_id", tc.id)
       .eq("is_active", true)
-      .eq("can_reply", true);
-
-    if (connectionId) {
-      query = query.eq("connection_id", connectionId);
-    }
-
-    const { data } = await query
+      .eq("can_reply", true)
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
     return data?.business_connection_id ?? null;
-  } catch {
+  } catch (err: any) {
+    console.error("[wa-dispatch] Erro ao buscar Telegram Business Connection:", err?.message || err);
     return null;
   }
 }

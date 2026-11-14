@@ -104,6 +104,33 @@ export const disconnectTelegram = createServerFn({ method: "POST" })
       } catch {
         /* best-effort */
       }
+
+      // P1-2: Desativar formalmente a conexão técnica e seus vínculos comerciais
+      try {
+        const { data: conn } = await (sbAdminTok as any)
+          .from("telegram_connections")
+          .update({
+            status: "disconnected",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("company_id", companyId)
+          .eq("secret_ref", row.instance_token)
+          .select("id")
+          .maybeSingle();
+
+        if (conn?.id) {
+          await (sbAdminTok as any)
+            .from("telegram_business_bindings")
+            .update({
+              is_active: false,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("connection_id", conn.id)
+            .eq("company_id", companyId);
+        }
+      } catch (dbErr) {
+        console.warn("[disconnectTelegram] Aviso atualizando status da conexão:", dbErr);
+      }
     }
 
     const { error } = await (supabase as any)

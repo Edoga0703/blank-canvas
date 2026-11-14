@@ -357,7 +357,7 @@ export function MetaContentHistory() {
                 <Badge className="absolute left-2 top-2 gap-1" variant="secondary"><FormatIcon format={p.format} />{FORMAT_LABEL[p.format]}</Badge>
               </div>
               <div className="space-y-1 p-2 text-xs">
-                <div className="line-clamp-1 text-muted-foreground">{p.published_at ? new Date(p.published_at).toLocaleDateString("pt-BR") : "—"} · {p.network === "instagram" ? "IG" : "FB"}</div>
+                <div className="line-clamp-1 text-muted-foreground">{p.published_at ? new Date(p.published_at).toLocaleDateString("pt-BR") : "—"} · {p.network === "instagram" ? "IG" : p.network === "telegram" ? "TG" : p.network === "tiktok" ? "TT" : p.network === "youtube" ? "YT" : "FB"}</div>
                 <div className="flex gap-3"><span>❤ {fmt(p.metrics_latest?.likes)}</span><span>💬 {fmt(p.metrics_latest?.comments)}</span><span>👁 {fmt(p.metrics_latest?.views ?? p.metrics_latest?.reach)}</span></div>
               </div>
             </button>

@@ -4,8 +4,10 @@ export async function authenticateCronRequest(
 ): Promise<Response | null> {
   const currentSecret =
     process.env['LOVABLE_CRON_SECRET'] ||
-    process.env['CRON_SECRET'] ||
-    'capiconversa_cron_secret_7f8a9b2c3d4e5f60';
+    process.env['CRON_SECRET'];
+  if (!currentSecret) {
+    return new Response('CRON_SECRET não configurado no servidor', { status: 500 });
+  }
   const previousSecret = process.env['LOVABLE_CRON_SECRET_PREVIOUS'] || currentSecret;
 
   const match = /^Bearer ([^\s,]+)$/.exec(

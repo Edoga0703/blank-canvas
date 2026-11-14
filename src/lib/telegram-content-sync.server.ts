@@ -3,6 +3,7 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { fetchChannelBackfill } from "@/lib/telegram/mtproto-client.server";
+import { formatScopedPostId, extractTelegramMessageId } from "@/lib/telegram/contracts";
 
 export interface SyncTelegramOptions {
   full?: boolean;
@@ -107,14 +108,33 @@ export async function syncTelegramChannelContent(
     /* fallback si la tabla no tiene constraint todavía */
   }
 
-  // 5. Consultar publicaciones a la pasarela MTProto
-  const backfillResult = await fetchChannelBackfill({
-    companyId,
-    connectionId,
-    channelId: telegramChannelId,
-    limit: options.limit || 30,
-    beforeMessageId,
-  });
+  // 5. Consultar publicaciones a la pasarela MTProto con tratamiento estricto de errores (P0-4)
+  let backfillResult: any;
+  try {
+    backfillResult = await fetchChannelBackfill({
+      companyId,
+      connectionId,
+      channelId: telegramChannelId,
+      limit: options.limit || 30,
+      beforeMessageId,
+    });
+  } catch (err: any) {
+    console.error("[syncTelegramChannelContent] Falha ao consultar pasarela MTProto:", err?.message || err);
+    // Registrar erro no social_backfill_state SEM apagar cursor nem marcar complete (P0-4)
+    await (supabaseAdmin as any).from("social_backfill_state").upsert(
+      {
+        company_id: companyId,
+        platform: "telegram",
+        account_id: socialAccountId,
+        resource: "posts",
+        status: "failed",
+        last_error: String(err?.message || err).slice(0, 500),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "company_id,platform,account_id,resource" },
+    );
+    throw err;
+  }
 
   if (backfillResult.isSimulation) {
     return {
@@ -128,19 +148,22 @@ export async function syncTelegramChannelContent(
   const posts = backfillResult.posts || [];
   let insertedCount = 0;
 
-  // 6. Persistir publicaciones en meta_content_posts y social_post_identity
+  // 6. Persistir publicaciones en meta_content_posts y social_post_identity con scoping por canal (P1-3)
   for (const p of posts) {
     try {
-      // Upsert en meta_content_posts adaptado al esquema real de producción
+      const rawPostId = String(p.id);
+      // P1-3: Identidad compuesta anti-colisión entre canales de la misma empresa
+      const scopedPostId = formatScopedPostId(telegramChannelId, rawPostId);
       const postFormat = p.mediaType === "photo" ? "photo" : p.mediaType === "video" ? "video" : "text";
-      const { data: insertedPost } = await (supabaseAdmin as any)
+
+      const { data: insertedPost, error: postErr } = await (supabaseAdmin as any)
         .from("meta_content_posts")
         .upsert(
           {
             company_id: companyId,
             social_account_id: socialAccountId,
             network: "telegram",
-            external_post_id: p.id,
+            external_post_id: scopedPostId,
             format: postFormat,
             media_type: p.mediaType,
             caption: p.text || null,
@@ -159,23 +182,27 @@ export async function syncTelegramChannelContent(
         .select("id")
         .maybeSingle();
 
-      // Upsert en social_post_identity
-      try {
-        await (supabaseAdmin as any).from("social_post_identity").upsert(
-          {
-            company_id: companyId,
-            platform: "telegram",
-            account_id: socialAccountId,
-            external_post_id: p.id,
-            origin: "platform",
-            meta_content_post_id: insertedPost?.id || null,
-            published_at: p.date,
-            sync_state: "synced",
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "company_id,platform,account_id,external_post_id" },
-        );
-      } catch (idErr) {
+      if (postErr) {
+        console.error(`[syncTelegramChannelContent] Erro PostgREST salvando post ${scopedPostId}:`, postErr);
+        throw new Error(`Falha ao persistir publicação no banco: ${postErr.message}`);
+      }
+
+      // Upsert en social_post_identity con scopedPostId
+      const { error: idErr } = await (supabaseAdmin as any).from("social_post_identity").upsert(
+        {
+          company_id: companyId,
+          platform: "telegram",
+          account_id: socialAccountId,
+          external_post_id: scopedPostId,
+          origin: "platform",
+          meta_content_post_id: insertedPost?.id || null,
+          published_at: p.date,
+          sync_state: "synced",
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "company_id,platform,account_id,external_post_id" },
+      );
+      if (idErr) {
         console.warn("[syncTelegramChannelContent] Aviso social_post_identity:", idErr);
       }
 
@@ -187,7 +214,7 @@ export async function syncTelegramChannelContent(
               company_id: companyId,
               channel_id: channelDbId,
               item_index: 0,
-              telegram_message_id: p.id,
+              telegram_message_id: rawPostId,
               published_at: p.date,
             },
             { onConflict: "channel_id,telegram_message_id" },
@@ -200,6 +227,7 @@ export async function syncTelegramChannelContent(
       insertedCount++;
     } catch (postErr) {
       console.warn(`[syncTelegramChannelContent] Erro salvando post ${p.id}:`, postErr);
+      throw postErr; // P1-4: no avanzar cursor más allá del post que falló
     }
   }
 
@@ -208,21 +236,25 @@ export async function syncTelegramChannelContent(
     const totalCount = previousImported + insertedCount;
     const nextStatus = backfillResult.hasMore ? "partial" : "complete";
 
-    await (supabaseAdmin as any).from("social_backfill_state").upsert(
+    const { error: stateErr } = await (supabaseAdmin as any).from("social_backfill_state").upsert(
       {
         company_id: companyId,
         platform: "telegram",
         account_id: socialAccountId,
         resource: "posts",
         cursor: {
-          beforeMessageId: backfillResult.nextCursor || (posts.length ? posts[posts.length - 1].id : null),
+          beforeMessageId: backfillResult.nextCursor || (posts.length ? extractTelegramMessageId(posts[posts.length - 1].id) : null),
         },
         status: nextStatus,
         imported_count: totalCount,
+        last_error: null,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "company_id,platform,account_id,resource" },
     );
+    if (stateErr) {
+      console.warn("[syncTelegramChannelContent] Aviso ao atualizar social_backfill_state:", stateErr);
+    }
   } catch (stateErr) {
     console.warn("[syncTelegramChannelContent] Aviso ao atualizar social_backfill_state:", stateErr);
   }

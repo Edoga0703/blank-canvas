@@ -10,6 +10,7 @@ import {
 } from "./types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { publishToTelegramChannel } from "@/lib/telegram/mtproto-client.server";
+import { formatScopedPostId } from "@/lib/telegram/contracts";
 
 export const telegramAdapter: SocialPublisherAdapter = {
   platform: "telegram",
@@ -132,7 +133,8 @@ export const telegramAdapter: SocialPublisherAdapter = {
         mediaUrls.push(mediaUrl);
       }
 
-      // 4. Despachar publicación al gateway MTProto
+      // 4. Despachar publicação ao gateway MTProto com chave de idempotência anti-duplicidade (P1-6)
+      const requestId = `pub_${companyId}_${telegramChannelId}_${targetId}`;
       const result = await publishToTelegramChannel({
         companyId,
         connectionId,
@@ -140,6 +142,7 @@ export const telegramAdapter: SocialPublisherAdapter = {
         text: caption,
         mediaUrls,
         mediaType,
+        requestId,
       });
 
       if (!result?.success || !result.messageId || result.isSimulation) {
@@ -156,6 +159,7 @@ export const telegramAdapter: SocialPublisherAdapter = {
       }
 
       const primaryId = result.messageId;
+      const scopedPrimaryId = formatScopedPostId(telegramChannelId, primaryId);
       const allIds = result.messageIds?.length ? result.messageIds : [primaryId];
 
       // 5. Registrar ítems en telegram_post_items para trazabilidad de álbumes
@@ -177,7 +181,7 @@ export const telegramAdapter: SocialPublisherAdapter = {
         }
       }
 
-      // 6. Registrar en social_post_identity
+      // 6. Registrar en social_post_identity con scopedPostId (P1-3)
       if (socialAccountId) {
         try {
           await (supabaseAdmin as any).from("social_post_identity").upsert(
@@ -185,7 +189,7 @@ export const telegramAdapter: SocialPublisherAdapter = {
               company_id: companyId,
               platform: "telegram",
               account_id: socialAccountId,
-              external_post_id: primaryId,
+              external_post_id: scopedPrimaryId,
               origin: "crm",
               content_post_id: postId,
               published_at: new Date().toISOString(),
@@ -223,7 +227,7 @@ export const telegramAdapter: SocialPublisherAdapter = {
 
       return {
         state: "published",
-        externalPostId: primaryId,
+        externalPostId: scopedPrimaryId,
         externalUrl: result.channelUrl,
       };
     } catch (err: any) {

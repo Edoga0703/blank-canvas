@@ -308,10 +308,11 @@ export function TelegramConnectDialog({
       const r: any = await connect({
         data: { botToken: token.trim(), displayName: nome.trim() || null },
       });
-      toast.success(
+      toast.info(
         r?.username
-          ? `Bot @${r.username} conectado com sucesso para Telegram Business!`
-          : "Bot do Telegram Business conectado!",
+          ? `Bot @${r.username} registrado! Para concluir a ativação, acesse o app Telegram: Configurações > Telegram Business > Chatbots e selecione o bot.`
+          : "Bot registrado! Para concluir a ativação, acesse o app Telegram: Configurações > Telegram Business > Chatbots.",
+        { duration: 8000 },
       );
       setToken("");
       setNome("");

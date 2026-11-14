@@ -256,7 +256,10 @@ export const linkTelegramChannels = createServerFn({ method: "POST" })
 
     for (const ch of authorizedChannels) {
       try {
-        // 1. Upsert en meta_social_accounts para visibilidad en el módulo de contenido
+        const realCh = adminChannels.find((c) => String(c.telegramChannelId) === String(ch.telegramChannelId));
+        if (!realCh) continue;
+
+        // 1. Upsert en meta_social_accounts com direitos reais verificados no gateway (P1-5)
         const { data: socialAccount, error: socErr } = await (supabaseAdmin as any)
           .from("meta_social_accounts")
           .upsert(
@@ -264,22 +267,29 @@ export const linkTelegramChannels = createServerFn({ method: "POST" })
               company_id: companyId,
               network: "telegram",
               provider: "telegram",
-              external_id: ch.telegramChannelId,
-              page_id: ch.telegramChannelId,
-              username: ch.username,
-              display_name: ch.title,
+              external_id: realCh.telegramChannelId,
+              page_id: realCh.telegramChannelId,
+              username: realCh.username,
+              display_name: realCh.title,
               status: "active",
               capabilities: {
-                can_post: true,
+                can_post: Boolean(realCh.canPost),
+                can_edit: Boolean(realCh.canEdit),
+                can_delete: Boolean(realCh.canDelete),
                 is_channel: true,
-                visibility: ch.visibility,
-                member_count: ch.memberCount,
+                visibility: realCh.visibility,
+                member_count: realCh.memberCount,
               },
             },
             { onConflict: "company_id,network,external_id" },
           )
           .select("id")
           .maybeSingle();
+
+        if (socErr) {
+          console.warn(`[linkTelegramChannels] Falha ao upsert meta_social_accounts para ${realCh.telegramChannelId}:`, socErr);
+          continue;
+        }
 
         const socialAccountId = socialAccount?.id ?? null;
 
@@ -289,13 +299,13 @@ export const linkTelegramChannels = createServerFn({ method: "POST" })
           .upsert(
             {
               company_id: companyId,
-              telegram_channel_id: ch.telegramChannelId,
+              telegram_channel_id: realCh.telegramChannelId,
               social_account_id: socialAccountId,
-              username: ch.username,
-              title: ch.title,
-              visibility: ch.visibility,
-              discussion_chat_id: ch.discussionChatId ?? null,
-              member_count: ch.memberCount,
+              username: realCh.username,
+              title: realCh.title,
+              visibility: realCh.visibility,
+              discussion_chat_id: realCh.discussionChatId ?? null,
+              member_count: realCh.memberCount,
               member_count_observed_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             },
@@ -304,22 +314,31 @@ export const linkTelegramChannels = createServerFn({ method: "POST" })
           .select("id")
           .maybeSingle();
 
+        if (chErr) {
+          console.warn(`[linkTelegramChannels] Falha ao upsert telegram_channels para ${realCh.telegramChannelId}:`, chErr);
+          continue;
+        }
+
         // 3. Upsert en telegram_channel_routes
         if (telChannel?.id) {
-          await (supabaseAdmin as any).from("telegram_channel_routes").upsert(
+          const { error: routeErr } = await (supabaseAdmin as any).from("telegram_channel_routes").upsert(
             {
               company_id: companyId,
               channel_id: telChannel.id,
               connection_id: data.connectionId,
-              can_post: true,
-              can_edit: true,
-              can_delete: true,
-              can_manage_discussion: Boolean(ch.discussionChatId),
+              can_post: Boolean(realCh.canPost),
+              can_edit: Boolean(realCh.canEdit),
+              can_delete: Boolean(realCh.canDelete),
+              can_manage_discussion: Boolean(realCh.canManageDiscussion ?? realCh.discussionChatId),
               preferred: true,
               rights_checked_at: new Date().toISOString(),
             },
             { onConflict: "channel_id,connection_id" },
           );
+          if (routeErr) {
+            console.warn(`[linkTelegramChannels] Falha ao upsert rota para ${realCh.telegramChannelId}:`, routeErr);
+            continue;
+          }
         }
 
         linkedCount++;
@@ -394,26 +413,33 @@ export const disconnectTelegramQrAccount = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { logoutGatewaySession } = await import("./telegram/mtproto-client.server");
-    await logoutGatewaySession(companyId, data.connectionId);
+    const gwOk = await logoutGatewaySession(companyId, data.connectionId);
+    if (!gwOk) {
+      console.warn(`[disconnectTelegramQrAccount] Aviso: Gateway retornou falso ao desconectar ${data.connectionId}`);
+    }
 
-    try {
-      await (supabaseAdmin as any)
-        .from("telegram_connections")
-        .update({
-          status: "disconnected",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", data.connectionId)
-        .eq("company_id", companyId);
+    const { error: updErr } = await (supabaseAdmin as any)
+      .from("telegram_connections")
+      .update({
+        status: "disconnected",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.connectionId)
+      .eq("company_id", companyId);
 
-      // Eliminar rutas de canales asociadas
-      await (supabaseAdmin as any)
-        .from("telegram_channel_routes")
-        .delete()
-        .eq("connection_id", data.connectionId)
-        .eq("company_id", companyId);
-    } catch (dbErr) {
-      console.warn("[disconnectTelegramQrAccount] Error actualizando DB:", dbErr);
+    if (updErr) {
+      throw new Error(`Erro ao atualizar status da conexão no banco: ${updErr.message}`);
+    }
+
+    // Eliminar rotas de canais associadas
+    const { error: delErr } = await (supabaseAdmin as any)
+      .from("telegram_channel_routes")
+      .delete()
+      .eq("connection_id", data.connectionId)
+      .eq("company_id", companyId);
+
+    if (delErr) {
+      console.warn("[disconnectTelegramQrAccount] Aviso ao deletar rotas:", delErr.message);
     }
 
     return { success: true };

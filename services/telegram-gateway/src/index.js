@@ -16,11 +16,45 @@ dotenv.config();
 const PORT = parseInt(process.env.PORT || "3005", 10);
 const GATEWAY_SECRET = (process.env.GATEWAY_SECRET || process.env.TELEGRAM_GATEWAY_SECRET || "").trim();
 
-if (!GATEWAY_SECRET && process.env.NODE_ENV === "production") {
-  console.error("FATAL: GATEWAY_SECRET or TELEGRAM_GATEWAY_SECRET must be set in production");
+if (!GATEWAY_SECRET) {
+  console.error("FATAL: GATEWAY_SECRET or TELEGRAM_GATEWAY_SECRET must be set");
   process.exit(1);
 }
-const ACTIVE_GATEWAY_SECRET = GATEWAY_SECRET || "capiversa-mtproto-dev-secret-2026";
+const ACTIVE_GATEWAY_SECRET = GATEWAY_SECRET;
+const ENCRYPTION_KEY = crypto.createHash("sha256").update(ACTIVE_GATEWAY_SECRET).digest();
+
+function encryptSession(sessionText) {
+  try {
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv("aes-256-gcm", ENCRYPTION_KEY, iv);
+    const encrypted = Buffer.concat([cipher.update(sessionText, "utf8"), cipher.final()]);
+    const tag = cipher.getAuthTag();
+    return JSON.stringify({
+      iv: iv.toString("hex"),
+      tag: tag.toString("hex"),
+      data: encrypted.toString("hex"),
+    });
+  } catch (err) {
+    console.warn("[Gateway] Erro ao cifrar sessão, fallback texto simples:", err.message);
+    return sessionText;
+  }
+}
+
+function decryptSession(savedRaw) {
+  try {
+    const parsed = JSON.parse(savedRaw);
+    if (parsed.iv && parsed.tag && parsed.data) {
+      const decipher = crypto.createDecipheriv("aes-256-gcm", ENCRYPTION_KEY, Buffer.from(parsed.iv, "hex"));
+      decipher.setAuthTag(Buffer.from(parsed.tag, "hex"));
+      const decrypted = Buffer.concat([decipher.update(Buffer.from(parsed.data, "hex")), decipher.final()]);
+      return decrypted.toString("utf8");
+    }
+  } catch {
+    // Arquivo legado em texto puro não-cifrado
+  }
+  return savedRaw.trim();
+}
+
 const TELEGRAM_API_ID = parseInt(process.env.TELEGRAM_API_ID || "0", 10);
 const TELEGRAM_API_HASH = (process.env.TELEGRAM_API_HASH || "").trim();
 const SESSIONS_DIR = process.env.SESSIONS_DATA_DIR || path.resolve(process.cwd(), ".sessions");
@@ -36,16 +70,27 @@ const qrSessions = new Map();
 // Map<connectionId, { client, stringSession, companyId, actorId, username, displayName, isSimulation }>
 const activeClients = new Map();
 
+// Cache de idempotência para publicação multicanal (evita posts duplicados em timeouts de rede)
+// Map<requestId, { timestamp, response }>
+const publishIdempotencyCache = new Map();
+
 // Ensure sessions directory exists
 await fs.mkdir(SESSIONS_DIR, { recursive: true }).catch(() => {});
 
 /**
- * Obtiene el cliente MTProto activo o lo restaura desde el archivo .session en disco
+ * Obtiene el cliente MTProto activo o lo restaura desde el archivo .session en disco,
+ * validando el aislamiento por empresa (companyId) para multi-tenancy estricto.
  */
-async function getOrRestoreClient(connectionId) {
+async function getOrRestoreClient(connectionId, companyId = null) {
   if (!connectionId) return null;
   let clientInfo = activeClients.get(connectionId);
-  if (clientInfo) return clientInfo;
+  if (clientInfo) {
+    if (companyId && clientInfo.companyId && String(clientInfo.companyId) !== String(companyId)) {
+      console.warn(`[Gateway] Acesso negado: connectionId=${connectionId} pertence à empresa ${clientInfo.companyId}, não a ${companyId}`);
+      return null;
+    }
+    return clientInfo;
+  }
 
   if (!TELEGRAM_API_ID || !TELEGRAM_API_HASH) {
     return null;
@@ -53,13 +98,15 @@ async function getOrRestoreClient(connectionId) {
 
   try {
     const files = await fs.readdir(SESSIONS_DIR);
-    const sessionFileName = files.find(
-      (f) => f.endsWith(`_${connectionId}.session`) || f === `${connectionId}.session`
-    );
+    const sessionFileName = files.find((f) => {
+      if (companyId) return f === `${companyId}_${connectionId}.session`;
+      return f.endsWith(`_${connectionId}.session`) || f === `${connectionId}.session`;
+    });
 
     if (sessionFileName) {
       const sessionPath = path.join(SESSIONS_DIR, sessionFileName);
-      const savedSessionStr = (await fs.readFile(sessionPath, "utf-8")).trim();
+      const rawContent = (await fs.readFile(sessionPath, "utf-8")).trim();
+      const savedSessionStr = decryptSession(rawContent);
 
       if (savedSessionStr) {
         const { TelegramClient } = await import("telegram");
@@ -72,10 +119,12 @@ async function getOrRestoreClient(connectionId) {
 
         await client.connect();
         const me = await client.getMe().catch(() => null);
+        const fileCompanyId = sessionFileName.includes("_") ? sessionFileName.split("_")[0] : null;
 
         clientInfo = {
           client,
           stringSession: savedSessionStr,
+          companyId: companyId || fileCompanyId,
           actorId: me?.id ? String(me.id) : null,
           username: me?.username || null,
           displayName: me
@@ -85,7 +134,7 @@ async function getOrRestoreClient(connectionId) {
         };
 
         activeClients.set(connectionId, clientInfo);
-        console.log(`[Gateway] Sesión MTProto restaurada con éxito desde disco para connectionId=${connectionId}`);
+        console.log(`[Gateway] Sesión MTProto restaurada con éxito desde disco para connectionId=${connectionId} (companyId=${clientInfo.companyId})`);
         return clientInfo;
       }
     }
@@ -266,8 +315,8 @@ app.post("/api/gateway/start-qr", requireGatewayAuth, async (req, res) => {
       });
 
       const sessionFile = path.join(SESSIONS_DIR, `${companyId}_${connectionId}.session`);
-      await fs.writeFile(sessionFile, savedSessionStr, "utf-8").catch((err) => {
-        console.error("[Gateway] Error guardando sesión en disco:", err);
+      await fs.writeFile(sessionFile, encryptSession(savedSessionStr), "utf-8").catch((err) => {
+        console.error("[Gateway] Error guardando sesión cifrada en disco:", err);
       });
     }).catch((err) => {
       console.error("[Gateway] Error en signInUserWithQrCode:", err);
@@ -465,16 +514,23 @@ app.get("/api/gateway/channels/:connectionId", requireGatewayAuth, async (req, r
  * Publica una nueva publicación (texto, imagen, video o álbum) en un canal de Telegram
  */
 app.post("/api/gateway/publish", requireGatewayAuth, async (req, res) => {
-  const { connectionId, channelId, text, mediaUrls, mediaType } = req.body;
+  const { connectionId, channelId, text, mediaUrls, mediaType, requestId, companyId } = req.body;
   if (!connectionId || !channelId) {
     return res.status(400).json({ error: "connectionId and channelId are required" });
   }
 
-  const clientInfo = await getOrRestoreClient(connectionId);
+  // Idempotência: responder resultado em cache para retry após timeout de rede
+  if (requestId && publishIdempotencyCache.has(requestId)) {
+    const cached = publishIdempotencyCache.get(requestId);
+    console.log(`[Gateway] Cache de idempotência atingido para requestId=${requestId}`);
+    return res.json(cached.response);
+  }
+
+  const clientInfo = await getOrRestoreClient(connectionId, companyId);
   const cleanChannelId = String(channelId);
   const numericChannelSuffix = cleanChannelId.replace(/^-100/, "");
 
-  // Modo simulación o fallback para desarrollo / staging (bloqueado en producción)
+  // Modo simulação o fallback para desarrollo / staging (bloqueado en producción)
   if (!clientInfo || clientInfo.isSimulation) {
     if (process.env.NODE_ENV === "production") {
       return res.status(400).json({ error: "Sessão MTProto não conectada no gateway para publicação em canais." });
@@ -487,13 +543,17 @@ app.post("/api/gateway/publish", requireGatewayAuth, async (req, res) => {
     const mockUrl = `https://t.me/c/${numericChannelSuffix}/${mockMsgId}`;
     console.log(`[Gateway Publish Sim] Publicado post ${mockMsgId} en canal ${channelId} (${urls.length} medios, tipo: ${mediaType})`);
 
-    return res.json({
+    const simResponse = {
       success: true,
       messageId: mockMsgId,
       messageIds: mockIds,
       channelUrl: mockUrl,
       isSimulation: true,
-    });
+    };
+    if (requestId) {
+      publishIdempotencyCache.set(requestId, { timestamp: Date.now(), response: simResponse });
+    }
+    return res.json(simResponse);
   }
 
   try {
@@ -531,14 +591,28 @@ app.post("/api/gateway/publish", requireGatewayAuth, async (req, res) => {
     }
 
     const channelUrl = `https://t.me/c/${numericChannelSuffix}/${primaryMessageId}`;
-
-    res.json({
+    const pubResponse = {
       success: true,
       messageId: primaryMessageId,
       messageIds: allMessageIds,
       channelUrl,
       isSimulation: false,
-    });
+    };
+
+    if (requestId) {
+      publishIdempotencyCache.set(requestId, {
+        timestamp: Date.now(),
+        response: pubResponse,
+      });
+      if (publishIdempotencyCache.size > 200) {
+        const cutoff = Date.now() - 600000;
+        for (const [k, v] of publishIdempotencyCache.entries()) {
+          if (v.timestamp < cutoff) publishIdempotencyCache.delete(k);
+        }
+      }
+    }
+
+    res.json(pubResponse);
   } catch (err) {
     console.error(`[Gateway Publish Error] Error publicando en canal ${channelId}:`, err);
     res.status(500).json({ error: err.message || "Failed to publish post on Telegram channel" });
@@ -550,12 +624,12 @@ app.post("/api/gateway/publish", requireGatewayAuth, async (req, res) => {
  * Importa publicaciones históricas paginadas de un canal
  */
 app.post("/api/gateway/backfill", requireGatewayAuth, async (req, res) => {
-  const { connectionId, channelId, limit = 50, beforeMessageId } = req.body;
+  const { connectionId, channelId, limit = 50, beforeMessageId, companyId } = req.body;
   if (!connectionId || !channelId) {
     return res.status(400).json({ error: "connectionId and channelId are required" });
   }
 
-  const clientInfo = await getOrRestoreClient(connectionId);
+  const clientInfo = await getOrRestoreClient(connectionId, companyId);
   const cleanChannelId = String(channelId);
   const numericChannelSuffix = cleanChannelId.replace(/^-100/, "");
 
@@ -670,15 +744,15 @@ app.post("/api/gateway/logout/:connectionId", requireGatewayAuth, async (req, re
  * Obtiene los comentarios de un hilo de discusión vinculado a una publicación de canal
  */
 app.post("/api/gateway/comments", requireGatewayAuth, async (req, res) => {
-  const { connectionId, channelId, messageId, limit = 50, offsetId } = req.body;
+  const { connectionId, channelId, messageId, limit = 50, offsetId, companyId } = req.body;
   if (!connectionId || !channelId || !messageId) {
     return res.status(400).json({ error: "connectionId, channelId and messageId are required" });
   }
 
-  const clientInfo = await getOrRestoreClient(connectionId);
+  const clientInfo = await getOrRestoreClient(connectionId, companyId);
   const cleanChannelId = String(channelId);
 
-  // Modo simulación (bloqueado en producción)
+  // Modo simulação (bloqueado en producción)
   if (!clientInfo || clientInfo.isSimulation) {
     if (process.env.NODE_ENV === "production") {
       return res.status(400).json({ error: "Sessão MTProto não conectada no gateway para comentários." });
@@ -725,34 +799,39 @@ app.post("/api/gateway/comments", requireGatewayAuth, async (req, res) => {
     const client = clientInfo.client;
     const msgIdNum = Number(messageId);
 
-    // En MTProto (GramJS), getMessages con replyTo consulta el supergrupo de discusión vinculado
+    // No Telegram oficial (Bot API e MTProto), os comentários de canal residem no supergrupo de discussão vinculado.
+    // Usamos GetDiscussionMessage para obter o peerId exato do supergrupo e a mensagem raiz do tópico.
     let messages = [];
     try {
-      messages = await client.getMessages(cleanChannelId, {
-        replyTo: msgIdNum,
-        limit: Math.min(Number(limit) || 50, 100),
-        offsetId: offsetId ? Number(offsetId) : undefined,
-      });
-    } catch (discErr) {
-      try {
-        const { Api } = await import("telegram");
-        const discussion = await client.invoke(
-          new Api.messages.GetDiscussionMessage({
-            peer: cleanChannelId,
-            msgId: msgIdNum,
-          })
+      const { Api } = await import("telegram");
+      const discussion = await client.invoke(
+        new Api.messages.GetDiscussionMessage({
+          peer: cleanChannelId,
+          msgId: msgIdNum,
+        })
+      );
+      if (discussion?.messages?.length) {
+        const rootDiscMsg = discussion.messages[0];
+        const targetChat = discussion.chats?.find(
+          (c) => String(c.id) === String(rootDiscMsg.peerId?.channelId || rootDiscMsg.peerId?.chatId)
         );
-        if (discussion?.messages?.length) {
-          const rootDiscMsg = discussion.messages[0];
-          const peer = discussion.chats?.find((c) => String(c.id) === String(rootDiscMsg.peerId?.channelId || rootDiscMsg.peerId?.chatId)) || cleanChannelId;
-          messages = await client.getMessages(peer, {
-            replyTo: rootDiscMsg.id,
-            limit: Math.min(Number(limit) || 50, 100),
-            offsetId: offsetId ? Number(offsetId) : undefined,
-          });
-        }
+        const peer = targetChat || cleanChannelId;
+        messages = await client.getMessages(peer, {
+          replyTo: rootDiscMsg.id,
+          limit: Math.min(Number(limit) || 50, 100),
+          offsetId: offsetId ? Number(offsetId) : undefined,
+        });
+      }
+    } catch (discErr) {
+      // Fallback para grupos padrão sem canal vinculado
+      try {
+        messages = await client.getMessages(cleanChannelId, {
+          replyTo: msgIdNum,
+          limit: Math.min(Number(limit) || 50, 100),
+          offsetId: offsetId ? Number(offsetId) : undefined,
+        });
       } catch (innerErr) {
-        console.warn("[Gateway] Erro resolvendo grupo de discussão:", innerErr?.message || innerErr);
+        console.warn("[Gateway] Canal sem grupo de discussão vinculado ou inacessível:", innerErr?.message || innerErr);
         messages = [];
       }
     }
@@ -798,12 +877,12 @@ app.post("/api/gateway/comments", requireGatewayAuth, async (req, res) => {
  * Responde a un comentario en el hilo de discusión del canal
  */
 app.post("/api/gateway/reply-comment", requireGatewayAuth, async (req, res) => {
-  const { connectionId, channelId, messageId, commentId, text } = req.body;
+  const { connectionId, channelId, messageId, commentId, text, companyId } = req.body;
   if (!connectionId || !channelId || !messageId || !text?.trim()) {
     return res.status(400).json({ error: "connectionId, channelId, messageId and text are required" });
   }
 
-  const clientInfo = await getOrRestoreClient(connectionId);
+  const clientInfo = await getOrRestoreClient(connectionId, companyId);
   const cleanChannelId = String(channelId);
 
   // Modo simulación (bloqueado en producción)

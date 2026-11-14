@@ -1,11 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual, randomBytes } from "node:crypto";
 
-const MEDIA_SECRET_DEFAULT = "capiconversa_media_signing_secret_998877";
+let memorySigningKey: string | null = null;
 
 function getMediaSigningSecret(): string {
-  const custom = (process.env.MEDIA_SIGNING_SECRET || (process.env as any)?.["MEDIA_SIGNING_SECRET"] || "").trim();
-  return custom || MEDIA_SECRET_DEFAULT;
+  const custom = (
+    process.env.MEDIA_SIGNING_SECRET ||
+    (process.env as any)?.["MEDIA_SIGNING_SECRET"] ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    ""
+  ).trim();
+  if (custom) return custom;
+  if (!memorySigningKey) {
+    memorySigningKey = randomBytes(32).toString("hex");
+  }
+  return memorySigningKey;
 }
 
 export function generateMediaToken(messageId: string, ttlMs = 86400000): { sig: string; exp: number } {
@@ -23,7 +32,7 @@ function verifyMediaToken(messageId: string, sig: string, expStr: string): boole
 
   const candidateSecrets = [
     getMediaSigningSecret(),
-    MEDIA_SECRET_DEFAULT,
+    (process.env.MEDIA_SIGNING_SECRET || "").trim(),
     (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim(),
   ].filter(Boolean);
 

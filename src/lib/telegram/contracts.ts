@@ -43,6 +43,27 @@ export function channelMessageKey(channelId: string, messageId: string): string 
   return `tg:${channelId}:${messageId}`;
 }
 
+/**
+ * P1-3: Extrai o ID numérico puro de uma mensagem Telegram a partir de uma chave qualificada por canal.
+ * Ex: "123456789_42" -> "42", "42" -> "42"
+ */
+export function extractTelegramMessageId(scopedId: string | number | null | undefined): string {
+  if (!scopedId) return "";
+  const s = String(scopedId);
+  const parts = s.split("_");
+  return parts.length > 1 ? parts[parts.length - 1] : s;
+}
+
+/**
+ * P1-3: Cria a identidade qualificada de uma publicação para evitar colisões entre canais da mesma empresa.
+ * Ex: channelId="-100123456789", msgId="42" -> "123456789_42"
+ */
+export function formatScopedPostId(channelId: string, messageId: string | number): string {
+  const cleanChannel = String(channelId).replace(/^-100/, "");
+  const cleanMsgId = extractTelegramMessageId(messageId);
+  return `${cleanChannel}_${cleanMsgId}`;
+}
+
 // =========================================================================
 // Contratos de Pasarela MTProto (Gateway Sidecar Desacoplado)
 // =========================================================================

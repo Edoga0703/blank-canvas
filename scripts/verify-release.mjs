@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Capiversa CRM — Script de Verificação de Sanidade Pré-Deploy (v1.3.07)
- * Valida integridade estática, ausência de vazamento de credenciais no bundle público,
+ * Valida integridade estática, ausência de vazamento de credenciais no bundle público e servidor,
  * sanidade de migrações SQL e contratos da infraestrutura Telegram.
  */
 
@@ -32,90 +32,133 @@ try {
   report("Sintaxe do Sidecar MTProto", false, e.message);
 }
 
-// 2. Verificação de Migrações SQL (Sem cast inválido a enum whatsapp_provider_type)
-const sqlFiles = [
-  "supabase/migrations/20261111080000_telegram_foundation_and_dual_transport.sql",
-  "docs/sql/20261111080000_telegram_foundation_and_dual_transport.sql",
+// 2. Verificação de Migrações SQL e Paridade Gemela
+const migrationPairs = [
+  "20261111080000_telegram_foundation_and_dual_transport.sql",
+  "20261112000000_telegram_content_publishing_and_backfill.sql",
+  "20261112010000_telegram_discussion_and_comment_moderation.sql",
+  "20261114000000_telegram_security_and_durability_fixes.sql",
 ];
-let sqlClean = true;
-for (const rel of sqlFiles) {
-  const p = path.join(rootDir, rel);
-  if (fs.existsSync(p)) {
-    const content = fs.readFileSync(p, "utf8");
-    if (content.includes("wi.provider_type = 'telegram'")) {
-      sqlClean = false;
-      report(`Migração SQL (${rel})`, false, "Encontrado 'wi.provider_type = telegram' que causa erro de cast ao enum");
-    }
+
+let migrationsOk = true;
+let migrationsDetail = [];
+
+for (const mig of migrationPairs) {
+  const p1 = path.join(rootDir, "supabase", "migrations", mig);
+  const p2 = path.join(rootDir, "docs", "sql", mig);
+
+  if (!fs.existsSync(p1) || !fs.existsSync(p2)) {
+    migrationsOk = false;
+    migrationsDetail.push(`Arquivo faltante: ${mig}`);
+    continue;
+  }
+
+  const c1 = fs.readFileSync(p1, "utf8");
+  const c2 = fs.readFileSync(p2, "utf8");
+
+  if (c1 !== c2) {
+    migrationsOk = false;
+    migrationsDetail.push(`Divergência entre supabase/migrations e docs/sql para ${mig}`);
+  }
+
+  if (c1.includes("wi.provider_type = 'telegram'")) {
+    migrationsOk = false;
+    migrationsDetail.push(`Erro de cast enum em ${mig}`);
   }
 }
-if (sqlClean) {
-  report("Migrações SQL Duales", true, "0 ocorrências de cast inválido a enum em telegram_foundation");
-}
 
-// 3. Verificação de colunas em consultas de telegram_connections
-function scanDir(dir, ext = ".ts") {
+report(
+  "Migrações SQL e Paridade Gemela",
+  migrationsOk,
+  migrationsOk ? `${migrationPairs.length} migrações gemelas idênticas e validadas` : migrationsDetail.join("; ")
+);
+
+// 3. Verificação de ausência de segredos literais no código fonte
+const blacklistedTokens = [
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9", // Hardcoded Service Role JWT
+  "capiversa-mtproto-dev-secret-2026",    // Hardcoded Gateway Secret
+  "capiconversa_cron_secret_7f8a9b2c3d4e5f60", // Hardcoded Cron Secret
+  "capiconversa_media_signing_secret_998877",  // Hardcoded Media Secret
+];
+
+function scanCodeDir(dir, exts = [".ts", ".tsx", ".js", ".mjs"]) {
   const res = [];
   if (!fs.existsSync(dir)) return res;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       if (entry.name !== "node_modules" && entry.name !== ".output" && entry.name !== ".git") {
-        res.push(...scanDir(full, ext));
+        res.push(...scanCodeDir(full, exts));
       }
-    } else if (entry.name.endsWith(ext) || entry.name.endsWith(".tsx")) {
+    } else if (exts.some((e) => entry.name.endsWith(e))) {
       res.push(full);
     }
   }
   return res;
 }
 
-const srcFiles = scanDir(path.join(rootDir, "src"));
-let columnBugs = [];
-for (const file of srcFiles) {
-  const c = fs.readFileSync(file, "utf8");
-  if (c.includes(".eq(\"connection_type\"") || c.includes(".eq('connection_type'")) {
-    columnBugs.push(path.relative(rootDir, file));
-  }
-}
-report("Nomes de Colunas MTProto em src/", columnBugs.length === 0, columnBugs.length === 0 ? "0 usos da coluna inexistente 'connection_type'" : `Erros em: ${columnBugs.join(", ")}`);
+const sourceFiles = [
+  ...scanCodeDir(path.join(rootDir, "src")),
+  ...scanCodeDir(path.join(rootDir, "services")),
+  path.join(rootDir, "vite.config.ts"),
+].filter(Boolean);
 
-// 4. Verificação de ausência de segredos no bundle compilado (.output/public)
-const publicDir = path.join(rootDir, ".output", "public");
-if (fs.existsSync(publicDir)) {
-  const pubFiles = [];
-  function walk(d) {
-    for (const f of fs.readdirSync(d, { withFileTypes: true })) {
-      const full = path.join(d, f.name);
-      if (f.isDirectory()) walk(full);
-      else pubFiles.push(full);
+let sourceLeaks = [];
+for (const file of sourceFiles) {
+  if (file.endsWith("verify-release.mjs")) continue;
+  if (!fs.existsSync(file)) continue;
+  const content = fs.readFileSync(file, "utf8");
+  for (const needle of blacklistedTokens) {
+    if (content.includes(needle)) {
+      sourceLeaks.push({ file: path.relative(rootDir, file), needle });
     }
   }
-  walk(publicDir);
+}
 
-  const blacklistedTokens = [
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9", // Hardcoded Service Role JWT
-    "capiversa-mtproto-dev-secret-2026",    // Hardcoded Gateway Secret
-  ];
+report(
+  "Ausência de Segredos no Código Fonte",
+  sourceLeaks.length === 0,
+  sourceLeaks.length === 0
+    ? `0 segredos em ${sourceFiles.length} arquivos auditados`
+    : `Segredos encontrados em: ${sourceLeaks.map((l) => l.file).join(", ")}`
+);
 
-  let leaksFound = [];
-  for (const f of pubFiles) {
+// 4. Verificação de ausência de segredos nos bundles (.output/public e .output/server)
+const outputDir = path.join(rootDir, ".output");
+if (fs.existsSync(outputDir)) {
+  const allBundles = [];
+  function walkDir(d) {
+    for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+      const full = path.join(d, f.name);
+      if (f.isDirectory()) walkDir(full);
+      else allBundles.push(full);
+    }
+  }
+  walkDir(outputDir);
+
+  let bundleLeaks = [];
+  for (const f of allBundles) {
     const c = fs.readFileSync(f, "utf8");
     for (const needle of blacklistedTokens) {
       if (c.includes(needle)) {
-        leaksFound.push({ file: path.relative(rootDir, f), needle });
+        bundleLeaks.push({ file: path.relative(rootDir, f), needle });
       }
     }
   }
 
   report(
-    "Isolamento de Credenciais em .output/public",
-    leaksFound.length === 0,
-    leaksFound.length === 0
-      ? `0 segredos/chaves detectados em ${pubFiles.length} arquivos estáticos`
-      : `Vazamento detectado: ${JSON.stringify(leaksFound)}`
+    "Isolamento de Credenciais em .output (público e servidor)",
+    bundleLeaks.length === 0,
+    bundleLeaks.length === 0
+      ? `0 segredos/chaves detectados em ${allBundles.length} arquivos compilados`
+      : `Vazamento detectado em: ${bundleLeaks.map((l) => l.file).join(", ")}`
   );
 } else {
-  report("Isolamento de Credenciais em .output/public", true, "Diretório .output/public ainda não gerado (execute build)");
+  report(
+    "Isolamento de Credenciais em .output",
+    true,
+    "Diretório .output ainda não gerado (execute build antes do release final)"
+  );
 }
 
 // 5. Compilação TypeScript
@@ -123,7 +166,7 @@ try {
   execSync("node node_modules/typescript/bin/tsc --project tsconfig.json --noEmit", { stdio: "pipe" });
   report("Checagem de Tipos TypeScript (tsc)", true, "0 erros de tipos em todo o projeto");
 } catch (e) {
-  report("Checagem de Tipos TypeScript (tsc)", false, "Erros encontrados na checagem estática");
+  report("Checagem de Tipos TypeScript (tsc)", false, "Erros encontrados na checagem estática de tipos");
 }
 
 console.log("==================================================================");

@@ -316,16 +316,20 @@ export async function logoutGatewaySession(companyId: string, connectionId: stri
 
   if (url) {
     try {
-      await fetch(`${url}/api/gateway/logout/${encodeURIComponent(connectionId)}`, {
+      const resp = await fetch(`${url}/api/gateway/logout/${encodeURIComponent(connectionId)}`, {
         method: "POST",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${secret}`,
           "x-gateway-secret": secret,
         },
-        signal: AbortSignal.timeout(4000),
+        body: JSON.stringify({ companyId }),
+        signal: AbortSignal.timeout(6000),
       });
-    } catch {
-      /* best-effort */
+      return resp.ok;
+    } catch (err: any) {
+      console.warn("[logoutGatewaySession] Falha ao comunicar logout no gateway:", err?.message || err);
+      return false;
     }
   }
 
@@ -340,6 +344,7 @@ export interface PublishChannelOptions {
   mediaUrls?: string[];
   mediaType?: "video" | "image" | "carousel" | "text";
   pinMessage?: boolean;
+  requestId?: string;
 }
 
 export interface PublishChannelResult {
@@ -458,20 +463,26 @@ export async function fetchChannelBackfill(
       if (resp.ok) {
         const data = (await resp.json()) as BackfillChannelResult;
         if (data.isSimulation && !isSimulationAllowed()) {
-          return { posts: [], hasMore: false, nextCursor: null, isSimulation: false };
+          throw new Error("Pasarela MTProto em modo de simulação não permitida em produção.");
+        }
+        if (!Array.isArray(data.posts) || typeof data.hasMore !== "boolean") {
+          throw new Error("Resposta de backfill inválida retornada pela pasarela.");
         }
         return data;
       }
+
+      const errText = await resp.text().catch(() => "");
+      throw new Error(`Telegram gateway retornou HTTP ${resp.status}: ${errText}`);
     } catch (err: any) {
       if (!isSimulationAllowed()) {
-        console.warn("[fetchChannelBackfill] Erro ao consultar gateway MTProto:", err?.message || err);
-        return { posts: [], hasMore: false, nextCursor: null, isSimulation: false };
+        console.error("[fetchChannelBackfill] Erro ao consultar gateway MTProto:", err?.message || err);
+        throw err;
       }
     }
   }
 
   if (!isSimulationAllowed()) {
-    return { posts: [], hasMore: false, nextCursor: null, isSimulation: false };
+    throw new Error("TELEGRAM_GATEWAY_URL não configurada no servidor. Pasarela MTProto offline.");
   }
 
   // Fallback de simulación para desarrollo local

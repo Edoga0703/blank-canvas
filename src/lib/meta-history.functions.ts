@@ -77,13 +77,14 @@ export const syncMetaContentHistory = createServerFn({ method: "POST" })
         } else if (account.network === "facebook" || account.network === "instagram") {
           results.push(await syncAccountContent(supabaseAdmin, account, { full: data.full, trigger: "manual" }));
         } else {
-          // P2.13: Isolamento estrito de redes para não disparar chamadas espúrias à Meta Graph API
+          // P2: Isolamento estrito de redes para não disparar chamadas espúrias à Meta Graph API
           results.push({
             accountId: account.id,
             network: account.network,
-            ok: true,
+            ok: false,
             skipped: true,
-            message: `Sincronização de ${account.network} em homologação de conector oficial independente.`,
+            status: "unsupported",
+            message: `Sincronização de histórico para ${account.network} não disponível nesta versão. Conector dedicado requerido.`,
           });
         }
       }

@@ -23,8 +23,12 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
           return new Response("Bad payload", { status: 400 });
         }
 
+        let connectionId: string | null = null;
+        let supabaseAdmin: any = null;
+
         try {
-          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const sbModule = await import("@/integrations/supabase/client.server");
+          supabaseAdmin = sbModule.supabaseAdmin;
 
           // 1. Resolução dual de instância (whatsapp_instances + telegram_connections)
           const { data: inst } = await (supabaseAdmin as any)
@@ -44,7 +48,7 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
 
           const companyId = inst?.company_id || tc?.company_id;
           const botToken = (inst?.instance_token || tc?.secret_ref) as string | null;
-          let connectionId = tc?.id || null;
+          connectionId = tc?.id || null;
           const instanceId = inst?.id || null;
 
           // Auto-heal: garantir registro em telegram_connections para instâncias legadas
@@ -76,35 +80,70 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
             }
           }
 
-          // P1.9: Registro e Deduplicação no Outbox de Inbound Events (telegram_inbound_events)
+          // P1.9 / P0-3: Registro e Deduplicação no Outbox de Inbound Events (telegram_inbound_events)
           if (connectionId && update?.update_id) {
             const eventKey = String(update.update_id);
-            const { error: dedupeErr } = await (supabaseAdmin as any)
-              .from("telegram_inbound_events")
-              .insert({
-                company_id: companyId,
-                connection_id: connectionId,
-                source: "bot_webhook",
-                event_key: eventKey,
-                payload: update,
-                state: "processing",
-              });
 
-            if (dedupeErr) {
-              if (dedupeErr.code === "23505" || String(dedupeErr.message).includes("duplicate") || String(dedupeErr.message).includes("unique")) {
-                // Evento já recebido e registrado anteriormente, retornar 200 OK sem reprocessar
+            // Verificar se o evento já existe para tratar deduplicação resiliente sem perda
+            const { data: existingEvent } = await (supabaseAdmin as any)
+              .from("telegram_inbound_events")
+              .select("id, state, updated_at, created_at")
+              .eq("connection_id", connectionId)
+              .eq("event_key", eventKey)
+              .maybeSingle();
+
+            if (existingEvent) {
+              if (existingEvent.state === "processed") {
+                // Evento já concluído com sucesso em entrega anterior
                 return new Response("ok: deduplicated", { status: 200 });
               }
-              console.warn("[telegram-webhook] Aviso registrando telegram_inbound_events:", dedupeErr);
+
+              // Se o evento está em 'failed' ou travado em 'processing' há mais de 25 segundos (lease expirado),
+              // permitimos reprocessamento
+              const lastTime = new Date(existingEvent.updated_at || existingEvent.created_at).getTime();
+              const isStale = Date.now() - lastTime > 25000;
+              if (existingEvent.state !== "failed" && !isStale) {
+                return new Response("ok: in_flight", { status: 200 });
+              }
+
+              await (supabaseAdmin as any)
+                .from("telegram_inbound_events")
+                .update({ state: "processing", updated_at: new Date().toISOString() })
+                .eq("id", existingEvent.id);
+            } else {
+              const { error: dedupeErr } = await (supabaseAdmin as any)
+                .from("telegram_inbound_events")
+                .insert({
+                  company_id: companyId,
+                  connection_id: connectionId,
+                  source: "bot_webhook",
+                  event_key: eventKey,
+                  payload: update,
+                  state: "processing",
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                });
+
+              if (dedupeErr) {
+                if (
+                  dedupeErr.code === "23505" ||
+                  String(dedupeErr.message).includes("duplicate") ||
+                  String(dedupeErr.message).includes("unique")
+                ) {
+                  return new Response("ok: deduplicated_race", { status: 200 });
+                }
+                console.warn("[telegram-webhook] Aviso registrando telegram_inbound_events:", dedupeErr);
+              }
             }
           }
 
-          // 2. Conexão Telegram Business estabelecida ou revogada (P1.5)
+          // 2. Conexão Telegram Business estabelecida ou revogada (P1.5 / P0-2)
           if (update?.business_connection) {
             const bc = update.business_connection;
             const businessConnectionId = String(bc.id);
             const businessUserId = String(bc.user?.id);
-            const canReply = Boolean(bc.can_reply);
+            // Suporte completo Telegram Bot API 7.2+: ler bc.can_reply e bc.rights?.can_reply
+            const canReply = Boolean(bc.can_reply ?? (bc as any).rights?.can_reply ?? false);
             const isEnabled = Boolean(bc.is_enabled);
 
             if (connectionId) {
@@ -118,9 +157,11 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
                   is_active: isEnabled,
                   rights: {
                     user: bc.user,
+                    user_chat_id: (bc as any).user_chat_id,
                     date: bc.date,
                     can_reply: canReply,
                     is_enabled: isEnabled,
+                    raw_rights: (bc as any).rights || null,
                   },
                   updated_at: new Date().toISOString(),
                 },
@@ -156,7 +197,7 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
               if (update?.update_id) {
                 await (supabaseAdmin as any)
                   .from("telegram_inbound_events")
-                  .update({ state: "processed" })
+                  .update({ state: "processed", last_error: null, updated_at: new Date().toISOString() })
                   .eq("connection_id", connectionId)
                   .eq("event_key", String(update.update_id));
               }
@@ -332,8 +373,8 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
           const autor = isMerchantEcho ? "atendente" : "contato";
           const statusEnvio = isMerchantEcho ? "enviado" : "recebido";
 
-          // 7. Persistir mensagem no banco com rastreamento integral
-          const { data: insertedMsg } = await (supabaseAdmin as any)
+          // 7. Persistir mensagem no banco com rastreamento integral e validação de erros (P0-3)
+          const { data: insertedMsg, error: msgInsertErr } = await (supabaseAdmin as any)
             .from("mensagens")
             .insert({
               id: messageUuid,
@@ -358,6 +399,10 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
             .select("id")
             .maybeSingle();
 
+          if (msgInsertErr) {
+            throw new Error(`Falha ao persistir mensagem Telegram no banco: ${msgInsertErr.message}`);
+          }
+
           // 8. Se houve upload de mídia para R2, vincular em message_attachments
           if (storedAttachment) {
             await (supabaseAdmin as any).from("message_attachments").insert({
@@ -375,17 +420,32 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
             });
           }
 
-          // 9. Atualizar ou criar card no CRM
-          const { data: existingCard } = await (supabaseAdmin as any)
+          // 9. Atualizar ou criar card no CRM qualificado por canal (P1-8)
+          let { data: existingCard } = await (supabaseAdmin as any)
             .from("crm_cards")
-            .select("id, stage_id")
+            .select("id, stage_id, canal_chat")
             .eq("company_id", companyId)
             .eq("numero", String(chatId))
+            .eq("canal_chat", "telegram")
             .maybeSingle();
+
+          if (!existingCard) {
+            // Verificar se existe um card genérico não alocado a outro canal (evita sobrescrever contatos WhatsApp)
+            const { data: genericCard } = await (supabaseAdmin as any)
+              .from("crm_cards")
+              .select("id, stage_id, canal_chat")
+              .eq("company_id", companyId)
+              .eq("numero", String(chatId))
+              .is("canal_chat", null)
+              .maybeSingle();
+            if (genericCard) {
+              existingCard = genericCard;
+            }
+          }
 
           let cardId = existingCard?.id || null;
           if (!existingCard) {
-            const { data: newCard } = await (supabaseAdmin as any)
+            const { data: newCard, error: newCardErr } = await (supabaseAdmin as any)
               .from("crm_cards")
               .insert({
                 company_id: companyId,
@@ -398,9 +458,12 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
               })
               .select("id, stage_id")
               .maybeSingle();
+            if (newCardErr) {
+              console.warn("[telegram-webhook] Falha ao criar card CRM:", newCardErr.message);
+            }
             cardId = newCard?.id || null;
           } else {
-            await (supabaseAdmin as any)
+            const { error: updCardErr } = await (supabaseAdmin as any)
               .from("crm_cards")
               .update({
                 canal_chat: "telegram",
@@ -409,6 +472,9 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
                 ultima_em: new Date().toISOString(),
               })
               .eq("id", existingCard.id);
+            if (updCardErr) {
+              console.warn("[telegram-webhook] Falha ao atualizar card CRM:", updCardErr.message);
+            }
           }
 
           // 10. Despachar para o motor de automatizações multicanal (somente entradas reais de cliente)
@@ -440,14 +506,32 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
           }
 
           if (connectionId && update?.update_id) {
-            await (supabaseAdmin as any)
+            const { error: outboxErr } = await (supabaseAdmin as any)
               .from("telegram_inbound_events")
-              .update({ state: "processed" })
+              .update({ state: "processed", last_error: null, updated_at: new Date().toISOString() })
               .eq("connection_id", connectionId)
               .eq("event_key", String(update.update_id));
+            if (outboxErr) {
+              console.warn("[telegram-webhook] Falha ao marcar evento como processed:", outboxErr.message);
+            }
           }
         } catch (e: any) {
-          console.warn("[telegram-webhook]", e?.message);
+          console.error("[telegram-webhook] Erro durante processamento do webhook:", e?.message || e);
+          if (connectionId && update?.update_id) {
+            try {
+              await (supabaseAdmin as any)
+                .from("telegram_inbound_events")
+                .update({
+                  state: "failed",
+                  last_error: String(e?.message || e).slice(0, 500),
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("connection_id", connectionId)
+                .eq("event_key", String(update.update_id));
+            } catch (failErr) {
+              console.warn("[telegram-webhook] Falha ao registrar estado failed no outbox:", failErr);
+            }
+          }
         }
 
         return new Response("ok", { status: 200 });

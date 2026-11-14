@@ -6,6 +6,7 @@ import {
   fetchPostComments,
   replyToPostComment,
 } from "./telegram/mtproto-client.server";
+import { extractTelegramMessageId, formatScopedPostId } from "./telegram/contracts";
 
 export interface SyncCommentsResult {
   ok: boolean;
@@ -121,11 +122,12 @@ export async function syncTelegramPostComments(
   }
 
   // 3. Consultar los comentarios vía MTProto Gateway
+  const cleanChannelId = String(channelId).replace(/^-100/, "");
   const result = await fetchPostComments({
     companyId,
     connectionId,
     channelId,
-    messageId: post.external_post_id,
+    messageId: extractTelegramMessageId(post.external_post_id),
     limit: options?.limit || 50,
     offsetId: options?.offsetId,
   });
@@ -135,9 +137,9 @@ export async function syncTelegramPostComments(
     post_id: post.id,
     social_account_id: post.social_account_id,
     network: "telegram",
-    external_comment_id: String(c.id),
+    external_comment_id: `${cleanChannelId}_${extractTelegramMessageId(c.id)}`,
     external_post_id: post.external_post_id,
-    parent_external_id: c.replyToMsgId || null,
+    parent_external_id: c.replyToMsgId ? `${cleanChannelId}_${extractTelegramMessageId(c.replyToMsgId)}` : null,
     author_id: c.authorId || null,
     author_name: c.authorName || "Usuário Telegram",
     author_username: c.authorUsername || null,
@@ -257,6 +259,11 @@ export async function replyToTelegramPostComment(
     throw new Error("Publicação de Telegram não encontrada.");
   }
 
+  // P1-7: Validar correspondência exata entre o comentário e a publicação
+  if (targetComment && targetComment.post_id && targetComment.post_id !== post.id) {
+    throw new Error("O comentário informado não pertence a esta publicação de Telegram.");
+  }
+
   // 3. Resolver channelId y connectionId com validação estrita
   let channelId = "";
   let connectionId = "";
@@ -315,13 +322,14 @@ export async function replyToTelegramPostComment(
     throw new Error("Nenhuma conta Telegram MTProto ativa encontrada para responder comentários neste canal.");
   }
 
-  // 4. Enviar respuesta vía MTProto Sidecar
+  const cleanChan = String(channelId).replace(/^-100/, "");
+  // 4. Enviar respuesta vía MTProto Sidecar con IDs numéricos limpios
   const replyResult = await replyToPostComment({
     companyId,
     connectionId,
     channelId,
-    messageId: post.external_post_id,
-    commentId: targetComment?.external_comment_id,
+    messageId: extractTelegramMessageId(post.external_post_id),
+    commentId: extractTelegramMessageId(targetComment?.external_comment_id || commentId),
     text: text.trim(),
   });
 
@@ -329,7 +337,8 @@ export async function replyToTelegramPostComment(
     throw new Error(replyResult.error || "Falha ao enviar resposta no Telegram.");
   }
 
-  const outgoingExternalId = replyResult.commentId || `rep_${Date.now()}`;
+  const rawCommentId = replyResult.commentId ? extractTelegramMessageId(replyResult.commentId) : `rep_${Date.now()}`;
+  const outgoingExternalId = `${cleanChan}_${rawCommentId}`;
 
   // 5. Registrar la respuesta en meta_content_comments
   await admin.from("meta_content_comments").upsert(
