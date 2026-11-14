@@ -560,6 +560,7 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
       } catch { /* noop */ }
     }
     const permanentFailure = isPermanentMetaSendError(inst.provider, sendError) || sessionDead;
+    let insertedId: string | null = null;
     const { data: inserted, error } = await supabase.from("mensagens").insert({
       company_id: companyId, user_id: userId, numero: data.numero,
       instance_id: inst.id ?? null, provider: inst.provider,
@@ -569,14 +570,31 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
       reply_to_id: validReplyId ?? null,
       status_envio: permanentFailure ? "falha" : sendError ? "pendente" : waId ? "enviado" : "pendente",
     } as any).select("id").single();
+
     if (error) {
-      throw new Error(error.message);
+      if ((error as any).code === "23505" || error.message?.includes("mensagens_company_id_provider_whatsapp_message_id_key")) {
+        // Concorrência: o webhook de entrega gravou primeiro no mesmo milissegundo
+        if (waId) {
+          const { data: existing } = await supabase
+            .from("mensagens")
+            .select("id")
+            .eq("company_id", companyId)
+            .eq("provider", inst.provider)
+            .eq("whatsapp_message_id", waId)
+            .maybeSingle();
+          insertedId = existing?.id ?? null;
+        }
+      } else {
+        throw new Error(error.message);
+      }
+    } else {
+      insertedId = inserted?.id ?? null;
     }
 
     if (!permanentFailure && (sendError || !waId)) {
       const { enqueueOutbound } = await import("./outbound-queue.server");
       await enqueueOutbound({
-        companyId, mensagemId: inserted?.id ?? null, kind: "text",
+        companyId, mensagemId: insertedId, kind: "text",
         payload: { numero: data.numero, texto: data.texto, quoted },
         erro: sendError ?? "D-API não retornou ID da mensagem; reenfileirando.",
       });
@@ -683,6 +701,7 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
     }
 
     const permanentFailure = isPermanentMetaSendError(inst.provider, sendError);
+    let insertedId: string | null = null;
     const { data: inserted, error } = await supabase.from("mensagens").insert({
       company_id: companyId, user_id: userId, numero: data.numero,
       instance_id: inst.id ?? null, provider: inst.provider,
@@ -693,16 +712,32 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
       midia_url: data.storageKey ? null : data.midiaUrl ?? null, midia_tipo: data.mediatype, midia_mime: data.mimetype, midia_nome: data.fileName ?? null,
       status_envio: permanentFailure ? "falha" : sendError ? "pendente" : waId ? "enviado" : "pendente",
     } as any).select("id").single();
+
     if (error) {
-      throw new Error(error.message);
+      if ((error as any).code === "23505" || error.message?.includes("mensagens_company_id_provider_whatsapp_message_id_key")) {
+        if (waId) {
+          const { data: existing } = await supabase
+            .from("mensagens")
+            .select("id")
+            .eq("company_id", companyId)
+            .eq("provider", inst.provider)
+            .eq("whatsapp_message_id", waId)
+            .maybeSingle();
+          insertedId = existing?.id ?? null;
+        }
+      } else {
+        throw new Error(error.message);
+      }
+    } else {
+      insertedId = inserted?.id ?? null;
     }
 
-    if (inserted?.id && data.storageKey) {
+    if (insertedId && data.storageKey) {
       const { createHash } = await import("node:crypto");
       const attachmentKey = createHash("sha256").update(data.storageKey).digest("hex");
       const { error: attachmentError } = await (sbAdmin as any).from("message_attachments").upsert({
         company_id: companyId,
-        mensagem_id: inserted.id,
+        mensagem_id: insertedId,
         attachment_key: attachmentKey,
         kind: data.mediatype,
         storage_key: data.storageKey,
@@ -712,15 +747,15 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
       if (attachmentError) throw new Error(`No se pudo registrar el archivo enviado: ${attachmentError.message}`);
     }
 
-    if (inserted?.id) {
+    if (insertedId) {
       try {
         const { generateMediaToken } = await import("@/routes/api/public/chat-media");
-        const { sig, exp } = generateMediaToken(inserted.id);
-        const proxiedUrl = `/api/public/chat-media?id=${inserted.id}&sig=${sig}&exp=${exp}`;
+        const { sig, exp } = generateMediaToken(insertedId);
+        const proxiedUrl = `/api/public/chat-media?id=${insertedId}&sig=${sig}&exp=${exp}`;
         await (sbAdmin as any)
           .from("mensagens")
           .update({ midia_url: proxiedUrl })
-          .eq("id", inserted.id);
+          .eq("id", insertedId);
       } catch (err) {
         console.warn("[sendWhatsappMedia] Error generating proxied media URL:", err);
       }
@@ -729,7 +764,7 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
     if (!permanentFailure && (sendError || !waId)) {
       const { enqueueOutbound } = await import("./outbound-queue.server");
       await enqueueOutbound({
-        companyId, mensagemId: inserted?.id ?? null, kind: "media",
+        companyId, mensagemId: insertedId, kind: "media",
         payload: {
           numero: data.numero, mediatype: data.mediatype, media: data.media,
           mimetype: data.mimetype, fileName: data.fileName, caption: data.caption,
@@ -832,6 +867,7 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
     }
 
     const permanentFailure = isPermanentMetaSendError(inst.provider, sendError);
+    let insertedId: string | null = null;
     const { data: inserted, error } = await supabase.from("mensagens").insert({
       company_id: companyId, user_id: userId, numero: data.numero,
       instance_id: inst.id ?? null, provider: inst.provider,
@@ -842,16 +878,32 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
       midia_url: data.storageKey ? null : data.midiaUrl ?? null, midia_tipo: "audio", midia_mime: finalMime, midia_nome: null,
       status_envio: permanentFailure ? "falha" : sendError ? "pendente" : waId ? "enviado" : "pendente",
     } as any).select("id").single();
+
     if (error) {
-      throw new Error(error.message);
+      if ((error as any).code === "23505" || error.message?.includes("mensagens_company_id_provider_whatsapp_message_id_key")) {
+        if (waId) {
+          const { data: existing } = await supabase
+            .from("mensagens")
+            .select("id")
+            .eq("company_id", companyId)
+            .eq("provider", inst.provider)
+            .eq("whatsapp_message_id", waId)
+            .maybeSingle();
+          insertedId = existing?.id ?? null;
+        }
+      } else {
+        throw new Error(error.message);
+      }
+    } else {
+      insertedId = inserted?.id ?? null;
     }
 
-    if (inserted?.id && data.storageKey) {
+    if (insertedId && data.storageKey) {
       const { createHash } = await import("node:crypto");
       const attachmentKey = createHash("sha256").update(data.storageKey).digest("hex");
       const { error: attachmentError } = await (sbAdmin as any).from("message_attachments").upsert({
         company_id: companyId,
-        mensagem_id: inserted.id,
+        mensagem_id: insertedId,
         attachment_key: attachmentKey,
         kind: "audio",
         storage_key: data.storageKey,
@@ -860,15 +912,15 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
       if (attachmentError) throw new Error(`No se pudo registrar el audio enviado: ${attachmentError.message}`);
     }
 
-    if (inserted?.id) {
+    if (insertedId) {
       try {
         const { generateMediaToken } = await import("@/routes/api/public/chat-media");
-        const { sig, exp } = generateMediaToken(inserted.id);
-        const proxiedUrl = `/api/public/chat-media?id=${inserted.id}&sig=${sig}&exp=${exp}`;
+        const { sig, exp } = generateMediaToken(insertedId);
+        const proxiedUrl = `/api/public/chat-media?id=${insertedId}&sig=${sig}&exp=${exp}`;
         await (sbAdmin as any)
           .from("mensagens")
           .update({ midia_url: proxiedUrl })
-          .eq("id", inserted.id);
+          .eq("id", insertedId);
       } catch (err) {
         console.warn("[sendWhatsappAudio] Error generating proxied media URL:", err);
       }
@@ -877,7 +929,7 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
     if (!permanentFailure && (sendError || !waId)) {
       const { enqueueOutbound } = await import("./outbound-queue.server");
       await enqueueOutbound({
-        companyId, mensagemId: inserted?.id ?? null, kind: "audio",
+        companyId, mensagemId: insertedId, kind: "audio",
         payload: { numero: data.numero, audio: data.audio, storageKey: data.storageKey ?? null },
         erro: sendError ?? "D-API não retornou ID da mensagem; reenfileirando.",
       });

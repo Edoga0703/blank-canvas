@@ -143,7 +143,7 @@ export function WhatsappAudio({ src, outbound }: { src: string; outbound: boolea
       >
         {speed.toString().replace(".", ",")}x
       </button>
-      <audio ref={audioRef} src={src} preload="metadata" playsInline className="hidden" />
+      <audio ref={audioRef} src={src} preload="none" playsInline className="hidden" />
     </div>
   );
 }

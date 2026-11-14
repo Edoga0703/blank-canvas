@@ -48,7 +48,7 @@ import {
 import { SendContactDialog } from "@/components/chat/send-contact-dialog";
 import { AiAssistButton } from "@/components/chat/ai-assist-button";
 import { FormattedMessageText } from "@/components/chat/formatted-message-text";
-import { searchMessagesGlobal, fetchMessagesForContact, type MessageSearchResult } from "@/lib/message-search.functions";
+import { searchMessagesGlobal, fetchMessagesForContact, searchContactsGlobal, type MessageSearchResult, type ContactSearchResult } from "@/lib/message-search.functions";
 
 
 import { 
@@ -549,39 +549,82 @@ function ConversasPage() {
     if (companyId) setReadMap(getConvReadMap(companyId));
   }, [companyId]);
 
-  // ---- Búsqueda de Mensajes (Global y en Chat) ----
+  // ---- Búsqueda Global (Mensajes y Contactos) ----
   const searchMessagesGlobalFn = useServerFn(searchMessagesGlobal);
+  const searchContactsGlobalFn = useServerFn(searchContactsGlobal);
   const fetchMessagesForContactFn = useServerFn(fetchMessagesForContact);
   const [globalMessageResults, setGlobalMessageResults] = useState<MessageSearchResult[]>([]);
+  const [globalContactResults, setGlobalContactResults] = useState<ContactSearchResult[]>([]);
   const [isSearchingMessages, setIsSearchingMessages] = useState(false);
+  const [isSearchingContacts, setIsSearchingContacts] = useState(false);
   const [flashingMessageId, setFlashingMessageId] = useState<string | null>(null);
+
+  // Paginação da lista lateral de conversas
+  const [conversationFeedLimit, setConversationFeedLimit] = useState(50);
 
   // Buscador interno en el chat activo (In-Thread)
   const [inChatSearchOpen, setInChatSearchOpen] = useState(false);
   const [inChatQuery, setInChatQuery] = useState("");
   const [inChatMatchIndex, setInChatMatchIndex] = useState(0);
 
-  // Debounced search para mensajes globales
+  // Debounced search para mensagens e contatos globais
   useEffect(() => {
     const q = search.trim();
     if (q.length < 2) {
       setGlobalMessageResults([]);
+      setGlobalContactResults([]);
       setIsSearchingMessages(false);
+      setIsSearchingContacts(false);
       return;
     }
     setIsSearchingMessages(true);
+    setIsSearchingContacts(true);
     const timer = setTimeout(async () => {
       try {
-        const resp = await searchMessagesGlobalFn({ data: { query: q, limit: 35 } });
-        setGlobalMessageResults(resp?.results ?? []);
+        const [msgResp, contactResp] = await Promise.all([
+          searchMessagesGlobalFn({ data: { query: q, limit: 35 } }).catch(() => ({ results: [] })),
+          searchContactsGlobalFn({ data: { query: q, limit: 35 } }).catch(() => ({ contacts: [] })),
+        ]);
+        setGlobalMessageResults(msgResp?.results ?? []);
+        setGlobalContactResults(contactResp?.contacts ?? []);
       } catch (err) {
-        console.warn("[searchMessagesGlobal] Error:", err);
+        console.warn("[searchGlobal] Error:", err);
       } finally {
         setIsSearchingMessages(false);
+        setIsSearchingContacts(false);
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [search, searchMessagesGlobalFn]);
+  }, [search, searchMessagesGlobalFn, searchContactsGlobalFn]);
+
+  async function handleSelectContactResult(c: ContactSearchResult) {
+    setActive(c.numero);
+    setCards((prev) => {
+      if (prev[c.numero]) return prev;
+      return {
+        ...prev,
+        [c.numero]: {
+          id: c.id,
+          company_id: companyId ?? "",
+          numero: c.numero,
+          nome: c.nome,
+          foto_url: c.foto_url,
+          email: c.email,
+          owner_id: c.owner_id,
+          stage_id: c.stage_id,
+          department_id: c.department_id,
+          canal_chat: c.canal_chat,
+          tags: c.tags,
+          ultima_mensagem: c.ultima_mensagem,
+          ultima_direcao: c.ultima_direcao,
+          ultima_em: c.ultima_em,
+        } as any,
+      };
+    });
+    if (c.numero) {
+      await loadThreadForContact(c.numero, true);
+    }
+  }
 
   async function handleSelectMessageResult(res: MessageSearchResult) {
     setActive(res.numero);
@@ -867,28 +910,79 @@ function ConversasPage() {
     }
   }, [active, msgs.length]);
 
-  // Histórico completo apenas da conversa aberta (sob demanda).
+  // Histórico progressivo do chat ativo (50 mensagens recentes + scroll inverso)
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasMoreOlder, setHasMoreOlder] = useState<Record<string, boolean>>({});
   const loadedThreads = useRef<Set<string>>(new Set());
+
+  const loadThreadForContact = useCallback(async (numero: string, force = false) => {
+    if (!numero) return;
+    if (!force && loadedThreads.current.has(numero)) return;
+    loadedThreads.current.add(numero);
+    try {
+      const resp = await fetchMessagesForContactFn({ data: { numero, limit: 50 } });
+      if (resp?.messages && resp.messages.length > 0) {
+        setMsgs((prev) => {
+          const byId = new Map<string, Msg>();
+          for (const m of prev) byId.set(m.id, m);
+          for (const m of resp.messages as Msg[]) byId.set(m.id, m);
+          return Array.from(byId.values()).sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+        });
+      }
+      setHasMoreOlder((prev) => ({ ...prev, [numero]: !!resp?.hasMore }));
+    } catch (err) {
+      console.warn("[loadThreadForContact] Error:", err);
+    }
+  }, [fetchMessagesForContactFn]);
+
   useEffect(() => {
-    const cid = ctx?.company?.id;
-    if (!active || !cid) return;
-    if (loadedThreads.current.has(active)) return;
-    loadedThreads.current.add(active);
-    void (async () => {
-      const { data } = await supabase
-        .from("mensagens").select(MSG_COLS)
-        .eq("company_id", cid).eq("numero", active)
-        .order("created_at", { ascending: false })
-        .limit(500);
-      if (!data?.length) return;
-      setMsgs((prev) => {
-        const byId = new Map<string, Msg>();
-        for (const m of prev) byId.set(m.id, m);
-        for (const m of data as any[]) if (!byId.has(m.id)) byId.set(m.id, m as Msg);
-        return Array.from(byId.values()).sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+    if (active) {
+      void loadThreadForContact(active);
+    }
+  }, [active, loadThreadForContact]);
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!active || loadingOlder || !hasMoreOlder[active]) return;
+    const activeComp = isGrupo(active) ? active : numeroComparable(active);
+    const contactMsgs = msgs
+      .filter((m) => m.numero === active || (!isGrupo(m.numero) && activeComp && numeroComparable(m.numero) === activeComp))
+      .sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
+    if (!contactMsgs.length) return;
+    const oldest = contactMsgs[0];
+    if (!oldest?.created_at) return;
+
+    setLoadingOlder(true);
+    const container = threadRef.current;
+    const prevScrollHeight = container?.scrollHeight ?? 0;
+
+    try {
+      const resp = await fetchMessagesForContactFn({
+        data: { numero: active, limit: 50, before: oldest.created_at },
       });
-    })();
-  }, [active, ctx?.company?.id]);
+      if (resp?.messages && resp.messages.length > 0) {
+        setMsgs((prev) => {
+          const byId = new Map<string, Msg>();
+          for (const m of prev) byId.set(m.id, m);
+          for (const m of resp.messages as Msg[]) byId.set(m.id, m);
+          return Array.from(byId.values()).sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+        });
+        setHasMoreOlder((prev) => ({ ...prev, [active]: !!resp.hasMore }));
+
+        requestAnimationFrame(() => {
+          if (container) {
+            const newScrollHeight = container.scrollHeight;
+            container.scrollTop = newScrollHeight - prevScrollHeight;
+          }
+        });
+      } else {
+        setHasMoreOlder((prev) => ({ ...prev, [active]: false }));
+      }
+    } catch (err) {
+      console.warn("[loadOlderMessages] Error:", err);
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [active, loadingOlder, hasMoreOlder, msgs, fetchMessagesForContactFn]);
 
 
 
@@ -1142,6 +1236,23 @@ function ConversasPage() {
         map.set(m.numero, { numero: m.numero, nome: grupo?.nome ?? savedCard?.nome ?? m.contato_nome ?? cur?.nome ?? null, last: m });
       }
     }
+    // Inclui contatos de crm_cards que possuem histórico de mensagens (ultima_em)
+    for (const card of Object.values(cards)) {
+      if (!card.numero || map.has(card.numero) || !card.ultima_em) continue;
+      map.set(card.numero, {
+        numero: card.numero,
+        nome: card.nome ?? card.numero,
+        last: {
+          id: `card-${card.id}`,
+          numero: card.numero,
+          contato_nome: card.nome,
+          direcao: (card as any).ultima_direcao || "entrada",
+          autor: (card as any).ultima_direcao === "saida" ? "humano" : "contato",
+          texto: (card as any).ultima_mensagem || "",
+          created_at: card.ultima_em,
+        } as Msg,
+      });
+    }
     // Grupos sem histórico local ainda aparecem na aba Grupos.
     if (filter === "grupos") {
       for (const g of grupos) {
@@ -1227,6 +1338,10 @@ function ConversasPage() {
     // ordena SEMPRE pela última mensagem (mais recente no topo)
     return list.sort((a, b) => +new Date(b.last.created_at) - +new Date(a.last.created_at));
   }, [msgs, search, filter, sectorFilter, agentFilter, channelFilter, pipelineFilter, stageFilter, mySectorIds, unread, cards, pauses, stages, userId, ctx, grupos, operationalMode]);
+
+  const visibleConversations = useMemo(() => {
+    return conversations.slice(0, conversationFeedLimit);
+  }, [conversations, conversationFeedLimit]);
 
 
   const thread = useMemo(() => {
@@ -1320,6 +1435,22 @@ function ConversasPage() {
   const tabCounts = useMemo(() => {
     const map = new Map<string, { numero: string; last: Msg }>();
     for (const m of msgs) if (!map.has(m.numero)) map.set(m.numero, { numero: m.numero, last: m });
+    for (const card of Object.values(cards)) {
+      if (card.numero && !map.has(card.numero) && card.ultima_em) {
+        map.set(card.numero, {
+          numero: card.numero,
+          last: {
+            id: `card-${card.id}`,
+            numero: card.numero,
+            contato_nome: card.nome,
+            direcao: (card as any).ultima_direcao || "entrada",
+            autor: (card as any).ultima_direcao === "saida" ? "humano" : "contato",
+            texto: (card as any).ultima_mensagem || "",
+            created_at: card.ultima_em,
+          } as Msg,
+        });
+      }
+    }
     
     const isAtendente = (ctx as any).membership?.role === "atendente";
 
@@ -2497,10 +2628,84 @@ function ConversasPage() {
 
             return search.trim() ? (
               <div className="flex-1 overflow-auto pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-0">
+                {/* 1. Coincidencias de Contatos / Leads na base completa */}
+                <div className="border-b border-[color:var(--hairline)]">
+                  <div className="px-4 py-1.5 text-[10.5px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 sticky top-0 z-10 border-b border-[color:var(--hairline)] flex items-center justify-between">
+                    <span>Contatos ({globalContactResults.length})</span>
+                    {isSearchingContacts && (
+                      <span className="inline-flex items-center gap-1 text-[10px] lowercase font-normal text-muted-foreground">
+                        <Loader2 className="size-3 animate-spin text-[color:var(--brand)]" />
+                        buscando...
+                      </span>
+                    )}
+                  </div>
+                  {isSearchingContacts && globalContactResults.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                      <Loader2 className="size-4 animate-spin text-[color:var(--brand)]" />
+                      <span>Buscando contatos na base...</span>
+                    </div>
+                  ) : globalContactResults.length > 0 ? (
+                    <ul className="divide-y divide-border/50">
+                      {globalContactResults.map((contact) => (
+                        <li key={`contact-${contact.id}`}>
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => void handleSelectContactResult(contact)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                void handleSelectContactResult(contact);
+                              }
+                            }}
+                            className={`w-full text-left flex gap-3 px-3.5 py-2.5 hover:bg-[color:var(--panel-2)] transition-colors cursor-pointer outline-none ${
+                              active === contact.numero ? "bg-accent/40" : ""
+                            }`}
+                          >
+                            <div className="relative size-10 shrink-0 self-start">
+                              <InitialsAvatar
+                                name={contact.nome || contact.numero}
+                                size={40}
+                                src={contact.foto_url ?? undefined}
+                              />
+                            </div>
+                            <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+                              <div className="flex items-baseline justify-between gap-2">
+                                <span className="font-semibold text-[13px] truncate text-foreground">
+                                  {contact.nome ? highlightMatchedTextInSnippet(contact.nome, search.trim()) : contact.numero}
+                                </span>
+                                {contact.ultima_em && (
+                                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                    {formatListTimestamp(contact.ultima_em)}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[11px] text-muted-foreground truncate">
+                                {contact.numero}
+                              </span>
+                              {contact.ultima_mensagem && (
+                                <p className="text-[11.5px] text-muted-foreground/80 line-clamp-1 italic">
+                                  {contact.ultima_mensagem}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : !isSearchingContacts && conversations.length === 0 && globalMessageResults.length === 0 ? (
+                    null
+                  ) : (
+                    <div className="px-4 py-3 text-xs text-muted-foreground italic text-center">
+                      Nenhum contato encontrado
+                    </div>
+                  )}
+                </div>
+
                 {conversations.length > 0 && (
-                  <div>
+                  <div className="border-b border-[color:var(--hairline)]">
                     <div className="px-4 py-1.5 text-[10.5px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 sticky top-0 z-10 border-b border-[color:var(--hairline)]">
-                      Conversas ({conversations.length})
+                      Conversas Ativas ({conversations.length})
                     </div>
                     <ul>
                       {conversations.map(renderConversationRow)}
@@ -2508,7 +2713,7 @@ function ConversasPage() {
                   </div>
                 )}
 
-                <div className={conversations.length > 0 ? "mt-1 border-t border-[color:var(--hairline)]" : ""}>
+                <div className="mt-1">
                   <div className="px-4 py-1.5 text-[10.5px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 sticky top-0 z-10 border-b border-[color:var(--hairline)] flex items-center justify-between">
                     <span>Mensagens ({globalMessageResults.length})</span>
                     {isSearchingMessages && (
@@ -2585,7 +2790,18 @@ function ConversasPage() {
                 {conversations.length === 0 && (
                   <li className="p-8 text-sm text-muted-foreground text-center">Nenhuma conversa neste filtro.</li>
                 )}
-                {conversations.map(renderConversationRow)}
+                {visibleConversations.map(renderConversationRow)}
+                {conversations.length > visibleConversations.length && (
+                  <li className="p-3 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setConversationFeedLimit((prev) => prev + 50)}
+                      className="w-full text-xs font-semibold text-primary hover:underline px-4 py-2.5 rounded-lg bg-accent/60 hover:bg-accent transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <span>Carregar mais conversas ({visibleConversations.length} de {conversations.length})</span>
+                    </button>
+                  </li>
+                )}
               </ul>
             );
           })()}
@@ -2945,8 +3161,25 @@ function ConversasPage() {
               {/* Thread body */}
               <div
                 ref={threadRef}
+                onScroll={(e) => {
+                  const el = e.currentTarget;
+                  if (el.scrollTop < 80 && hasMoreOlder[active ?? ""] && !loadingOlder) {
+                    void loadOlderMessages();
+                  }
+                }}
                  className="flex-1 overflow-auto p-3 sm:p-6 flex flex-col gap-3 bg-muted"
               >
+                {loadingOlder && (
+                  <div className="flex items-center justify-center py-2 text-xs text-muted-foreground gap-1.5">
+                    <Loader2 className="size-3.5 animate-spin text-[color:var(--brand)]" />
+                    <span>Carregando mensagens anteriores...</span>
+                  </div>
+                )}
+                {!loadingOlder && hasMoreOlder[active ?? ""] === false && thread.length > 0 && (
+                  <div className="text-center py-2 text-[11px] text-muted-foreground italic">
+                    Início da conversa
+                  </div>
+                )}
                 {thread.map((m, i) => {
                   const quotedMsg = m.reply_to_id
                     ? msgs.find((x) => x.id === m.reply_to_id || (x.whatsapp_message_id && x.whatsapp_message_id === m.reply_to_id)) ?? null

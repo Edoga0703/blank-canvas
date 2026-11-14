@@ -125,6 +125,7 @@ export function ChatMedia({ messageId, tipo, url, nome, outbound, onOpen }: Prop
         <img
           src={src}
           alt={nome ?? "Imagem"}
+          loading="lazy"
           className="rounded-lg max-h-64 w-auto"
           onError={() => void recover()}
         />

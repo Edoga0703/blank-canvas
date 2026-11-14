@@ -222,11 +222,87 @@ export const searchMessagesGlobal = createServerFn({ method: "POST" })
     return { results };
   });
 
+export interface ContactSearchResult {
+  id: string;
+  numero: string;
+  nome: string | null;
+  foto_url: string | null;
+  email: string | null;
+  ultima_mensagem: string | null;
+  ultima_direcao: string | null;
+  ultima_em: string | null;
+  owner_id: string | null;
+  stage_id: string | null;
+  department_id: string | null;
+  canal_chat: string | null;
+  tags: string[] | null;
+}
+
+export const searchContactsGlobal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { query: string; limit?: number }) => ({
+    query: (d?.query || "").trim(),
+    limit: Math.min(Math.max(d?.limit ?? 30, 5), 100),
+  }))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const companyId = await resolveCompanyIdCached(supabase, userId);
+    const query = data.query;
+    const limit = data.limit;
+
+    if (!query || query.length < 2) {
+      return { contacts: [] };
+    }
+
+    const [{ data: company }, { data: membership }] = await Promise.all([
+      supabaseAdmin
+        .from("company")
+        .select("atendimento_operacional")
+        .eq("id", companyId)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("company_user")
+        .select("role")
+        .eq("company_id", companyId)
+        .eq("user_id", userId)
+        .maybeSingle(),
+    ]);
+
+    const isAtendente = membership?.role === "atendente";
+    const isOperational = company?.atendimento_operacional === true;
+    const isRestricted = isAtendente && isOperational;
+
+    // Sanitizar termo para evitar conflitos na sintaxe PostgREST
+    const sanitized = query.replace(/[%,()]/g, " ").trim();
+    if (!sanitized) return { contacts: [] };
+
+    let cardQuery = supabaseAdmin
+      .from("crm_cards")
+      .select("id,numero,nome,foto_url,email,ultima_mensagem,ultima_direcao,ultima_em,owner_id,stage_id,department_id,canal_chat,tags")
+      .eq("company_id", companyId)
+      .or(`nome.ilike.%${sanitized}%,numero.ilike.%${sanitized}%,email.ilike.%${sanitized}%`)
+      .order("ultima_em", { ascending: false, nullsFirst: false })
+      .limit(limit);
+
+    if (isRestricted) {
+      cardQuery = cardQuery.eq("owner_id", userId);
+    }
+
+    const { data: cards, error } = await cardQuery;
+    if (error) {
+      console.error("[searchContactsGlobal] Erro ao consultar crm_cards:", error);
+      return { contacts: [] };
+    }
+
+    return { contacts: (cards || []) as ContactSearchResult[] };
+  });
+
 export const fetchMessagesForContact = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: { numero: string; limit?: number }) => ({
+  .validator((d: { numero: string; limit?: number; before?: string | null }) => ({
     numero: (d?.numero || "").trim(),
-    limit: Math.min(Math.max(d?.limit ?? 150, 20), 500),
+    limit: Math.min(Math.max(d?.limit ?? 50, 10), 200),
+    before: d?.before ? String(d.before).trim() : null,
   }))
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
@@ -242,7 +318,7 @@ export const fetchMessagesForContact = createServerFn({ method: "POST" })
     const MSG_COLS =
       "id,numero,contato_nome,direcao,autor,texto,created_at,user_id,midia_url,midia_tipo,midia_mime,midia_nome,reacao,editado_em,deletado_em,whatsapp_message_id,reply_to_id,status_envio,provider,instance_id,raw_payload";
 
-    const { data: rows, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from("mensagens")
       .select(MSG_COLS)
       .eq("company_id", companyId)
@@ -250,9 +326,18 @@ export const fetchMessagesForContact = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .limit(data.limit);
 
+    if (data.before) {
+      query = query.lt("created_at", data.before);
+    }
+
+    const { data: rows, error } = await query;
+
     if (error) {
       throw new Error(`Erro ao consultar mensagens: ${error.message}`);
     }
 
-    return { messages: rows || [] };
+    const messages = rows || [];
+    const hasMore = messages.length === data.limit;
+
+    return { messages, hasMore };
   });
