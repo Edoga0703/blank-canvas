@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-14T20:18:30.661730+00:00",
+  "generated_at": "2026-11-14T23:02:55.045530+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -1987,7 +1987,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 252826
+      "bytes": 254359
     },
     {
       "path": "src/routes/app/configuracoes.tsx",
