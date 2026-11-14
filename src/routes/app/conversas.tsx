@@ -43,7 +43,7 @@ import {
   Smile, PanelRightClose, PanelRightOpen, Pencil, Reply, Package, ChevronLeft, ChevronRight, Info, CheckCircle2,
   UserPlus, Users, Inbox, Wifi, WifiOff, Image as ImageIcon, Mic as MicIcon, Video as VideoIcon,
   Filter as FunnelIcon, Check, CheckCheck, Bell, BellOff, Contact as ContactIcon, Ban, RefreshCw,
-  CalendarPlus, Sparkles, Gauge, Download, UserRound, ExternalLink, Phone, Loader2,
+  CalendarPlus, Sparkles, Gauge, Download, UserRound, ExternalLink, Phone, Loader2, MoreVertical,
 } from "lucide-react";
 import { SendContactDialog } from "@/components/chat/send-contact-dialog";
 import { AiAssistButton } from "@/components/chat/ai-assist-button";
@@ -2534,25 +2534,25 @@ function ConversasPage() {
                           )}
                           {grupo?.nome || c.nome || (conversaEhGrupo ? "Grupo do WhatsApp" : c.numero)}
                         </span>
-                        <div className="flex items-center gap-1.5 shrink-0 h-4 min-w-[60px] justify-end relative">
-                          <span className={`text-[10.5px] whitespace-nowrap group-hover/item:opacity-0 transition-opacity ${precisaAtender ? "text-[color:var(--brand-strong)] font-semibold" : "text-muted-foreground"}`}>
-                            {formatListTimestamp(c.last.created_at)}
-                          </span>
-                          
+                        <div className="flex items-center gap-1.5 shrink-0 justify-end">
                           {u > 0 && (
-                             <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-[color:var(--status-soft)] text-[color:var(--status-foreground)] text-[10.5px] font-bold grid place-items-center group-hover/item:opacity-0 transition-opacity">
+                            <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-[color:var(--status-soft)] text-[color:var(--status-foreground)] text-[10.5px] font-bold grid place-items-center shrink-0">
                               {u > 99 ? "99+" : u}
                             </span>
                           )}
-                          <div className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center">
+                          <span className={`text-[10.5px] whitespace-nowrap ${precisaAtender ? "text-[color:var(--brand-strong)] font-semibold" : "text-muted-foreground"}`}>
+                            {formatListTimestamp(c.last.created_at)}
+                          </span>
+                          <div className="flex items-center opacity-60 lg:opacity-0 lg:group-hover/item:opacity-100 transition-opacity">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <button
                                   type="button"
                                   onClick={(e) => e.stopPropagation()}
                                   className="size-5 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors"
+                                  aria-label="Opções"
                                 >
-                                  <ChevronDown className="size-4" />
+                                  <ChevronDown className="size-3.5" />
                                 </button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" sideOffset={8} className="w-40 rounded-xl shadow-lg border-[color:var(--hairline)]">
@@ -2864,25 +2864,51 @@ function ConversasPage() {
                   </button>
                 </div>
 
-                <div className="flex items-center gap-1.5 lg:gap-2 flex-nowrap lg:flex-wrap lg:ml-auto overflow-x-auto no-scrollbar -mx-1 px-1 lg:mx-0 lg:px-0 lg:overflow-visible [&>*]:shrink-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
                   {/* IA pill */}
-                  {!activeIsGrupo && !operationalMode && <label
-                    className="inline-flex items-center gap-1.5 lg:gap-2 h-9 px-3 rounded-full border border-[color:var(--hairline)] text-[11.5px] lg:text-[12.5px] font-semibold cursor-pointer bg-[color:var(--panel)] shadow-sm"
-                    title={!iaDaEtapa ? "Esta etapa do funil está em atendimento manual — o agente de IA não responde aqui." : undefined}
-                  >
-                    <Bot className={`size-3 lg:size-3.5 ${iaRespondeAqui ? "text-[color:var(--brand-text)]" : "text-muted-foreground"}`} />
-                    <span className={iaRespondeAqui ? "text-[color:var(--brand-text)]" : "text-muted-foreground"}>
-                      {!iaDaEtapa ? "IA off na etapa" : iaAtivaAqui ? "IA ativa" : "IA pausada"}
-                    </span>
-                    <Switch checked={iaAtivaAqui} onCheckedChange={(v) => void toggleIa(v)} className="scale-75 lg:scale-100" />
-                  </label>}
+                  {!activeIsGrupo && !operationalMode && (
+                    <label
+                      className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-[color:var(--hairline)] text-[11.5px] sm:text-[12px] font-semibold cursor-pointer bg-[color:var(--panel)] shadow-xs hover:bg-[color:var(--panel-2)] transition-colors"
+                      title={!iaDaEtapa ? "Esta etapa do funil está em atendimento manual — o agente de IA não responde aqui." : undefined}
+                    >
+                      <Bot className={`size-3.5 ${iaRespondeAqui ? "text-[color:var(--brand-text)]" : "text-muted-foreground"}`} />
+                      <span className={`hidden sm:inline ${iaRespondeAqui ? "text-[color:var(--brand-text)]" : "text-muted-foreground"}`}>
+                        {!iaDaEtapa ? "IA off" : iaAtivaAqui ? "IA ativa" : "IA pausada"}
+                      </span>
+                      <Switch checked={iaAtivaAqui} onCheckedChange={(v) => void toggleIa(v)} className="scale-75 sm:scale-90" />
+                    </label>
+                  )}
+
+                  {/* Assumir / Finalizar ticket */}
+                  {activeIsGrupo ? null : activeCard?.owner_id === userId ? (
+                    <Button
+                      size="sm"
+                      className="h-9 px-3 rounded-full text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs flex items-center gap-1.5 transition"
+                      onClick={() => setFinalizarDialogOpen(true)}
+                      title="Finalizar atendimento"
+                    >
+                      <CheckCircle2 className="size-4" />
+                      <span className="hidden sm:inline">Finalizar</span>
+                    </Button>
+                  ) : (
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="h-9 px-3 rounded-full text-xs font-semibold shadow-xs flex items-center gap-1.5 hover:bg-[color:var(--panel-2)] transition" 
+                      onClick={() => void assumir()}
+                      title="Aceitar/Assumir atendimento"
+                    >
+                      <Hand className="size-4 text-[color:var(--brand)]" />
+                      <span className="hidden sm:inline">Assumir</span>
+                    </Button>
+                  )}
 
                   {/* Botão Buscar nesta conversa */}
                   <Button
                     size="sm"
                     variant="outline"
                     className={cn(
-                      "size-9 p-0 rounded-full text-[12.5px] shadow-sm transition-colors",
+                      "size-9 p-0 rounded-full text-[12.5px] shadow-xs transition-colors",
                       inChatSearchOpen
                         ? "bg-[color:var(--brand)] text-white hover:bg-[color:var(--brand-strong)] hover:text-white"
                         : "hover:bg-[color:var(--panel-2)] text-muted-foreground hover:text-foreground"
@@ -2898,41 +2924,102 @@ function ConversasPage() {
                     <Search className="size-4" />
                   </Button>
 
-                  {/* Assumir / Finalizar ticket (grupos não precisam) */}
-                  {activeIsGrupo ? null : activeCard?.owner_id === userId ? (
-                    <Button
-                      size="sm"
-                      className="size-9 p-0 rounded-full text-[12.5px] bg-green-500 hover:bg-green-600 text-white shadow-sm"
-                      onClick={() => setFinalizarDialogOpen(true)}
-                      title="Finalizar atendimento"
-                    >
-                      <CheckCircle2 className="size-4.5" />
-                    </Button>
-                  ) : (
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="size-9 p-0 rounded-full text-[12.5px] shadow-sm" 
-                      onClick={() => void assumir()}
-                      title="Aceitar/Assumir atendimento"
-                    >
-                      <Hand className="size-4.5" />
-                    </Button>
+                  {/* Menu Mais Ações (Agrupa Encaminhar, CSAT, Resumo IA, Sentimento, Agendar) */}
+                  {!activeIsGrupo && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="size-9 p-0 rounded-full shadow-xs text-muted-foreground hover:text-foreground hover:bg-[color:var(--panel-2)] transition-colors"
+                          title="Mais ações"
+                          aria-label="Mais ações"
+                        >
+                          <MoreVertical className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-lg border-[color:var(--hairline)] p-1.5 z-50">
+                        {canTransfer && (
+                          <DropdownMenuItem onClick={() => setEncaminharOpen(true)} className="flex items-center gap-2 cursor-pointer py-2">
+                            <Forward className="size-4 text-primary" />
+                            <span>Encaminhar conversa</span>
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem
+                          onClick={async () => {
+                            if (!active) return;
+                            try {
+                              const result: any = await sendCsatFn({ data: { numero: active, contatoNome: activeConv?.nome ?? null } });
+                              if (result?.ok === false) {
+                                toast.warning(result.message || "Não foi possível enviar a pesquisa.");
+                              } else {
+                                toast.success("Pesquisa de satisfação enviada");
+                              }
+                            } catch (e: any) { toast.error(e?.message ?? "Erro ao enviar"); }
+                          }}
+                          className="flex items-center gap-2 cursor-pointer py-2"
+                        >
+                          <Star className="size-4 text-amber-500" />
+                          <span>Enviar pesquisa CSAT</span>
+                        </DropdownMenuItem>
+                        {resumoAtivo && (
+                          <DropdownMenuItem
+                            disabled={resumoLoading}
+                            onClick={async () => {
+                              if (!active) return;
+                              setResumoOpen(true);
+                              setResumoLoading(true);
+                              setResumoTexto("");
+                              try {
+                                const r: any = await resumirFn({ data: { numero: active } });
+                                if (r?.ok) setResumoTexto(r.resumo);
+                                else toast.warning(r?.erro ?? "Não foi possível resumir.");
+                                if (r?.ok === false) setResumoOpen(false);
+                              } catch (e: any) {
+                                toast.error(e?.message ?? "Erro ao resumir");
+                                setResumoOpen(false);
+                              } finally {
+                                setResumoLoading(false);
+                              }
+                            }}
+                            className="flex items-center gap-2 cursor-pointer py-2"
+                          >
+                            <Sparkles className="size-4 text-blue-500" />
+                            <span>{resumoLoading ? "Gerando resumo..." : "Resumir com IA"}</span>
+                          </DropdownMenuItem>
+                        )}
+                        {sentimentoAtivo && (
+                          <DropdownMenuItem
+                            disabled={sentLoading}
+                            onClick={async () => {
+                              if (!active) return;
+                              setSentOpen(true);
+                              setSentLoading(true);
+                              setSentRes(null);
+                              try {
+                                const r: any = await sentimentoFn({ data: { numero: active } });
+                                if (r?.ok) setSentRes(r);
+                                else {
+                                  toast.warning(r?.erro ?? "Não foi possível analisar.");
+                                  setSentOpen(false);
+                                }
+                              } catch (e: any) {
+                                toast.error(e?.message ?? "Erro ao analisar");
+                                setSentOpen(false);
+                              } finally {
+                                setSentLoading(false);
+                              }
+                            }}
+                            className="flex items-center gap-2 cursor-pointer py-2"
+                          >
+                            <Gauge className="size-4 text-violet-500" />
+                            <span>{sentLoading ? "Analisando..." : "Analisar sentimento"}</span>
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
 
-
-                  {/* Encaminhar: setor + etapa + responsável */}
-                  {!activeIsGrupo && canTransfer && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="size-9 p-0 rounded-full text-[12.5px] shadow-sm"
-                      title="Encaminhar (setor, etapa e responsável)"
-                      onClick={() => setEncaminharOpen(true)}
-                    >
-                      <Forward className="size-4.5" />
-                    </Button>
-                  )}
                   {!activeIsGrupo && <EncaminharDialog
                     open={encaminharOpen}
                     onOpenChange={setEncaminharOpen}
@@ -2951,91 +3038,6 @@ function ConversasPage() {
                       if (r.owner_id) setPauses((p) => ({ ...p, [active]: true }));
                     }}
                   />}
-
-                  {/* CSAT */}
-
-
-                  {!activeIsGrupo && <Button
-                    size="sm"
-                    variant="outline"
-                    className="size-9 p-0 rounded-full text-[12.5px] shadow-sm"
-                    title="Enviar Pesquisa CSAT"
-                    onClick={async () => {
-                      if (!active) return;
-                      try {
-                        const result: any = await sendCsatFn({ data: { numero: active, contatoNome: activeConv?.nome ?? null } });
-                        if (result?.ok === false) {
-                          toast.warning(result.message || "Não foi possível enviar a pesquisa.");
-                        } else {
-                          toast.success("Pesquisa de satisfação enviada");
-                        }
-                      } catch (e: any) { toast.error(e?.message ?? "Erro ao enviar"); }
-                    }}
-                  >
-                    <Star className="size-4.5" />
-                  </Button>}
-
-                  {/* Resumo por IA (plugin Resumo Automático) */}
-                  {!activeIsGrupo && resumoAtivo && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="size-9 p-0 rounded-full text-[12.5px] shadow-sm"
-                      title="Resumir conversa com IA"
-                      disabled={resumoLoading}
-                      onClick={async () => {
-                        if (!active) return;
-                        setResumoOpen(true);
-                        setResumoLoading(true);
-                        setResumoTexto("");
-                        try {
-                          const r: any = await resumirFn({ data: { numero: active } });
-                          if (r?.ok) setResumoTexto(r.resumo);
-                          else toast.warning(r?.erro ?? "Não foi possível resumir.");
-                          if (r?.ok === false) setResumoOpen(false);
-                        } catch (e: any) {
-                          toast.error(e?.message ?? "Erro ao resumir");
-                          setResumoOpen(false);
-                        } finally {
-                          setResumoLoading(false);
-                        }
-                      }}
-                    >
-                      <Sparkles className="size-4.5" />
-                    </Button>
-                  )}
-
-                  {/* Sentimento por IA (plugin Análise de Sentimento) */}
-                  {!activeIsGrupo && sentimentoAtivo && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="size-9 p-0 rounded-full text-[12.5px] shadow-sm"
-                      title="Analisar sentimento do cliente"
-                      disabled={sentLoading}
-                      onClick={async () => {
-                        if (!active) return;
-                        setSentOpen(true);
-                        setSentLoading(true);
-                        setSentRes(null);
-                        try {
-                          const r: any = await sentimentoFn({ data: { numero: active } });
-                          if (r?.ok) setSentRes(r);
-                          else {
-                            toast.warning(r?.erro ?? "Não foi possível analisar.");
-                            setSentOpen(false);
-                          }
-                        } catch (e: any) {
-                          toast.error(e?.message ?? "Erro ao analisar");
-                          setSentOpen(false);
-                        } finally {
-                          setSentLoading(false);
-                        }
-                      }}
-                    >
-                      <Gauge className="size-4.5" />
-                    </Button>
-                  )}
 
 
 
@@ -3693,7 +3695,7 @@ function Bubble({
                 <button type="button" aria-label="Mais ações" className={cn(
                   "absolute top-1 right-1 z-20 grid size-5 place-items-center rounded transition-opacity bg-transparent border-0 shadow-none",
                   isOut ? "text-primary-foreground/90" : "text-muted-foreground",
-                  menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
+                  menuOpen ? "opacity-100" : "opacity-60 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 hover:opacity-100",
                 )}>
                   <ChevronDown className="size-4" />
                 </button>
@@ -3852,7 +3854,7 @@ function Bubble({
 
           <div className={cn(
             "text-[10.5px] mt-1 flex items-center justify-between gap-2",
-            isOut ? "text-white/80" : "text-muted-foreground"
+            isOut ? "text-primary-foreground/80" : "text-muted-foreground"
           )}>
             <div className="flex items-center gap-1.5 flex-1">
               {ia && (
@@ -3865,9 +3867,9 @@ function Bubble({
                 {m.deletado_em ? <span className="italic">· apagada</span> : m.editado_em ? <span className="italic">· editada</span> : null}
                 {isOut && m.status_envio === "pendente" && <span className="italic">· enviando</span>}
                 {isOut && m.status_envio === "falha" && <span className="font-semibold">· falhou</span>}
-                {isOut && m.status_envio === "enviado" && <Check className="size-3 text-white/60" />}
-                {isOut && ["recebido", "entregue", "delivered"].includes(m.status_envio || "") && <CheckCheck className="size-3 text-white/70" />}
-                {isOut && ["visto", "lido", "read"].includes(m.status_envio || "") && <CheckCheck className="size-3 text-emerald-500" />}
+                {isOut && m.status_envio === "enviado" && <Check className="size-3 text-primary-foreground/70" />}
+                {isOut && ["recebido", "entregue", "delivered"].includes(m.status_envio || "") && <CheckCheck className="size-3 text-primary-foreground/80" />}
+                {isOut && ["visto", "lido", "read"].includes(m.status_envio || "") && <CheckCheck className="size-3 text-emerald-400 dark:text-emerald-300 font-bold" />}
               </span>
             </div>
             {isOut && ia && (
@@ -4513,22 +4515,20 @@ function Composer({
     const deOutro = !!ownerId;
     return (
       <div className="border-t border-[color:var(--hairline)] bg-[color:var(--panel)] px-3 sm:px-4 py-3 sm:py-4">
-        <div className="flex items-center gap-3 px-3 sm:px-4 py-3 rounded-2xl border border-[color:var(--hairline)] bg-[color:var(--panel-2)]">
+        <div className="flex items-center gap-3 px-3 sm:px-4 py-3 rounded-2xl border border-[color:var(--hairline)] bg-[color:var(--panel-2)] shadow-xs">
           <div className="size-9 shrink-0 rounded-full grid place-items-center bg-[color:var(--brand-soft)] text-[color:var(--brand-text)]">
             <Hand className="size-4" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-semibold truncate">
-              {deOutro ? `Ticket de ${ownerNome || "outro atendente"}` : "Ticket não aceito"}
+            <div className="text-[13px] font-semibold text-foreground">
+              {deOutro ? `Em atendimento por ${ownerNome || "outro atendente"}` : "Conversa sem responsável"}
             </div>
             <div className="text-[11.5px] text-muted-foreground">
-              {deOutro
-                ? "Aceite para assumir a conversa e virar o dono do lead."
-                : "Aceite o atendimento para responder — você vira o dono e responsável pelo lead."}
+              {deOutro ? "Assuma o ticket para responder diretamente a este contato." : "Aceite este atendimento para começar a responder."}
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Button size="sm" className="h-8 rounded-full" onClick={onAssumir}>
+            <Button size="sm" className="h-8 rounded-full bg-[color:var(--brand)] text-primary-foreground hover:bg-[color:var(--brand-strong)]" onClick={onAssumir}>
               <Hand className="size-3.5 mr-1" /> {deOutro ? "Assumir" : "Aceitar"}
             </Button>
             {onEncaminhar && (
@@ -4544,26 +4544,25 @@ function Composer({
 
   if (iaAtiva) {
     return (
-      <div className="border-t border-[color:var(--hairline)] bg-[color:var(--panel)] px-4 py-4">
-        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-[color:var(--hairline)] bg-[color:var(--panel-2)]">
-          <div className="size-9 rounded-full grid place-items-center bg-[color:var(--brand-soft)] text-[color:var(--brand-text)] overflow-hidden">
+      <div className="border-t border-[color:var(--hairline)] bg-[color:var(--panel)] px-3 sm:px-4 py-3 sm:py-4">
+        <div className="flex items-center gap-3 px-3 sm:px-4 py-3 rounded-2xl border border-[color:var(--hairline)] bg-[color:var(--panel-2)] shadow-xs">
+          <div className="size-9 rounded-full grid place-items-center bg-[color:var(--brand-soft)] text-[color:var(--brand-text)] overflow-hidden shrink-0">
             {agentTraits || agentAvatarUrl ? (
               <AgentAvatar traits={agentTraits} avatarUrl={agentAvatarUrl} size={36} />
-
             ) : (
-              <Bot className="size-4" />
+              <Bot className="size-4.5" />
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-semibold">
-              {ownerId ? `Atendimento com ${ownerNome}` : "IA em atendimento"}
+            <div className="text-[13px] font-semibold text-foreground">
+              {ownerId ? `Atendimento automatizado com ${ownerNome}` : "IA em atendimento ativo"}
             </div>
             <div className="text-[11.5px] text-muted-foreground">
-              {ownerId ? `O lead está com ${ownerNome}. Pause para assumir.` : "Envio desativado. Pause a IA para responder."}
+              {ownerId ? `O agente está respondendo automaticamente. Pause para assumir.` : "A IA está atendendo a este cliente. Pause a IA para responder manualmente."}
             </div>
           </div>
-          <Button size="sm" variant="outline" className="h-8 rounded-full shrink-0" onClick={onAssumir}>
-            <Hand className="size-3.5 mr-1" /> Pausar IA
+          <Button size="sm" variant="outline" className="h-8 rounded-full shrink-0 border-[color:var(--hairline-strong)] hover:bg-[color:var(--panel)] font-medium" onClick={onAssumir}>
+            <Hand className="size-3.5 mr-1 text-[color:var(--brand)]" /> Pausar IA
           </Button>
         </div>
       </div>
