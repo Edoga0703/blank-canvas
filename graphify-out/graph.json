@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-14T13:29:09.021093+00:00",
+  "generated_at": "2026-11-14T14:17:10.917188+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -151,7 +151,11 @@
     },
     {
       "path": ".lovable/mcp/manifest.json",
-      "bytes": 3164
+      "bytes": 3197
+    },
+    {
+      "path": ".lovable/north-star/north-star.md",
+      "bytes": 323
     },
     {
       "path": ".lovable/plan/plano-de-implementação-refinamento-do-módulo-comercial-produ-2026-08-23.md",
