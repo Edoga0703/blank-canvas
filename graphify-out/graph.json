@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-14T14:24:42.667145+00:00",
+  "generated_at": "2026-11-14T20:18:30.661730+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -1399,7 +1399,7 @@
     },
     {
       "path": "src/lib/whatsapp.functions.ts",
-      "bytes": 47996
+      "bytes": 49811
     },
     {
       "path": "src/lib/training.functions.ts",
@@ -1407,7 +1407,7 @@
     },
     {
       "path": "src/lib/message-search.functions.ts",
-      "bytes": 9069
+      "bytes": 11776
     },
     {
       "path": "src/lib/cron-auth.server.ts",
@@ -1987,7 +1987,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 241647
+      "bytes": 252826
     },
     {
       "path": "src/routes/app/configuracoes.tsx",
@@ -2963,7 +2963,7 @@
     },
     {
       "path": "src/components/chat/chat-media.tsx",
-      "bytes": 8616
+      "bytes": 8641
     },
     {
       "path": "src/components/chat/formatted-message-text.tsx",
@@ -2979,7 +2979,7 @@
     },
     {
       "path": "src/components/chat/whatsapp-audio.tsx",
-      "bytes": 5126
+      "bytes": 5122
     },
     {
       "path": "src/components/chat/forward-message-dialog.tsx",
