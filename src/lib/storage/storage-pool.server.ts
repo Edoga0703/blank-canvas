@@ -57,17 +57,13 @@ export interface R2ResolvedConfig {
 
 // Configuración R2 por defecto extraída exclusivamente de variables de entorno del servidor
 export function getDefaultR2EnvConfig(): R2ResolvedConfig {
-  const getEnv = (name: string): string => {
-    return (process.env[name]?.trim() || (process.env as any)?.[name]?.trim() || "");
-  };
-
-  const accountId = getEnv("R2_ACCOUNT_ID");
-  const accessKeyId = getEnv("R2_ACCESS_KEY_ID");
-  const secretAccessKey = getEnv("R2_SECRET_ACCESS_KEY");
-  const bucket = getEnv("R2_BUCKET") || "capiversa-media";
-  const publicBaseUrl = (getEnv("R2_PUBLIC_BASE_URL") || "").replace(/\/$/, "") || null;
-  const maxFileBytes = Number(getEnv("R2_MAX_FILE_BYTES") || 524288000);
-  const signedUrlTtlSeconds = Math.min(604800, Number(getEnv("R2_SIGNED_URL_TTL_SECONDS") || 900));
+  const accountId = (process.env.R2_ACCOUNT_ID || "").trim();
+  const accessKeyId = (process.env.R2_ACCESS_KEY_ID || "").trim();
+  const secretAccessKey = (process.env.R2_SECRET_ACCESS_KEY || "").trim();
+  const bucket = (process.env.R2_BUCKET || "").trim() || "capiversa-media";
+  const publicBaseUrl = (process.env.R2_PUBLIC_BASE_URL || "").trim().replace(/\/$/, "") || null;
+  const maxFileBytes = Number(process.env.R2_MAX_FILE_BYTES || 524288000);
+  const signedUrlTtlSeconds = Math.min(604800, Number(process.env.R2_SIGNED_URL_TTL_SECONDS || 900));
 
   return {
     accountId,

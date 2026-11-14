@@ -20,17 +20,16 @@ export type StoredMediaObject = {
   storageAccountId?: string | null;
 };
 
-function getR2Env(name: string): string {
-  return (process.env[name]?.trim() || (process.env as any)?.[name]?.trim() || "");
-}
-
 function getConfig(): R2Config {
   return getDefaultR2EnvConfig();
 }
 
 export function isR2Configured(): boolean {
-  return ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET"].some((name) =>
-    Boolean(getR2Env(name)),
+  return Boolean(
+    process.env.R2_ACCOUNT_ID ||
+    process.env.R2_ACCESS_KEY_ID ||
+    process.env.R2_SECRET_ACCESS_KEY ||
+    process.env.R2_BUCKET
   );
 }
 

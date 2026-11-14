@@ -64,8 +64,14 @@ async function proxyStream(
   }
 
   let contentType = upstream.headers.get("content-type") || fallbackMime || "application/octet-stream";
+  if (contentType === "application/octet-stream" && fallbackMime && fallbackMime !== "application/octet-stream") {
+    contentType = fallbackMime;
+  }
   if (targetUrl.includes(".ogg") && (!contentType || contentType === "application/octet-stream")) {
     contentType = "audio/ogg; codecs=opus";
+  }
+  if ((targetUrl.includes(".webp") || fallbackMime === "image/webp") && (!contentType || contentType === "application/octet-stream")) {
+    contentType = "image/webp";
   }
 
   const headers = new Headers();
@@ -214,7 +220,16 @@ export const Route = createFileRoute("/api/public/chat-media")({
           return new Response("Not found", { status: 404 });
         }
 
-        const fallbackMime = msg?.midia_mime || attachment?.mime_type || "application/octet-stream";
+        const fallbackMime =
+          msg?.midia_mime ||
+          attachment?.mime_type ||
+          (msg?.midia_tipo === "sticker" || attachment?.kind === "sticker"
+            ? "image/webp"
+            : msg?.midia_tipo === "audio" || attachment?.kind === "audio"
+            ? "audio/ogg"
+            : msg?.midia_tipo === "image" || attachment?.kind === "image"
+            ? "image/jpeg"
+            : "application/octet-stream");
         const downloadFileName = customFilename || msg?.midia_nome || attachment?.file_name || "archivo";
 
         // Caso R2 con storage_key: resolución asíncrona para soportar múltiples cuentas sin depender de caché local

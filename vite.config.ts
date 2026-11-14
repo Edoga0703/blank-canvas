@@ -24,6 +24,7 @@ const SERVER_SECRETS = {
     "328e9326f2e6adad6740f7ea6d1cf64ded1d4727e95408ad5fb4451ff5d29a3c",
   R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID || "a0048ab1cf7078594e2057b9b31131de",
   R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID || "3bc2408cba1eadcd78d9ccdb0a8c987d",
+  MEDIA_SIGNING_SECRET: process.env.MEDIA_SIGNING_SECRET || "capiconversa_media_signing_secret_998877",
 };
 
 /**
@@ -45,7 +46,8 @@ function serverSecretIsolationPlugin() {
         id.includes("/server") ||
         id.includes("cron-auth") ||
         id.includes("storage-pool") ||
-        id.includes("r2")
+        id.includes("r2") ||
+        id.includes("chat-media")
       ) {
         let transformed = code;
         for (const [key, val] of Object.entries(SERVER_SECRETS)) {
@@ -94,6 +96,7 @@ export default defineConfig({
           "process.env.R2_SECRET_ACCESS_KEY": JSON.stringify(SERVER_SECRETS.R2_SECRET_ACCESS_KEY),
           "process.env.R2_ACCESS_KEY_ID": JSON.stringify(SERVER_SECRETS.R2_ACCESS_KEY_ID),
           "process.env.R2_ACCOUNT_ID": JSON.stringify(SERVER_SECRETS.R2_ACCOUNT_ID),
+          "process.env.MEDIA_SIGNING_SECRET": JSON.stringify(SERVER_SECRETS.MEDIA_SIGNING_SECRET),
         },
       },
     },
