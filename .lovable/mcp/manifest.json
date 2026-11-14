@@ -71,7 +71,7 @@
       {
         "name": "send_whatsapp_message",
         "title": "Enviar mensaje por WhatsApp",
-        "description": "Envía texto con la conexión oficial de WhatsApp vinculada al proyecto.",
+        "description": "Envía texto con la conexión activa de WhatsApp (D-API o Lovable) vinculada al proyecto.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -84,7 +84,7 @@
             "numero": {
               "type": "string",
               "minLength": 8,
-              "description": "Número con código de país, por ejemplo 584121234567."
+              "description": "Número con código de país, por ejemplo 5511999999999 o 584121234567."
             },
             "texto": {
               "type": "string",
