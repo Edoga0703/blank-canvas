@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-13T23:06:40.546248+00:00",
+  "generated_at": "2026-11-14T01:31:35.760494+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -15,7 +15,7 @@
     },
     {
       "path": "vite.config.ts",
-      "bytes": 5715
+      "bytes": 5955
     },
     {
       "path": "fix_training_data.sql",
@@ -2115,7 +2115,7 @@
     },
     {
       "path": "src/routes/api/public/chat-media.ts",
-      "bytes": 16219
+      "bytes": 16880
     },
     {
       "path": "src/routes/api/public/dapi-webhook.ts",
@@ -3175,7 +3175,7 @@
     },
     {
       "path": "src/lib/storage/storage-pool.server.ts",
-      "bytes": 13715
+      "bytes": 13659
     },
     {
       "path": "src/lib/storage/r2.functions.ts",
@@ -3183,7 +3183,7 @@
     },
     {
       "path": "src/lib/storage/r2.server.ts",
-      "bytes": 12673
+      "bytes": 12569
     },
     {
       "path": "src/lib/email-templates/recovery.tsx",
