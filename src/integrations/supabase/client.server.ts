@@ -36,7 +36,12 @@ function createSupabaseAdminClient() {
     'https://llnfjhqdeeuscyqzoqfz.supabase.co';
   const SUPABASE_SERVICE_ROLE_KEY =
     typeof process !== 'undefined'
-      ? (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env['SUPABASE_SERVICE_ROLE_KEY'])
+      ? (process.env.SUPABASE_SERVICE_ROLE_KEY ||
+         process.env['SUPABASE_SERVICE_ROLE_KEY'] ||
+         process.env.APP_SERVICE_ROLE_KEY ||
+         process.env['APP_SERVICE_ROLE_KEY'] ||
+         process.env.EXTERNAL_SERVICE_ROLE_KEY ||
+         process.env['EXTERNAL_SERVICE_ROLE_KEY'])
       : undefined;
   if (!SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY não configurada no ambiente do servidor.');

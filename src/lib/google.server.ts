@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 
 function getSigningSecret(): string {
-  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.APP_SECRET;
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.APP_SERVICE_ROLE_KEY || process.env.APP_SECRET;
   if (!secret) throw new Error("Chave de assinatura interna não configurada no servidor.");
   return secret;
 }

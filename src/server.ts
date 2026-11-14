@@ -63,6 +63,19 @@ async function normalizeCatastrophicSsrResponse(
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    if (env && typeof env === "object") {
+      const e = env as Record<string, unknown>;
+      if (typeof process !== "undefined" && process.env) {
+        for (const [key, val] of Object.entries(e)) {
+          if (typeof val === "string" && !process.env[key]) {
+            process.env[key] = val;
+          }
+        }
+        if (!process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.APP_SERVICE_ROLE_KEY) {
+          process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.APP_SERVICE_ROLE_KEY;
+        }
+      }
+    }
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);

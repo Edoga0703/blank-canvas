@@ -34,6 +34,7 @@ function verifyMediaToken(messageId: string, sig: string, expStr: string): boole
     getMediaSigningSecret(),
     (process.env.MEDIA_SIGNING_SECRET || "").trim(),
     (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim(),
+    (process.env.APP_SERVICE_ROLE_KEY || "").trim(),
   ].filter(Boolean);
 
   const b = Buffer.from(sig, "hex");
