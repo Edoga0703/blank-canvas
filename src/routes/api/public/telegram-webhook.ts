@@ -87,7 +87,7 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
             // Verificar se o evento já existe para tratar deduplicação resiliente sem perda
             const { data: existingEvent } = await (supabaseAdmin as any)
               .from("telegram_inbound_events")
-              .select("id, state, updated_at, created_at")
+              .select("id, state, updated_at, created_at, attempts")
               .eq("connection_id", connectionId)
               .eq("event_key", eventKey)
               .maybeSingle();
@@ -98,17 +98,22 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
                 return new Response("ok: deduplicated", { status: 200 });
               }
 
-              // Se o evento está em 'failed' ou travado em 'processing' há mais de 25 segundos (lease expirado),
+              // Se o evento está em 'failed', 'retry_wait' ou travado em 'processing' há mais de 25 segundos (lease expirado),
               // permitimos reprocessamento
               const lastTime = new Date(existingEvent.updated_at || existingEvent.created_at).getTime();
               const isStale = Date.now() - lastTime > 25000;
-              if (existingEvent.state !== "failed" && !isStale) {
+              const canRetry = existingEvent.state === "failed" || existingEvent.state === "retry_wait" || isStale;
+              if (!canRetry) {
                 return new Response("ok: in_flight", { status: 200 });
               }
 
               await (supabaseAdmin as any)
                 .from("telegram_inbound_events")
-                .update({ state: "processing", updated_at: new Date().toISOString() })
+                .update({
+                  state: "processing",
+                  attempts: (existingEvent.attempts || 0) + 1,
+                  updated_at: new Date().toISOString(),
+                })
                 .eq("id", existingEvent.id);
             } else {
               const { error: dedupeErr } = await (supabaseAdmin as any)
@@ -120,6 +125,7 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
                   event_key: eventKey,
                   payload: update,
                   state: "processing",
+                  attempts: 1,
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString(),
                 });
@@ -208,20 +214,24 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
           // 3. Mensagens apagadas no Telegram Business
           if (update?.deleted_business_messages) {
             const dbm = update.deleted_business_messages;
-            const messageIds = (dbm.message_ids ?? []).map(String);
+            const rawMessageIds = (dbm.message_ids ?? []).map(String);
             const chatId = String(dbm.chat?.id ?? "");
-            if (messageIds.length > 0 && chatId) {
+            if (rawMessageIds.length > 0 && chatId) {
+              const scopedMessageIds = [
+                ...rawMessageIds.map((id: string) => `tg_${chatId}_${id}`),
+                ...rawMessageIds,
+              ];
               await (supabaseAdmin as any)
                 .from("mensagens")
                 .update({ deletado_em: new Date().toISOString() })
                 .eq("company_id", companyId)
                 .eq("numero", chatId)
-                .in("whatsapp_message_id", messageIds);
+                .in("whatsapp_message_id", scopedMessageIds);
             }
             if (connectionId && update?.update_id) {
               await (supabaseAdmin as any)
                 .from("telegram_inbound_events")
-                .update({ state: "processed" })
+                .update({ state: "processed", last_error: null, updated_at: new Date().toISOString() })
                 .eq("connection_id", connectionId)
                 .eq("event_key", String(update.update_id));
             }
@@ -232,9 +242,13 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
           const editedMsg = update?.edited_business_message;
           if (editedMsg) {
             const chatId = String(editedMsg.chat?.id ?? "");
-            const providerMessageId = String(editedMsg.message_id ?? "");
+            const rawProviderMessageId = String(editedMsg.message_id ?? "");
             const newText = editedMsg.text ?? editedMsg.caption ?? "";
-            if (chatId && providerMessageId) {
+            if (chatId && rawProviderMessageId) {
+              const targetMessageIds = [
+                `tg_${chatId}_${rawProviderMessageId}`,
+                rawProviderMessageId,
+              ];
               await (supabaseAdmin as any)
                 .from("mensagens")
                 .update({
@@ -243,12 +257,12 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
                 })
                 .eq("company_id", companyId)
                 .eq("numero", chatId)
-                .eq("whatsapp_message_id", providerMessageId);
+                .in("whatsapp_message_id", targetMessageIds);
             }
             if (connectionId && update?.update_id) {
               await (supabaseAdmin as any)
                 .from("telegram_inbound_events")
-                .update({ state: "processed" })
+                .update({ state: "processed", last_error: null, updated_at: new Date().toISOString() })
                 .eq("connection_id", connectionId)
                 .eq("event_key", String(update.update_id));
             }
@@ -367,7 +381,11 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
           const senderName =
             [from.first_name, from.last_name].filter(Boolean).join(" ") ||
             (from.username ? `@${from.username}` : `Telegram ${String(chatId).slice(-4)}`);
-          const providerMessageId = String(msg.message_id ?? `tg_${Date.now()}`);
+          // P0-5: IDs de Telegram são sequenciais por chat (1, 2, 3...).
+          // Para garantir unicidade absoluta no índice único (company_id, whatsapp_message_id)
+          // e evitar colisões entre chats distintos da mesma empresa, qualificamos com o chatId:
+          const rawMessageId = String(msg.message_id ?? `msg_${Date.now()}`);
+          const providerMessageId = `tg_${chatId}_${rawMessageId}`;
 
           const direcao = isMerchantEcho ? "saida" : "entrada";
           const autor = isMerchantEcho ? "atendente" : "contato";

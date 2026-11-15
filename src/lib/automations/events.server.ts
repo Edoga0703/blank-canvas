@@ -94,6 +94,40 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
   const { companyId, name, payload } = event;
   let triggeredCount = 0;
 
+  // P1-1: Garantizar persistencia duradera del evento en automation_events para que
+  // automation_start_execution siempre encuentre un p_event_id válido y no aborte la ejecución.
+  let validEventId = event.id;
+  const idempotencyKey = event.idempotencyKey || `ev_${name}_${event.entity?.id || ""}_${Date.now()}`;
+
+  try {
+    const { data: storedEvent } = await (supabaseAdmin as any)
+      .from("automation_events")
+      .upsert(
+        {
+          id: validEventId || undefined,
+          company_id: companyId,
+          event_name: name,
+          entity_type: event.entity?.type || "domain",
+          entity_id: event.entity?.id ? String(event.entity.id) : null,
+          actor_id: event.actorId || null,
+          source: event.source || "system",
+          occurred_at: event.occurredAt || new Date().toISOString(),
+          idempotency_key: idempotencyKey,
+          payload: payload || {},
+          processing_state: "processing",
+        },
+        { onConflict: "company_id,idempotency_key" }
+      )
+      .select("id")
+      .maybeSingle();
+
+    if (storedEvent?.id) {
+      validEventId = storedEvent.id;
+    }
+  } catch (persistErr) {
+    console.warn("[dispatchDomainEvent] Aviso asegurando persistencia de evento en automation_events:", persistErr);
+  }
+
   // 1. Verificar si hay ejecuciones esperando respuesta en este mismo hilo de conversación
   if (
     (name === "messaging.inbound_received.v1" || name === "telegram.business_message_received.v1") &&
@@ -347,7 +381,7 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
       const { data: started, error: startErr } = await (supabaseAdmin as any)
         .rpc("automation_start_execution", {
           p_company_id: companyId, p_workflow_id: wf.id,
-          p_version_id: wf.active_version_id, p_event_id: event.id,
+          p_version_id: wf.active_version_id, p_event_id: validEventId,
           p_subject_type: payload.cardId ? "crm_card" : "contact",
           p_subject_id: String(subjectId || ""), p_channel: resolvedChannel,
           p_instance_id: resolvedInstanceId,
@@ -358,6 +392,14 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
       if (startErr) throw startErr;
       if (started?.state === "started" || started?.state === "repaired") triggeredCount++;
     }
+  }
+
+  if (validEventId) {
+    await (supabaseAdmin as any)
+      .from("automation_events")
+      .update({ processing_state: "processed" })
+      .eq("id", validEventId)
+      .catch(() => null);
   }
 
   return { triggered: triggeredCount };

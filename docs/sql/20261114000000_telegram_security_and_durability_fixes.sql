@@ -40,6 +40,7 @@ USING (
 );
 
 -- Política de modificación exclusiva para administradores y propietarios
+DROP POLICY IF EXISTS telegram_connections_admin_write ON public.telegram_connections;
 CREATE POLICY telegram_connections_admin_write ON public.telegram_connections
 FOR ALL TO authenticated
 USING (
@@ -51,6 +52,8 @@ WITH CHECK (
 
 -- Refuerzo de RLS en rutas de canales de Telegram
 DROP POLICY IF EXISTS telegram_channel_routes_company_all ON public.telegram_channel_routes;
+DROP POLICY IF EXISTS telegram_channel_routes_member_select ON public.telegram_channel_routes;
+DROP POLICY IF EXISTS telegram_channel_routes_admin_write ON public.telegram_channel_routes;
 CREATE POLICY telegram_channel_routes_member_select ON public.telegram_channel_routes
 FOR SELECT TO authenticated
 USING (
@@ -66,8 +69,9 @@ WITH CHECK (
   public.user_company_role(company_id) IN ('owner', 'admin')
 );
 
--- 5. Vista segura que excluye secret_ref para consumo de interfaz
-CREATE OR REPLACE VIEW public.telegram_connections_safe AS
+-- 5. Vista segura que excluye secret_ref para consumo de interfaz (P0-1: security_invoker = true)
+CREATE OR REPLACE VIEW public.telegram_connections_safe
+WITH (security_invoker = true) AS
 SELECT
   id,
   company_id,

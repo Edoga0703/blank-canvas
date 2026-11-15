@@ -38,6 +38,7 @@ const migrationPairs = [
   "20261112000000_telegram_content_publishing_and_backfill.sql",
   "20261112010000_telegram_discussion_and_comment_moderation.sql",
   "20261114000000_telegram_security_and_durability_fixes.sql",
+  "20261115000000_telegram_audit_remediation.sql",
 ];
 
 let migrationsOk = true;

@@ -572,17 +572,22 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
     } as any).select("id").single();
 
     if (error) {
-      if ((error as any).code === "23505" || error.message?.includes("mensagens_company_id_provider_whatsapp_message_id_key")) {
+      if ((error as any).code === "23505" || error.message?.includes("mensagens_company_id_provider_whatsapp_message_id_key") || error.message?.includes("whatsapp_message_id")) {
         // Concorrência: o webhook de entrega gravou primeiro no mesmo milissegundo
         if (waId) {
           const { data: existing } = await supabase
             .from("mensagens")
             .select("id")
             .eq("company_id", companyId)
-            .eq("provider", inst.provider)
             .eq("whatsapp_message_id", waId)
             .maybeSingle();
-          insertedId = existing?.id ?? null;
+          if (existing?.id) {
+            insertedId = existing.id;
+          } else {
+            throw new Error(`Conflito 23505 não recuperável: ${error.message}`);
+          }
+        } else {
+          throw new Error(error.message);
         }
       } else {
         throw new Error(error.message);
@@ -714,16 +719,21 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
     } as any).select("id").single();
 
     if (error) {
-      if ((error as any).code === "23505" || error.message?.includes("mensagens_company_id_provider_whatsapp_message_id_key")) {
+      if ((error as any).code === "23505" || error.message?.includes("mensagens_company_id_provider_whatsapp_message_id_key") || error.message?.includes("whatsapp_message_id")) {
         if (waId) {
           const { data: existing } = await supabase
             .from("mensagens")
             .select("id")
             .eq("company_id", companyId)
-            .eq("provider", inst.provider)
             .eq("whatsapp_message_id", waId)
             .maybeSingle();
-          insertedId = existing?.id ?? null;
+          if (existing?.id) {
+            insertedId = existing.id;
+          } else {
+            throw new Error(`Conflito 23505 não recuperável: ${error.message}`);
+          }
+        } else {
+          throw new Error(error.message);
         }
       } else {
         throw new Error(error.message);
@@ -880,16 +890,21 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
     } as any).select("id").single();
 
     if (error) {
-      if ((error as any).code === "23505" || error.message?.includes("mensagens_company_id_provider_whatsapp_message_id_key")) {
+      if ((error as any).code === "23505" || error.message?.includes("mensagens_company_id_provider_whatsapp_message_id_key") || error.message?.includes("whatsapp_message_id")) {
         if (waId) {
           const { data: existing } = await supabase
             .from("mensagens")
             .select("id")
             .eq("company_id", companyId)
-            .eq("provider", inst.provider)
             .eq("whatsapp_message_id", waId)
             .maybeSingle();
-          insertedId = existing?.id ?? null;
+          if (existing?.id) {
+            insertedId = existing.id;
+          } else {
+            throw new Error(`Conflito 23505 não recuperável: ${error.message}`);
+          }
+        } else {
+          throw new Error(error.message);
         }
       } else {
         throw new Error(error.message);
