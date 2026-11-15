@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-14T23:02:55.045530+00:00",
+  "generated_at": "2026-11-15T17:48:43.635907+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -63,7 +63,7 @@
     },
     {
       "path": "package-lock.json",
-      "bytes": 550408
+      "bytes": 550255
     },
     {
       "path": "drizzle.config.ts",
@@ -563,7 +563,7 @@
     },
     {
       "path": "supabase/migrations/20261114000000_telegram_security_and_durability_fixes.sql",
-      "bytes": 3293
+      "bytes": 3631
     },
     {
       "path": "supabase/migrations/20261111070000_content_backfill_identity_and_attribution.sql",
@@ -622,6 +622,10 @@
       "bytes": 7438
     },
     {
+      "path": "supabase/migrations/20261115000000_telegram_audit_remediation.sql",
+      "bytes": 2723
+    },
+    {
       "path": "docs/sql/20261112000000_telegram_content_publishing_and_backfill.sql",
       "bytes": 1643
     },
@@ -667,7 +671,7 @@
     },
     {
       "path": "docs/sql/20261114000000_telegram_security_and_durability_fixes.sql",
-      "bytes": 3293
+      "bytes": 3631
     },
     {
       "path": "docs/sql/20261111070000_content_backfill_identity_and_attribution.sql",
@@ -692,6 +696,10 @@
     {
       "path": "docs/sql/20261029100000_multichannel_automations.sql",
       "bytes": 14766
+    },
+    {
+      "path": "docs/sql/20261115000000_telegram_audit_remediation.sql",
+      "bytes": 2723
     },
     {
       "path": "mem/features/parceiros.md",
@@ -1399,7 +1407,7 @@
     },
     {
       "path": "src/lib/whatsapp.functions.ts",
-      "bytes": 49811
+      "bytes": 50420
     },
     {
       "path": "src/lib/training.functions.ts",
@@ -2155,7 +2163,7 @@
     },
     {
       "path": "src/routes/api/public/telegram-webhook.ts",
-      "bytes": 23825
+      "bytes": 24862
     },
     {
       "path": "src/routes/api/public/track-click.ts",
@@ -3123,7 +3131,7 @@
     },
     {
       "path": "src/lib/automations/events.server.ts",
-      "bytes": 15407
+      "bytes": 16893
     },
     {
       "path": "src/lib/automations/functions.ts",
