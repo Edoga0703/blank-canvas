@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-15T17:48:43.635907+00:00",
+  "generated_at": "2026-11-16T21:54:36.312160+00:00",
   "files": [
     {
       "path": "vite-serverfn-warmup.ts",
@@ -1071,7 +1071,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 52995
+      "bytes": 53185
     },
     {
       "path": "src/lib/presence.ts",
@@ -1995,7 +1995,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 254359
+      "bytes": 254865
     },
     {
       "path": "src/routes/app/configuracoes.tsx",
@@ -2363,7 +2363,7 @@
     },
     {
       "path": "src/components/ui/sonner.tsx",
-      "bytes": 3304
+      "bytes": 4634
     },
     {
       "path": "src/components/ui/breadcrumb.tsx",
@@ -10337,7 +10337,7 @@
     },
     {
       "source": "src/routes/app/conversas.tsx",
-      "target": "sonner"
+      "target": "@/components/ui/sonner"
     },
     {
       "source": "src/routes/app/conversas.tsx",
