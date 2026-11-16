@@ -68,7 +68,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCapacidadeAtiva } from "@/hooks/use-capacidades";
 import { getCsatConfig } from "@/lib/csat-config.functions";
 import { reactMessage, editMessage, deleteMessage } from "@/lib/message-actions.functions";
-import { toast } from "sonner";
+import { toast, isAbortLike } from "@/components/ui/sonner";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { AvatarViewer } from "@/components/ui/avatar-viewer";
 import { sendWhatsappText, setContactIaActive, sendWhatsappMedia, sendWhatsappAudio, getWhatsappProfilePic, handleChatAction, syncWhatsappHistory } from "@/lib/whatsapp.functions";
@@ -1034,7 +1034,11 @@ function ConversasPage() {
   async function loadPauses(cid: string) {
     const { data } = await supabase.from("contact_pause").select("numero,pausado").eq("company_id", cid);
     const map: Record<string, boolean> = {};
-    (data ?? []).forEach((r: any) => { map[r.numero] = !!r.pausado; });
+    (data ?? []).forEach((r: any) => {
+      map[r.numero] = !!r.pausado;
+      const comp = numeroComparable(r.numero);
+      if (comp) map[comp] = !!r.pausado;
+    });
     setPauses(map);
     setPausesLoaded(true);
   }
@@ -1119,7 +1123,11 @@ function ConversasPage() {
     setStages((st ?? []) as any);
     if (pips) setPipelines(pips as any);
     const pmap: Record<string, boolean> = {};
-    (pz ?? []).forEach((r: any) => { pmap[r.numero] = !!r.pausado; });
+    (pz ?? []).forEach((r: any) => {
+      pmap[r.numero] = !!r.pausado;
+      const comp = numeroComparable(r.numero);
+      if (comp) pmap[comp] = !!r.pausado;
+    });
     setPauses(pmap);
     setPausesLoaded(true);
     if (quick?.length) setMsgs(quick as Msg[]);
@@ -1425,9 +1433,11 @@ function ConversasPage() {
   // Empresa usa agente de IA? (alguma etapa em modo IA/auto com IA)
   const usaIa = useMemo(() => stages.some((s) => s.modo_atendimento === "ia"), [stages]);
   const activeTipo = activeStage?.tipo;
-  const iaAtivaAqui = active ? !(pauses[active] ?? false) : true;
+  const iaAtivaAqui = active
+    ? !(pauses[active] ?? (numeroComparable(active) ? pauses[numeroComparable(active)] : undefined) ?? false)
+    : true;
   // A etapa do lead define se o agente de IA realmente responde.
-  const iaDaEtapa = activeStage?.modo_atendimento === "ia";
+  const iaDaEtapa = activeStage ? activeStage.modo_atendimento === "ia" : usaIa;
   const iaRespondeAqui = iaAtivaAqui && iaDaEtapa;
   const totalUnread = Object.values(unread).reduce((a, b) => a + b, 0);
 
@@ -1640,9 +1650,14 @@ function ConversasPage() {
 
   async function toggleIa(v: boolean) {
     if (!active || isGrupo(active)) return;
-    setPauses((p) => ({ ...p, [active]: !v }));
+    const comp = numeroComparable(active);
+    setPauses((p) => ({ ...p, [active]: !v, ...(comp ? { [comp]: !v } : {}) }));
     try { await toggleIaFn({ data: { numero: active, ativa: v } }); }
-    catch (e: any) { toast.error(e?.message); setPauses((p) => ({ ...p, [active]: v })); }
+    catch (e: any) {
+      if (isAbortLike(e)) return;
+      toast.error(e?.message);
+      setPauses((p) => ({ ...p, [active]: v, ...(comp ? { [comp]: v } : {}) }));
+    }
   }
 
   async function assumir() {
@@ -3250,7 +3265,7 @@ function ConversasPage() {
                 sending={sending}
                 onSendText={(t) => void sendMsg(t)}
                 companyId={companyId ?? ""}
-                iaAtiva={activeIsGrupo ? false : iaAtivaAqui}
+                iaAtiva={activeIsGrupo ? false : iaRespondeAqui}
                 onAssumir={() => void assumir()}
                 onEncaminhar={activeIsGrupo ? undefined : canTransfer ? () => setEncaminharOpen(true) : undefined}
                 ownerId={activeIsGrupo ? (userId ?? null) : activeCard?.owner_id ?? null}
@@ -4521,19 +4536,19 @@ function Composer({
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-[13px] font-semibold text-foreground">
-              {deOutro ? `Em atendimento por ${ownerNome || "outro atendente"}` : "Conversa sem responsável"}
+              {deOutro ? `En atención por ${ownerNome || "otro operador"}` : "Conversación sin responsable"}
             </div>
             <div className="text-[11.5px] text-muted-foreground">
-              {deOutro ? "Assuma o ticket para responder diretamente a este contato." : "Aceite este atendimento para começar a responder."}
+              {deOutro ? "Asume el ticket para responder directamente a este contacto." : "Acepta esta conversación para empezar a responder."}
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Button size="sm" className="h-8 rounded-full bg-[color:var(--brand)] text-primary-foreground hover:bg-[color:var(--brand-strong)]" onClick={onAssumir}>
-              <Hand className="size-3.5 mr-1" /> {deOutro ? "Assumir" : "Aceitar"}
+              <Hand className="size-3.5 mr-1" /> {deOutro ? "Asumir" : "Aceptar"}
             </Button>
             {onEncaminhar && (
               <Button size="sm" variant="outline" className="h-8 rounded-full" onClick={onEncaminhar}>
-                <Forward className="size-3.5 mr-1" /> Encaminhar
+                <Forward className="size-3.5 mr-1" /> Transferir
               </Button>
             )}
           </div>
@@ -4555,10 +4570,10 @@ function Composer({
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-[13px] font-semibold text-foreground">
-              {ownerId ? `Atendimento automatizado com ${ownerNome}` : "IA em atendimento ativo"}
+              {ownerId ? `Atención automatizada con ${ownerNome}` : "IA en atención activa"}
             </div>
             <div className="text-[11.5px] text-muted-foreground">
-              {ownerId ? `O agente está respondendo automaticamente. Pause para assumir.` : "A IA está atendendo a este cliente. Pause a IA para responder manualmente."}
+              {ownerId ? `El agente está respondiendo automáticamente. Pausa la IA para responder.` : "La IA está atendiendo a este cliente. Pausa la IA para responder manualmente."}
             </div>
           </div>
           <Button size="sm" variant="outline" className="h-8 rounded-full shrink-0 border-[color:var(--hairline-strong)] hover:bg-[color:var(--panel)] font-medium" onClick={onAssumir}>

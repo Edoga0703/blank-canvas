@@ -355,7 +355,9 @@ export async function processAiResponse(
       const isExplicitIaStage = !pausedByHuman && stageCfg?.modo_atendimento === "ia";
 
       // 3. Si la pausa humana ocurrió hace más de 4 horas de inactividad, reactivar para no desatender al cliente
-      const isStaleHumanPause = pausedByHuman && hoursSincePause > 4;
+      // Solo si el lead NO tiene un operador humano asignado (si tiene dueño humano, se respeta la atención humana)
+      const hasHumanOwner = Boolean(card?.owner_id);
+      const isStaleHumanPause = pausedByHuman && !hasHumanOwner && hoursSincePause > 4;
 
       if (shouldClearAudioPause || isExplicitIaStage || isStaleHumanPause) {
         console.log(`[ai-engine] Clearing pause for ${number} (audioRecover=${shouldClearAudioPause}, explicitIa=${isExplicitIaStage}, staleHuman=${isStaleHumanPause})`);

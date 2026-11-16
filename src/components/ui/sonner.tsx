@@ -1,5 +1,41 @@
-import { Toaster as Sonner, type ToasterProps } from "sonner";
+import { Toaster as Sonner, type ToasterProps, toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
+
+// Suprime erros de requisição cancelada (AbortError / The operation was aborted)
+// que ocorrem normalmente quando o usuário troca de chat ou navega rapidamente
+export function isAbortLike(arg: unknown): boolean {
+  if (!arg) return false;
+  if (typeof arg === "string") {
+    const s = arg.toLowerCase();
+    return (
+      s.includes("the operation was aborted") ||
+      s.includes("aborterror") ||
+      s.includes("user aborted a request") ||
+      s.includes("fetch is aborted") ||
+      s.includes("signal is aborted") ||
+      s === "aborted"
+    );
+  }
+  if (typeof arg === "object") {
+    const err = arg as any;
+    if (err.name === "AbortError") return true;
+    if (typeof err.message === "string" && isAbortLike(err.message)) return true;
+    if (typeof err.details === "string" && isAbortLike(err.details)) return true;
+  }
+  return false;
+}
+
+if (typeof window !== "undefined" && (toast as any) && !(toast as any).__abortGuarded) {
+  (toast as any).__abortGuarded = true;
+  const originalError = toast.error.bind(toast);
+  toast.error = (message: any, data?: any) => {
+    if (isAbortLike(message) || (data && isAbortLike(data?.description))) {
+      console.debug("[sonner] Suppressed benign abort error:", message);
+      return "" as any;
+    }
+    return originalError(message, data);
+  };
+}
 
 // Beep sintetizado via WebAudio — evita depender de arquivo de áudio
 function playToastSound(type: "success" | "error" | "info" = "info") {
@@ -84,4 +120,4 @@ const Toaster = ({ ...props }: ToasterProps) => {
 
 };
 
-export { Toaster };
+export { Toaster, toast };
