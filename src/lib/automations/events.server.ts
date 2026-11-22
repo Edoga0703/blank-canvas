@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { DomainEvent } from "./types";
 import type { WorkflowGraph } from "./schema";
 import { randomUUID } from "node:crypto";
+import { matchesKeywords, isChannelMatch, normalizeKeywordText } from "./arbitration.server";
 
 /**
  * Procesa eventos pendientes acumulados en automation_events por el trigger de crm_cards u otras fuentes.
@@ -246,7 +247,8 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
         n.type.startsWith("crm.card") ||
         n.type === "telegram.business_message_received" ||
         n.type === "telegram.channel_post_published" ||
-        n.type === "telegram.channel_comment_received"
+        n.type === "telegram.channel_comment_received" ||
+        n.type === "meta.comment_received"
     );
     if (!triggerNode) continue;
 
@@ -256,7 +258,7 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
     if (name === "messaging.inbound_received.v1" && triggerNode.type === "messaging.inbound_received") {
       const cfg = (triggerNode.config || {}) as any;
       // Validar canal
-      const chOk = !cfg.channels || cfg.channels.length === 0 || (payload.channel && cfg.channels.includes(payload.channel));
+      const chOk = isChannelMatch(cfg.channels, payload.channel);
       // Validar conexión
       const instOk =
         cfg.connectionMode !== "selected" ||
@@ -276,8 +278,7 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
 
       let kwOk = true;
       if (Array.isArray(cfg.keywords) && cfg.keywords.length > 0) {
-        const text = String(payload.text || "").toLowerCase();
-        kwOk = cfg.keywords.some((k: string) => text.includes(String(k).toLowerCase().trim()));
+        kwOk = matchesKeywords(payload.text || "", cfg.keywords);
       }
 
       matches = Boolean(chOk && instOk && convOk && kwOk);
@@ -298,8 +299,7 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
 
       let kwOk = true;
       if (Array.isArray(cfg.keywords) && cfg.keywords.length > 0) {
-        const text = String(payload.text || "").toLowerCase();
-        kwOk = cfg.keywords.some((k: string) => text.includes(String(k).toLowerCase().trim()));
+        kwOk = matchesKeywords(payload.text || "", cfg.keywords);
       }
 
       matches = Boolean(instOk && convOk && kwOk);
@@ -313,10 +313,53 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
       const chOk = !cfg.channelId || String(cfg.channelId).trim() === String(payload.channelId).trim();
       let kwOk = true;
       if (Array.isArray(cfg.keywords) && cfg.keywords.length > 0) {
-        const text = String(payload.text || "").toLowerCase();
-        kwOk = cfg.keywords.some((k: string) => text.includes(String(k).toLowerCase().trim()));
+        kwOk = matchesKeywords(payload.text || "", cfg.keywords);
       }
       matches = Boolean(chOk && kwOk);
+    } else if (name === "meta.comment_received.v1" && triggerNode.type === "meta.comment_received") {
+      const cfg = (triggerNode.config || {}) as any;
+      // Validar post específico si se configuró ("all" o vacío significa cualquier post)
+      const targetPostId = String(cfg.postId || "").trim();
+      const postOk = !targetPostId || targetPostId.toLowerCase() === "all" || targetPostId === String(payload.postId || "").trim();
+
+      // Validar si ignora respuestas anidadas a otros comentarios
+      const ignoreNested = Boolean(cfg.ignoreReplies ?? cfg.ignoreNestedReplies ?? false);
+      const nestOk = !ignoreNested || !payload.isNestedReply;
+
+      // Validar canal
+      const chOk = isChannelMatch(cfg.channels, payload.channel || payload.rawChannel);
+
+      // Validar conexión / instancia específica
+      const instOk =
+        cfg.connectionMode !== "selected" ||
+        (Array.isArray(cfg.instanceIds) && cfg.instanceIds.includes(payload.instanceId));
+
+      // Validar palabras clave con normalización semántica
+      let kwOk = true;
+      if (Array.isArray(cfg.keywords) && cfg.keywords.length > 0) {
+        kwOk = matchesKeywords(payload.text || "", cfg.keywords);
+      }
+
+      // Validar cooldown por (workflow_id, sender_id, post_id) (once_per_user_per_post)
+      let cooldownOk = true;
+      const oncePerUser = Boolean(cfg.oncePerUserPerPost ?? true);
+      if (oncePerUser && payload.senderId && payload.postId) {
+        const { data: priorExec } = await (supabaseAdmin as any)
+          .from("automation_executions")
+          .select("id")
+          .eq("company_id", companyId)
+          .eq("workflow_id", wf.id)
+          .filter("context->trigger->>senderId", "eq", String(payload.senderId))
+          .filter("context->trigger->>postId", "eq", String(payload.postId))
+          .limit(1)
+          .maybeSingle();
+
+        if (priorExec?.id) {
+          cooldownOk = false;
+        }
+      }
+
+      matches = Boolean(postOk && nestOk && chOk && instOk && kwOk && cooldownOk);
     } else if (name === "crm.card.stage_changed.v1" && triggerNode.type === "crm.card_stage_changed") {
       const cfg = (triggerNode.config || {}) as any;
       const pipeOk = !cfg.pipelineId || cfg.pipelineId === payload.pipelineId;
@@ -342,7 +385,7 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
 
     if (matches) {
       // Reentrada
-      const subjectId = payload.cardId || payload.phone || payload.externalConversationId;
+      const subjectId = payload.cardId || payload.phone || payload.externalConversationId || payload.senderId || payload.commentId;
       if (graph.settings?.reentry === "deny_while_active" && subjectId) {
         const { data: activeExec } = await (supabaseAdmin as any)
           .from("automation_executions")
@@ -360,11 +403,11 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
       const firstEdge = graph.edges.find((e) => e.source === triggerNode.id);
       if (!firstEdge) continue;
 
-      // Cargar datos de tarjeta con aislamiento estricto de empresa (P1.D: incluye canal e instance_id)
+      // Cargar datos de tarjeta con aislamiento estricto de empresa
       const { data: cardRow } = payload.cardId
         ? await (supabaseAdmin as any)
             .from("crm_cards")
-            .select("id, company_id, nome, numero, canal, instance_id, pipeline_id, stage_id, owner_id, tags, valor, email, campos_extras")
+            .select("id, company_id, nome, numero, canal_chat, canal_entrada, pipeline_id, stage_id, owner_id, tags, valor, email, campos_extras")
             .eq("company_id", companyId)
             .eq("id", payload.cardId)
             .maybeSingle()
@@ -375,8 +418,8 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
         card: cardRow || null,
       };
 
-      const resolvedChannel = payload.channel || cardRow?.canal || null;
-      const resolvedInstanceId = payload.instanceId || cardRow?.instance_id || null;
+      const resolvedChannel = payload.channel || cardRow?.canal_chat || null;
+      const resolvedInstanceId = payload.instanceId || cardRow?.campos_extras?.instance_id || null;
 
       const { data: started, error: startErr } = await (supabaseAdmin as any)
         .rpc("automation_start_execution", {
@@ -395,11 +438,12 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
   }
 
   if (validEventId) {
-    await (supabaseAdmin as any)
-      .from("automation_events")
-      .update({ processing_state: "processed" })
-      .eq("id", validEventId)
-      .catch(() => null);
+    try {
+      await (supabaseAdmin as any)
+        .from("automation_events")
+        .update({ processing_state: "processed" })
+        .eq("id", validEventId);
+    } catch {}
   }
 
   return { triggered: triggeredCount };

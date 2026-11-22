@@ -39,7 +39,7 @@ export const listWorkflowsFn = createServerFn({ method: "GET" })
     const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
     const { data: workflows, error } = await (supabaseAdmin as any)
       .from("automation_workflows")
-      .select("id, name, description, status, active_version_id, updated_at, created_at")
+      .select("id, name, description, status, active_version_id, updated_at, created_at, ui_mode")
       .eq("company_id", companyId)
       .neq("status", "archived")
       .order("updated_at", { ascending: false });
@@ -151,6 +151,7 @@ export const getWorkflowFn = createServerFn({ method: "GET" })
           reentry: "deny_while_active",
           maxRuntimeSeconds: 86400,
           maxSteps: 100,
+          ui_mode: "canvas",
         },
       };
     }
@@ -168,7 +169,13 @@ export const getWorkflowFn = createServerFn({ method: "GET" })
 
 export const createWorkflowFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { name: string; description?: string }) => {
+  .inputValidator((d: {
+    name: string;
+    description?: string;
+    initialGraph?: any;
+    ui_mode?: "quick_rule" | "canvas";
+    publishImmediately?: boolean;
+  }) => {
     if (!d?.name?.trim()) throw new Error("El nombre del flujo es obligatorio");
     return d;
   })
@@ -176,48 +183,68 @@ export const createWorkflowFn = createServerFn({ method: "POST" })
     const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
     await assertAutomationEditor(companyId, context.userId);
 
-    const defaultGraph: WorkflowGraph = {
-      schemaVersion: 1,
-      nodes: [
-        {
-          id: "trigger_inbound",
-          type: "messaging.inbound_received",
-          version: 1,
-          position: { x: 250, y: 80 },
-          config: {
-            connectionMode: "any",
-            instanceIds: [],
-            channels: ["whatsapp", "instagram_dm", "facebook_messenger", "telegram"],
-            keywords: [],
-            conversationType: "direct",
+    const uiMode = data.ui_mode || "canvas";
+    const graphToUse: WorkflowGraph = data.initialGraph
+      ? WorkflowGraphSchema.parse({
+          ...data.initialGraph,
+          settings: {
+            reentry: "deny_while_active",
+            maxRuntimeSeconds: 86400,
+            maxSteps: 100,
+            ...(data.initialGraph.settings || {}),
+            ui_mode: uiMode,
           },
-        },
-        {
-          id: "send_welcome",
-          type: "messaging.send_text",
-          version: 1,
-          position: { x: 250, y: 260 },
-          config: {
-            text: "¡Hola! Gracias por comunicarte con nosotros. ¿En qué podemos ayudarte hoy?",
-            connectionPolicy: "same_as_trigger",
+        })
+      : {
+          schemaVersion: 1,
+          nodes: [
+            {
+              id: "trigger_inbound",
+              type: "messaging.inbound_received",
+              version: 1,
+              position: { x: 250, y: 80 },
+              config: {
+                connectionMode: "any",
+                instanceIds: [],
+                channels: ["whatsapp", "instagram_dm", "facebook_messenger", "telegram"],
+                keywords: [],
+                conversationType: "direct",
+              },
+            },
+            {
+              id: "send_welcome",
+              type: "messaging.send_text",
+              version: 1,
+              position: { x: 250, y: 260 },
+              config: {
+                text: "¡Hola! Gracias por comunicarte con nosotros. ¿En qué podemos ayudarte hoy?",
+                connectionPolicy: "same_as_trigger",
+              },
+            },
+          ],
+          edges: [
+            {
+              id: "edge_trigger_welcome",
+              source: "trigger_inbound",
+              sourcePort: "next",
+              target: "send_welcome",
+              targetPort: "input",
+            },
+          ],
+          settings: {
+            reentry: "deny_while_active",
+            maxRuntimeSeconds: 86400,
+            maxSteps: 100,
+            ui_mode: uiMode,
           },
-        },
-      ],
-      edges: [
-        {
-          id: "edge_trigger_welcome",
-          source: "trigger_inbound",
-          sourcePort: "next",
-          target: "send_welcome",
-          targetPort: "input",
-        },
-      ],
-      settings: {
-        reentry: "deny_while_active",
-        maxRuntimeSeconds: 86400,
-        maxSteps: 100,
-      },
-    };
+        };
+
+    if (data.publishImmediately) {
+      const validation = validateWorkflowGraphStructure(graphToUse);
+      if (!validation.valid) {
+        throw new Error(`Validación de estructura fallida: ${validation.errors.map((e) => e.message).join(" | ")}`);
+      }
+    }
 
     const { data: wf, error } = await (supabaseAdmin as any)
       .from("automation_workflows")
@@ -225,7 +252,8 @@ export const createWorkflowFn = createServerFn({ method: "POST" })
         company_id: companyId,
         name: data.name.trim(),
         description: data.description?.trim() || null,
-        status: "draft",
+        status: data.publishImmediately ? "published" : "draft",
+        ui_mode: uiMode,
         created_by: context.userId,
         updated_by: context.userId,
       })
@@ -234,17 +262,31 @@ export const createWorkflowFn = createServerFn({ method: "POST" })
 
     if (error || !wf) throw new Error(error?.message || "Error al crear flujo");
 
-    // Guardar versión 1 borrador
-    const { error: verErr } = await (supabaseAdmin as any).from("automation_workflow_versions").insert({
-      company_id: companyId,
-      workflow_id: wf.id,
-      version_number: 1,
-      graph: defaultGraph,
-      schema_version: 1,
-      created_by: context.userId,
-    });
-    if (verErr) {
-      throw new Error(`Error al crear versión inicial del flujo: ${verErr.message}`);
+    // Guardar versión 1
+    const { data: ver, error: verErr } = await (supabaseAdmin as any)
+      .from("automation_workflow_versions")
+      .insert({
+        company_id: companyId,
+        workflow_id: wf.id,
+        version_number: 1,
+        graph: graphToUse,
+        schema_version: 1,
+        published_by: data.publishImmediately ? context.userId : null,
+        published_at: data.publishImmediately ? new Date().toISOString() : null,
+        created_by: context.userId,
+      })
+      .select("id")
+      .single();
+
+    if (verErr || !ver) {
+      throw new Error(`Error al crear versión inicial del flujo: ${verErr?.message}`);
+    }
+
+    if (data.publishImmediately) {
+      await (supabaseAdmin as any)
+        .from("automation_workflows")
+        .update({ active_version_id: ver.id })
+        .eq("id", wf.id);
     }
 
     return { id: wf.id };
@@ -252,7 +294,7 @@ export const createWorkflowFn = createServerFn({ method: "POST" })
 
 export const saveWorkflowDraftFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { workflowId: string; graph: any; name?: string; description?: string }) => {
+  .inputValidator((d: { workflowId: string; graph: any; name?: string; description?: string; switchUiModeToCanvas?: boolean; ui_mode?: "quick_rule" | "canvas" }) => {
     if (!d?.workflowId || !d?.graph) throw new Error("Datos incompletos");
     return d;
   })
@@ -264,7 +306,7 @@ export const saveWorkflowDraftFn = createServerFn({ method: "POST" })
     // Verificar que el flujo pertenezca a la empresa
     const { data: wfCheck, error: checkErr } = await (supabaseAdmin as any)
       .from("automation_workflows")
-      .select("id")
+      .select("id, ui_mode")
       .eq("id", data.workflowId)
       .eq("company_id", companyId)
       .maybeSingle();
@@ -272,6 +314,14 @@ export const saveWorkflowDraftFn = createServerFn({ method: "POST" })
     if (checkErr || !wfCheck) {
       throw new Error("El flujo no existe o no pertenece a esta empresa.");
     }
+
+    // El cambio a 'canvas' ocurre exclusivamente si se edita/guarda desde automacoes.$workflowId.tsx (switchUiModeToCanvas: true o graph.settings.ui_mode === 'canvas').
+    // Si se guarda o actualiza desde QuickRulesModal, preserva estrictamente 'quick_rule'.
+    const targetUiMode =
+      data.switchUiModeToCanvas
+        ? "canvas"
+        : (data.ui_mode || (parsedGraph.settings?.ui_mode === "quick_rule" ? "quick_rule" : (wfCheck.ui_mode || "canvas")));
+    parsedGraph.settings.ui_mode = targetUiMode;
 
     // Obtener última versión existente con reintento ante colisión de versión
     let savedVer: any = null;
@@ -315,6 +365,7 @@ export const saveWorkflowDraftFn = createServerFn({ method: "POST" })
     const updates: Record<string, any> = {
       updated_at: new Date().toISOString(),
       updated_by: context.userId,
+      ui_mode: targetUiMode,
     };
     if (data.name) updates.name = data.name.trim();
     if (data.description !== undefined) updates.description = data.description?.trim() || null;
@@ -334,12 +385,13 @@ export const saveWorkflowDraftFn = createServerFn({ method: "POST" })
       versionNumber: savedVer.version_number,
       versionId: savedVer.id,
       hasUnpublishedChanges: true,
+      ui_mode: targetUiMode,
     };
   });
 
 export const publishWorkflowFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { workflowId: string; graph: any }) => {
+  .inputValidator((d: { workflowId: string; graph: any; name?: string }) => {
     if (!d?.workflowId || !d?.graph) throw new Error("Datos incompletos");
     return d;
   })
@@ -449,14 +501,20 @@ export const publishWorkflowFn = createServerFn({ method: "POST" })
     }
 
     // 4. Activar versión en el flujo comprobando resultado de la escritura
+    const targetUiMode = parsedGraph.settings.ui_mode || "canvas";
+    const updates: Record<string, any> = {
+      status: "published",
+      active_version_id: publishedVer.id,
+      ui_mode: targetUiMode,
+      updated_at: new Date().toISOString(),
+      updated_by: context.userId,
+    };
+    if (data.name?.trim()) {
+      updates.name = data.name.trim();
+    }
     const { error: pubErr } = await (supabaseAdmin as any)
       .from("automation_workflows")
-      .update({
-        status: "published",
-        active_version_id: publishedVer.id,
-        updated_at: new Date().toISOString(),
-        updated_by: context.userId,
-      })
+      .update(updates)
       .eq("id", data.workflowId)
       .eq("company_id", companyId);
 
@@ -560,6 +618,7 @@ export const getExecutionDetailFn = createServerFn({ method: "GET" })
       .from("automation_step_runs")
       .select("*")
       .eq("execution_id", data.executionId)
+      .eq("company_id", companyId)
       .order("started_at", { ascending: true });
 
     return {

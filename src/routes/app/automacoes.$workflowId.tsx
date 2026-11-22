@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +46,7 @@ import {
   Clock,
   GitBranch,
   MessageSquare,
+  MessageSquareQuote,
   Send,
   UserCheck,
   Bot,
@@ -83,6 +85,7 @@ function TriggerNodeCard({ data, id }: NodeProps) {
   const isTgMsg = data.type === "telegram.business_message_received";
   const isTgPost = data.type === "telegram.channel_post_published";
   const isTgComment = data.type === "telegram.channel_comment_received";
+  const isMetaComment = data.type === "meta.comment_received";
 
   const onAddNext = (data as any)?.onAddNext;
 
@@ -98,6 +101,7 @@ function TriggerNodeCard({ data, id }: NodeProps) {
           {isTgMsg && <Send className="size-4 text-sky-500" />}
           {isTgPost && <Radio className="size-4 text-sky-500" />}
           {isTgComment && <MessageCircle className="size-4 text-sky-500" />}
+          {isMetaComment && <MessageSquareQuote className="size-4 text-fuchsia-600" />}
           <span className="truncate">{String(data.name || "Gatilho")}</span>
         </div>
         <Badge variant="outline" className="text-[9px] bg-indigo-500/10 text-indigo-700 border-indigo-200">
@@ -122,7 +126,9 @@ function TriggerNodeCard({ data, id }: NodeProps) {
                       ? "Dispara com nova publicação no canal Telegram"
                       : isTgComment
                         ? "Dispara com novo comentário em post do Telegram"
-                        : "Gatilho de automação"}
+                        : isMetaComment
+                          ? `Comentário no Instagram/FB (${((data.config as any)?.keywords || []).length > 0 ? ((data.config as any)?.keywords || []).join(", ") : "qualquer post"})`
+                          : "Gatilho de automação"}
       </p>
 
       {/* Porta de saída ampliada para 20px com etiqueta e botão + rápido */}
@@ -163,6 +169,9 @@ function ActionNodeCard({ data, id }: NodeProps) {
   const isTgReply = data.type === "telegram.send_business_reply";
   const isTgPublish = data.type === "telegram.publish_to_channel";
   const isTgHuman = data.type === "telegram.route_to_human";
+  const isEnsureLead = data.type === "crm.ensure_lead";
+  const isMetaPrivateReply = data.type === "meta.send_private_reply";
+  const isMetaReplyComment = data.type === "meta.reply_comment";
   const isTerminal = isHuman || isTgHuman; // Ambos derivar a humano são terminais
 
   const onAddNext = (data as any)?.onAddNext;
@@ -187,6 +196,9 @@ function ActionNodeCard({ data, id }: NodeProps) {
           {isTgReply && <Send className="size-4 text-sky-500" />}
           {isTgPublish && <Share2 className="size-4 text-sky-500" />}
           {isTgHuman && <UserCheck className="size-4 text-rose-500" />}
+          {isEnsureLead && <UserPlus className="size-4 text-indigo-600" />}
+          {isMetaPrivateReply && <Send className="size-4 text-fuchsia-600" />}
+          {isMetaReplyComment && <MessageSquareQuote className="size-4 text-pink-600" />}
           <span className="truncate">{String(data.name || "Ação")}</span>
         </div>
         {isTerminal ? (
@@ -217,7 +229,13 @@ function ActionNodeCard({ data, id }: NodeProps) {
                       ? `Telegram Canal: ${(data.config as any)?.text || "Publicar no canal..."}`
                       : isTgHuman
                         ? "Telegram: Pausa bot e deriva para atendente (Terminal)"
-                        : "Ação configurada"}
+                        : isEnsureLead
+                          ? `Garantir lead no CRM (tag: "${(data.config as any)?.tag || "sem tag"}")`
+                          : isMetaPrivateReply
+                            ? `DM Meta: "${(data.config as any)?.message?.slice(0, 36) || "Enviar mensagem privada..."}..."`
+                            : isMetaReplyComment
+                              ? `Resposta pública (${((data.config as any)?.variants || []).length > 0 ? `${((data.config as any)?.variants || []).length} variações` : (data.config as any)?.message?.slice(0, 24) || "Comentário público"})`
+                              : "Ação configurada"}
       </p>
 
       {/* Se for terminal (A11), não desenha porta de saída 'next' enganosa */}
@@ -617,6 +635,32 @@ function AutomacaoCanvasPage() {
         nodeType = "actionNode";
         nodeName = "Telegram: Derivar a Atendente";
         initialConfig = { reason: "Solicitação de atendimento humano via Telegram" };
+      } else if (typeKey === "meta.comment_received") {
+        nodeType = "triggerNode";
+        nodeName = "Comentário no Instagram/FB";
+        initialConfig = { connectionMode: "any", instanceIds: [], channels: ["instagram", "facebook"], postId: "", keywords: [], ignoreNestedReplies: true, oncePerUserPerPost: true };
+      } else if (typeKey === "crm.ensure_lead") {
+        nodeType = "actionNode";
+        nodeName = "Garantir Lead no CRM";
+        initialConfig = { pipelineId: "", stageId: "", tag: "lead-comentario" };
+      } else if (typeKey === "meta.send_private_reply") {
+        nodeType = "actionNode";
+        nodeName = "Enviar DM Privado (Meta)";
+        initialConfig = { message: "Olá {{lead_name}}! Vi seu comentário e te mandei os detalhes por aqui." };
+      } else if (typeKey === "meta.reply_comment") {
+        nodeType = "actionNode";
+        nodeName = "Responder Comentário Público";
+        initialConfig = {
+          message: "Te mandei uma mensagem no direct! 🚀",
+          variants: [
+            "Te mandei uma mensagem no direct! 🚀",
+            "Acabei de te responder por mensagem privada! 📩",
+            "Prontinho! Dá uma olhada no seu direct ✨",
+          ],
+          delaySeconds: 0,
+          minDelaySeconds: 5,
+          maxDelaySeconds: 25,
+        };
       }
 
       const newNode: Node = {
@@ -856,11 +900,33 @@ function AutomacaoCanvasPage() {
       type.startsWith("messaging.inbound") ||
       type.startsWith("crm.card") ||
       type.startsWith("telegram.business_message") ||
-      type.startsWith("telegram.channel_")
+      type.startsWith("telegram.channel_") ||
+      type === "meta.comment_received"
     ) nType = "triggerNode";
     else if (type.startsWith("condition.")) nType = "conditionNode";
     else if (type.startsWith("control.wait") || type.startsWith("messaging.wait")) nType = "waitNode";
     else if (type === "control.end") nType = "endNode";
+
+    let initialConfig: Record<string, any> = {};
+    if (type === "meta.comment_received") {
+      initialConfig = { connectionMode: "any", instanceIds: [], channels: ["instagram", "facebook"], postId: "", keywords: [], ignoreNestedReplies: true, oncePerUserPerPost: true };
+    } else if (type === "crm.ensure_lead") {
+      initialConfig = { pipelineId: "", stageId: "", tag: "lead-comentario" };
+    } else if (type === "meta.send_private_reply") {
+      initialConfig = { message: "Olá {{lead_name}}! Vi seu comentário e te mandei os detalhes por aqui." };
+    } else if (type === "meta.reply_comment") {
+      initialConfig = {
+        message: "Te mandei uma mensagem no direct! 🚀",
+        variants: [
+          "Te mandei uma mensagem no direct! 🚀",
+          "Acabei de te responder por mensagem privada! 📩",
+          "Prontinho! Dá uma olhada no seu direct ✨",
+        ],
+        delaySeconds: 0,
+        minDelaySeconds: 5,
+        maxDelaySeconds: 25,
+      };
+    }
 
     // Posicionamento inteligente abaixo do nó mais baixo ou no centro
     const maxY = nodes.length > 0 ? Math.max(...nodes.map((n) => n.position.y)) : 50;
@@ -875,7 +941,7 @@ function AutomacaoCanvasPage() {
         type,
         version: 1,
         name: label,
-        config: {},
+        config: initialConfig,
       },
     };
 
@@ -908,6 +974,7 @@ function AutomacaoCanvasPage() {
         reentry: "deny_while_active" as const,
         maxRuntimeSeconds: 86400,
         maxSteps: 100,
+        ui_mode: "canvas" as const,
       },
     };
   }
@@ -916,7 +983,7 @@ function AutomacaoCanvasPage() {
     setSaving(true);
     try {
       const graph = buildCurrentGraph();
-      const res = await saveDraft({ data: { workflowId, graph } });
+      const res = await saveDraft({ data: { workflowId, graph, switchUiModeToCanvas: true } });
       toast.success(`Rascunho salvo com sucesso (v${res.versionNumber})`);
       setVersionNumber(res.versionNumber);
       setHasUnpublishedChanges(true);
@@ -1080,6 +1147,14 @@ function AutomacaoCanvasPage() {
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={() => addNodeFromPalette("meta.comment_received", "Comentário no Instagram/FB")}
+                  className="w-full justify-start text-xs gap-2 border-fuchsia-500/30 text-fuchsia-700 hover:bg-fuchsia-50 dark:hover:bg-fuchsia-950"
+                >
+                  <MessageSquareQuote className="size-3.5 text-fuchsia-600" /> Comentário Instagram/FB
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => addNodeFromPalette("crm.card_created", "Novo Lead no Funil")}
                   className="w-full justify-start text-xs gap-2 border-indigo-500/30 text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950"
                 >
@@ -1141,6 +1216,22 @@ function AutomacaoCanvasPage() {
                 >
                   <UserCheck className="size-3.5" /> Derivar para Atendente
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addNodeFromPalette("meta.send_private_reply", "Enviar DM Privado (Meta)")}
+                  className="w-full justify-start text-xs gap-2 border-fuchsia-500/30 text-fuchsia-700 hover:bg-fuchsia-50 dark:hover:bg-fuchsia-950"
+                >
+                  <Send className="size-3.5 text-fuchsia-600" /> Enviar DM Privado (Meta)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addNodeFromPalette("meta.reply_comment", "Responder Comentário Público")}
+                  className="w-full justify-start text-xs gap-2 border-pink-500/30 text-pink-700 hover:bg-pink-50 dark:hover:bg-pink-950"
+                >
+                  <MessageSquareQuote className="size-3.5 text-pink-600" /> Responder Comentário (Meta)
+                </Button>
               </div>
             </div>
 
@@ -1149,6 +1240,14 @@ function AutomacaoCanvasPage() {
                 Ações no CRM
               </h4>
               <div className="space-y-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addNodeFromPalette("crm.ensure_lead", "Garantir Lead no CRM")}
+                  className="w-full justify-start text-xs gap-2 border-indigo-500/30 text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950"
+                >
+                  <UserPlus className="size-3.5 text-indigo-600" /> Garantir Lead no CRM
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -1994,6 +2093,330 @@ function AutomacaoCanvasPage() {
                   </div>
                 )}
 
+                {/* meta.comment_received (Trigger) */}
+                {selectedNode.data.type === "meta.comment_received" && (
+                  <div className="space-y-4">
+                    <div className="p-3 bg-fuchsia-500/10 border border-fuchsia-200 rounded-xl text-xs text-fuchsia-900 space-y-1">
+                      <p className="font-semibold flex items-center gap-1.5">
+                        <MessageSquareQuote className="size-4 text-fuchsia-600" />
+                        Comentário no Instagram / Facebook
+                      </p>
+                      <p className="text-[11px] text-fuchsia-800 leading-relaxed">
+                        Dispara quando um usuário comenta em uma publicação ou reel oficial da página conectada.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Conta do Instagram / Facebook</Label>
+                      <Select
+                        value={
+                          ((selectedNode.data.config as any)?.instanceIds?.[0] as string) ||
+                          ((selectedNode.data.config as any)?.instanceId as string) ||
+                          "all"
+                        }
+                        onValueChange={(val) => {
+                          const instId = val === "all" ? undefined : val;
+                          const inst = (auxData.instances || []).find((i: any) => i.id === instId);
+                          const isIg = inst?.provider === "meta_instagram" || inst?.provider === "instagram";
+                          const isFb = inst?.provider === "meta_messenger" || inst?.provider === "facebook";
+                          const chs = isIg ? ["instagram"] : isFb ? ["facebook"] : ["instagram", "facebook"];
+                          updateNodeConfig(selectedNode.id, "instanceId", instId);
+                          updateNodeConfig(selectedNode.id, "connectionMode", instId ? "selected" : "any");
+                          updateNodeConfig(selectedNode.id, "instanceIds", instId ? [instId] : []);
+                          updateNodeConfig(selectedNode.id, "channels", chs);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Qualquer conta de Meta" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas as contas Meta conectadas</SelectItem>
+                          {(auxData.instances || [])
+                            .filter((i: any) => {
+                              const p = String(i.provider || "").toLowerCase();
+                              return p.includes("meta") || p.includes("instagram") || p.includes("messenger");
+                            })
+                            .map((inst: any) => (
+                              <SelectItem key={inst.id} value={inst.id}>
+                                {inst.display_name || inst.instance_name} ({inst.provider})
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">ID da Publicação ou Reel (opcional)</Label>
+                      <Input
+                        placeholder="Deixe em branco para qualquer post ou cole o ID"
+                        value={((selectedNode.data.config as any)?.postId as string) || ""}
+                        onChange={(e) => updateNodeConfig(selectedNode.id, "postId", e.target.value.trim() || undefined)}
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        Se preenchido, o fluxo só será ativado em comentários desta publicação específica.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Palavras-chave Disparadoras (opcional)</Label>
+                      <Input
+                        placeholder="Ex: preço, valor, link, quero (separadas por vírgula)"
+                        value={(((selectedNode.data.config as any)?.keywords as string[]) || []).join(", ")}
+                        onChange={(e) => {
+                          const arr = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
+                          updateNodeConfig(selectedNode.id, "keywords", arr);
+                        }}
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        Deixe em branco para disparar com qualquer texto de comentário.
+                      </p>
+                    </div>
+
+                    <div className="pt-2 border-t space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label className="text-xs">Ignorar Respostas Aninhadas</Label>
+                          <p className="text-[10px] text-muted-foreground">
+                            Não dispara quando alguém responde a outro comentário secundário.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={((selectedNode.data.config as any)?.ignoreNestedReplies ?? true)}
+                          onCheckedChange={(checked) => updateNodeConfig(selectedNode.id, "ignoreNestedReplies", checked)}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label className="text-xs">Disparar apenas 1x por usuário por post</Label>
+                          <p className="text-[10px] text-muted-foreground">
+                            Aplica cooldown anti-spam por usuário/publicação.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={((selectedNode.data.config as any)?.oncePerUserPerPost ?? true)}
+                          onCheckedChange={(checked) => updateNodeConfig(selectedNode.id, "oncePerUserPerPost", checked)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* crm.ensure_lead (Action) */}
+                {selectedNode.data.type === "crm.ensure_lead" && (
+                  <div className="space-y-4">
+                    <div className="p-3 bg-indigo-500/10 border border-indigo-200 rounded-xl text-xs text-indigo-900 space-y-1">
+                      <p className="font-semibold flex items-center gap-1.5">
+                        <UserPlus className="size-4 text-indigo-600" />
+                        Garantir Lead no CRM
+                      </p>
+                      <p className="text-[11px] text-indigo-800 leading-relaxed">
+                        Cria ou vincula o lead no CRM de forma idempotente usando o identificador Meta (IGSID/PSID) antes de enviar mensagens privadas.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Funil de Vendas</Label>
+                      <Select
+                        value={((selectedNode.data.config as any)?.pipelineId as string) || ""}
+                        onValueChange={(val) => {
+                          updateNodeConfig(selectedNode.id, "pipelineId", val);
+                          updateNodeConfig(selectedNode.id, "stageId", undefined);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o funil" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(auxData.pipelines || []).map((pipe: any) => (
+                            <SelectItem key={pipe.id} value={pipe.id}>
+                              {pipe.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Etapa de Entrada</Label>
+                      <Select
+                        value={((selectedNode.data.config as any)?.stageId as string) || ""}
+                        onValueChange={(val) => updateNodeConfig(selectedNode.id, "stageId", val)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a etapa" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(auxData.stages || [])
+                            .filter((s: any) => !(selectedNode.data.config as any)?.pipelineId || s.pipeline_id === (selectedNode.data.config as any)?.pipelineId)
+                            .map((stage: any) => (
+                              <SelectItem key={stage.id} value={stage.id}>
+                                {stage.nome}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Etiqueta do Lead (opcional)</Label>
+                      <Input
+                        placeholder="Ex: lead-comentario, promo-instagram"
+                        value={((selectedNode.data.config as any)?.tag as string) || ""}
+                        onChange={(e) => updateNodeConfig(selectedNode.id, "tag", e.target.value.trim() || undefined)}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* meta.send_private_reply (Action) */}
+                {selectedNode.data.type === "meta.send_private_reply" && (
+                  <div className="space-y-4">
+                    <div className="p-3 bg-fuchsia-500/10 border border-fuchsia-200 rounded-xl text-xs text-fuchsia-900 space-y-1">
+                      <p className="font-semibold flex items-center gap-1.5">
+                        <Send className="size-4 text-fuchsia-600" />
+                        Resposta Privada Oficial (Meta Private Reply)
+                      </p>
+                      <p className="text-[11px] text-fuchsia-800 leading-relaxed">
+                        Envia mensagem direta (DM no Instagram ou Messenger no Facebook) respondendo ao comentário. Captura o <code>recipient_id</code> e unifica a conversa em /app/conversas.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Mensagem Privada a Enviar *</Label>
+                      <Textarea
+                        rows={4}
+                        placeholder="Ex: Olá {{lead_name}}! Vi seu comentário e te mandei os detalhes por aqui..."
+                        value={((selectedNode.data.config as any)?.message as string) || ""}
+                        onChange={(e) => updateNodeConfig(selectedNode.id, "message", e.target.value)}
+                      />
+                      <div className="flex items-center gap-1.5 flex-wrap pt-1 text-[11px] text-muted-foreground">
+                        <span>Variáveis dinâmicas:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cur = ((selectedNode.data.config as any)?.message as string) || "";
+                            updateNodeConfig(selectedNode.id, "message", `${cur}{{lead_name}}`);
+                          }}
+                          className="px-1.5 py-0.5 rounded bg-muted hover:bg-muted/80 text-[10px] font-mono"
+                        >
+                          {"{{lead_name}}"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cur = ((selectedNode.data.config as any)?.message as string) || "";
+                            updateNodeConfig(selectedNode.id, "message", `${cur}{{sender_id}}`);
+                          }}
+                          className="px-1.5 py-0.5 rounded bg-muted hover:bg-muted/80 text-[10px] font-mono"
+                        >
+                          {"{{sender_id}}"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* meta.reply_comment (Action) */}
+                {selectedNode.data.type === "meta.reply_comment" && (
+                  <div className="space-y-4">
+                    <div className="p-3 bg-pink-500/10 border border-pink-200 rounded-xl text-xs text-pink-900 space-y-1">
+                      <p className="font-semibold flex items-center gap-1.5">
+                        <MessageSquareQuote className="size-4 text-pink-600" />
+                        Responder Comentário Público
+                      </p>
+                      <p className="text-[11px] text-pink-800 leading-relaxed">
+                        Publica resposta pública no Instagram/Facebook. Suporta rotação aleatória de variantes para evitar bloqueios de spam e retardo não bloqueante em <code>automation_jobs</code>.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs">Variações de Resposta Pública</Label>
+                        <span className="text-[10px] text-muted-foreground">Rotação aleatória</span>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        {((((selectedNode.data.config as any)?.variants as string[]) || []).map((variant, vIdx) => (
+                          <div key={vIdx} className="flex items-center gap-1.5">
+                            <Input
+                              value={variant}
+                              onChange={(e) => {
+                                const updated = [...(((selectedNode.data.config as any)?.variants as string[]) || [])];
+                                updated[vIdx] = e.target.value;
+                                updateNodeConfig(selectedNode.id, "variants", updated);
+                                updateNodeConfig(selectedNode.id, "message", updated[0] || "");
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                const updated = (((selectedNode.data.config as any)?.variants as string[]) || []).filter(
+                                  (_, i) => i !== vIdx
+                                );
+                                updateNodeConfig(selectedNode.id, "variants", updated);
+                                updateNodeConfig(selectedNode.id, "message", updated[0] || "");
+                              }}
+                              className="size-8 text-muted-foreground hover:text-destructive shrink-0"
+                            >
+                              <X className="size-4" />
+                            </Button>
+                          </div>
+                        )))}
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const current = (((selectedNode.data.config as any)?.variants as string[]) || []);
+                          const updated = [...current, "Te mandei uma mensagem no direct! 🚀"];
+                          updateNodeConfig(selectedNode.id, "variants", updated);
+                          updateNodeConfig(selectedNode.id, "message", updated[0] || "");
+                        }}
+                        className="w-full text-xs gap-1 mt-1"
+                      >
+                        <Plus className="size-3.5" /> Adicionar Variação de Texto
+                      </Button>
+                    </div>
+
+                    <div className="p-3 bg-muted/50 rounded-xl space-y-2 border">
+                      <Label className="text-xs font-semibold flex items-center gap-1.5">
+                        <Clock className="size-3.5 text-purple-600" />
+                        Retardo Humano Diferido (Jitter não bloqueante)
+                      </Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        Intervalo em segundos que a fila aguarda entre o DM e a resposta pública para simular digitação real.
+                      </p>
+                      <div className="grid grid-cols-2 gap-3 pt-1">
+                        <div className="space-y-1">
+                          <Label className="text-[11px]">Mínimo (seg)</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={60}
+                            value={(selectedNode.data.config as any)?.minDelaySeconds ?? 5}
+                            onChange={(e) => updateNodeConfig(selectedNode.id, "minDelaySeconds", Number(e.target.value))}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[11px]">Máximo (seg)</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={120}
+                            value={(selectedNode.data.config as any)?.maxDelaySeconds ?? 25}
+                            onChange={(e) => updateNodeConfig(selectedNode.id, "maxDelaySeconds", Number(e.target.value))}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="pt-4 border-t flex justify-between gap-2">
                   <Button
                     variant="destructive"
@@ -2219,6 +2642,34 @@ function AutomacaoCanvasPage() {
                 </div>
 
                 <div>
+                  <h4 className="text-xs font-semibold text-fuchsia-600 dark:text-fuchsia-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                    <MessageSquareQuote className="size-3" /> Meta (Instagram & Facebook)
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "meta.send_private_reply")}
+                      className="p-3 text-left border rounded-xl hover:border-fuchsia-500 hover:bg-fuchsia-500/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <Send className="size-3.5 text-fuchsia-600" /> Enviar DM Privado (Meta)
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Envia mensagem direta no Instagram ou Messenger.</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "meta.reply_comment")}
+                      className="p-3 text-left border rounded-xl hover:border-pink-500 hover:bg-pink-500/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <MessageSquareQuote className="size-3.5 text-pink-600" /> Responder Comentário
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Publica resposta no post com retardo humano e variantes.</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
                   <h4 className="text-xs font-semibold text-sky-600 dark:text-sky-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
                     <Send className="size-3" /> Ações Telegram
                   </h4>
@@ -2259,6 +2710,16 @@ function AutomacaoCanvasPage() {
                 <div>
                   <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Ações de CRM & Leads</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "crm.ensure_lead")}
+                      className="p-3 text-left border rounded-xl hover:border-primary hover:bg-primary/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <UserPlus className="size-3.5 text-indigo-600" /> Garantir Lead no CRM
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Cadastra ou vincula o contato antes de enviar DMs.</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "crm.add_tag")}

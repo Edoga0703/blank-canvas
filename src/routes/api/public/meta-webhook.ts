@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 function clean(value?: string | null) {
   return value?.normalize("NFKC").trim().replace(/^Bearer\s+/i, "").replace(/^['"]|['"]$/g, "").replace(/[\s\u200B-\u200D\u2060\uFEFF]/g, "") ?? "";
@@ -294,7 +294,7 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
               // Prefere o canal do mesmo tipo do evento e tolera linhas duplicadas de reconexões.
               const { data: instRows } = await (supabaseAdmin as any)
                 .from("whatsapp_instances")
-                .select("id,instance_name,webhook_token,provider,company_id,instance_token,user_id,updated_at")
+                .select("id,instance_name,webhook_token,provider,company_id,instance_token,user_id,phone_number_id,updated_at")
                 .eq("phone_number_id", pageId)
                 .like("provider", "meta%")
                 .order("updated_at", { ascending: false })
@@ -304,7 +304,7 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
               if (!inst && /^\d+$/.test(pageId)) {
                 const { data: byName } = await (supabaseAdmin as any)
                   .from("whatsapp_instances")
-                  .select("id,instance_name,webhook_token,provider,company_id,instance_token,user_id")
+                  .select("id,instance_name,webhook_token,provider,company_id,instance_token,user_id,phone_number_id")
                   .eq("instance_name", `meta_${channel}_${pageId}`)
                   .limit(1)
                   .maybeSingle();
@@ -314,7 +314,7 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
               if (!inst && Boolean(payload?.sample)) {
                 const { data: fallback } = await (supabaseAdmin as any)
                   .from("whatsapp_instances")
-                  .select("id,instance_name,webhook_token,provider,company_id,instance_token,user_id")
+                  .select("id,instance_name,webhook_token,provider,company_id,instance_token,user_id,phone_number_id")
                   .eq("provider", `meta_${channel}`)
                   .eq("status", "connected")
                   .order("updated_at", { ascending: false })
@@ -323,22 +323,10 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                 if (fallback) inst = fallback;
               }
 
-              if (!inst && channel === "instagram") {
-                const { data: igFallback } = await (supabaseAdmin as any)
-                  .from("whatsapp_instances")
-                  .select("id,instance_name,webhook_token,provider,company_id,instance_token,user_id")
-                  .eq("provider", "meta_instagram")
-                  .eq("status", "connected")
-                  .order("updated_at", { ascending: false })
-                  .limit(1)
-                  .maybeSingle();
-                if (igFallback) inst = igFallback;
-              }
-
               if (inst && channel === "instagram" && inst.provider !== "meta_instagram") {
                 const { data: correctIg } = await (supabaseAdmin as any)
                   .from("whatsapp_instances")
-                  .select("id,instance_name,webhook_token,provider,company_id,instance_token,user_id")
+                  .select("id,instance_name,webhook_token,provider,company_id,instance_token,user_id,phone_number_id")
                   .eq("company_id", inst.company_id)
                   .eq("provider", "meta_instagram")
                   .eq("status", "connected")
@@ -424,25 +412,194 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                 continue;
               }
 
-              if (!senderId || ((isComment || isMention) && senderId === pageId)) continue;
+              // Regla 2: Filtro de auto-comentarios (nuestra propia página o cuenta conectada)
+              // Incluye entry.id para Instagram Business Account y Page ID para evitar bucles infinitos
+              const isSelfComment =
+                senderId === pageId ||
+                senderId === String(entry?.id ?? "") ||
+                senderId === inst.phone_number_id ||
+                senderId === inst.instance_name ||
+                String(value?.from?.id ?? "") === pageId ||
+                String(value?.from?.id ?? "") === String(entry?.id ?? "") ||
+                String(value?.from?.id ?? "") === inst.phone_number_id;
 
-              const { metaFetchProfile } = await import("@/lib/meta.server");
-              const profile = inst.instance_token ? await metaFetchProfile(inst.instance_token, senderId, channel) : { name: null, picture: null };
+              if (!senderId || ((isComment || isMention) && isSelfComment)) {
+                if (isSelfComment) {
+                  console.log(`[meta-webhook] Auto-comentario ignorado para evitar bucles infinitos (senderId: ${senderId}, pageId: ${pageId}, entryId: ${entry?.id})`);
+                }
+                continue;
+              }
+
+              let profile: { name: string | null; picture: string | null } = { name: null, picture: null };
               const text = textFor(value);
-              if (isComment || isMention) {
-                const objectId = String(value?.comment_id ?? value?.id ?? value?.mention_id ?? `meta_${receivedEventId}_${senderId}`);
+
+              if (isMention && !isComment) {
+                const objectId = String(value?.mention_id ?? value?.id ?? `meta_${receivedEventId}_${senderId}`);
                 const postId = String(value?.post_id ?? value?.media?.id ?? value?.media_id ?? value?.parent_id ?? "");
-                const author = compactText(value?.sender_name ?? value?.from?.name ?? value?.from?.username ?? profile.name ?? "Alguém", 80);
+                let author = compactText(value?.sender_name ?? value?.from?.name ?? value?.from?.username ?? "", 80);
+                if (!author && inst.instance_token) {
+                  const { metaFetchProfile } = await import("@/lib/meta.server");
+                  profile = await metaFetchProfile(inst.instance_token, senderId, channel);
+                  author = compactText(profile.name ?? "Alguém", 80);
+                }
+                if (!author) author = "Alguém";
+
                 await pushMetaNotification(supabaseAdmin, {
                   companyId: inst.company_id,
-                  tipo: isMention ? "mencion_meta" : "comentario_meta",
-                  titulo: isMention ? "Nova menção ou etiqueta" : "Novo comentário",
+                  tipo: "mencion_meta",
+                  titulo: "Nova menção ou etiqueta",
                   descricao: compactText(text ? `${author}: ${text}` : `${author} interagiu com a publicação.`),
                   link: contentLink(inst.instance_name, postId),
-                  refId: `meta:${isMention ? "mention" : "comment"}:${objectId}`,
+                  refId: `meta:mention:${objectId}`,
                 });
                 normalizedCount += 1;
-                // Comentários públicos não abrem conversas privadas no chat CRM
+                continue;
+              }
+
+              if (isComment) {
+                // 1. Filtrar acciones que no sean comentarios nuevos únicamente para Facebook (field === 'feed')
+                // En Instagram (field === 'comments'), Meta no envía campo 'verb'.
+                if (field === "feed" && value?.verb && value.verb !== "add") {
+                  console.log(`[meta-webhook] Verbo de comentario FB no procesable: "${value.verb}". Ignorando.`);
+                  continue;
+                }
+
+                const commentId = String(value?.comment_id ?? value?.id ?? "");
+                if (!commentId) {
+                  continue;
+                }
+
+                // 2. Deduplicación e idempotencia por comment_id
+                const dedupKey = `meta_comment_${commentId}`;
+                const { data: existingCommentEvent } = await (supabaseAdmin as any)
+                  .from("automation_events")
+                  .select("id")
+                  .eq("company_id", inst.company_id)
+                  .eq("idempotency_key", dedupKey)
+                  .limit(1)
+                  .maybeSingle();
+
+                if (existingCommentEvent?.id) {
+                  // Comentario ya procesado previamente
+                  continue;
+                }
+
+                const postId = String(value?.post_id ?? value?.media?.id ?? value?.media_id ?? "");
+                const parentId = value?.parent_id ? String(value.parent_id) : null;
+                const isNestedReply = Boolean(parentId) && parentId !== postId && parentId !== "";
+
+                // Optimización: si el webhook ya provee el nombre/username, omitir llamada costosa a metaFetchProfile
+                let author = compactText(value?.sender_name ?? value?.from?.name ?? value?.from?.username ?? "", 80);
+                if (!author && inst.instance_token) {
+                  const { metaFetchProfile } = await import("@/lib/meta.server");
+                  profile = await metaFetchProfile(inst.instance_token, senderId, channel);
+                  author = compactText(profile.name ?? (channel === "instagram" ? `Instagram ${senderId.slice(-4)}` : `Messenger ${senderId.slice(-4)}`), 80);
+                }
+                if (!author) {
+                  author = channel === "instagram" ? `Instagram ${senderId.slice(-4)}` : `Messenger ${senderId.slice(-4)}`;
+                }
+
+                // 3. Notificación en campana / panel para visibilidad del operador
+                await pushMetaNotification(supabaseAdmin, {
+                  companyId: inst.company_id,
+                  tipo: "comentario_meta",
+                  titulo: "Novo comentário",
+                  descricao: compactText(text ? `${author}: ${text}` : `${author} comentou na publicação.`),
+                  link: contentLink(inst.instance_name, postId),
+                  refId: `meta:comment:${commentId}`,
+                });
+
+                // 4. Cooldown configurable por usuario/post y evaluación de filtros
+                const { checkMetaCommentWorkflowEligibility } = await import("@/lib/automations/arbitration.server");
+                const eligibility = await checkMetaCommentWorkflowEligibility(supabaseAdmin, {
+                  companyId: inst.company_id,
+                  senderId,
+                  postId,
+                  text,
+                  channel,
+                  instanceId: inst.id,
+                  isNestedReply,
+                });
+
+                if (eligibility.hasWorkflow && !eligibility.eligible) {
+                  console.log(
+                    `[meta-webhook] Comentario ${commentId} de ${senderId} en post ${postId} omitido por filtros de automatización (${eligibility.reason || "cooldown/nesting"}).`
+                  );
+                  // Registrar en automation_events para idempotencia y registro de auditoría sin disparar ejecución
+                  try {
+                    await (supabaseAdmin as any).from("automation_events").insert({
+                      company_id: inst.company_id,
+                      event_name: "meta.comment_received.v1",
+                      entity_type: "comment",
+                      entity_id: commentId,
+                      actor_id: senderId,
+                      source: `meta_${channel}`,
+                      idempotency_key: dedupKey,
+                      payload: {
+                        commentId,
+                        postId,
+                        parentId,
+                        isNestedReply,
+                        text,
+                        senderId,
+                        senderName: author,
+                        channel: channel === "instagram" ? "instagram_dm" : "facebook_messenger",
+                        rawChannel: channel,
+                        instanceId: inst.id,
+                        skippedReason: eligibility.reason,
+                      },
+                      processing_state: "processed",
+                    });
+                  } catch {
+                    // best-effort registro
+                  }
+
+                  normalizedCount += 1;
+                  continue;
+                }
+
+                // 5. Emitir evento de dominio meta.comment_received.v1
+                const rawCommentTs = ev?.timestamp ?? value?.created_time;
+                const numCommentTs = typeof rawCommentTs === "number"
+                  ? rawCommentTs
+                  : (typeof rawCommentTs === "string" && /^\d+$/.test(rawCommentTs.trim()) ? Number(rawCommentTs.trim()) : NaN);
+                const commentTsMs = !isNaN(numCommentTs) && numCommentTs > 0
+                  ? (numCommentTs < 10_000_000_000 ? numCommentTs * 1000 : numCommentTs)
+                  : (rawCommentTs ? new Date(rawCommentTs).getTime() : Date.now());
+                const safeCommentTs = isNaN(commentTsMs) ? Date.now() : commentTsMs;
+
+                const { dispatchDomainEvent } = await import("@/lib/automations/events.server");
+                const commentDomainEvent = {
+                  id: randomUUID(),
+                  companyId: inst.company_id,
+                  name: "meta.comment_received.v1" as const,
+                  occurredAt: new Date(safeCommentTs).toISOString(),
+                  actorId: senderId,
+                  entity: { type: "comment", id: commentId },
+                  source: `meta_${channel}`,
+                  idempotencyKey: dedupKey,
+                  payload: {
+                    commentId,
+                    postId,
+                    parentId,
+                    isNestedReply,
+                    text,
+                    senderId,
+                    senderName: author,
+                    channel: channel === "instagram" ? "instagram_dm" : "facebook_messenger",
+                    rawChannel: channel,
+                    pageId,
+                    instanceId: inst.id,
+                    companyId: inst.company_id,
+                    mediaUrl: contentLink(inst.instance_name, postId),
+                    createdAt: new Date(safeCommentTs).toISOString(),
+                    verb: value?.verb || "add",
+                  },
+                };
+
+                await dispatchDomainEvent(commentDomainEvent);
+                normalizedCount += 1;
+                // Comentários públicos terminam aqui; respostas automáticas são gerenciadas pelo motor de workflows
                 continue;
               }
               const attachment = attachmentFor(value);
@@ -473,6 +630,11 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
               if (existingMsg?.id) {
                 // Mensagem duplicada/reintento: ignora para não reprocessar nem disparar a IA novamente
                 continue;
+              }
+
+              if (!profile.name && inst.instance_token) {
+                const { metaFetchProfile } = await import("@/lib/meta.server");
+                profile = await metaFetchProfile(inst.instance_token, senderId, channel);
               }
 
               const contatoNome = profile.name || (channel === "instagram" ? `Instagram ${senderId.slice(-4)}` : `Messenger ${senderId.slice(-4)}`);

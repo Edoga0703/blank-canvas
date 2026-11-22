@@ -77,6 +77,36 @@ export async function processInboundAutomation(
     throw wfCtrlErr;
   }
 
+  // 0d) Arbitraje síncrono con flujos publicados de automatización (Regla 1)
+  // Al recibir un mensaje en WhatsApp/DM, verifica de forma síncrona si hace match
+  // con un flujo publicado antes de invocar ai-engine.server.ts, para evitar
+  // condiciones de carrera con la cola automation_events.
+  try {
+    const { checkSynchronousWorkflowMatch } = await import("@/lib/automations/arbitration.server");
+    const isGroup = Boolean(numero.includes("@g.us"));
+    const match = await checkSynchronousWorkflowMatch(admin, {
+      companyId,
+      channel: params.channel,
+      instanceId: params.instanceId,
+      text: texto,
+      isGroup,
+    });
+    if (match.matched) {
+      console.log(
+        `[inbound] Mensaje entrante de ${numero} coincide con flujo publicado "${match.workflowName}" (${match.workflowId}). Priorizando automatización y silenciando IA libre.`,
+      );
+      void triggerBackgroundLeadAudit();
+      return {
+        engine: "workflow_matched",
+        reason: "automation_priority",
+        workflowId: match.workflowId,
+        workflowName: match.workflowName,
+      };
+    }
+  } catch (arbErr: any) {
+    console.warn("[inbound] Aviso en arbitraje síncrono de automatizaciones:", arbErr?.message);
+  }
+
   // 0b) Pesquisa de satisfação respondida no próprio chat (quando ativa para este contato).
   try {
     const csat = await processCsatChatReply(admin, { companyId, numero, texto, inboundMessageId });

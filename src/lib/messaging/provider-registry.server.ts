@@ -1,9 +1,7 @@
 import { dapiProvider } from "@/lib/messaging/providers/dapi.server";
 import type { MessagingProvider, MessagingProviderId } from "@/lib/messaging/contracts";
-import { lovableWhatsAppProvider } from "@/lib/messaging/providers/lovable-whatsapp.server";
 
 const providers = new Map<MessagingProviderId, MessagingProvider>([
-  [lovableWhatsAppProvider.id, lovableWhatsAppProvider],
   [dapiProvider.id, dapiProvider],
   ["dapi_official", { ...dapiProvider, id: "dapi_official" }],
 ]);

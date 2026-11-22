@@ -47,7 +47,8 @@ export type AutomationEventName =
   | "messaging.inbound_received.v1"
   | "telegram.business_message_received.v1"
   | "telegram.channel_post_published.v1"
-  | "telegram.channel_comment_received.v1";
+  | "telegram.channel_comment_received.v1"
+  | "meta.comment_received.v1";
 
 export interface DomainEvent<TPayload = any> {
   id: string;

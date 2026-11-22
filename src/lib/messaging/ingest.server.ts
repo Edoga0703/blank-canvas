@@ -55,7 +55,7 @@ async function resolveConnection(
   externalConnectionId?: string | null,
 ) {
   let data: any = null;
-  const providerList = provider === "dapi" ? ["dapi", "dapi_official"] : [provider];
+  const providerList = provider === "dapi" || provider === "dapi_official" ? ["dapi", "dapi_official"] : [provider];
 
   if (externalConnectionId) {
     // 1. Busca por external_connection_id parametrizado
@@ -677,7 +677,7 @@ export async function ingestMessagingEvent(request: IngestRequest) {
           return { ...event, attachments };
         }),
       );
-    } else if (request.provider === "dapi") {
+    } else if (request.provider === "dapi" || request.provider === "dapi_official") {
       const [{ archiveProviderAttachment }, { dapiDownloadMedia }] = await Promise.all([
         import("@/lib/messaging/media-archive.server"),
         import("@/lib/dapi.server"),

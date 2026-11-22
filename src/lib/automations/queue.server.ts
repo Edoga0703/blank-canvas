@@ -225,10 +225,17 @@ export async function runOneAutomationJob(params: {
     }
 
     if (result.kind === "finish") {
+      const isFatal = Boolean((result.output as any)?.fatal || (result.output as any)?.permanent);
+      const targetStatus = isFatal ? "failed" : "succeeded";
+      const errorSummary = isFatal ? String((result.output as any)?.error || "Meta permanent error") : null;
+      const errorCode = isFatal ? "META_PERMANENT_ERROR" : null;
+
       await (supabaseAdmin as any)
         .from("automation_executions")
         .update({
-          status: "succeeded",
+          status: targetStatus,
+          error_code: errorCode,
+          error_summary: errorSummary,
           finished_at: new Date().toISOString(),
           current_node_id: node.id,
         })
@@ -236,7 +243,10 @@ export async function runOneAutomationJob(params: {
 
       await (supabaseAdmin as any)
         .from("automation_jobs")
-        .update({ status: "done" })
+        .update({
+          status: "done",
+          last_error: isFatal ? errorSummary : null,
+        })
         .eq("id", job.id);
 
       if (exec.external_conversation_id) {
@@ -272,13 +282,35 @@ export async function runOneAutomationJob(params: {
         // Chave estável e idempotente de transição (sem Date.now() aleatório)
         const jobKey = `job_${exec.id}_${node.id}_to_${edge.target}_s${nextStepCount}`;
 
+        // Cálculo de retardo / jitter não bloqueante via automation_jobs (run_after)
+        const targetNode = graph?.nodes?.find((n) => n.id === edge.target);
+        let runAfterDate = new Date();
+        if (targetNode?.type === "meta.reply_comment") {
+          const cfg = (targetNode.config || {}) as any;
+          let delaySec = Number(cfg.delaySeconds || 0);
+          if (
+            cfg.minDelaySeconds !== undefined &&
+            cfg.maxDelaySeconds !== undefined &&
+            Number(cfg.maxDelaySeconds) >= Number(cfg.minDelaySeconds)
+          ) {
+            const min = Math.max(0, Number(cfg.minDelaySeconds));
+            const max = Math.min(300, Number(cfg.maxDelaySeconds));
+            delaySec = Math.floor(Math.random() * (max - min + 1)) + min;
+          } else if (delaySec === 0 && (cfg.minDelaySeconds !== undefined || cfg.maxDelaySeconds !== undefined)) {
+            delaySec = Math.floor(Math.random() * (25 - 5 + 1)) + 5;
+          }
+          if (delaySec > 0) {
+            runAfterDate = new Date(Date.now() + delaySec * 1000);
+          }
+        }
+
         // Encolar job primeiro
         const { error: jobErr } = await (supabaseAdmin as any).from("automation_jobs").insert({
           company_id: job.company_id,
           execution_id: exec.id,
           node_id: edge.target,
           status: "pending",
-          run_after: new Date().toISOString(),
+          run_after: runAfterDate.toISOString(),
           idempotency_key: jobKey,
         });
 
@@ -292,7 +324,7 @@ export async function runOneAutomationJob(params: {
           .update({
             current_node_id: edge.target,
             context: {
-              ...(exec.context || {}),
+              ...(execContext.context || {}),
               stepCount: nextStepCount,
               ...(result.output ? { [node.id]: result.output } : {}),
             },

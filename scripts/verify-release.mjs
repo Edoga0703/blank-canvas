@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Capiversa CRM — Script de Verificação de Sanidade Pré-Deploy (v1.3.07)
+ * Capiversa CRM — Script de Verificação de Sanidade Pré-Deploy (v1.3.08)
  * Valida integridade estática, ausência de vazamento de credenciais no bundle público e servidor,
  * sanidade de migrações SQL e contratos da infraestrutura Telegram.
  */
@@ -11,7 +11,7 @@ import { execSync } from "node:child_process";
 
 const rootDir = process.cwd();
 console.log("==================================================================");
-console.log(" Capiversa CRM — Verificação de Sanidade Pré-Deploy v1.3.07       ");
+console.log(" Capiversa CRM — Verificação de Sanidade Pré-Deploy v1.3.08       ");
 console.log("==================================================================");
 
 let hasErrors = false;
@@ -39,6 +39,7 @@ const migrationPairs = [
   "20261112010000_telegram_discussion_and_comment_moderation.sql",
   "20261114000000_telegram_security_and_durability_fixes.sql",
   "20261115000000_telegram_audit_remediation.sql",
+  "20261121100000_automation_quick_rules_and_ui_mode.sql",
 ];
 
 let migrationsOk = true;

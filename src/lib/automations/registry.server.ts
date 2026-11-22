@@ -29,11 +29,65 @@ export function getAllNodeDefinitions(): AutomationNodeDefinition[] {
 }
 
 /**
- * Reemplaza variables en textos (ej: {{contact.name}}, {{card.nome}}, {{trigger.text}})
+ * Reemplaza variables en textos (ej: {{contact.name}}, {{card.nome}}, {{trigger.text}}, {{lead_name}}, {{post_id}}, {{author}})
  */
 export function interpolateVariables(template: string, ctx: Record<string, any>): string {
   if (!template) return "";
+
+  const leadName =
+    ctx.card?.nome ||
+    ctx.trigger?.senderName ||
+    ctx.trigger?.author ||
+    ctx.trigger?.from?.name ||
+    ctx.contact?.name ||
+    "";
+  const author =
+    ctx.trigger?.senderName ||
+    ctx.trigger?.author ||
+    ctx.trigger?.from?.name ||
+    ctx.card?.nome ||
+    "";
+  const postId =
+    ctx.trigger?.postId ||
+    ctx.trigger?.post_id ||
+    ctx.trigger?.initial_post_id ||
+    ctx.card?.campos_extras?.initial_post_id ||
+    "";
+  const commentId =
+    ctx.trigger?.commentId ||
+    ctx.trigger?.comment_id ||
+    ctx.trigger?.id ||
+    ctx.card?.campos_extras?.initial_comment_id ||
+    "";
+  const senderId =
+    ctx.trigger?.senderId ||
+    ctx.trigger?.sender_id ||
+    ctx.trigger?.from?.id ||
+    ctx.card?.numero ||
+    "";
+
+  const aliases: Record<string, string> = {
+    lead_name: leadName,
+    "lead.name": leadName,
+    leadname: leadName,
+    nome: leadName,
+    author: author,
+    autor: author,
+    post_id: postId,
+    postid: postId,
+    comment_id: commentId,
+    commentid: commentId,
+    sender_id: senderId,
+    senderid: senderId,
+    text: ctx.trigger?.text || "",
+    message: ctx.trigger?.text || "",
+  };
+
   return template.replace(/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g, (_, path) => {
+    const key = path.toLowerCase().trim();
+    if (key in aliases) {
+      return aliases[key];
+    }
     const parts = path.split(".");
     let val: any = ctx;
     for (const p of parts) {
@@ -923,4 +977,497 @@ registerNode({
     return { kind: "finish" };
   },
 });
+
+// ============================================================================
+// 5. NODOS DE AUTOMATIZACIÓN DE META (INSTAGRAM & FACEBOOK - COMENTARIOS A DM)
+// ============================================================================
+
+// Trigger: meta.comment_received
+registerNode({
+  type: "meta.comment_received",
+  version: 1,
+  category: "trigger",
+  name: "Comentario Recibido en Meta",
+  description: "Se activa cuando entra un comentario en un Reel o publicación de Instagram o Facebook.",
+  icon: "MessageCircle",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    connectionMode: z.enum(["any", "selected"]).default("any"),
+    instanceIds: z.array(z.string()).default([]),
+    channels: z.array(z.string()).default(["instagram", "facebook"]),
+    postId: z.string().optional().nullable(),
+    keywords: z.array(z.string()).default([]),
+    ignoreNestedReplies: z.boolean().default(false),
+    oncePerUserPerPost: z.boolean().default(true),
+  }),
+  async execute(ctx, config) {
+    const trigger = ctx.context.trigger || {};
+    const senderId = trigger.senderId || ctx.subject?.id;
+    const postId = trigger.postId;
+
+    // Validación de cooldown por (workflow_id, sender_id, post_id)
+    if (config.oncePerUserPerPost && senderId && postId) {
+      const { data: priorExec } = await (supabaseAdmin as any)
+        .from("automation_executions")
+        .select("id")
+        .eq("company_id", ctx.companyId)
+        .eq("workflow_id", ctx.workflowId)
+        .neq("id", ctx.executionId)
+        .filter("context->trigger->>senderId", "eq", String(senderId))
+        .filter("context->trigger->>postId", "eq", String(postId))
+        .limit(1)
+        .maybeSingle();
+
+      if (priorExec?.id) {
+        console.log(
+          `[meta.comment_received] Cooldown activo: el contacto ${senderId} ya ejecutó el flujo ${ctx.workflowId} en el post ${postId}. Omitiendo.`
+        );
+        return { kind: "finish", output: { skipped: true, reason: "once_per_user_per_post_cooldown" } };
+      }
+    }
+
+    return {
+      kind: "next",
+      port: "next",
+      output: {
+        commentId: trigger.commentId,
+        postId: trigger.postId,
+        parentId: trigger.parentId,
+        isNestedReply: trigger.isNestedReply,
+        senderId: trigger.senderId,
+        senderName: trigger.senderName,
+        text: trigger.text,
+        channel: trigger.channel,
+      },
+    };
+  },
+});
+
+// Action: crm.ensure_lead
+registerNode({
+  type: "crm.ensure_lead",
+  version: 1,
+  category: "action",
+  name: "Asegurar Lead en CRM",
+  description: "Busca o crea una tarjeta de lead para el contacto de Instagram/Facebook por IGSID/PSID antes de enviar mensajes privados.",
+  icon: "UserPlus",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    pipelineId: z.string().optional().nullable(),
+    stageId: z.string().optional().nullable(),
+    tag: z.string().default("Lead-Instagram-Comentarios"),
+    defaultNamePrefix: z.string().default("Lead"),
+  }),
+  async execute(ctx, config) {
+    const trigger = ctx.context.trigger || {};
+    const senderId = String(trigger.senderId || ctx.subject?.id || ctx.externalConversationId || "").trim();
+    if (!senderId) {
+      throw new Error("No se encontró senderId/identificador en el contexto para asegurar el lead.");
+    }
+
+    const senderName = String(trigger.senderName || "").trim();
+    const rawChannel = String(trigger.rawChannel || (trigger.channel?.includes("facebook") ? "messenger" : "instagram"));
+    const isFacebook = rawChannel === "facebook" || rawChannel === "messenger" || String(trigger.channel || "").includes("facebook");
+    const canalCrm = isFacebook ? "messenger" : "instagram";
+    const canalEntrada = isFacebook ? "facebook_comentarios" : "instagram_comentarios";
+    const targetTag = (config.tag || (isFacebook ? "Lead-Facebook-Comentarios" : "Lead-Instagram-Comentarios")).trim();
+
+    // 1. Buscar lead existente de forma idempotente por número (IGSID/PSID)
+    const { data: existingCard } = await (supabaseAdmin as any)
+      .from("crm_cards")
+      .select("id, company_id, nome, numero, canal_chat, canal_entrada, pipeline_id, stage_id, owner_id, tags, valor, email, campos_extras")
+      .eq("company_id", ctx.companyId)
+      .eq("numero", senderId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingCard) {
+      // Si existe y falta la etiqueta configurada, agregarla
+      if (targetTag) {
+        const prevTags = Array.isArray(existingCard.tags) ? existingCard.tags : [];
+        if (!prevTags.includes(targetTag)) {
+          const updatedTags = [...prevTags, targetTag];
+          await (supabaseAdmin as any)
+            .from("crm_cards")
+            .update({ tags: updatedTags, updated_at: new Date().toISOString() })
+            .eq("id", existingCard.id)
+            .eq("company_id", ctx.companyId);
+          existingCard.tags = updatedTags;
+        }
+      }
+
+      ctx.context.card = existingCard;
+      try {
+        await (supabaseAdmin as any)
+          .from("automation_executions")
+          .update({ card_id: existingCard.id })
+          .eq("id", ctx.executionId);
+      } catch {}
+
+      return {
+        kind: "next",
+        port: "next",
+        output: { cardId: existingCard.id, leadCreated: false, isNew: false },
+      };
+    }
+
+    // 2. Si no existe, resolver etapa y pipeline
+    let resolvedStageId = config.stageId || null;
+    let resolvedPipelineId = config.pipelineId || null;
+
+    if (!resolvedStageId) {
+      const { data: defaultStage } = await (supabaseAdmin as any)
+        .from("crm_stage")
+        .select("id, pipeline_id")
+        .eq("company_id", ctx.companyId)
+        .order("ordem", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      resolvedStageId = defaultStage?.id || null;
+      resolvedPipelineId = defaultStage?.pipeline_id || null;
+    }
+
+    const defaultPrefix = config.defaultNamePrefix || (isFacebook ? "Facebook Lead" : "Instagram Lead");
+    const safeName = senderName || `${defaultPrefix} ${senderId.slice(-4)}`;
+
+    const { data: createdCard, error: insertErr } = await (supabaseAdmin as any)
+      .from("crm_cards")
+      .insert({
+        company_id: ctx.companyId,
+        nome: safeName,
+        numero: senderId,
+        canal_chat: canalCrm,
+        canal_entrada: canalEntrada,
+        pipeline_id: resolvedPipelineId,
+        stage_id: resolvedStageId,
+        tags: targetTag ? [targetTag] : [],
+        origem: `Comentario ${isFacebook ? "Facebook" : "Instagram"}`,
+        campos_extras: {
+          meta_sender_id: senderId,
+          instance_id: ctx.sourceInstanceId || trigger.instanceId || null,
+          initial_post_id: trigger.postId || null,
+          initial_comment_id: trigger.commentId || null,
+          created_via: "meta.comment_to_lead",
+        },
+      })
+      .select("id, company_id, nome, numero, canal_chat, canal_entrada, pipeline_id, stage_id, tags, campos_extras")
+      .single();
+
+    if (insertErr) {
+      // En caso de inserción concurrente, recuperar por número
+      const { data: fallbackCard } = await (supabaseAdmin as any)
+        .from("crm_cards")
+        .select("id, company_id, nome, numero, canal_chat, canal_entrada, pipeline_id, stage_id, tags, campos_extras")
+        .eq("company_id", ctx.companyId)
+        .eq("numero", senderId)
+        .limit(1)
+        .maybeSingle();
+
+      if (fallbackCard) {
+        ctx.context.card = fallbackCard;
+        return { kind: "next", port: "next", output: { cardId: fallbackCard.id, leadCreated: false, isNew: false } };
+      }
+      throw new Error(`Error al crear lead en CRM para ${senderId}: ${insertErr.message}`);
+    }
+
+    ctx.context.card = createdCard;
+    ctx.context.lead_created_via = "meta.comment_to_lead";
+    try {
+      await (supabaseAdmin as any)
+        .from("automation_executions")
+        .update({ card_id: createdCard.id })
+        .eq("id", ctx.executionId);
+    } catch {}
+
+    return {
+      kind: "next",
+      port: "next",
+      output: { cardId: createdCard.id, leadCreated: true, isNew: true },
+    };
+  },
+});
+
+// Action: meta.reply_comment
+registerNode({
+  type: "meta.reply_comment",
+  version: 1,
+  category: "action",
+  name: "Responder Comentario en Meta",
+  description: "Publica una respuesta pública al comentario en Instagram o Facebook, con soporte para variantes aleatorias y retardo.",
+  icon: "MessageSquareQuote",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    message: z.string().optional().default(""),
+    variants: z.array(z.string()).default([]),
+    delaySeconds: z.number().min(0).max(300).default(0),
+    minDelaySeconds: z.number().min(0).max(300).optional(),
+    maxDelaySeconds: z.number().min(0).max(300).optional(),
+  }),
+  async execute(ctx, config) {
+    const trigger = ctx.context.trigger || {};
+    const commentId = String(trigger.commentId || trigger.comment_id || trigger.id || "").trim();
+    if (!commentId) {
+      throw new Error("No se encontró commentId en el contexto para responder al comentario.");
+    }
+
+    // 1. Selección aleatoria entre variantes para evitar bloqueos por repetición de texto
+    let template = config.message || "";
+    if (Array.isArray(config.variants) && config.variants.length > 0) {
+      const validVariants = (config.variants as string[]).map((v: string) => String(v || "").trim()).filter(Boolean);
+      if (validVariants.length > 0) {
+        template = validVariants[Math.floor(Math.random() * validVariants.length)];
+      }
+    }
+    const finalMessage = interpolateVariables(template, ctx.context);
+    if (!finalMessage.trim()) {
+      throw new Error("El mensaje de respuesta al comentario está vacío.");
+    }
+
+    // 2. Retardo no bloqueante: Ya programado de forma diferida en automation_jobs (run_after) por la cola.
+    // No se usa setTimeout ni sleep en el worker para no bloquear procesos concurrentes.
+    const delaySec = config.delaySeconds || 0;
+
+    // 3. Obtener token de la instancia de Meta
+    const instanceId = ctx.sourceInstanceId || trigger.instanceId;
+    const { data: inst, error: instErr } = await (supabaseAdmin as any)
+      .from("whatsapp_instances")
+      .select("id, instance_token, provider, company_id")
+      .eq("company_id", ctx.companyId)
+      .eq("id", instanceId)
+      .maybeSingle();
+
+    if (instErr || !inst?.instance_token) {
+      throw new Error(`Instancia de Meta no encontrada o sin token (${instanceId || 'indefinida'}).`);
+    }
+
+    const { metaReplyToComment } = await import("@/lib/meta.server");
+    const replyResult = await metaReplyToComment(inst.instance_token, commentId, finalMessage, {
+      instagram: inst.provider === "meta_instagram",
+    });
+
+    return {
+      kind: "next",
+      port: "next",
+      output: {
+        replyId: replyResult?.id || null,
+        commentId,
+        message: finalMessage,
+        delayAppliedSeconds: delaySec,
+      },
+    };
+  },
+});
+
+// Action: meta.send_private_reply
+registerNode({
+  type: "meta.send_private_reply",
+  version: 1,
+  category: "action",
+  name: "Enviar Respuesta Privada (DM Meta)",
+  description: "Envía un mensaje privado (DM en Instagram o Messenger en Facebook) en respuesta directa a un comentario público.",
+  icon: "Send",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    message: z.string().min(1, "Escribe el mensaje a enviar"),
+  }),
+  async execute(ctx, config) {
+    const trigger = ctx.context.trigger || {};
+    const commentId = String(trigger.commentId || trigger.comment_id || trigger.id || "").trim();
+    if (!commentId) {
+      throw new Error("No se encontró commentId en el contexto para enviar respuesta privada.");
+    }
+
+    const finalMessage = interpolateVariables(config.message, ctx.context);
+    if (!finalMessage.trim()) {
+      throw new Error("El mensaje privado a enviar está vacío.");
+    }
+
+    const instanceId = ctx.sourceInstanceId || trigger.instanceId;
+    const { data: inst, error: instErr } = await (supabaseAdmin as any)
+      .from("whatsapp_instances")
+      .select("id, instance_token, provider, company_id")
+      .eq("company_id", ctx.companyId)
+      .eq("id", instanceId)
+      .maybeSingle();
+
+    if (instErr || !inst?.instance_token) {
+      throw new Error(`Instancia de Meta no encontrada o sin token (${instanceId || 'indefinida'}).`);
+    }
+
+    const { metaSendPrivateReply, isPermanentMetaPrivateReplyError } = await import("@/lib/meta.server");
+
+    let apiResult: any = null;
+    try {
+      apiResult = await metaSendPrivateReply(inst.instance_token, commentId, finalMessage);
+    } catch (err: any) {
+      // Manejo estricto de errores permanentes de Meta Graph API:
+      // Ventana de 7 días expirada, DMs cerrados, comentario inexistente o private reply ya enviado
+      if (isPermanentMetaPrivateReplyError(err)) {
+        console.warn(
+          `[meta.send_private_reply] Fallo permanente no reintentable en comentario ${commentId}: ${err.message}`
+        );
+        return {
+          kind: "finish",
+          output: {
+            error: err.message,
+            permanent: true,
+            fatal: true,
+            commentId,
+            failedAt: new Date().toISOString(),
+          },
+        };
+      }
+      // Error transitorio (red, timeout, 500): relanzar para que automation_jobs reintente
+      throw err;
+    }
+
+    // Captura del recipient_id devuelto por Meta Graph API
+    const recipientId = String(apiResult?.recipient_id || trigger.senderId || "").trim();
+    const messageId = String(apiResult?.message_id || `meta_pr_${commentId}`);
+
+    // Unificación segura con crm_cards.numero y validación de UUID real (nunca un ID numérico de Meta)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const rawCardId = ctx.context.card?.id;
+    let activeCardId: string | null = (rawCardId && uuidRegex.test(String(rawCardId))) ? String(rawCardId) : null;
+
+    if (recipientId) {
+      // 1. Verificar si ya existe OTRA tarjeta con este recipient_id en la empresa
+      const { data: existingCard } = await (supabaseAdmin as any)
+        .from("crm_cards")
+        .select("id, company_id, nome, numero, canal_chat, canal_entrada, pipeline_id, stage_id, tags, campos_extras")
+        .eq("company_id", ctx.companyId)
+        .eq("numero", recipientId)
+        .limit(1)
+        .maybeSingle();
+
+      if (existingCard && existingCard.id !== activeCardId) {
+        // Tarjeta previa existente: unificar la ejecución y mensaje a la tarjeta existente
+        const tempCardId = activeCardId;
+        activeCardId = existingCard.id;
+        ctx.context.card = existingCard;
+
+        try {
+          await (supabaseAdmin as any)
+            .from("automation_executions")
+            .update({ card_id: existingCard.id })
+            .eq("id", ctx.executionId);
+        } catch {}
+
+        // Si la tarjeta actual se acababa de crear como temporal en crm.ensure_lead, limpiarla
+        if (tempCardId) {
+          const isTempFromContext = ctx.context.lead_created_via === "meta.comment_to_lead";
+          let shouldDelete = isTempFromContext;
+          if (!shouldDelete) {
+            const { data: tempRow } = await (supabaseAdmin as any)
+              .from("crm_cards")
+              .select("campos_extras")
+              .eq("id", tempCardId)
+              .eq("company_id", ctx.companyId)
+              .maybeSingle();
+            if (tempRow?.campos_extras?.created_via === "meta.comment_to_lead") {
+              shouldDelete = true;
+            }
+          }
+
+          if (shouldDelete) {
+            try {
+              await (supabaseAdmin as any)
+                .from("crm_cards")
+                .delete()
+                .eq("id", tempCardId)
+                .eq("company_id", ctx.companyId);
+            } catch {}
+          }
+        }
+
+        // Actualizar tarjeta existente
+        try {
+          await (supabaseAdmin as any)
+            .from("crm_cards")
+            .update({
+              ultima_mensagem: finalMessage.slice(0, 240),
+              ultima_direcao: "saida",
+              ultima_em: new Date().toISOString(),
+            })
+            .eq("id", existingCard.id)
+            .eq("company_id", ctx.companyId);
+        } catch {}
+      } else if (activeCardId) {
+        // No hay tarjeta duplicada: actualizar el número con recipient_id
+        try {
+          await (supabaseAdmin as any)
+            .from("crm_cards")
+            .update({
+              numero: recipientId,
+              ultima_mensagem: finalMessage.slice(0, 240),
+              ultima_direcao: "saida",
+              ultima_em: new Date().toISOString(),
+            })
+            .eq("id", activeCardId)
+            .eq("company_id", ctx.companyId);
+        } catch {}
+
+        if (ctx.context.card) {
+          ctx.context.card.numero = recipientId;
+        }
+      }
+    }
+
+    // Registro del mensaje saliente en `mensagens` para visualización inmediata en el chat
+    if (recipientId) {
+      try {
+        await (supabaseAdmin as any)
+          .from("mensagens")
+          .insert({
+            company_id: ctx.companyId,
+            instance_id: inst.id,
+            numero: recipientId,
+            direcao: "saida",
+            autor: "automacao",
+            texto: finalMessage,
+            provider: inst.provider,
+            whatsapp_message_id: messageId,
+            status_envio: "enviado",
+            created_at: new Date().toISOString(),
+          });
+      } catch (msgErr: any) {
+        console.warn("[meta.send_private_reply] Aviso al persistir mensaje en histórico:", msgErr?.message);
+      }
+
+      // Actualizar external_conversation_id en automation_executions para que queue.server.ts
+      // libere automáticamente el control de conversación al terminar la ejecución
+      try {
+        await (supabaseAdmin as any)
+          .from("automation_executions")
+          .update({ external_conversation_id: recipientId })
+          .eq("id", ctx.executionId);
+      } catch {}
+
+      // Tomar control temporal de la conversación (lease de 10 minutos liberado automáticamente al finalizar el flujo)
+      try {
+        await acquireWorkflowControl({
+          companyId: ctx.companyId,
+          externalConversationId: recipientId,
+          executionId: ctx.executionId,
+          instanceId: inst.id,
+          cardId: activeCardId || null,
+          leaseMinutes: 10,
+        });
+      } catch {}
+    }
+
+    return {
+      kind: "next",
+      port: "next",
+      output: {
+        recipientId,
+        messageId,
+        commentId,
+      },
+    };
+  },
+});
+
 

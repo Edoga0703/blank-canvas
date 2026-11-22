@@ -24,9 +24,13 @@ function baseFor(token: string) {
 
 export class MetaApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  code?: number | string;
+  subcode?: number | string;
+  constructor(message: string, status: number, code?: number | string, subcode?: number | string) {
     super(message);
     this.status = status;
+    this.code = code;
+    this.subcode = subcode;
   }
 }
 
@@ -55,11 +59,15 @@ async function graph(path: string, token: string, init?: RequestInit) {
   try { json = text ? JSON.parse(text) : null; } catch { /* noop */ }
   if (!res.ok) {
     const msg = json?.error?.message || text || res.statusText;
-    console.error("[meta] graph error", res.status, msg);
+    const errCode = json?.error?.code;
+    const errSubcode = json?.error?.error_subcode;
+    console.error("[meta] graph error", res.status, msg, "code:", errCode, "subcode:", errSubcode);
     if (res.status === 401 && /cannot parse access token/i.test(msg)) {
       throw new MetaApiError(
         "A Meta não reconheceu o token. Gere e copie um novo token completo no painel da Meta; não use o código OAuth nem o App Secret.",
         res.status,
+        errCode,
+        errSubcode,
       );
     }
     if (
@@ -69,10 +77,12 @@ async function graph(path: string, token: string, init?: RequestInit) {
       throw new MetaApiError(
         "O app da Meta ainda está em modo de desenvolvimento: só é possível responder pessoas que tenham função no app (admin/testador) até a análise ser aprovada. Adicione esse perfil como testador ou finalize a App Review.",
         res.status,
+        errCode,
+        errSubcode,
       );
     }
 
-    throw new MetaApiError(`Meta API [${res.status}]: ${msg}`, res.status);
+    throw new MetaApiError(`Meta API [${res.status}]: ${msg}`, res.status, errCode, errSubcode);
   }
   return json;
 }
@@ -211,11 +221,135 @@ export async function metaListPostComments(token: string, postId: string, option
   }
 }
 
-export async function metaReplyToComment(token: string, commentId: string, message: string) {
-  return graph(`/${encodeURIComponent(commentId)}/comments`, token, {
+export async function metaReplyToComment(
+  token: string,
+  commentId: string,
+  message: string,
+  options?: { instagram?: boolean },
+) {
+  const cleanToken = normalizeToken(token);
+  const isIg = Boolean(options?.instagram || isInstagramToken(cleanToken));
+  const endpoint = isIg
+    ? `/${encodeURIComponent(commentId)}/replies`
+    : `/${encodeURIComponent(commentId)}/comments`;
+
+  return graph(endpoint, token, {
     method: "POST",
     body: JSON.stringify({ message }),
   });
+}
+
+/**
+ * Envía una respuesta privada (Private Reply) a un comentario de Facebook o Instagram.
+ * Endpoint: POST /me/messages con recipient: { comment_id }
+ * Devuelve { recipient_id: string, message_id: string }.
+ */
+export async function metaSendPrivateReply(token: string, commentId: string, message: string) {
+  return graph(`/me/messages`, token, {
+    method: "POST",
+    body: JSON.stringify({
+      recipient: { comment_id: commentId },
+      message: { text: message },
+    }),
+  });
+}
+
+/**
+ * Detecta si un error devuelto por la Meta Graph API para Private Reply es permanente (no reintentable).
+ * Esto previene atascar la cola de automation_jobs con reintentos inútiles cuando:
+ * - La ventana de 7 días expiró (2018278)
+ * - Ya se envió un Private Reply previo a ese comentario (10900, 2018001, 2018109)
+ * - Private reply no permitido en este objeto (10903)
+ * - El usuario tiene DMs cerrados, bloqueados o no alcanzables (551, 2018028)
+ * - El comentario fue borrado o no existe (subcode 33)
+ * - Tokens inválidos/expirados o permisos faltantes (10, 190, 200)
+ */
+export function isPermanentMetaPrivateReplyError(err: any): boolean {
+  if (!err) return false;
+  const msg = String(err?.message || err).toLowerCase();
+  const code = String(err?.code ?? "");
+  const subcode = String(err?.subcode ?? err?.error_subcode ?? "");
+
+  // Chequeo directo de códigos numéricos
+  const permanentCodes = ["10900", "10903", "551", "2018109", "2018278", "2018001", "2018028", "10", "190", "200", "33"];
+  if (permanentCodes.includes(code) || permanentCodes.includes(subcode)) {
+    return true;
+  }
+
+  // Chequeo en la cadena de error (ej: "(#10900)", "code 10903", "subcode: 2018109", etc.)
+  if (
+    msg.includes("10900") ||
+    msg.includes("10903") ||
+    msg.includes("551") ||
+    msg.includes("2018109") ||
+    msg.includes("2018278") ||
+    msg.includes("2018001") ||
+    msg.includes("2018028") ||
+    msg.includes("(#10)") ||
+    msg.includes("(#190)") ||
+    msg.includes("(#200)") ||
+    msg.includes("error 10 ") ||
+    msg.includes("error 190 ") ||
+    msg.includes("error 200 ") ||
+    msg.includes("code: 10") ||
+    msg.includes("code: 190") ||
+    msg.includes("code: 200") ||
+    msg.includes("subcode: 33") ||
+    msg.includes("subcode 33")
+  ) {
+    return true;
+  }
+
+  // 1. Ventana de 7 días expirada para Private Reply
+  if (
+    msg.includes("7-day window") ||
+    msg.includes("outside the allowed window") ||
+    msg.includes("window has expired")
+  ) {
+    return true;
+  }
+
+  // 2. Private Reply ya enviado a este comentario (límite de 1 DM por comentario)
+  if (
+    msg.includes("only one private reply is allowed") ||
+    msg.includes("already replied") ||
+    msg.includes("has already been replied to")
+  ) {
+    return true;
+  }
+
+  // 3. Contacto con DMs bloqueados o no alcanzable
+  if (
+    msg.includes("user cannot be messaged") ||
+    msg.includes("not reachable") ||
+    msg.includes("opted out") ||
+    msg.includes("cannot message this user") ||
+    msg.includes("messaging has been disabled") ||
+    msg.includes("user is not available") ||
+    msg.includes("person is not available")
+  ) {
+    return true;
+  }
+
+  // 4. Comentario eliminado o no existente
+  if (
+    msg.includes("does not exist") ||
+    msg.includes("unsupported post request") ||
+    msg.includes("cannot be loaded due to missing permissions")
+  ) {
+    return true;
+  }
+
+  // 5. Sesión / token inválido o revocado
+  if (
+    msg.includes("invalid oauth access token") ||
+    msg.includes("error validating access token") ||
+    msg.includes("session has expired")
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 export async function metaPublishPagePost(token: string, pageId: string, input: { message?: string; link?: string; photoUrl?: string }) {

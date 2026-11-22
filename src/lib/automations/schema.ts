@@ -28,6 +28,7 @@ export const WorkflowSettingsSchema = z.object({
   reentry: z.enum(["allow", "deny_while_active", "replace_active"]).default("deny_while_active"),
   maxRuntimeSeconds: z.number().int().min(1).max(86400 * 30).default(86400),
   maxSteps: z.number().int().min(1).max(500).default(100),
+  ui_mode: z.enum(["quick_rule", "canvas"]).default("canvas"),
 });
 
 export const WorkflowGraphSchema = z.object({
@@ -38,6 +39,7 @@ export const WorkflowGraphSchema = z.object({
     reentry: "deny_while_active",
     maxRuntimeSeconds: 86400,
     maxSteps: 100,
+    ui_mode: "canvas",
   }),
 });
 
@@ -72,7 +74,8 @@ export function validateWorkflowGraphStructure(graph: WorkflowGraph): { valid: b
       node.type.startsWith("crm.card") ||
       node.type === "telegram.business_message_received" ||
       node.type === "telegram.channel_post_published" ||
-      node.type === "telegram.channel_comment_received"
+      node.type === "telegram.channel_comment_received" ||
+      node.type === "meta.comment_received"
     ) {
       triggers.push(node);
     }
