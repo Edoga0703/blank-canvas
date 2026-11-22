@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-22T18:01:37.975270+00:00",
+  "generated_at": "2026-11-22T23:01:04.706242+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -206,6 +206,10 @@
       "bytes": 7324
     },
     {
+      "path": "supabase/migrations/20261122160000_automation_sprint1_core_fixes.sql",
+      "bytes": 4185
+    },
+    {
       "path": "supabase/migrations/20261029150000_automation_v1301.sql",
       "bytes": 13828
     },
@@ -328,6 +332,10 @@
     {
       "path": "docs/sql/20261111010000_hybrid_storage_pool_and_google_drive.sql",
       "bytes": 7324
+    },
+    {
+      "path": "docs/sql/20261122160000_automation_sprint1_core_fixes.sql",
+      "bytes": 4185
     },
     {
       "path": "docs/sql/20261029150000_automation_v1301.sql",
@@ -690,6 +698,10 @@
       "bytes": 2932
     },
     {
+      "path": "src/lib/dapi-connect.ts",
+      "bytes": 2969
+    },
+    {
       "path": "src/lib/quick-replies.functions.ts",
       "bytes": 6709
     },
@@ -775,7 +787,7 @@
     },
     {
       "path": "src/lib/whatsapp.functions.ts",
-      "bytes": 50420
+      "bytes": 50482
     },
     {
       "path": "src/lib/meta-oauth.functions.ts",
@@ -903,7 +915,7 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 32844
+      "bytes": 32769
     },
     {
       "path": "src/lib/support-constants.ts",
@@ -1643,7 +1655,7 @@
     },
     {
       "path": "src/components/conexao/nova-conexao-dialog.tsx",
-      "bytes": 16420
+      "bytes": 21241
     },
     {
       "path": "src/components/conexao/telegram-connect-dialog.tsx",
@@ -2303,15 +2315,15 @@
     },
     {
       "path": "src/lib/storage/storage-admin.functions.ts",
-      "bytes": 16540
+      "bytes": 16636
     },
     {
       "path": "src/lib/storage/r2.server.ts",
-      "bytes": 12569
+      "bytes": 12592
     },
     {
       "path": "src/lib/storage/storage-pool.server.ts",
-      "bytes": 13659
+      "bytes": 13682
     },
     {
       "path": "src/lib/storage/r2.functions.ts",
@@ -2399,11 +2411,11 @@
     },
     {
       "path": "src/lib/automations/registry.server.ts",
-      "bytes": 50569
+      "bytes": 64161
     },
     {
       "path": "src/lib/automations/functions.ts",
-      "bytes": 23756
+      "bytes": 31506
     },
     {
       "path": "src/lib/automations/conversation-control.server.ts",
@@ -2415,27 +2427,27 @@
     },
     {
       "path": "src/lib/automations/inbound-events.server.ts",
-      "bytes": 3289
+      "bytes": 3645
     },
     {
       "path": "src/lib/automations/arbitration.server.ts",
-      "bytes": 11626
+      "bytes": 12044
     },
     {
       "path": "src/lib/automations/queue.server.ts",
-      "bytes": 18901
+      "bytes": 23133
     },
     {
       "path": "src/lib/automations/events.server.ts",
-      "bytes": 18763
+      "bytes": 32000
     },
     {
       "path": "src/lib/automations/schema.ts",
-      "bytes": 6534
+      "bytes": 6632
     },
     {
       "path": "src/lib/automations/types.ts",
-      "bytes": 2433
+      "bytes": 2487
     },
     {
       "path": "src/lib/i18n/context.tsx",
@@ -2443,7 +2455,7 @@
     },
     {
       "path": "src/lib/i18n/translations.ts",
-      "bytes": 71947
+      "bytes": 75112
     },
     {
       "path": "src/lib/mcp/index.ts",
@@ -2611,7 +2623,7 @@
     },
     {
       "path": "src/routes/app/automacoes.index.tsx",
-      "bytes": 73429
+      "bytes": 110412
     },
     {
       "path": "src/routes/app/automacoes.tsx",
@@ -2715,7 +2727,7 @@
     },
     {
       "path": "src/routes/app/automacoes.$workflowId.tsx",
-      "bytes": 135317
+      "bytes": 199707
     },
     {
       "path": "src/routes/app/crm.tsx",
@@ -2763,7 +2775,7 @@
     },
     {
       "path": "src/routes/api/public/meta-webhook.ts",
-      "bytes": 47423
+      "bytes": 47923
     },
     {
       "path": "src/routes/api/public/ai-health.ts",
@@ -9904,6 +9916,10 @@
       "target": "lucide-react"
     },
     {
+      "source": "src/components/conexao/nova-conexao-dialog.tsx",
+      "target": "@/lib/dapi-connect"
+    },
+    {
       "source": "src/components/conexao/telegram-connect-dialog.tsx",
       "target": "react"
     },
@@ -14376,6 +14392,14 @@
       "target": "./storage-pool.server"
     },
     {
+      "source": "src/lib/storage/storage-admin.functions.ts",
+      "target": "./storage-pool.server"
+    },
+    {
+      "source": "src/lib/storage/storage-admin.functions.ts",
+      "target": "./storage-pool.server"
+    },
+    {
       "source": "src/lib/storage/r2.server.ts",
       "target": "node:crypto"
     },
@@ -14625,6 +14649,26 @@
     },
     {
       "source": "src/lib/automations/registry.server.ts",
+      "target": "@/lib/wa-dispatch.server"
+    },
+    {
+      "source": "src/lib/automations/registry.server.ts",
+      "target": "@/lib/dapi.server"
+    },
+    {
+      "source": "src/lib/automations/registry.server.ts",
+      "target": "@/lib/wa-dispatch.server"
+    },
+    {
+      "source": "src/lib/automations/registry.server.ts",
+      "target": "@/lib/wa-dispatch.server"
+    },
+    {
+      "source": "src/lib/automations/registry.server.ts",
+      "target": "@/lib/wa-dispatch.server"
+    },
+    {
+      "source": "src/lib/automations/registry.server.ts",
       "target": "@/lib/crm-engine.server"
     },
     {
@@ -14672,6 +14716,14 @@
       "target": "./registry.server"
     },
     {
+      "source": "src/lib/automations/functions.ts",
+      "target": "@/lib/meta.server"
+    },
+    {
+      "source": "src/lib/automations/functions.ts",
+      "target": "@/lib/storage/r2.server"
+    },
+    {
       "source": "src/lib/automations/conversation-control.server.ts",
       "target": "@/integrations/supabase/client.server"
     },
@@ -14710,6 +14762,10 @@
     {
       "source": "src/lib/automations/inbound-events.server.ts",
       "target": "./types"
+    },
+    {
+      "source": "src/lib/automations/inbound-events.server.ts",
+      "target": "@/lib/automations/queue.server"
     },
     {
       "source": "src/lib/automations/arbitration.server.ts",
@@ -14757,7 +14813,35 @@
     },
     {
       "source": "src/lib/automations/events.server.ts",
+      "target": "./registry.server"
+    },
+    {
+      "source": "src/lib/automations/events.server.ts",
       "target": "./fallback.server"
+    },
+    {
+      "source": "src/lib/automations/events.server.ts",
+      "target": "./registry.server"
+    },
+    {
+      "source": "src/lib/automations/events.server.ts",
+      "target": "@/lib/wa-dispatch.server"
+    },
+    {
+      "source": "src/lib/automations/events.server.ts",
+      "target": "./conversation-control.server"
+    },
+    {
+      "source": "src/lib/automations/events.server.ts",
+      "target": "./registry.server"
+    },
+    {
+      "source": "src/lib/automations/events.server.ts",
+      "target": "@/lib/wa-dispatch.server"
+    },
+    {
+      "source": "src/lib/automations/events.server.ts",
+      "target": "./conversation-control.server"
     },
     {
       "source": "src/lib/automations/schema.ts",
@@ -18318,6 +18402,10 @@
     {
       "source": "src/routes/api/public/meta-webhook.ts",
       "target": "@/lib/automations/events.server"
+    },
+    {
+      "source": "src/routes/api/public/meta-webhook.ts",
+      "target": "@/lib/automations/queue.server"
     },
     {
       "source": "src/routes/api/public/meta-webhook.ts",
