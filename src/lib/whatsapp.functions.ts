@@ -1149,6 +1149,7 @@ export const connectDapiOfficial = createServerFn({ method: "POST" })
   .inputValidator((d: {
     displayName?: string;
     sessionId?: string;
+    connectionId?: string;
     wabaId?: string;
     phoneNumberId?: string;
     accessToken?: string;
@@ -1161,6 +1162,7 @@ export const connectDapiOfficial = createServerFn({ method: "POST" })
     const { supabaseAdmin: sbAdminTok } = await import("@/integrations/supabase/client.server");
 
     const instanceName =
+      data.connectionId?.trim() ||
       data.sessionId?.trim() ||
       `dapi_meta_${companyId.replace(/-/g, "").slice(0, 8)}_${crypto.randomUUID().slice(0, 4)}`;
     const webhookToken = crypto.randomUUID();

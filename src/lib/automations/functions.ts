@@ -149,9 +149,12 @@ export const getWorkflowFn = createServerFn({ method: "GET" })
         ],
         settings: {
           reentry: "deny_while_active",
-          maxRuntimeSeconds: 86400,
+          maxRuntimeSeconds: 86400 * 7,
           maxSteps: 100,
           ui_mode: "canvas",
+          stopOnContactReply: false,
+          stopOnStageIds: [],
+          timezone: "America/Sao_Paulo",
         },
       };
     }
@@ -166,6 +169,75 @@ export const getWorkflowFn = createServerFn({ method: "GET" })
       activeVersionNumber,
     };
   });
+
+export function validateWorkflowNodes(parsedGraph: WorkflowGraph): string[] {
+  const nodeValidationErrors: string[] = [];
+
+  for (const node of parsedGraph.nodes) {
+    const def = getNodeDefinition(node.type, node.version);
+    if (!def) {
+      nodeValidationErrors.push(`El nodo "${node.id}" tiene un tipo no registrado: "${node.type}".`);
+      continue;
+    }
+
+    // 1. Validar dinámicamente la configuración del nodo contra su Zod schema registrado
+    const configRes = def.configSchema.safeParse(node.config || {});
+    if (!configRes.success) {
+      const issues = configRes.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", ");
+      nodeValidationErrors.push(`Configuración inválida en nodo "${node.id}" (${def.name}): ${issues}`);
+    }
+
+    // 2. Resolver y validar puertos de salida de forma estática o dinámica
+    const parsedCfg = configRes.success ? configRes.data : (node.config || {});
+    const validPorts = def.resolveOutputPorts
+      ? def.resolveOutputPorts(parsedCfg)
+      : [...def.outputPorts];
+
+    const outgoingEdges = parsedGraph.edges.filter((e) => e.source === node.id);
+    for (const edge of outgoingEdges) {
+      const port = edge.sourcePort || "next";
+      if (!validPorts.includes(port)) {
+        nodeValidationErrors.push(
+          `El puerto de salida "${port}" usado en el enlace "${edge.id}" no existe en el nodo "${node.id}". Puertos válidos: [${validPorts.join(", ")}].`
+        );
+      }
+    }
+
+    // 3. Validar puertos requeridos en nodos de bifurcación y captura
+    if (node.type === "condition.if_else" || node.type === "messaging.wait_for_reply") {
+      for (const port of def.outputPorts) {
+        if (!outgoingEdges.some((e) => e.sourcePort === port)) {
+          nodeValidationErrors.push(`El nodo "${node.id}" (${def.name}) requiere la salida "${port}".`);
+        }
+      }
+    } else if (node.type === "messaging.send_interactive") {
+      const options = Array.isArray((parsedCfg as any).options) ? (parsedCfg as any).options : [];
+      const hasConnectedOption = options.some((opt: any) =>
+        outgoingEdges.some((e) => e.sourcePort === String(opt.id))
+      );
+      if (options.length > 0 && !hasConnectedOption) {
+        nodeValidationErrors.push(
+          `El nodo "${node.id}" (${def.name}) requiere que al menos 1 opción tenga salida conectada.`
+        );
+      }
+    } else if (node.type === "messaging.collect_input") {
+      if (!outgoingEdges.some((e) => e.sourcePort === "valid" || e.sourcePort === "next")) {
+        nodeValidationErrors.push(
+          `El nodo "${node.id}" (${def.name}) requiere conectar la salida "valid".`
+        );
+      }
+    }
+
+    const cfg = (node.config || {}) as Record<string, any>;
+
+    // 4. Validaciones de negocio específicas adicionales
+    if (node.type === "messaging.send_text" && cfg.connectionPolicy === "specific" && !cfg.specificInstanceId) {
+      nodeValidationErrors.push(`El nodo "${node.id}" (${def.name}) requiere una conexión específica seleccionada.`);
+    }
+  }
+
+  return nodeValidationErrors;
+}
 
 export const createWorkflowFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -233,9 +305,12 @@ export const createWorkflowFn = createServerFn({ method: "POST" })
           ],
           settings: {
             reentry: "deny_while_active",
-            maxRuntimeSeconds: 86400,
+            maxRuntimeSeconds: 86400 * 7,
             maxSteps: 100,
             ui_mode: uiMode,
+            stopOnContactReply: false,
+            stopOnStageIds: [],
+            timezone: "America/Sao_Paulo",
           },
         };
 
@@ -243,6 +318,10 @@ export const createWorkflowFn = createServerFn({ method: "POST" })
       const validation = validateWorkflowGraphStructure(graphToUse);
       if (!validation.valid) {
         throw new Error(`Validación de estructura fallida: ${validation.errors.map((e) => e.message).join(" | ")}`);
+      }
+      const nodeErrors = validateWorkflowNodes(graphToUse);
+      if (nodeErrors.length > 0) {
+        throw new Error("Não é possível publicar: " + nodeErrors.join("; "));
       }
     }
 
@@ -418,45 +497,10 @@ export const publishWorkflowFn = createServerFn({ method: "POST" })
       throw new Error(`Validación de estructura fallida: ${validation.errors.map((e) => e.message).join(" | ")}`);
     }
 
-    // 2b. Validación exhaustiva de cada nodo contra su schema y puertos en registry (H8)
-    const nodeValidationErrors: string[] = [];
-    for (const node of parsedGraph.nodes) {
-      const def = getNodeDefinition(node.type, node.version);
-      if (!def) {
-        nodeValidationErrors.push(`El nodo "${node.id}" tiene un tipo no registrado: "${node.type}".`);
-        continue;
-      }
-      const configRes = def.configSchema.safeParse(node.config || {});
-      if (!configRes.success) {
-        const issues = configRes.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", ");
-        nodeValidationErrors.push(`Configuración inválida en nodo "${node.id}" (${def.name}): ${issues}`);
-      }
-
-      // Validar puertos de salida usados por las aristas que parten de este nodo
-      const outgoingEdges = parsedGraph.edges.filter((e) => e.source === node.id);
-      for (const edge of outgoingEdges) {
-        const port = edge.sourcePort || "next";
-        if (!def.outputPorts.includes(port)) {
-          nodeValidationErrors.push(`El puerto de salida "${port}" usado en el enlace "${edge.id}" no existe en el nodo "${node.id}". Puertos válidos: [${def.outputPorts.join(", ")}].`);
-        }
-      }
-      if (node.type === "condition.if_else" || node.type === "messaging.wait_for_reply") {
-        for (const port of def.outputPorts) {
-          if (!outgoingEdges.some((e) => e.sourcePort === port)) {
-            nodeValidationErrors.push(`El nodo "${node.id}" requiere la salida "${port}".`);
-          }
-        }
-      }
-      if (node.type === "messaging.send_text" && configRes.success) {
-        const cfg = configRes.data as any;
-        if (cfg.connectionPolicy === "specific" && !cfg.specificInstanceId) {
-          nodeValidationErrors.push(`El nodo "${node.id}" requiere una conexión específica.`);
-        }
-      }
-    }
-
+    // 2b. Validación exhaustiva de cada nodo contra su schema y reglas de negocio
+    const nodeValidationErrors = validateWorkflowNodes(parsedGraph);
     if (nodeValidationErrors.length > 0) {
-      throw new Error(`Validación de nodos fallida: ${nodeValidationErrors.join(" | ")}`);
+      throw new Error("Não é possível publicar: " + nodeValidationErrors.join("; "));
     }
 
     // 3. Crear versión inmutable
@@ -586,7 +630,7 @@ export const listExecutionsFn = createServerFn({ method: "GET" })
     const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
     let query = (supabaseAdmin as any)
       .from("automation_executions")
-      .select("id, workflow_id, status, source_channel, external_conversation_id, started_at, finished_at, error_summary, created_at")
+      .select("id, workflow_id, status, source_channel, external_conversation_id, error_code, error_summary, started_at, finished_at, created_at")
       .eq("company_id", companyId)
       .order("created_at", { ascending: false })
       .limit(Math.min(data?.limit || 50, 100));
@@ -661,5 +705,171 @@ export const getAvailableChannelsAndConnectionsFn = createServerFn({ method: "GE
       stages: (stages || []) as any[],
       pipelines: (pipelines || []) as any[],
       owners: (owners || []).map((o: any) => ({ id: o.user_id, name: `Usuário (${o.role})` })),
+    };
+  });
+
+export const duplicateWorkflowFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { workflowId: string }) => {
+    if (!d?.workflowId) throw new Error("workflowId es requerido");
+    return d;
+  })
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
+    await assertAutomationEditor(companyId, context.userId);
+
+    const { data: srcWf, error: srcErr } = await (supabaseAdmin as any)
+      .from("automation_workflows")
+      .select("*")
+      .eq("id", data.workflowId)
+      .eq("company_id", companyId)
+      .maybeSingle();
+
+    if (srcErr || !srcWf) {
+      throw new Error("Flujo no encontrado o no pertenece a esta empresa.");
+    }
+
+    let clonedGraph: any = null;
+    if (srcWf.active_version_id) {
+      const { data: actVer } = await (supabaseAdmin as any)
+        .from("automation_workflow_versions")
+        .select("graph")
+        .eq("id", srcWf.active_version_id)
+        .eq("company_id", companyId)
+        .maybeSingle();
+      if (actVer?.graph) clonedGraph = actVer.graph;
+    }
+
+    if (!clonedGraph) {
+      const { data: latestVer } = await (supabaseAdmin as any)
+        .from("automation_workflow_versions")
+        .select("graph")
+        .eq("workflow_id", srcWf.id)
+        .eq("company_id", companyId)
+        .order("version_number", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (latestVer?.graph) clonedGraph = latestVer.graph;
+    }
+
+    if (!clonedGraph) {
+      throw new Error("El flujo origen no contiene versiones válidas para clonar.");
+    }
+
+    const newName = `${srcWf.name} (Cópia)`;
+    const targetUiMode = srcWf.ui_mode || "canvas";
+
+    const { data: newWf, error: newErr } = await (supabaseAdmin as any)
+      .from("automation_workflows")
+      .insert({
+        company_id: companyId,
+        name: newName,
+        description: srcWf.description || null,
+        status: "draft",
+        active_version_id: null,
+        ui_mode: targetUiMode,
+        created_by: context.userId,
+        updated_by: context.userId,
+      })
+      .select("id")
+      .single();
+
+    if (newErr || !newWf) {
+      throw new Error(`Error al clonar flujo: ${newErr?.message}`);
+    }
+
+    const { error: verErr } = await (supabaseAdmin as any)
+      .from("automation_workflow_versions")
+      .insert({
+        company_id: companyId,
+        workflow_id: newWf.id,
+        version_number: 1,
+        graph: clonedGraph,
+        schema_version: 1,
+        created_by: context.userId,
+      });
+
+    if (verErr) {
+      throw new Error(`Error al crear versión clonada: ${verErr.message}`);
+    }
+
+    return { success: true, workflowId: newWf.id };
+  });
+
+export const listMetaPostsForInstanceFn = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: { instanceId: string; limit?: number }) => data)
+  .handler(async ({ data, context }) => {
+    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
+    if (!companyId) throw new Error("Empresa não identificada.");
+
+    const { data: inst, error: instErr } = await (supabaseAdmin as any)
+      .from("whatsapp_instances")
+      .select("id, instance_token, phone_number_id, provider, company_id")
+      .eq("company_id", companyId)
+      .eq("id", data.instanceId)
+      .maybeSingle();
+
+    if (instErr || !inst?.instance_token) {
+      throw new Error("Instância Meta não encontrada ou sem token de acesso.");
+    }
+    const pageOrIgId = inst.phone_number_id || inst.id;
+    if (!pageOrIgId) {
+      throw new Error("Instância Meta sem ID de página ou conta do Instagram vinculada.");
+    }
+
+    const { metaListPagePosts } = await import("@/lib/meta.server");
+    const isInstagram = String(inst.provider || "").toLowerCase().includes("instagram");
+    const rawPosts = await metaListPagePosts(inst.instance_token, pageOrIgId, {
+      limit: Math.min(data.limit || 20, 30),
+      instagram: isInstagram,
+    }).catch((err) => {
+      console.warn("[listMetaPostsForInstanceFn] Erro ao listar posts da Meta:", err?.message || err);
+      return [];
+    });
+
+    const items = Array.isArray(rawPosts) ? rawPosts : (rawPosts as any)?.data || [];
+    return items.map((p: any) => ({
+      id: String(p.id || ""),
+      caption: String(p.caption || p.message || "").trim(),
+      thumbnailUrl: p.thumbnail_url || p.media_url || null,
+      permalink: p.permalink || null,
+      timestamp: p.timestamp || p.created_time || null,
+      mediaType: String(p.media_type || "IMAGE"),
+    }));
+  });
+
+export const uploadAutomationMediaFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: { fileName: string; mimeType: string; base64: string }) => data)
+  .handler(async ({ data, context }) => {
+    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
+    if (!companyId) throw new Error("Empresa não identificada.");
+    await assertAutomationEditor(companyId, context.userId);
+
+    if (!data.base64) throw new Error("Nenhum arquivo enviado.");
+    const cleanBase64 = data.base64.replace(/^data:[^;]+;base64,/, "");
+    const buffer = Buffer.from(cleanBase64, "base64");
+    if (buffer.byteLength > 15 * 1024 * 1024) {
+      throw new Error("O arquivo excede o limite máximo permitido de 15 MB.");
+    }
+
+    const { storeMediaObject, resolveR2DownloadUrlAsync } = await import("@/lib/storage/r2.server");
+    const stored = await storeMediaObject({
+      companyId,
+      bytes: buffer,
+      mimeType: data.mimeType || "application/octet-stream",
+      fileName: data.fileName || "upload.bin",
+    });
+
+    const url =
+      stored.storageUrl ||
+      (await resolveR2DownloadUrlAsync(stored.storageKey, 86400 * 365, stored.storageAccountId));
+
+    return {
+      url,
+      storageKey: stored.storageKey,
+      fileName: stored.fileName,
+      mimeType: stored.mimeType,
     };
   });

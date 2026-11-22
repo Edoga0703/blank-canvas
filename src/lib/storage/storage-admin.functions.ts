@@ -2,12 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { resolveCompanyIdCached } from "@/lib/company-cache";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import {
-  testR2Connection,
-  getDefaultR2EnvConfig,
-  type StorageProvider,
-  type StorageRole,
-  type RotationStrategy,
+import type {
+  StorageProvider,
+  StorageRole,
+  RotationStrategy,
 } from "./storage-pool.server";
 
 export interface StorageAccountView {
@@ -201,6 +199,7 @@ export const listStorageAccounts = createServerFn({ method: "GET" })
 
     const hasR2 = list.some((a) => a.provider === "cloudflare_r2");
     if (!hasR2) {
+      const { getDefaultR2EnvConfig } = await import("./storage-pool.server");
       const def = getDefaultR2EnvConfig();
       list.unshift({
         id: "system-default-r2",
@@ -257,6 +256,7 @@ export const saveR2StorageAccount = createServerFn({ method: "POST" })
       throw new Error("Todos os campos de Cloudflare R2 são obrigatórios.");
     }
 
+    const { testR2Connection } = await import("./storage-pool.server");
     const testResult = await testR2Connection({
       accountId: data.accountId,
       accessKeyId: data.accessKeyId,

@@ -26,9 +26,12 @@ export const EdgeSchema = z.object({
 
 export const WorkflowSettingsSchema = z.object({
   reentry: z.enum(["allow", "deny_while_active", "replace_active"]).default("deny_while_active"),
-  maxRuntimeSeconds: z.number().int().min(1).max(86400 * 30).default(86400),
+  maxRuntimeSeconds: z.number().int().min(60).max(86400 * 30).default(86400 * 7),
   maxSteps: z.number().int().min(1).max(500).default(100),
   ui_mode: z.enum(["quick_rule", "canvas"]).default("canvas"),
+  stopOnContactReply: z.boolean().default(false),
+  stopOnStageIds: z.array(z.string()).default([]),
+  timezone: z.string().default("America/Sao_Paulo"),
 });
 
 export const WorkflowGraphSchema = z.object({
@@ -37,9 +40,12 @@ export const WorkflowGraphSchema = z.object({
   edges: z.array(EdgeSchema).max(200, "Máximo 200 aristas por flujo").default([]),
   settings: WorkflowSettingsSchema.default({
     reentry: "deny_while_active",
-    maxRuntimeSeconds: 86400,
+    maxRuntimeSeconds: 86400 * 7,
     maxSteps: 100,
     ui_mode: "canvas",
+    stopOnContactReply: false,
+    stopOnStageIds: [],
+    timezone: "America/Sao_Paulo",
   }),
 });
 
@@ -83,8 +89,6 @@ export function validateWorkflowGraphStructure(graph: WorkflowGraph): { valid: b
 
   if (triggers.length === 0) {
     errors.push({ message: "El flujo debe comenzar con al menos un nodo disparador (Trigger)." });
-  } else if (triggers.length > 1) {
-    errors.push({ message: "En esta versión, cada flujo debe tener exactamente un nodo disparador." });
   }
 
   const seenEdges = new Set<string>();
@@ -137,26 +141,24 @@ export function validateWorkflowGraphStructure(graph: WorkflowGraph): { valid: b
     }
   }
 
-  // 1. Comprobar alcanzabilidad real desde el Trigger mediante BFS
+  // 1. Comprobar alcanzabilidad real desde los Triggers mediante BFS
   const reachableFromTrigger = new Set<string>();
   if (triggers.length > 0) {
-    const queue = [triggers[0].id];
-    reachableFromTrigger.add(triggers[0].id);
+    const queue = triggers.map((t) => t.id);
+    for (const t of triggers) reachableFromTrigger.add(t.id);
 
     while (queue.length > 0) {
       const curr = queue.shift()!;
-      const neighbors = adjList.get(curr) || [];
-      for (const nxt of neighbors) {
+      for (const nxt of adjList.get(curr) || []) {
         if (!reachableFromTrigger.has(nxt)) {
           reachableFromTrigger.add(nxt);
           queue.push(nxt);
         }
       }
     }
-
     for (const node of graph.nodes) {
       if (!reachableFromTrigger.has(node.id)) {
-        errors.push({ nodeId: node.id, message: `El nodo "${node.id}" no es alcanzable desde el disparador principal.` });
+        errors.push({ nodeId: node.id, message: `El nodo "${node.id}" no es alcanzable desde ningún disparador.` });
       }
     }
   }

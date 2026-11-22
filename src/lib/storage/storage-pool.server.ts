@@ -1,4 +1,5 @@
-import { createHmac, createHash } from "node:crypto";
+import crypto from "node:crypto";
+const { createHmac, createHash } = crypto;
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export type StorageProvider = "cloudflare_r2" | "google_drive" | "s3_compatible";

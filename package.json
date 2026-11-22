@@ -1,6 +1,6 @@
 {
   "name": "capiversa-crm",
-  "version": "1.3.08",
+  "version": "1.3.09",
   "private": true,
   "sideEffects": false,
   "type": "module",

@@ -597,7 +597,15 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                   },
                 };
 
-                await dispatchDomainEvent(commentDomainEvent);
+                const commentRes = await dispatchDomainEvent(commentDomainEvent);
+                if (commentRes.triggered > 0) {
+                  try {
+                    const { drainImmediateAutomationJobs } = await import("@/lib/automations/queue.server");
+                    await drainImmediateAutomationJobs({ workerId: "hot_webhook", maxJobs: 8, maxTimeMs: 3000 });
+                  } catch (drainErr: any) {
+                    console.warn("[hot-drain] Error no bloqueante al drenar jobs:", drainErr?.message);
+                  }
+                }
                 normalizedCount += 1;
                 // Comentários públicos terminam aqui; respostas automáticas são gerenciadas pelo motor de workflows
                 continue;

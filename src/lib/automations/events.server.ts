@@ -4,6 +4,7 @@ import type { DomainEvent } from "./types";
 import type { WorkflowGraph } from "./schema";
 import { randomUUID } from "node:crypto";
 import { matchesKeywords, isChannelMatch, normalizeKeywordText } from "./arbitration.server";
+import { matchInteractiveOption, validateAndParseCollectedInput } from "./registry.server";
 
 /**
  * Procesa eventos pendientes acumulados en automation_events por el trigger de crm_cards u otras fuentes.
@@ -165,29 +166,272 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
         const graph = ver?.graph as WorkflowGraph | undefined;
         const currentNode = graph?.nodes?.find((n) => n.id === exec.current_node_id);
 
-        // BLOQUEO CRÍTICO: SOLO despertar si el nodo es explícitamente "messaging.wait_for_reply"
-        // NUNCA despertar si el nodo es "control.wait_duration" (espera de tiempo)
-        if (currentNode?.type !== "messaging.wait_for_reply") {
-          continue;
+        // Despertar según el tipo de nodo de espera conversacional (wait_for_reply, send_interactive, collect_input)
+        if (
+          currentNode?.type !== "messaging.wait_for_reply" &&
+          currentNode?.type !== "messaging.send_interactive" &&
+          currentNode?.type !== "messaging.collect_input"
+        ) {
+          continue; // NUNCA despertar nodos de espera de tiempo ("control.wait_duration")
         }
 
-        const outEdge = graph?.edges?.find(
-          (e) => e.source === exec.current_node_id && (e.sourcePort === "reply" || e.sourcePort === "next")
-        );
+        const replyPayload = {
+          ...payload,
+          occurredAt: event.occurredAt,
+          messageId: payload.messageId || null,
+        };
 
-        if (outEdge?.target) {
-          const { data: woke, error: wakeErr } = await (supabaseAdmin as any)
-            .rpc("automation_resume_waiting", {
-              p_company_id: companyId,
-              p_execution_id: exec.id,
-              p_expected_node: exec.current_node_id,
-              p_target_node: outEdge.target,
-              p_job_key: "job_" + exec.id + "_" + outEdge.target + "_reply",
-              p_context_patch: { lastReply: payload },
-              p_require_due: false,
-            });
-          if (wakeErr) throw wakeErr;
-          if (woke) wokeCount++;
+        if (currentNode.type === "messaging.wait_for_reply") {
+          const outEdge = graph?.edges?.find(
+            (e) => e.source === exec.current_node_id && (e.sourcePort === "reply" || e.sourcePort === "next")
+          );
+
+          if (outEdge?.target) {
+            const { data: woke, error: wakeErr } = await (supabaseAdmin as any)
+              .rpc("automation_resume_waiting", {
+                p_company_id: companyId,
+                p_execution_id: exec.id,
+                p_expected_node: exec.current_node_id,
+                p_target_node: outEdge.target,
+                p_job_key: "job_" + exec.id + "_" + outEdge.target + "_reply",
+                p_context_patch: { lastReply: replyPayload },
+                p_require_due: false,
+              });
+            if (wakeErr) throw wakeErr;
+            if (woke) wokeCount++;
+          }
+        } else if (currentNode.type === "messaging.send_interactive") {
+          const cfg = (currentNode.config || {}) as any;
+          const matched = matchInteractiveOption(payload.text || "", cfg.options || []);
+
+          if (matched) {
+            const outEdge = graph?.edges?.find(
+              (e) => e.source === exec.current_node_id && e.sourcePort === matched.id
+            );
+            if (outEdge?.target) {
+              const { data: woke, error: wakeErr } = await (supabaseAdmin as any)
+                .rpc("automation_resume_waiting", {
+                  p_company_id: companyId,
+                  p_execution_id: exec.id,
+                  p_expected_node: exec.current_node_id,
+                  p_target_node: outEdge.target,
+                  p_job_key: "job_" + exec.id + "_" + outEdge.target + "_" + matched.id,
+                  p_context_patch: {
+                    lastReply: replyPayload,
+                    [exec.current_node_id]: {
+                      selectedOptionId: matched.id,
+                      selectedLabel: matched.label,
+                      rawText: payload.text,
+                    },
+                  },
+                  p_require_due: false,
+                });
+              if (wakeErr) throw wakeErr;
+              if (woke) wokeCount++;
+            }
+          } else {
+            // Opción inválida: evaluar reintentos o fallback
+            const retries = Number(exec.context?._retries?.[exec.current_node_id] || 0);
+            const maxRetries = Number(cfg.maxInvalidRetries ?? 1);
+
+            if (retries < maxRetries && cfg.invalidReplyText) {
+              try {
+                const { resolveMessagingTarget } = await import("./registry.server");
+                const target = await resolveMessagingTarget({
+                  companyId,
+                  executionId: exec.id,
+                  workflowId: (exec as any).workflow_id,
+                  versionId: exec.workflow_version_id,
+                  nodeId: exec.current_node_id,
+                  context: exec.context || {},
+                  sourceInstanceId: exec.source_instance_id,
+                  externalConversationId: payload.externalConversationId,
+                });
+                const { waSendText } = await import("@/lib/wa-dispatch.server");
+                await waSendText(target.instanceRow, target.destination, cfg.invalidReplyText);
+              } catch (e: any) {
+                console.warn("[dispatchDomainEvent] Error enviando reprompt de menú interactivo:", e?.message);
+              }
+
+              const updatedRetries = { ...(exec.context?._retries || {}), [exec.current_node_id]: retries + 1 };
+              await (supabaseAdmin as any)
+                .from("automation_executions")
+                .update({ context: { ...(exec.context || {}), _retries: updatedRetries } })
+                .eq("id", exec.id);
+
+              wokeCount++; // Bloquea el fallback de IA
+            } else {
+              // Agotó reintentos: buscar salida "fallback"
+              const fallbackEdge = graph?.edges?.find(
+                (e) => e.source === exec.current_node_id && e.sourcePort === "fallback"
+              );
+              if (fallbackEdge?.target) {
+                const { data: woke, error: wakeErr } = await (supabaseAdmin as any)
+                  .rpc("automation_resume_waiting", {
+                    p_company_id: companyId,
+                    p_execution_id: exec.id,
+                    p_expected_node: exec.current_node_id,
+                    p_target_node: fallbackEdge.target,
+                    p_job_key: "job_" + exec.id + "_" + fallbackEdge.target + "_fallback",
+                    p_context_patch: {
+                      lastReply: replyPayload,
+                      [exec.current_node_id]: { fallback: true, rawText: payload.text },
+                    },
+                    p_require_due: false,
+                  });
+                if (wakeErr) throw wakeErr;
+                if (woke) wokeCount++;
+              } else {
+                // Sin rama fallback: cerrar limpio y liberar control
+                await (supabaseAdmin as any)
+                  .from("automation_executions")
+                  .update({ status: "succeeded", finished_at: new Date().toISOString() })
+                  .eq("id", exec.id);
+                const { releaseWorkflowControl } = await import("./conversation-control.server");
+                await releaseWorkflowControl({
+                  companyId,
+                  externalConversationId: payload.externalConversationId,
+                  executionId: exec.id,
+                  instanceId: exec.source_instance_id,
+                }).catch(() => null);
+                wokeCount++;
+              }
+            }
+          }
+        } else if (currentNode.type === "messaging.collect_input") {
+          const cfg = (currentNode.config || {}) as any;
+          const parsed = validateAndParseCollectedInput(payload.text || "", cfg.validationType || "text");
+
+          if (parsed.valid) {
+            const cardId = exec.card_id || exec.context?.card?.id || payload.cardId;
+            const fieldName = cfg.targetField === "custom" ? (cfg.customFieldKey || "custom_field") : cfg.targetField;
+            if (cardId) {
+              try {
+                if (cfg.targetField === "nome") {
+                  await (supabaseAdmin as any)
+                    .from("crm_cards")
+                    .update({ nome: String(parsed.value), updated_at: new Date().toISOString() })
+                    .eq("id", cardId)
+                    .eq("company_id", companyId);
+                } else if (cfg.targetField === "email") {
+                  await (supabaseAdmin as any)
+                    .from("crm_cards")
+                    .update({ email: String(parsed.value), updated_at: new Date().toISOString() })
+                    .eq("id", cardId)
+                    .eq("company_id", companyId);
+                } else if (cfg.targetField === "valor") {
+                  await (supabaseAdmin as any)
+                    .from("crm_cards")
+                    .update({ valor: Number(parsed.value) || 0, updated_at: new Date().toISOString() })
+                    .eq("id", cardId)
+                    .eq("company_id", companyId);
+                } else if (cfg.targetField === "custom" && cfg.customFieldKey) {
+                  const { data: curCard } = await (supabaseAdmin as any)
+                    .from("crm_cards")
+                    .select("campos_extras")
+                    .eq("id", cardId)
+                    .eq("company_id", companyId)
+                    .maybeSingle();
+                  const mergedExtras = { ...(curCard?.campos_extras || {}), [cfg.customFieldKey]: parsed.value };
+                  await (supabaseAdmin as any)
+                    .from("crm_cards")
+                    .update({ campos_extras: mergedExtras, updated_at: new Date().toISOString() })
+                    .eq("id", cardId)
+                    .eq("company_id", companyId);
+                }
+              } catch (e: any) {
+                console.warn("[dispatchDomainEvent] Error persistiendo dato capturado en crm_cards:", e?.message);
+              }
+            }
+
+            const validEdge = graph?.edges?.find(
+              (e) => e.source === exec.current_node_id && (e.sourcePort === "valid" || e.sourcePort === "next")
+            );
+            if (validEdge?.target) {
+              const { data: woke, error: wakeErr } = await (supabaseAdmin as any)
+                .rpc("automation_resume_waiting", {
+                  p_company_id: companyId,
+                  p_execution_id: exec.id,
+                  p_expected_node: exec.current_node_id,
+                  p_target_node: validEdge.target,
+                  p_job_key: "job_" + exec.id + "_" + validEdge.target + "_valid",
+                  p_context_patch: {
+                    lastReply: replyPayload,
+                    collected: { ...(exec.context?.collected || {}), [fieldName]: parsed.value },
+                  },
+                  p_require_due: false,
+                });
+              if (wakeErr) throw wakeErr;
+              if (woke) wokeCount++;
+            }
+          } else {
+            // Formato inválido: reintentos o rama invalid
+            const retries = Number(exec.context?._retries?.[exec.current_node_id] || 0);
+            const maxRetries = Number(cfg.maxRetries ?? 2);
+
+            if (retries < maxRetries && cfg.invalidMessage) {
+              try {
+                const { resolveMessagingTarget } = await import("./registry.server");
+                const target = await resolveMessagingTarget({
+                  companyId,
+                  executionId: exec.id,
+                  workflowId: (exec as any).workflow_id,
+                  versionId: exec.workflow_version_id,
+                  nodeId: exec.current_node_id,
+                  context: exec.context || {},
+                  sourceInstanceId: exec.source_instance_id,
+                  externalConversationId: payload.externalConversationId,
+                });
+                const { waSendText } = await import("@/lib/wa-dispatch.server");
+                await waSendText(target.instanceRow, target.destination, cfg.invalidMessage);
+              } catch (e: any) {
+                console.warn("[dispatchDomainEvent] Error enviando mensaje de formato inválido:", e?.message);
+              }
+
+              const updatedRetries = { ...(exec.context?._retries || {}), [exec.current_node_id]: retries + 1 };
+              await (supabaseAdmin as any)
+                .from("automation_executions")
+                .update({ context: { ...(exec.context || {}), _retries: updatedRetries } })
+                .eq("id", exec.id);
+
+              wokeCount++;
+            } else {
+              // Agotó reintentos: buscar salida "invalid"
+              const invalidEdge = graph?.edges?.find(
+                (e) => e.source === exec.current_node_id && e.sourcePort === "invalid"
+              );
+              if (invalidEdge?.target) {
+                const { data: woke, error: wakeErr } = await (supabaseAdmin as any)
+                  .rpc("automation_resume_waiting", {
+                    p_company_id: companyId,
+                    p_execution_id: exec.id,
+                    p_expected_node: exec.current_node_id,
+                    p_target_node: invalidEdge.target,
+                    p_job_key: "job_" + exec.id + "_" + invalidEdge.target + "_invalid",
+                    p_context_patch: {
+                      lastReply: replyPayload,
+                      [exec.current_node_id]: { invalid: true, rawText: payload.text },
+                    },
+                    p_require_due: false,
+                  });
+                if (wakeErr) throw wakeErr;
+                if (woke) wokeCount++;
+              } else {
+                await (supabaseAdmin as any)
+                  .from("automation_executions")
+                  .update({ status: "succeeded", finished_at: new Date().toISOString() })
+                  .eq("id", exec.id);
+                const { releaseWorkflowControl } = await import("./conversation-control.server");
+                await releaseWorkflowControl({
+                  companyId,
+                  externalConversationId: payload.externalConversationId,
+                  executionId: exec.id,
+                  instanceId: exec.source_instance_id,
+                }).catch(() => null);
+                wokeCount++;
+              }
+            }
+          }
         }
       }
       if (wokeCount > 0) {
@@ -241,7 +485,7 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
     const graph = versionMap.get(wf.active_version_id);
     if (!graph || !graph.nodes) continue;
 
-    const triggerNode = graph.nodes.find(
+    const triggerNodes = graph.nodes.filter(
       (n) =>
         n.type === "messaging.inbound_received" ||
         n.type.startsWith("crm.card") ||
@@ -250,190 +494,211 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
         n.type === "telegram.channel_comment_received" ||
         n.type === "meta.comment_received"
     );
-    if (!triggerNode) continue;
+    if (triggerNodes.length === 0) continue;
 
-    // Comprobar coincidencia del evento
-    let matches = false;
+    for (const triggerNode of triggerNodes) {
+      // Comprobar coincidencia del evento
+      let matches = false;
 
-    if (name === "messaging.inbound_received.v1" && triggerNode.type === "messaging.inbound_received") {
-      const cfg = (triggerNode.config || {}) as any;
-      // Validar canal
-      const chOk = isChannelMatch(cfg.channels, payload.channel);
-      // Validar conexión
-      const instOk =
-        cfg.connectionMode !== "selected" ||
-        (Array.isArray(cfg.instanceIds) && cfg.instanceIds.includes(payload.instanceId));
+      if (name === "messaging.inbound_received.v1" && triggerNode.type === "messaging.inbound_received") {
+        const cfg = (triggerNode.config || {}) as any;
+        // Validar canal
+        const chOk = isChannelMatch(cfg.channels, payload.channel);
+        // Validar conexión
+        const instOk =
+          cfg.connectionMode !== "selected" ||
+          (Array.isArray(cfg.instanceIds) && cfg.instanceIds.includes(payload.instanceId));
 
-      // Validar tipo de conversación (direct, group, all)
-      const convType = cfg.conversationType || "direct";
-      const isGroup = Boolean(payload.isGroup || (payload.externalConversationId && String(payload.externalConversationId).includes("@g.us")));
-      let convOk = true;
-      if (convType === "direct") {
-        convOk = !isGroup;
-      } else if (convType === "group") {
-        convOk = isGroup;
-      } else if (convType === "all") {
-        convOk = true;
-      }
-
-      let kwOk = true;
-      if (Array.isArray(cfg.keywords) && cfg.keywords.length > 0) {
-        kwOk = matchesKeywords(payload.text || "", cfg.keywords);
-      }
-
-      matches = Boolean(chOk && instOk && convOk && kwOk);
-    } else if (
-      (name === "telegram.business_message_received.v1" || (name === "messaging.inbound_received.v1" && payload.channel === "telegram")) &&
-      triggerNode.type === "telegram.business_message_received"
-    ) {
-      const cfg = (triggerNode.config || {}) as any;
-      const instOk =
-        cfg.connectionMode !== "selected" ||
-        (Array.isArray(cfg.instanceIds) && cfg.instanceIds.includes(payload.instanceId));
-
-      const convType = cfg.conversationType || "direct";
-      const isGroup = Boolean(payload.isGroup || (payload.externalConversationId && String(payload.externalConversationId).includes("@g.us")));
-      let convOk = true;
-      if (convType === "direct") convOk = !isGroup;
-      else if (convType === "group") convOk = isGroup;
-
-      let kwOk = true;
-      if (Array.isArray(cfg.keywords) && cfg.keywords.length > 0) {
-        kwOk = matchesKeywords(payload.text || "", cfg.keywords);
-      }
-
-      matches = Boolean(instOk && convOk && kwOk);
-    } else if (name === "telegram.channel_post_published.v1" && triggerNode.type === "telegram.channel_post_published") {
-      const cfg = (triggerNode.config || {}) as any;
-      const chOk = !cfg.channelId || String(cfg.channelId).trim() === String(payload.channelId).trim();
-      const formatOk = !cfg.postFormat || cfg.postFormat === "all" || cfg.postFormat === payload.format;
-      matches = Boolean(chOk && formatOk);
-    } else if (name === "telegram.channel_comment_received.v1" && triggerNode.type === "telegram.channel_comment_received") {
-      const cfg = (triggerNode.config || {}) as any;
-      const chOk = !cfg.channelId || String(cfg.channelId).trim() === String(payload.channelId).trim();
-      let kwOk = true;
-      if (Array.isArray(cfg.keywords) && cfg.keywords.length > 0) {
-        kwOk = matchesKeywords(payload.text || "", cfg.keywords);
-      }
-      matches = Boolean(chOk && kwOk);
-    } else if (name === "meta.comment_received.v1" && triggerNode.type === "meta.comment_received") {
-      const cfg = (triggerNode.config || {}) as any;
-      // Validar post específico si se configuró ("all" o vacío significa cualquier post)
-      const targetPostId = String(cfg.postId || "").trim();
-      const postOk = !targetPostId || targetPostId.toLowerCase() === "all" || targetPostId === String(payload.postId || "").trim();
-
-      // Validar si ignora respuestas anidadas a otros comentarios
-      const ignoreNested = Boolean(cfg.ignoreReplies ?? cfg.ignoreNestedReplies ?? false);
-      const nestOk = !ignoreNested || !payload.isNestedReply;
-
-      // Validar canal
-      const chOk = isChannelMatch(cfg.channels, payload.channel || payload.rawChannel);
-
-      // Validar conexión / instancia específica
-      const instOk =
-        cfg.connectionMode !== "selected" ||
-        (Array.isArray(cfg.instanceIds) && cfg.instanceIds.includes(payload.instanceId));
-
-      // Validar palabras clave con normalización semántica
-      let kwOk = true;
-      if (Array.isArray(cfg.keywords) && cfg.keywords.length > 0) {
-        kwOk = matchesKeywords(payload.text || "", cfg.keywords);
-      }
-
-      // Validar cooldown por (workflow_id, sender_id, post_id) (once_per_user_per_post)
-      let cooldownOk = true;
-      const oncePerUser = Boolean(cfg.oncePerUserPerPost ?? true);
-      if (oncePerUser && payload.senderId && payload.postId) {
-        const { data: priorExec } = await (supabaseAdmin as any)
-          .from("automation_executions")
-          .select("id")
-          .eq("company_id", companyId)
-          .eq("workflow_id", wf.id)
-          .filter("context->trigger->>senderId", "eq", String(payload.senderId))
-          .filter("context->trigger->>postId", "eq", String(payload.postId))
-          .limit(1)
-          .maybeSingle();
-
-        if (priorExec?.id) {
-          cooldownOk = false;
+        // Validar tipo de conversación (direct, group, all)
+        const convType = cfg.conversationType || "direct";
+        const isGroup = Boolean(payload.isGroup || (payload.externalConversationId && String(payload.externalConversationId).includes("@g.us")));
+        let convOk = true;
+        if (convType === "direct") {
+          convOk = !isGroup;
+        } else if (convType === "group") {
+          convOk = isGroup;
+        } else if (convType === "all") {
+          convOk = true;
         }
-      }
 
-      matches = Boolean(postOk && nestOk && chOk && instOk && kwOk && cooldownOk);
-    } else if (name === "crm.card.stage_changed.v1" && triggerNode.type === "crm.card_stage_changed") {
-      const cfg = (triggerNode.config || {}) as any;
-      const pipeOk = !cfg.pipelineId || cfg.pipelineId === payload.pipelineId;
-      const fromOk = !cfg.fromStageId || cfg.fromStageId === payload.fromStageId;
-      const toOk = !cfg.toStageId || cfg.toStageId === payload.toStageId;
-      matches = Boolean(pipeOk && fromOk && toOk);
-    } else if (name === "crm.card.created.v1" && triggerNode.type === "crm.card_created") {
-      const cfg = (triggerNode.config || {}) as any;
-      const pipeOk = !cfg.pipelineId || cfg.pipelineId === payload.pipelineId;
-      const stOk = !cfg.stageId || cfg.stageId === payload.stageId;
-      matches = Boolean(pipeOk && stOk);
-    } else if (name === "crm.card.owner_changed.v1" && triggerNode.type === "crm.card_owner_changed") {
-      const cfg = (triggerNode.config || {}) as any;
-      const ownerOk = !cfg.toOwnerId || cfg.toOwnerId === payload.toOwnerId;
-      matches = Boolean(ownerOk);
-    } else if (name === "crm.card.tags_changed.v1" && triggerNode.type === "crm.card_tags_changed") {
-      const cfg = (triggerNode.config || {}) as any;
-      const targetTag = String(cfg.tag || "").trim().toLowerCase();
-      const tagsAfter = Array.isArray(payload.tagsAfter) ? payload.tagsAfter : [];
-      const tagOk = !targetTag || tagsAfter.some((t: string) => String(t).toLowerCase() === targetTag);
-      matches = Boolean(tagOk);
-    }
+        let kwOk = true;
+        if (Array.isArray(cfg.keywords) && cfg.keywords.length > 0) {
+          kwOk = matchesKeywords(payload.text || "", cfg.keywords);
+        }
 
-    if (matches) {
-      // Reentrada
-      const subjectId = payload.cardId || payload.phone || payload.externalConversationId || payload.senderId || payload.commentId;
-      if (graph.settings?.reentry === "deny_while_active" && subjectId) {
-        const { data: activeExec } = await (supabaseAdmin as any)
-          .from("automation_executions")
-          .select("id, event_id")
-          .eq("company_id", companyId)
-          .eq("workflow_id", wf.id)
-          .eq("subject_id", String(subjectId))
-          .in("status", ["queued", "running", "waiting"])
-          .limit(1)
-          .maybeSingle();
+        matches = Boolean(chOk && instOk && convOk && kwOk);
+      } else if (
+        (name === "telegram.business_message_received.v1" || (name === "messaging.inbound_received.v1" && payload.channel === "telegram")) &&
+        triggerNode.type === "telegram.business_message_received"
+      ) {
+        const cfg = (triggerNode.config || {}) as any;
+        const instOk =
+          cfg.connectionMode !== "selected" ||
+          (Array.isArray(cfg.instanceIds) && cfg.instanceIds.includes(payload.instanceId));
 
-        if (activeExec && activeExec.event_id !== event.id) continue;
-      }
+        const convType = cfg.conversationType || "direct";
+        const isGroup = Boolean(payload.isGroup || (payload.externalConversationId && String(payload.externalConversationId).includes("@g.us")));
+        let convOk = true;
+        if (convType === "direct") convOk = !isGroup;
+        else if (convType === "group") convOk = isGroup;
 
-      const firstEdge = graph.edges.find((e) => e.source === triggerNode.id);
-      if (!firstEdge) continue;
+        let kwOk = true;
+        if (Array.isArray(cfg.keywords) && cfg.keywords.length > 0) {
+          kwOk = matchesKeywords(payload.text || "", cfg.keywords);
+        }
 
-      // Cargar datos de tarjeta con aislamiento estricto de empresa
-      const { data: cardRow } = payload.cardId
-        ? await (supabaseAdmin as any)
-            .from("crm_cards")
-            .select("id, company_id, nome, numero, canal_chat, canal_entrada, pipeline_id, stage_id, owner_id, tags, valor, email, campos_extras")
+        matches = Boolean(instOk && convOk && kwOk);
+      } else if (name === "telegram.channel_post_published.v1" && triggerNode.type === "telegram.channel_post_published") {
+        const cfg = (triggerNode.config || {}) as any;
+        const chOk = !cfg.channelId || String(cfg.channelId).trim() === String(payload.channelId).trim();
+        const formatOk = !cfg.postFormat || cfg.postFormat === "all" || cfg.postFormat === payload.format;
+        matches = Boolean(chOk && formatOk);
+      } else if (name === "telegram.channel_comment_received.v1" && triggerNode.type === "telegram.channel_comment_received") {
+        const cfg = (triggerNode.config || {}) as any;
+        const chOk = !cfg.channelId || String(cfg.channelId).trim() === String(payload.channelId).trim();
+        let kwOk = true;
+        if (Array.isArray(cfg.keywords) && cfg.keywords.length > 0) {
+          kwOk = matchesKeywords(payload.text || "", cfg.keywords);
+        }
+        matches = Boolean(chOk && kwOk);
+      } else if (name === "meta.comment_received.v1" && triggerNode.type === "meta.comment_received") {
+        const cfg = (triggerNode.config || {}) as any;
+        // Validar post específico si se configuró ("all" o vacío significa cualquier post)
+        const targetPostId = String(cfg.postId || "").trim();
+        const postOk = !targetPostId || targetPostId.toLowerCase() === "all" || targetPostId === String(payload.postId || "").trim();
+
+        // Validar si ignora respuestas anidadas a otros comentarios
+        const ignoreNested = Boolean(cfg.ignoreReplies ?? cfg.ignoreNestedReplies ?? false);
+        const nestOk = !ignoreNested || !payload.isNestedReply;
+
+        // Validar canal
+        const chOk = isChannelMatch(cfg.channels, payload.channel || payload.rawChannel);
+
+        // Validar conexión / instancia específica
+        const instOk =
+          cfg.connectionMode !== "selected" ||
+          (Array.isArray(cfg.instanceIds) && cfg.instanceIds.includes(payload.instanceId));
+
+        // Validar palabras clave con normalización semántica
+        let kwOk = true;
+        if (Array.isArray(cfg.keywords) && cfg.keywords.length > 0) {
+          kwOk = matchesKeywords(payload.text || "", cfg.keywords);
+        }
+
+        // Validar cooldown por (workflow_id, sender_id, post_id) (once_per_user_per_post)
+        let cooldownOk = true;
+        const oncePerUser = Boolean(cfg.oncePerUserPerPost ?? true);
+        if (oncePerUser && payload.senderId && payload.postId) {
+          const { data: priorExec } = await (supabaseAdmin as any)
+            .from("automation_executions")
+            .select("id")
             .eq("company_id", companyId)
-            .eq("id", payload.cardId)
-            .maybeSingle()
-        : { data: null };
+            .eq("workflow_id", wf.id)
+            .filter("context->trigger->>senderId", "eq", String(payload.senderId))
+            .filter("context->trigger->>postId", "eq", String(payload.postId))
+            .limit(1)
+            .maybeSingle();
 
-      const initialContext = {
-        trigger: payload,
-        card: cardRow || null,
-      };
+          if (priorExec?.id) {
+            cooldownOk = false;
+          }
+        }
 
-      const resolvedChannel = payload.channel || cardRow?.canal_chat || null;
-      const resolvedInstanceId = payload.instanceId || cardRow?.campos_extras?.instance_id || null;
+        matches = Boolean(postOk && nestOk && chOk && instOk && kwOk && cooldownOk);
+      } else if (name === "crm.card.stage_changed.v1" && triggerNode.type === "crm.card_stage_changed") {
+        const cfg = (triggerNode.config || {}) as any;
+        const pipeOk = !cfg.pipelineId || cfg.pipelineId === payload.pipelineId;
+        const fromOk = !cfg.fromStageId || cfg.fromStageId === payload.fromStageId;
+        const toOk = !cfg.toStageId || cfg.toStageId === payload.toStageId;
+        matches = Boolean(pipeOk && fromOk && toOk);
+      } else if (name === "crm.card.created.v1" && triggerNode.type === "crm.card_created") {
+        const cfg = (triggerNode.config || {}) as any;
+        const pipeOk = !cfg.pipelineId || cfg.pipelineId === payload.pipelineId;
+        const stOk = !cfg.stageId || cfg.stageId === payload.stageId;
+        matches = Boolean(pipeOk && stOk);
+      } else if (name === "crm.card.owner_changed.v1" && triggerNode.type === "crm.card_owner_changed") {
+        const cfg = (triggerNode.config || {}) as any;
+        const ownerOk = !cfg.toOwnerId || cfg.toOwnerId === payload.toOwnerId;
+        matches = Boolean(ownerOk);
+      } else if (name === "crm.card.tags_changed.v1" && triggerNode.type === "crm.card_tags_changed") {
+        const cfg = (triggerNode.config || {}) as any;
+        const targetTag = String(cfg.tag || "").trim().toLowerCase();
+        const tagsAfter = Array.isArray(payload.tagsAfter) ? payload.tagsAfter : [];
+        const tagOk = !targetTag || tagsAfter.some((t: string) => String(t).toLowerCase() === targetTag);
+        matches = Boolean(tagOk);
+      }
 
-      const { data: started, error: startErr } = await (supabaseAdmin as any)
-        .rpc("automation_start_execution", {
-          p_company_id: companyId, p_workflow_id: wf.id,
-          p_version_id: wf.active_version_id, p_event_id: validEventId,
-          p_subject_type: payload.cardId ? "crm_card" : "contact",
-          p_subject_id: String(subjectId || ""), p_channel: resolvedChannel,
-          p_instance_id: resolvedInstanceId,
-          p_conversation_id: payload.externalConversationId || payload.phone || null,
-          p_card_id: payload.cardId || null, p_node_id: firstEdge.target,
-          p_context: initialContext,
-        });
-      if (startErr) throw startErr;
-      if (started?.state === "started" || started?.state === "repaired") triggeredCount++;
+      if (matches) {
+        // Reentrada
+        const subjectId = payload.cardId || payload.phone || payload.externalConversationId || payload.senderId || payload.commentId;
+        if (graph.settings?.reentry === "deny_while_active" && subjectId) {
+          const { data: activeExec } = await (supabaseAdmin as any)
+            .from("automation_executions")
+            .select("id, event_id")
+            .eq("company_id", companyId)
+            .eq("workflow_id", wf.id)
+            .eq("subject_id", String(subjectId))
+            .in("status", ["queued", "running", "waiting"])
+            .limit(1)
+            .maybeSingle();
+
+          if (activeExec && activeExec.event_id !== event.id) continue;
+        }
+
+        if (graph.settings?.reentry === "replace_active" && subjectId) {
+          try {
+            await (supabaseAdmin as any)
+              .from("automation_executions")
+              .update({
+                status: "cancelled",
+                finished_at: new Date().toISOString(),
+                error_code: "REPLACED_BY_REENTRY",
+              })
+              .eq("company_id", companyId)
+              .eq("workflow_id", wf.id)
+              .eq("subject_id", String(subjectId))
+              .in("status", ["queued", "running", "waiting"]);
+          } catch (e) {
+            console.warn("[dispatchDomainEvent] Error cancelando ejecuciones activas en replace_active:", e);
+          }
+        }
+
+        const firstEdge = graph.edges.find((e) => e.source === triggerNode.id);
+        if (!firstEdge) continue;
+
+        // Cargar datos de tarjeta con aislamiento estricto de empresa
+        const { data: cardRow } = payload.cardId
+          ? await (supabaseAdmin as any)
+              .from("crm_cards")
+              .select("id, company_id, nome, numero, canal_chat, canal_entrada, pipeline_id, stage_id, owner_id, tags, valor, email, campos_extras")
+              .eq("company_id", companyId)
+              .eq("id", payload.cardId)
+              .maybeSingle()
+          : { data: null };
+
+        const initialContext = {
+          trigger: payload,
+          card: cardRow || null,
+        };
+
+        const resolvedChannel = payload.channel || cardRow?.canal_chat || null;
+        const resolvedInstanceId = payload.instanceId || cardRow?.campos_extras?.instance_id || null;
+
+        const { data: started, error: startErr } = await (supabaseAdmin as any)
+          .rpc("automation_start_execution", {
+            p_company_id: companyId, p_workflow_id: wf.id,
+            p_version_id: wf.active_version_id, p_event_id: validEventId,
+            p_subject_type: payload.cardId ? "crm_card" : "contact",
+            p_subject_id: String(subjectId || ""), p_channel: resolvedChannel,
+            p_instance_id: resolvedInstanceId,
+            p_conversation_id: payload.externalConversationId || payload.phone || null,
+            p_card_id: payload.cardId || null, p_node_id: firstEdge.target,
+            p_context: initialContext,
+          });
+        if (startErr) throw startErr;
+        if (started?.state === "started" || started?.state === "repaired") triggeredCount++;
+        break; // Respetar índice único por (company_id, workflow_id, event_id)
+      }
     }
   }
 

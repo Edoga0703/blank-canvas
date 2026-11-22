@@ -120,7 +120,7 @@ export async function runOneAutomationJob(params: {
     return true;
   }
 
-  const maxRuntimeSec = graph?.settings?.maxRuntimeSeconds || 86400;
+  const maxRuntimeSec = graph?.settings?.maxRuntimeSeconds || 86400 * 7;
   const elapsedSec = (Date.now() - new Date(exec.started_at || exec.created_at).getTime()) / 1000;
   if (elapsedSec > maxRuntimeSec) {
     await (supabaseAdmin as any)
@@ -147,6 +147,86 @@ export async function runOneAutomationJob(params: {
       });
     }
     return true;
+  }
+
+  // 3b. Evaluación de Reglas de Parada / Metas del flujo (solo en pasos posteriores al trigger)
+  const settings = graph?.settings as any;
+  if (currentStepCount > 0 && settings) {
+    let goalReason: string | null = null;
+
+    // A) stopOnContactReply: si el contacto envió un mensaje entrante después de iniciar (o tras último reply capturado)
+    if (settings.stopOnContactReply && exec.external_conversation_id && (exec.started_at || exec.created_at)) {
+      const baseSince = exec.started_at || exec.created_at;
+      const lastReplyIso = exec.context?.lastReply?.occurredAt;
+      const sinceIso = lastReplyIso && new Date(lastReplyIso) > new Date(baseSince)
+        ? lastReplyIso
+        : baseSince;
+
+      let replyQuery = (supabaseAdmin as any)
+        .from("mensagens")
+        .select("id")
+        .eq("company_id", job.company_id)
+        .eq("numero", exec.external_conversation_id)
+        .eq("direcao", "entrada")
+        .gt("created_at", sinceIso)
+        .limit(1);
+
+      if (exec.context?.trigger?.messageId) {
+        replyQuery = replyQuery.neq("id", exec.context.trigger.messageId);
+      }
+      if (exec.context?.lastReply?.messageId) {
+        replyQuery = replyQuery.neq("id", exec.context.lastReply.messageId);
+      }
+      const { data: newerReply } = await replyQuery.maybeSingle();
+      if (newerReply?.id) {
+        goalReason = "Objetivo cumplido: el contacto respondió (stopOnContactReply).";
+      }
+    }
+
+    // B) stopOnStageIds: si el lead ya alcanzó una etapa de parada (ej. Ganado / Perdido / Agendado)
+    if (!goalReason && Array.isArray(settings.stopOnStageIds) && settings.stopOnStageIds.length > 0) {
+      const targetCardId = exec.card_id || exec.context?.card?.id || exec.context?.trigger?.cardId || null;
+      if (targetCardId) {
+        const { data: liveCard } = await (supabaseAdmin as any)
+          .from("crm_cards")
+          .select("stage_id")
+          .eq("company_id", job.company_id)
+          .eq("id", targetCardId)
+          .maybeSingle();
+        if (liveCard?.stage_id && settings.stopOnStageIds.includes(liveCard.stage_id)) {
+          goalReason = `Objetivo cumplido: el lead alcanzó la etapa ${liveCard.stage_id} (stopOnStageIds).`;
+        }
+      }
+    }
+
+    if (goalReason) {
+      await (supabaseAdmin as any)
+        .from("automation_executions")
+        .update({
+          status: "succeeded",
+          error_code: "GOAL_MET",
+          error_summary: goalReason,
+          finished_at: new Date().toISOString(),
+          current_node_id: node.id,
+        })
+        .eq("id", exec.id);
+
+      await (supabaseAdmin as any)
+        .from("automation_jobs")
+        .update({ status: "done", last_error: null })
+        .eq("id", job.id);
+
+      const convIdToRelease = exec.external_conversation_id;
+      if (convIdToRelease) {
+        await releaseWorkflowControl({
+          companyId: job.company_id,
+          externalConversationId: convIdToRelease,
+          executionId: exec.id,
+          instanceId: exec.source_instance_id,
+        });
+      }
+      return true;
+    }
   }
 
   const handler = getNodeDefinition(node.type, node.version);
@@ -249,10 +329,11 @@ export async function runOneAutomationJob(params: {
         })
         .eq("id", job.id);
 
-      if (exec.external_conversation_id) {
+      const convIdToRelease = execContext.externalConversationId || exec.external_conversation_id;
+      if (convIdToRelease) {
         await releaseWorkflowControl({
           companyId: job.company_id,
-          externalConversationId: exec.external_conversation_id,
+          externalConversationId: convIdToRelease,
           executionId: exec.id,
           instanceId: exec.source_instance_id,
         });
@@ -340,10 +421,11 @@ export async function runOneAutomationJob(params: {
           })
           .eq("id", exec.id);
 
-        if (exec.external_conversation_id) {
+        const convIdToRelease = execContext.externalConversationId || exec.external_conversation_id;
+        if (convIdToRelease) {
           await releaseWorkflowControl({
             companyId: job.company_id,
-            externalConversationId: exec.external_conversation_id,
+            externalConversationId: convIdToRelease,
             executionId: exec.id,
             instanceId: exec.source_instance_id,
           });
@@ -390,10 +472,11 @@ export async function runOneAutomationJob(params: {
         .update({ status: "dead", last_error: String(err?.message || err) })
         .eq("id", job.id);
 
-      if (exec.external_conversation_id) {
+      const convIdToRelease = execContext.externalConversationId || exec.external_conversation_id;
+      if (convIdToRelease) {
         await releaseWorkflowControl({
           companyId: job.company_id,
-          externalConversationId: exec.external_conversation_id,
+          externalConversationId: convIdToRelease,
           executionId: exec.id,
           instanceId: exec.source_instance_id,
         });
@@ -447,7 +530,11 @@ export async function resumeExpiredWaitingExecutions(limit = 20): Promise<number
     const currentNode = graph?.nodes?.find((n) => n.id === exec.current_node_id);
 
     let targetPort = "next";
-    if (currentNode?.type === "messaging.wait_for_reply") {
+    if (
+      currentNode?.type === "messaging.wait_for_reply" ||
+      currentNode?.type === "messaging.send_interactive" ||
+      currentNode?.type === "messaging.collect_input"
+    ) {
       targetPort = "timeout";
     }
 
@@ -539,3 +626,28 @@ export async function reconcileOrphanRunningExecutions(limit = 10): Promise<numb
 
   return reconciled;
 }
+
+/**
+ * Drena de forma síncrona (con presupuesto acotado para Cloudflare Workers)
+ * los jobs inmediatamente ejecutables (run_after <= now()).
+ * Nunca usa sleep/setTimeout; jobs con jitter o esperas futuras quedan para el cron.
+ */
+export async function drainImmediateAutomationJobs(params?: {
+  workerId?: string;
+  maxJobs?: number;
+  maxTimeMs?: number;
+}): Promise<number> {
+  const workerId = params?.workerId || `hot_${Date.now()}`;
+  const maxJobs = params?.maxJobs ?? 8;
+  const maxTimeMs = params?.maxTimeMs ?? 3000;
+  const startedAt = Date.now();
+  let processed = 0;
+
+  while (processed < maxJobs && Date.now() - startedAt < maxTimeMs) {
+    const didWork = await runOneAutomationJob({ workerId, leaseSeconds: 60 });
+    if (!didWork) break;
+    processed++;
+  }
+  return processed;
+}
+

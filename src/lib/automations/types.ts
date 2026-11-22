@@ -89,5 +89,6 @@ export interface AutomationNodeDefinition<TConfig = any> {
   icon?: string;
   configSchema: z.ZodType<TConfig>;
   outputPorts: readonly string[];
+  resolveOutputPorts?: (config: TConfig) => string[];
   execute(ctx: AutomationExecutionContext, config: TConfig): Promise<NodeExecutionResult>;
 }

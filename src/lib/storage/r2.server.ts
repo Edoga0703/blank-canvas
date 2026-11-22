@@ -1,4 +1,5 @@
-import { createHash, createHmac, randomUUID } from "node:crypto";
+import crypto from "node:crypto";
+const { createHash, createHmac, randomUUID } = crypto;
 import {
   resolveActiveR2UploadConfig,
   resolveR2ConfigById,

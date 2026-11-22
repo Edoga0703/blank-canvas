@@ -1,5 +1,5 @@
 // src/routes/app/automacoes.$workflowId.tsx
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -24,9 +24,12 @@ import {
   getWorkflowFn,
   saveWorkflowDraftFn,
   publishWorkflowFn,
+  duplicateWorkflowFn,
   listExecutionsFn,
   getExecutionDetailFn,
   getAvailableChannelsAndConnectionsFn,
+  listMetaPostsForInstanceFn,
+  uploadAutomationMediaFn,
 } from "@/lib/automations/functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +69,13 @@ import {
   Radio,
   MessageCircle,
   Share2,
+  Image,
+  ListChecks,
+  FormInput,
+  FileCheck2,
+  Upload,
+  Copy,
+  Settings,
 } from "lucide-react";
 
 export const Route = createFileRoute("/app/automacoes/$workflowId")({
@@ -172,6 +182,8 @@ function ActionNodeCard({ data, id }: NodeProps) {
   const isEnsureLead = data.type === "crm.ensure_lead";
   const isMetaPrivateReply = data.type === "meta.send_private_reply";
   const isMetaReplyComment = data.type === "meta.reply_comment";
+  const isSendMedia = data.type === "messaging.send_media";
+  const isSendTemplate = data.type === "messaging.send_template";
   const isTerminal = isHuman || isTgHuman; // Ambos derivar a humano são terminais
 
   const onAddNext = (data as any)?.onAddNext;
@@ -199,6 +211,8 @@ function ActionNodeCard({ data, id }: NodeProps) {
           {isEnsureLead && <UserPlus className="size-4 text-indigo-600" />}
           {isMetaPrivateReply && <Send className="size-4 text-fuchsia-600" />}
           {isMetaReplyComment && <MessageSquareQuote className="size-4 text-pink-600" />}
+          {isSendMedia && <Image className="size-4 text-emerald-600" />}
+          {isSendTemplate && <FileCheck2 className="size-4 text-emerald-600" />}
           <span className="truncate">{String(data.name || "Ação")}</span>
         </div>
         {isTerminal ? (
@@ -235,7 +249,11 @@ function ActionNodeCard({ data, id }: NodeProps) {
                             ? `DM Meta: "${(data.config as any)?.message?.slice(0, 36) || "Enviar mensagem privada..."}..."`
                             : isMetaReplyComment
                               ? `Resposta pública (${((data.config as any)?.variants || []).length > 0 ? `${((data.config as any)?.variants || []).length} variações` : (data.config as any)?.message?.slice(0, 24) || "Comentário público"})`
-                              : "Ação configurada"}
+                              : isSendMedia
+                                ? `Enviar Mídia: ${(data.config as any)?.mediaType || "arquivo"} (${(data.config as any)?.caption?.slice(0, 24) || (data.config as any)?.mediaUrl?.slice(0, 24) || "anexo"})`
+                                : isSendTemplate
+                                  ? `Modelo HSM: ${(data.config as any)?.templateName || "Template WhatsApp"}`
+                                  : "Ação configurada"}
       </p>
 
       {/* Se for terminal (A11), não desenha porta de saída 'next' enganosa */}
@@ -462,6 +480,255 @@ function WaitNodeCard({ data, id }: NodeProps) {
   );
 }
 
+function InteractiveNodeCard({ data, id }: NodeProps) {
+  const onAddNext = (data as any)?.onAddNext;
+  const cfg = (data.config as any) || {};
+  const options = Array.isArray(cfg.options) && cfg.options.length > 0
+    ? cfg.options
+    : [{ id: "opt_1", label: "Opção 1" }, { id: "opt_2", label: "Opção 2" }];
+
+  return (
+    <div className="border-2 border-indigo-500/70 bg-card rounded-2xl p-4 shadow-md w-80 text-xs space-y-3 relative hover:border-indigo-500 transition-colors">
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="input"
+        className="!w-5 !h-5 !bg-indigo-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+      />
+
+      <div className="flex items-center justify-between text-indigo-600 font-semibold">
+        <div className="flex items-center gap-2">
+          <ListChecks className="size-4" />
+          <span className="truncate">{String(data.name || "Menu / Botões")}</span>
+        </div>
+        <Badge variant="outline" className="text-[9px] bg-indigo-500/10 text-indigo-700 border-indigo-200">
+          Interativo
+        </Badge>
+      </div>
+
+      <p className="text-muted-foreground line-clamp-2 italic">
+        {cfg.bodyText || "Escolha uma das opções abaixo..."}
+      </p>
+
+      {/* Lista de opções com Handle à direita para cada ramo */}
+      <div className="space-y-2 pt-1 border-t border-border/50">
+        <span className="text-[10px] font-semibold text-muted-foreground tracking-wider uppercase">
+          Ramos por Opção ({options.length})
+        </span>
+        {options.map((opt: any, idx: number) => (
+          <div
+            key={opt.id}
+            className="flex items-center justify-between p-2 rounded-lg bg-indigo-500/5 border border-indigo-200/50 dark:border-indigo-900/50 relative group/opt"
+          >
+            <div className="flex items-center gap-1.5 truncate max-w-[190px]">
+              <span className="size-4 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                {idx + 1}
+              </span>
+              <span className="font-medium truncate">{opt.label || `Opção ${idx + 1}`}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={opt.id}
+                className="!w-4 !h-4 !bg-indigo-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+              />
+              {onAddNext && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddNext(id, opt.id);
+                  }}
+                  className="size-5 rounded-full bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-600 flex items-center justify-center transition-colors"
+                  title={`Conectar ramo para "${opt.label}"`}
+                >
+                  <Plus className="size-3" />
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {/* Ramo Fallback */}
+        <div className="flex items-center justify-between p-1.5 rounded-lg bg-slate-500/5 border border-slate-200/50 dark:border-slate-800 text-muted-foreground">
+          <span className="text-[11px]">Outra resposta (Fallback)</span>
+          <div className="flex items-center gap-1">
+            <Handle
+              type="source"
+              position={Position.Right}
+              id="fallback"
+              className="!w-3.5 !h-3.5 !bg-slate-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+            />
+            {onAddNext && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddNext(id, "fallback");
+                }}
+                className="size-4 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 flex items-center justify-center transition-colors"
+                title="Conectar ramo de fallback"
+              >
+                <Plus className="size-2.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Ramo Timeout */}
+        <div className="pt-1 flex flex-col items-center relative">
+          <span className="text-[9px] font-semibold text-amber-600 tracking-wider uppercase mb-1">
+            Tempo Esgotado ({cfg.timeoutMinutes || 60}m)
+          </span>
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="timeout"
+            className="!w-4 !h-4 !bg-amber-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+          />
+          {onAddNext && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddNext(id, "timeout");
+              }}
+              className="mt-1 size-4 rounded-full bg-amber-100 hover:bg-amber-200 dark:bg-amber-950 text-amber-600 flex items-center justify-center transition-colors"
+              title="Conectar ramo de timeout"
+            >
+              <Plus className="size-2.5" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CollectInputNodeCard({ data, id }: NodeProps) {
+  const onAddNext = (data as any)?.onAddNext;
+  const cfg = (data.config as any) || {};
+  const vType = cfg.validationType || "text";
+  const targetField = cfg.targetField === "custom" ? (cfg.customFieldKey || "campo_extra") : (cfg.targetField || "custom");
+
+  return (
+    <div className="border-2 border-teal-500/70 bg-card rounded-2xl p-4 shadow-md w-80 text-xs space-y-3 relative hover:border-teal-500 transition-colors">
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="input"
+        className="!w-5 !h-5 !bg-teal-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+      />
+
+      <div className="flex items-center justify-between text-teal-600 font-semibold">
+        <div className="flex items-center gap-2">
+          <FormInput className="size-4" />
+          <span className="truncate">{String(data.name || "Capturar Dado")}</span>
+        </div>
+        <Badge variant="outline" className="text-[9px] bg-teal-500/10 text-teal-700 border-teal-200">
+          CRM: {targetField}
+        </Badge>
+      </div>
+
+      <p className="text-muted-foreground line-clamp-2 italic">
+        {cfg.promptText || "Por favor, digite seu dado..."}
+      </p>
+
+      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+        <span className="font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-400">Validação:</span>
+        <Badge variant="secondary" className="text-[9px] font-mono capitalize">
+          {vType}
+        </Badge>
+      </div>
+
+      <div className="space-y-2 pt-1 border-t border-border/50">
+        {/* Ramo Válido */}
+        <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-500/5 border border-emerald-200/50 dark:border-emerald-900/50">
+          <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+            <CheckCircle2 className="size-3.5 text-emerald-600" /> Dado Válido (Salvo no CRM)
+          </span>
+          <div className="flex items-center gap-1">
+            <Handle
+              type="source"
+              position={Position.Right}
+              id="valid"
+              className="!w-4 !h-4 !bg-emerald-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+            />
+            {onAddNext && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddNext(id, "valid");
+                }}
+                className="size-5 rounded-full bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center transition-colors"
+                title="Conectar ramo de dado válido"
+              >
+                <Plus className="size-3" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Ramo Inválido */}
+        <div className="flex items-center justify-between p-2 rounded-lg bg-rose-500/5 border border-rose-200/50 dark:border-rose-900/50">
+          <span className="text-[11px] font-medium text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
+            <X className="size-3.5 text-rose-600" /> Inválido (após {cfg.maxRetries ?? 2} tentativas)
+          </span>
+          <div className="flex items-center gap-1">
+            <Handle
+              type="source"
+              position={Position.Right}
+              id="invalid"
+              className="!w-4 !h-4 !bg-rose-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+            />
+            {onAddNext && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddNext(id, "invalid");
+                }}
+                className="size-5 rounded-full bg-rose-100 hover:bg-rose-200 dark:bg-rose-950 text-rose-600 flex items-center justify-center transition-colors"
+                title="Conectar ramo de dado inválido"
+              >
+                <Plus className="size-3" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Ramo Timeout */}
+        <div className="pt-1 flex flex-col items-center relative">
+          <span className="text-[9px] font-semibold text-amber-600 tracking-wider uppercase mb-1">
+            Tempo Esgotado ({cfg.timeoutMinutes || 60}m)
+          </span>
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="timeout"
+            className="!w-4 !h-4 !bg-amber-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+          />
+          {onAddNext && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddNext(id, "timeout");
+              }}
+              className="mt-1 size-4 rounded-full bg-amber-100 hover:bg-amber-200 dark:bg-amber-950 text-amber-600 flex items-center justify-center transition-colors"
+              title="Conectar ramo de timeout"
+            >
+              <Plus className="size-2.5" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EndNodeCard({ data }: NodeProps) {
   return (
     <div className="border-2 border-slate-500/70 bg-card rounded-2xl p-4 shadow-md w-56 text-xs space-y-2 relative text-center hover:border-slate-500 transition-colors">
@@ -486,8 +753,43 @@ const nodeTypes = {
   conditionNode: ConditionNodeCard,
   waitNode: WaitNodeCard,
   delayNode: WaitNodeCard, // P1.B: Compatibilidade com nós de atraso
+  interactiveNode: InteractiveNodeCard,
+  collectNode: CollectInputNodeCard,
   endNode: EndNodeCard,
 };
+
+interface VariableChipsProps {
+  onInsert: (variable: string) => void;
+}
+
+const AVAILABLE_VARIABLES: Array<{ label: string; tag: string }> = [
+  { label: "Nome", tag: "{{contact.nome}}" },
+  { label: "Telefone", tag: "{{contact.telefone}}" },
+  { label: "E-mail", tag: "{{contact.email}}" },
+  { label: "Card CRM", tag: "{{card.titulo}}" },
+  { label: "Valor", tag: "{{card.valor}}" },
+  { label: "Texto Gatilho", tag: "{{trigger.text}}" },
+  { label: "ID Remetente", tag: "{{trigger.sender_id}}" },
+  { label: "Última Resposta", tag: "{{last_reply.text}}" },
+];
+
+function VariableChips({ onInsert }: VariableChipsProps) {
+  return (
+    <div className="flex flex-wrap items-center gap-1 pt-1">
+      <span className="text-[10px] text-muted-foreground mr-1">Inserir:</span>
+      {AVAILABLE_VARIABLES.map((v) => (
+        <button
+          key={v.tag}
+          type="button"
+          onClick={() => onInsert(v.tag)}
+          className="px-1.5 py-0.5 rounded text-[10px] bg-muted hover:bg-muted/80 text-foreground border transition-colors font-mono"
+        >
+          {v.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 // ============================================================================
 // PÁGINA PRINCIPAL DO CANVAS COM INSPECTOR FIXO LATERAL (A01)
@@ -498,9 +800,13 @@ function AutomacaoCanvasPage() {
   const getWorkflow = useServerFn(getWorkflowFn);
   const saveDraft = useServerFn(saveWorkflowDraftFn);
   const publishWf = useServerFn(publishWorkflowFn);
+  const duplicateWf = useServerFn(duplicateWorkflowFn);
   const listExecutions = useServerFn(listExecutionsFn);
   const getExecutionDetail = useServerFn(getExecutionDetailFn);
   const getAuxData = useServerFn(getAvailableChannelsAndConnectionsFn);
+  const listMetaPosts = useServerFn(listMetaPostsForInstanceFn);
+  const uploadMedia = useServerFn(uploadAutomationMediaFn);
+  const navigate = useNavigate();
 
   const [workflow, setWorkflow] = useState<any>(null);
   const [versionNumber, setVersionNumber] = useState(1);
@@ -511,7 +817,31 @@ function AutomacaoCanvasPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [activeTab, setActiveTab] = useState<"canvas" | "history">("canvas");
+
+  const [workflowSettings, setWorkflowSettings] = useState<{
+    reentry: "allow" | "deny_while_active" | "replace_active";
+    maxRuntimeSeconds: number;
+    maxSteps: number;
+    ui_mode: "quick_rule" | "canvas";
+    stopOnContactReply: boolean;
+    stopOnStageIds: string[];
+    timezone: string;
+  }>({
+    reentry: "deny_while_active",
+    maxRuntimeSeconds: 604800,
+    maxSteps: 100,
+    ui_mode: "canvas",
+    stopOnContactReply: false,
+    stopOnStageIds: [],
+    timezone: "America/Sao_Paulo",
+  });
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const [loadingMetaPosts, setLoadingMetaPosts] = useState(false);
+  const [metaPostsList, setMetaPostsList] = useState<any[]>([]);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
 
   const [auxData, setAuxData] = useState<{
     instances: any[];
@@ -661,6 +991,49 @@ function AutomacaoCanvasPage() {
           minDelaySeconds: 5,
           maxDelaySeconds: 25,
         };
+      } else if (typeKey === "messaging.send_media") {
+        nodeType = "actionNode";
+        nodeName = "Enviar Mídia";
+        initialConfig = {
+          mediaType: "image",
+          mediaUrl: "",
+          caption: "",
+          connectionPolicy: "same_as_trigger",
+        };
+      } else if (typeKey === "messaging.send_interactive") {
+        nodeType = "interactiveNode";
+        nodeName = "Menu / Botões";
+        initialConfig = {
+          bodyText: "Como podemos te ajudar hoje?",
+          footerText: "Selecione uma opção",
+          options: [
+            { id: "opt_1", label: "Falar com Vendas" },
+            { id: "opt_2", label: "Tirar Dúvidas" },
+          ],
+          repromptText: "Por favor, digite o número correspondente a uma das opções.",
+          maxRetries: 2,
+          timeoutMinutes: 60,
+        };
+      } else if (typeKey === "messaging.collect_input") {
+        nodeType = "collectNode";
+        nodeName = "Capturar Informação";
+        initialConfig = {
+          promptText: "Por favor, digite seu e-mail para continuarmos:",
+          validationType: "email",
+          targetField: "email",
+          invalidMessage: "Formato inválido. Por favor, digite um e-mail válido:",
+          maxRetries: 2,
+          timeoutMinutes: 60,
+        };
+      } else if (typeKey === "messaging.send_template") {
+        nodeType = "actionNode";
+        nodeName = "Modelo WhatsApp (HSM)";
+        initialConfig = {
+          templateName: "",
+          languageCode: "pt_BR",
+          bodyParameters: [],
+          connectionPolicy: "same_as_trigger",
+        };
       }
 
       const newNode: Node = {
@@ -702,7 +1075,11 @@ function AutomacaoCanvasPage() {
             ? "true"
             : typeKey === "messaging.wait_for_reply"
               ? "reply"
-              : "next";
+              : typeKey === "messaging.send_interactive"
+                ? (initialConfig.options?.[0]?.id || "opt_1")
+                : typeKey === "messaging.collect_input"
+                  ? "valid"
+                  : "next";
 
         chainedEdge = {
           id: `edge_${newId}_${outHandle}_to_${existingEdge.target}`,
@@ -771,15 +1148,25 @@ function AutomacaoCanvasPage() {
       setAuxData(resAux as any);
       setIsDirty(false);
 
+      if (resWf.graph?.settings) {
+        setWorkflowSettings((prev) => ({
+          ...prev,
+          ...resWf.graph.settings,
+        }));
+      }
+
       const flowNodes: Node[] = (resWf.graph?.nodes || []).map((n: any) => {
         let nType = "actionNode";
         if (
           n.type.startsWith("messaging.inbound") ||
           n.type.startsWith("crm.card") ||
           n.type.startsWith("telegram.business_message") ||
-          n.type.startsWith("telegram.channel_")
+          n.type.startsWith("telegram.channel_") ||
+          n.type === "meta.comment_received"
         ) nType = "triggerNode";
         else if (n.type.startsWith("condition.")) nType = "conditionNode";
+        else if (n.type === "messaging.send_interactive") nType = "interactiveNode";
+        else if (n.type === "messaging.collect_input") nType = "collectNode";
         else if (n.type.startsWith("control.wait") || n.type.startsWith("messaging.wait")) nType = "waitNode";
         else if (n.type === "control.end") nType = "endNode";
 
@@ -904,6 +1291,8 @@ function AutomacaoCanvasPage() {
       type === "meta.comment_received"
     ) nType = "triggerNode";
     else if (type.startsWith("condition.")) nType = "conditionNode";
+    else if (type === "messaging.send_interactive") nType = "interactiveNode";
+    else if (type === "messaging.collect_input") nType = "collectNode";
     else if (type.startsWith("control.wait") || type.startsWith("messaging.wait")) nType = "waitNode";
     else if (type === "control.end") nType = "endNode";
 
@@ -925,6 +1314,41 @@ function AutomacaoCanvasPage() {
         delaySeconds: 0,
         minDelaySeconds: 5,
         maxDelaySeconds: 25,
+      };
+    } else if (type === "messaging.send_media") {
+      initialConfig = {
+        mediaType: "image",
+        mediaUrl: "",
+        caption: "",
+        connectionPolicy: "same_as_trigger",
+      };
+    } else if (type === "messaging.send_interactive") {
+      initialConfig = {
+        bodyText: "Como podemos te ajudar hoje?",
+        footerText: "Selecione uma opção",
+        options: [
+          { id: "opt_1", label: "Falar com Vendas" },
+          { id: "opt_2", label: "Tirar Dúvidas" },
+        ],
+        repromptText: "Por favor, digite o número correspondente a uma das opções.",
+        maxRetries: 2,
+        timeoutMinutes: 60,
+      };
+    } else if (type === "messaging.collect_input") {
+      initialConfig = {
+        promptText: "Por favor, digite seu e-mail para continuarmos:",
+        validationType: "email",
+        targetField: "email",
+        invalidMessage: "Formato inválido. Por favor, digite um e-mail válido:",
+        maxRetries: 2,
+        timeoutMinutes: 60,
+      };
+    } else if (type === "messaging.send_template") {
+      initialConfig = {
+        templateName: "",
+        languageCode: "pt_BR",
+        bodyParameters: [],
+        connectionPolicy: "same_as_trigger",
       };
     }
 
@@ -971,9 +1395,7 @@ function AutomacaoCanvasPage() {
         targetPort: e.targetHandle || "input",
       })),
       settings: {
-        reentry: "deny_while_active" as const,
-        maxRuntimeSeconds: 86400,
-        maxSteps: 100,
+        ...workflowSettings,
         ui_mode: "canvas" as const,
       },
     };
@@ -1031,6 +1453,22 @@ function AutomacaoCanvasPage() {
       toast.error(e?.message || "Erro ao carregar detalhes da execução");
     } finally {
       setLoadingDetail(false);
+    }
+  }
+
+  async function handleDuplicate() {
+    setDuplicating(true);
+    try {
+      const res = await duplicateWf({ data: { workflowId } });
+      toast.success("Fluxo duplicado com sucesso!");
+      navigate({
+        to: "/app/automacoes/$workflowId",
+        params: { workflowId: res.workflowId },
+      });
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao duplicar fluxo");
+    } finally {
+      setDuplicating(false);
     }
   }
 
@@ -1103,6 +1541,29 @@ function AutomacaoCanvasPage() {
 
         {/* Actions */}
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSettingsOpen(true)}
+            className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+            title="Configurações Gerais do Fluxo"
+          >
+            <Settings className="size-3.5" />
+            Configurações
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDuplicate}
+            disabled={duplicating || saving || publishing}
+            className="gap-1.5 text-xs"
+            title="Duplicar fluxo"
+          >
+            {duplicating ? <Loader2 className="size-3.5 animate-spin" /> : <Copy className="size-3.5" />}
+            Duplicar
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -1199,6 +1660,38 @@ function AutomacaoCanvasPage() {
                   className="w-full justify-start text-xs gap-2 border-emerald-500/30 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950"
                 >
                   <Send className="size-3.5" /> Enviar Mensagem
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addNodeFromPalette("messaging.send_media", "Enviar Mídia")}
+                  className="w-full justify-start text-xs gap-2 border-emerald-500/30 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+                >
+                  <Image className="size-3.5" /> Enviar Mídia (Foto/Doc)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addNodeFromPalette("messaging.send_interactive", "Menu / Botões")}
+                  className="w-full justify-start text-xs gap-2 border-indigo-500/30 text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950"
+                >
+                  <ListChecks className="size-3.5" /> Menu / Botões Interativos
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addNodeFromPalette("messaging.collect_input", "Capturar Informação")}
+                  className="w-full justify-start text-xs gap-2 border-teal-500/30 text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-950"
+                >
+                  <FormInput className="size-3.5" /> Capturar Dado no CRM
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addNodeFromPalette("messaging.send_template", "Modelo WhatsApp (HSM)")}
+                  className="w-full justify-start text-xs gap-2 border-emerald-500/30 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+                >
+                  <FileCheck2 className="size-3.5" /> Modelo WhatsApp (HSM)
                 </Button>
                 <Button
                   variant="outline"
@@ -1685,9 +2178,15 @@ function AutomacaoCanvasPage() {
                       <Label>Texto da Mensagem *</Label>
                       <Textarea
                         rows={4}
-                        placeholder="Digite a mensagem... use {{contact.name}} ou {{card.nome}}"
+                        placeholder="Digite a mensagem... use {{contact.nome}} ou {{card.titulo}}"
                         value={((selectedNode.data.config as any)?.text as string) || ""}
                         onChange={(e) => updateNodeConfig(selectedNode.id, "text", e.target.value)}
+                      />
+                      <VariableChips
+                        onInsert={(v: string) => {
+                          const cur = ((selectedNode.data.config as any)?.text as string) || "";
+                          updateNodeConfig(selectedNode.id, "text", cur + (cur ? " " : "") + v);
+                        }}
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -2145,15 +2644,115 @@ function AutomacaoCanvasPage() {
                       </Select>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">ID da Publicação ou Reel (opcional)</Label>
-                      <Input
-                        placeholder="Deixe em branco para qualquer post ou cole o ID"
-                        value={((selectedNode.data.config as any)?.postId as string) || ""}
-                        onChange={(e) => updateNodeConfig(selectedNode.id, "postId", e.target.value.trim() || undefined)}
-                      />
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs">Publicação ou Reel Específico (opcional)</Label>
+                        {Boolean((selectedNode.data.config as any)?.postId) && (
+                          <button
+                            type="button"
+                            onClick={() => updateNodeConfig(selectedNode.id, "postId", undefined)}
+                            className="text-[10px] text-primary hover:underline"
+                          >
+                            Limpar (Qualquer post)
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Input
+                          placeholder="Deixe em branco para qualquer post ou selecione abaixo"
+                          value={((selectedNode.data.config as any)?.postId as string) || ""}
+                          onChange={(e) => updateNodeConfig(selectedNode.id, "postId", e.target.value.trim() || undefined)}
+                          className="text-xs"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={loadingMetaPosts}
+                          onClick={async () => {
+                            const instId =
+                              ((selectedNode.data.config as any)?.instanceIds?.[0] as string) ||
+                              ((selectedNode.data.config as any)?.instanceId as string) ||
+                              auxData.instances.find((i: any) => {
+                                const p = String(i.provider || "").toLowerCase();
+                                return p.includes("meta") || p.includes("instagram") || p.includes("messenger");
+                              })?.id;
+
+                            if (!instId) {
+                              toast.error("Selecione uma conta Meta conectada para listar publicações.");
+                              return;
+                            }
+                            setLoadingMetaPosts(true);
+                            try {
+                              const res = await listMetaPosts({ data: { instanceId: instId, limit: 12 } });
+                              setMetaPostsList(res.posts || []);
+                              if (!res.posts?.length) {
+                                toast.info("Nenhuma publicação encontrada nesta conta ou falta permissão.");
+                              } else {
+                                toast.success(`${res.posts.length} publicações carregadas!`);
+                              }
+                            } catch (err: any) {
+                              toast.error(err?.message || "Erro ao buscar publicações da Meta.");
+                            } finally {
+                              setLoadingMetaPosts(false);
+                            }
+                          }}
+                          className="shrink-0 text-xs gap-1"
+                        >
+                          {loadingMetaPosts ? <Loader2 className="size-3.5 animate-spin" /> : <Image className="size-3.5" />}
+                          <span>Buscar Posts</span>
+                        </Button>
+                      </div>
+
+                      {/* Grade de Posts Recentes */}
+                      {metaPostsList.length > 0 && (
+                        <div className="border rounded-xl p-2 bg-muted/20 space-y-2">
+                          <span className="text-[10px] font-semibold text-muted-foreground block">
+                            Selecione o post ou reel desejado:
+                          </span>
+                          <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
+                            {metaPostsList.map((post) => {
+                              const isSelected = (selectedNode.data.config as any)?.postId === post.id;
+                              return (
+                                <button
+                                  key={post.id}
+                                  type="button"
+                                  onClick={() => updateNodeConfig(selectedNode.id, "postId", post.id)}
+                                  className={`group relative rounded-lg overflow-hidden border text-left p-1 transition-all ${
+                                    isSelected
+                                      ? "ring-2 ring-primary border-primary bg-primary/10"
+                                      : "hover:border-primary/50 bg-card"
+                                  }`}
+                                >
+                                  {post.thumbnailUrl ? (
+                                    <img
+                                      src={post.thumbnailUrl}
+                                      alt="Post thumbnail"
+                                      className="w-full h-14 object-cover rounded"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-14 bg-muted flex items-center justify-center rounded">
+                                      <Image className="size-5 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                  <p className="text-[9px] line-clamp-2 mt-1 font-medium text-foreground leading-tight">
+                                    {post.caption || "(Sem legenda)"}
+                                  </p>
+                                  {isSelected && (
+                                    <span className="absolute top-1 right-1 bg-primary text-white rounded-full p-0.5">
+                                      <Check className="size-2.5" />
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                       <p className="text-[10px] text-muted-foreground">
-                        Se preenchido, o fluxo só será ativado em comentários desta publicação específica.
+                        Se em branco, dispara para comentários em qualquer publicação.
                       </p>
                     </div>
 
@@ -2417,6 +3016,518 @@ function AutomacaoCanvasPage() {
                   </div>
                 )}
 
+                {/* messaging.send_media (Action) */}
+                {selectedNode.data.type === "messaging.send_media" && (
+                  <div className="space-y-4">
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-200 rounded-xl text-xs text-emerald-900 space-y-1">
+                      <p className="font-semibold flex items-center gap-1.5">
+                        <Image className="size-4 text-emerald-600" />
+                        Envio de Mídia Rica (WhatsApp / D-API / Meta)
+                      </p>
+                      <p className="text-[11px] text-emerald-800 leading-relaxed">
+                        Envia imagens, vídeos, áudios PTT ou documentos anexos. Suporta upload direto para Cloudflare R2 ou URL externa.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Tipo de Mídia</Label>
+                      <Select
+                        value={((selectedNode.data.config as any)?.mediaType as string) || "image"}
+                        onValueChange={(val) => updateNodeConfig(selectedNode.id, "mediaType", val)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="image">Imagem (JPEG / PNG / WEBP)</SelectItem>
+                          <SelectItem value="video">Vídeo (MP4)</SelectItem>
+                          <SelectItem value="audio">Áudio (Mensagem de Voz / OGG)</SelectItem>
+                          <SelectItem value="document">Documento (PDF / Arquivo)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs">Arquivo de Mídia</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          placeholder="https://... ou faça upload"
+                          value={((selectedNode.data.config as any)?.mediaUrl as string) || ""}
+                          onChange={(e) => updateNodeConfig(selectedNode.id, "mediaUrl", e.target.value.trim())}
+                          className="text-xs"
+                        />
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            className="hidden"
+                            disabled={uploadingMedia}
+                            accept={
+                              (selectedNode.data.config as any)?.mediaType === "image"
+                                ? "image/*"
+                                : (selectedNode.data.config as any)?.mediaType === "video"
+                                  ? "video/*"
+                                  : (selectedNode.data.config as any)?.mediaType === "audio"
+                                    ? "audio/*"
+                                    : "*/*"
+                            }
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              if (file.size > 15 * 1024 * 1024) {
+                                toast.error("O arquivo excede o limite máximo de 15 MB.");
+                                return;
+                              }
+                              setUploadingMedia(true);
+                              try {
+                                const reader = new FileReader();
+                                reader.onload = async () => {
+                                  try {
+                                    const base64 = (reader.result as string)?.split(",")?.[1] || "";
+                                    const res = await uploadMedia({
+                                      data: {
+                                        fileName: file.name,
+                                        base64,
+                                        mimeType: file.type || "application/octet-stream",
+                                      },
+                                    });
+                                    updateNodeConfig(selectedNode.id, "mediaUrl", res.url);
+                                    if (file.name) {
+                                      updateNodeConfig(selectedNode.id, "fileName", file.name);
+                                    }
+                                    toast.success("Arquivo enviado com sucesso para o R2!");
+                                  } catch (err: any) {
+                                    toast.error(err?.message || "Erro no upload do arquivo.");
+                                  } finally {
+                                    setUploadingMedia(false);
+                                  }
+                                };
+                                reader.readAsDataURL(file);
+                              } catch (err: any) {
+                                setUploadingMedia(false);
+                                toast.error("Falha ao ler arquivo local.");
+                              }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            asChild
+                            disabled={uploadingMedia}
+                            className="text-xs gap-1.5 shrink-0"
+                          >
+                            <span>
+                              {uploadingMedia ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
+                              Upload
+                            </span>
+                          </Button>
+                        </label>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        Tamanho máximo: 15MB. Os arquivos são armazenados no bucket seguro do Capiversa.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Legenda da Mensagem (Opcional)</Label>
+                      <Textarea
+                        rows={3}
+                        placeholder="Digite a legenda opcional..."
+                        value={((selectedNode.data.config as any)?.caption as string) || ""}
+                        onChange={(e) => updateNodeConfig(selectedNode.id, "caption", e.target.value)}
+                      />
+                      <VariableChips
+                        onInsert={(v: string) => {
+                          const cur = ((selectedNode.data.config as any)?.caption as string) || "";
+                          updateNodeConfig(selectedNode.id, "caption", cur + (cur ? " " : "") + v);
+                        }}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Política de Conexão</Label>
+                      <Select
+                        value={((selectedNode.data.config as any)?.connectionPolicy as string) || "same_as_trigger"}
+                        onValueChange={(val) => updateNodeConfig(selectedNode.id, "connectionPolicy", val)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="same_as_trigger">Mesma linha/conexão do gatilho</SelectItem>
+                          <SelectItem value="specific">Linha específica</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+
+                {/* messaging.send_interactive (Action / Branching) */}
+                {selectedNode.data.type === "messaging.send_interactive" && (
+                  <div className="space-y-4">
+                    <div className="p-3 bg-indigo-500/10 border border-indigo-200 rounded-xl text-xs text-indigo-900 space-y-1">
+                      <p className="font-semibold flex items-center gap-1.5">
+                        <ListChecks className="size-4 text-indigo-600" />
+                        Menu Interativo & Botões (Kommo / ManyChat)
+                      </p>
+                      <p className="text-[11px] text-indigo-800 leading-relaxed">
+                        Apresenta opções em botões nativos (quando suportado) ou menu numerado humanizado. Cada opção cria um ramo de saída independente no Canvas.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Texto Principal / Pergunta *</Label>
+                      <Textarea
+                        rows={3}
+                        placeholder="Ex: Olá! Como posso te ajudar hoje?"
+                        value={((selectedNode.data.config as any)?.bodyText as string) || ""}
+                        onChange={(e) => updateNodeConfig(selectedNode.id, "bodyText", e.target.value)}
+                      />
+                      <VariableChips
+                        onInsert={(v: string) => {
+                          const cur = ((selectedNode.data.config as any)?.bodyText as string) || "";
+                          updateNodeConfig(selectedNode.id, "bodyText", cur + (cur ? " " : "") + v);
+                        }}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Rodapé (Opcional)</Label>
+                      <Input
+                        placeholder="Ex: Digite o número ou toque no botão"
+                        value={((selectedNode.data.config as any)?.footerText as string) || ""}
+                        onChange={(e) => updateNodeConfig(selectedNode.id, "footerText", e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2 pt-2 border-t">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold">Opções de Resposta (1 a 5)</Label>
+                        <span className="text-[10px] text-muted-foreground">
+                          {(((selectedNode.data.config as any)?.options as any[]) || []).length} de 5
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {((((selectedNode.data.config as any)?.options as any[]) || []).map((opt: any, idx: number) => (
+                          <div key={opt.id || idx} className="flex items-center gap-2 bg-muted/40 p-2 rounded-lg border">
+                            <span className="size-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                              {idx + 1}
+                            </span>
+                            <Input
+                              value={opt.label || ""}
+                              placeholder={`Título da Opção ${idx + 1}`}
+                              onChange={(e) => {
+                                const opts = [...(((selectedNode.data.config as any)?.options as any[]) || [])];
+                                opts[idx] = { ...opts[idx], label: e.target.value };
+                                updateNodeConfig(selectedNode.id, "options", opts);
+                              }}
+                              className="text-xs h-8"
+                            />
+                            {(((selectedNode.data.config as any)?.options as any[]) || []).length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  const opts = (((selectedNode.data.config as any)?.options as any[]) || []).filter(
+                                    (_, i) => i !== idx
+                                  );
+                                  updateNodeConfig(selectedNode.id, "options", opts);
+                                  // Remove edges conectadas a esta opção deletada
+                                  setEdges((eds) => eds.filter((ed) => !(ed.source === selectedNode.id && ed.sourceHandle === opt.id)));
+                                }}
+                                className="size-8 text-muted-foreground hover:text-destructive shrink-0"
+                              >
+                                <X className="size-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        )))}
+                      </div>
+
+                      {((((selectedNode.data.config as any)?.options as any[]) || []).length < 5) && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const cur = [ ...(((selectedNode.data.config as any)?.options as any[]) || []) ];
+                            const nextNum = cur.length + 1;
+                            cur.push({ id: `opt_${nextNum}_${crypto.randomUUID().slice(0, 4)}`, label: `Opção ${nextNum}` });
+                            updateNodeConfig(selectedNode.id, "options", cur);
+                          }}
+                          className="w-full text-xs gap-1.5 mt-1"
+                        >
+                          <Plus className="size-3.5" /> Adicionar Opção
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5 pt-2 border-t">
+                      <Label className="text-xs">Mensagem de Resposta Inválida (Reprompt)</Label>
+                      <Input
+                        value={((selectedNode.data.config as any)?.repromptText as string) || ""}
+                        placeholder="Por favor, selecione uma das opções válidas digitando o número."
+                        onChange={(e) => updateNodeConfig(selectedNode.id, "repromptText", e.target.value)}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">Tentativas (Retries)</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={5}
+                          value={(selectedNode.data.config as any)?.maxRetries ?? 2}
+                          onChange={(e) => updateNodeConfig(selectedNode.id, "maxRetries", Number(e.target.value))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">Tempo Limite (min)</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={1440}
+                          value={(selectedNode.data.config as any)?.timeoutMinutes ?? 60}
+                          onChange={(e) => updateNodeConfig(selectedNode.id, "timeoutMinutes", Number(e.target.value))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* messaging.collect_input (Action / CRM Capture) */}
+                {selectedNode.data.type === "messaging.collect_input" && (
+                  <div className="space-y-4">
+                    <div className="p-3 bg-teal-500/10 border border-teal-200 rounded-xl text-xs text-teal-900 space-y-1">
+                      <p className="font-semibold flex items-center gap-1.5">
+                        <FormInput className="size-4 text-teal-600" />
+                        Captura de Dados Validada (Kommo Salesbot)
+                      </p>
+                      <p className="text-[11px] text-teal-800 leading-relaxed">
+                        Pergunta e valida e-mail, telefone, valor ou campos extras, salvando automaticamente no cartão CRM correspondente.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Pergunta / Solicitação de Dado *</Label>
+                      <Textarea
+                        rows={3}
+                        placeholder="Ex: Por favor, digite seu e-mail para enviarmos a proposta:"
+                        value={((selectedNode.data.config as any)?.promptText as string) || ""}
+                        onChange={(e) => updateNodeConfig(selectedNode.id, "promptText", e.target.value)}
+                      />
+                      <VariableChips
+                        onInsert={(v: string) => {
+                          const cur = ((selectedNode.data.config as any)?.promptText as string) || "";
+                          updateNodeConfig(selectedNode.id, "promptText", cur + (cur ? " " : "") + v);
+                        }}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Tipo de Validação *</Label>
+                      <Select
+                        value={((selectedNode.data.config as any)?.validationType as string) || "text"}
+                        onValueChange={(val) => updateNodeConfig(selectedNode.id, "validationType", val)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="text">Texto Livre (Não vazio)</SelectItem>
+                          <SelectItem value="email">E-mail Válido (usuario@dominio.com)</SelectItem>
+                          <SelectItem value="phone">Telefone / WhatsApp (10-15 dígitos)</SelectItem>
+                          <SelectItem value="number">Número (Inteiro ou Decimal)</SelectItem>
+                          <SelectItem value="currency">Valor Monetário (R$)</SelectItem>
+                          <SelectItem value="date">Data (DD/MM/AAAA)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Campo Destino no CRM *</Label>
+                      <Select
+                        value={((selectedNode.data.config as any)?.targetField as string) || "custom"}
+                        onValueChange={(val) => updateNodeConfig(selectedNode.id, "targetField", val)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="nome">Nome do Lead / Contato</SelectItem>
+                          <SelectItem value="email">E-mail Principal</SelectItem>
+                          <SelectItem value="telefone">Telefone / Celular</SelectItem>
+                          <SelectItem value="valor">Valor do Negócio (Card CRM)</SelectItem>
+                          <SelectItem value="custom">Campo Personalizado (campos_extras)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {((selectedNode.data.config as any)?.targetField === "custom") && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Chave do Campo Personalizado *</Label>
+                        <Input
+                          placeholder="Ex: cpf, cargo, empresa, cidade"
+                          value={((selectedNode.data.config as any)?.customFieldKey as string) || ""}
+                          onChange={(e) => updateNodeConfig(selectedNode.id, "customFieldKey", e.target.value.trim().toLowerCase())}
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Mensagem de Formato Inválido</Label>
+                      <Input
+                        value={((selectedNode.data.config as any)?.invalidMessage as string) || ""}
+                        placeholder="Ex: E-mail inválido. Por favor, digite um e-mail válido:"
+                        onChange={(e) => updateNodeConfig(selectedNode.id, "invalidMessage", e.target.value)}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">Tentativas de Correção</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={5}
+                          value={(selectedNode.data.config as any)?.maxRetries ?? 2}
+                          onChange={(e) => updateNodeConfig(selectedNode.id, "maxRetries", Number(e.target.value))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">Tempo Limite (min)</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={1440}
+                          value={(selectedNode.data.config as any)?.timeoutMinutes ?? 60}
+                          onChange={(e) => updateNodeConfig(selectedNode.id, "timeoutMinutes", Number(e.target.value))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* messaging.send_template (Action) */}
+                {selectedNode.data.type === "messaging.send_template" && (
+                  <div className="space-y-4">
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-200 rounded-xl text-xs text-emerald-900 space-y-1">
+                      <p className="font-semibold flex items-center gap-1.5">
+                        <FileCheck2 className="size-4 text-emerald-600" />
+                        Modelo WhatsApp HSM (Meta Cloud API / D-API)
+                      </p>
+                      <p className="text-[11px] text-emerald-800 leading-relaxed">
+                        Dispara modelos oficiais aprovados pela Meta para abertura da janela de 24 horas com leads inativos ou reengajamento.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Nome do Modelo (Template Name) *</Label>
+                      <Input
+                        placeholder="Ex: notificacao_proposta_v1"
+                        value={((selectedNode.data.config as any)?.templateName as string) || ""}
+                        onChange={(e) => updateNodeConfig(selectedNode.id, "templateName", e.target.value.trim())}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Código do Idioma *</Label>
+                      <Input
+                        placeholder="pt_BR"
+                        value={((selectedNode.data.config as any)?.languageCode as string) || "pt_BR"}
+                        onChange={(e) => updateNodeConfig(selectedNode.id, "languageCode", e.target.value.trim())}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">URL da Mídia do Cabeçalho (Opcional)</Label>
+                      <Input
+                        placeholder="https://... (para templates com imagem ou documento de cabeçalho)"
+                        value={((selectedNode.data.config as any)?.headerMediaUrl as string) || ""}
+                        onChange={(e) => updateNodeConfig(selectedNode.id, "headerMediaUrl", e.target.value.trim() || undefined)}
+                      />
+                    </div>
+
+                    <div className="space-y-2 pt-2 border-t">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold">Parâmetros do Corpo (Variáveis {`{{1}}`}, {`{{2}}`})</Label>
+                        <span className="text-[10px] text-muted-foreground">
+                          {(((selectedNode.data.config as any)?.bodyParameters as string[]) || []).length} parâmetros
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {((((selectedNode.data.config as any)?.bodyParameters as string[]) || []).map((param: string, pIdx: number) => (
+                          <div key={pIdx} className="flex items-center gap-2">
+                            <span className="text-[10px] font-mono text-muted-foreground shrink-0 w-6">
+                              {`{{${pIdx + 1}}}`}:
+                            </span>
+                            <Input
+                              value={param}
+                              placeholder="Ex: {{contact.name}} ou valor fixo"
+                              onChange={(e) => {
+                                const params = [...(((selectedNode.data.config as any)?.bodyParameters as string[]) || [])];
+                                params[pIdx] = e.target.value;
+                                updateNodeConfig(selectedNode.id, "bodyParameters", params);
+                              }}
+                              className="text-xs h-8"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                const params = (((selectedNode.data.config as any)?.bodyParameters as string[]) || []).filter(
+                                  (_, i) => i !== pIdx
+                                );
+                                updateNodeConfig(selectedNode.id, "bodyParameters", params);
+                              }}
+                              className="size-8 text-muted-foreground hover:text-destructive shrink-0"
+                            >
+                              <X className="size-3.5" />
+                            </Button>
+                          </div>
+                        )))}
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const cur = [...(((selectedNode.data.config as any)?.bodyParameters as string[]) || [])];
+                            cur.push("{{contact.name}}");
+                            updateNodeConfig(selectedNode.id, "bodyParameters", cur);
+                          }}
+                          className="text-xs gap-1"
+                        >
+                          <Plus className="size-3" /> Adicionar Parâmetro
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 pt-2 border-t">
+                      <Label className="text-xs">Política de Conexão</Label>
+                      <Select
+                        value={((selectedNode.data.config as any)?.connectionPolicy as string) || "same_as_trigger"}
+                        onValueChange={(val) => updateNodeConfig(selectedNode.id, "connectionPolicy", val)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="same_as_trigger">Mesma linha/conexão do gatilho</SelectItem>
+                          <SelectItem value="specific">Linha específica</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+
                 <div className="pt-4 border-t flex justify-between gap-2">
                   <Button
                     variant="destructive"
@@ -2620,6 +3731,46 @@ function AutomacaoCanvasPage() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "messaging.send_media")}
+                      className="p-3 text-left border rounded-xl hover:border-emerald-500 hover:bg-emerald-500/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <Image className="size-3.5 text-emerald-600" /> Enviar Mídia
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Imagem, vídeo, áudio ou documento (R2/URL).</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "messaging.send_interactive")}
+                      className="p-3 text-left border rounded-xl hover:border-indigo-500 hover:bg-indigo-500/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <ListChecks className="size-3.5 text-indigo-600" /> Menu / Botões Interativos
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Botões ou menu numerado com ramos por opção.</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "messaging.collect_input")}
+                      className="p-3 text-left border rounded-xl hover:border-teal-500 hover:bg-teal-500/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <FormInput className="size-3.5 text-teal-600" /> Capturar Dado no CRM
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Valida e salva email, telefone, nome ou campo custom.</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "messaging.send_template")}
+                      className="p-3 text-left border rounded-xl hover:border-emerald-500 hover:bg-emerald-500/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <FileCheck2 className="size-3.5 text-emerald-600" /> Modelo WhatsApp (HSM)
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Template aprovado pela Meta com parâmetros.</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "messaging.handoff_to_ai")}
                       className="p-3 text-left border rounded-xl hover:border-primary hover:bg-primary/5 transition-colors flex flex-col gap-1"
                     >
@@ -2797,6 +3948,131 @@ function AutomacaoCanvasPage() {
                       <span className="text-[11px] text-muted-foreground">Pausa por minutos, horas ou dias.</span>
                     </button>
                   </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Modal Configurações do Fluxo */}
+          <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+            <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-base flex items-center gap-2">
+                  <Settings className="size-4 text-primary" />
+                  <span>Configurações Gerais do Fluxo</span>
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4 pt-2 text-xs">
+                <div className="space-y-1.5">
+                  <Label>Política de Reentrada (Reentry)</Label>
+                  <Select
+                    value={workflowSettings.reentry}
+                    onValueChange={(val: any) => {
+                      setIsDirty(true);
+                      setWorkflowSettings((prev) => ({ ...prev, reentry: val }));
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="deny_while_active">Negar nova execução se já estiver ativo (Padrão)</SelectItem>
+                      <SelectItem value="replace_active">Cancelar execução ativa e reiniciar com o novo evento</SelectItem>
+                      <SelectItem value="allow">Permitir execuções concorrentes simultâneas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Tempo Máximo de Execução (horas)</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={720}
+                      value={Math.round(workflowSettings.maxRuntimeSeconds / 3600)}
+                      onChange={(e) => {
+                        setIsDirty(true);
+                        setWorkflowSettings((prev) => ({
+                          ...prev,
+                          maxRuntimeSeconds: Math.max(60, Number(e.target.value) * 3600),
+                        }));
+                      }}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>Limite Máximo de Passos</Label>
+                    <Input
+                      type="number"
+                      min={10}
+                      max={500}
+                      value={workflowSettings.maxSteps}
+                      onChange={(e) => {
+                        setIsDirty(true);
+                        setWorkflowSettings((prev) => ({
+                          ...prev,
+                          maxSteps: Math.min(500, Math.max(1, Number(e.target.value))),
+                        }));
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-xs">Parar ao responder (Stop on reply)</Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        Encerra automaticamente o fluxo com sucesso se o contato responder antes da próxima ação.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={workflowSettings.stopOnContactReply}
+                      onCheckedChange={(checked) => {
+                        setIsDirty(true);
+                        setWorkflowSettings((prev) => ({ ...prev, stopOnContactReply: checked }));
+                      }}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 pt-1">
+                    <Label className="text-xs">Parar ao alcançar Etapas (Stop on stage)</Label>
+                    <p className="text-[10px] text-muted-foreground">
+                      Se o cartão do lead for movido para uma dessas etapas, o fluxo é encerrado imediatamente.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 pt-1 max-h-36 overflow-y-auto">
+                      {(auxData.stages || []).map((stage: any) => {
+                        const isChecked = workflowSettings.stopOnStageIds.includes(stage.id);
+                        return (
+                          <label key={stage.id} className="flex items-center gap-2 cursor-pointer text-[11px]">
+                            <input
+                              type="checkbox"
+                              className="rounded border-gray-300 text-primary"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                setIsDirty(true);
+                                setWorkflowSettings((prev) => ({
+                                  ...prev,
+                                  stopOnStageIds: e.target.checked
+                                    ? [...prev.stopOnStageIds, stage.id]
+                                    : prev.stopOnStageIds.filter((s) => s !== stage.id),
+                                }));
+                              }}
+                            />
+                            <span className="truncate">{stage.nome}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t flex justify-end">
+                  <Button size="sm" onClick={() => setSettingsOpen(false)}>
+                    Concluído
+                  </Button>
                 </div>
               </div>
             </DialogContent>

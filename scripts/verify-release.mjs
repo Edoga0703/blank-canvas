@@ -11,7 +11,7 @@ import { execSync } from "node:child_process";
 
 const rootDir = process.cwd();
 console.log("==================================================================");
-console.log(" Capiversa CRM — Verificação de Sanidade Pré-Deploy v1.3.08       ");
+console.log(" Capiversa CRM — Verificação de Sanidade Pré-Deploy v1.3.09       ");
 console.log("==================================================================");
 
 let hasErrors = false;
@@ -40,6 +40,7 @@ const migrationPairs = [
   "20261114000000_telegram_security_and_durability_fixes.sql",
   "20261115000000_telegram_audit_remediation.sql",
   "20261121100000_automation_quick_rules_and_ui_mode.sql",
+  "20261122160000_automation_sprint1_core_fixes.sql",
 ];
 
 let migrationsOk = true;

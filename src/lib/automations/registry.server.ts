@@ -71,6 +71,9 @@ export function interpolateVariables(template: string, ctx: Record<string, any>)
     "lead.name": leadName,
     leadname: leadName,
     nome: leadName,
+    "contact.name": leadName,
+    "contact.phone": senderId,
+    "trigger.text": ctx.trigger?.text || "",
     author: author,
     autor: author,
     post_id: postId,
@@ -96,6 +99,21 @@ export function interpolateVariables(template: string, ctx: Record<string, any>)
     }
     return val !== undefined && val !== null ? String(val) : "";
   });
+}
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function resolveValidCardId(ctx: AutomationExecutionContext): string | null {
+  const candidates = [
+    ctx.context?.card?.id,
+    ctx.context?.trigger?.cardId,
+    ctx.subject?.type === "crm_card" ? ctx.subject.id : null,
+    ctx.subject?.id,
+  ];
+  for (const c of candidates) {
+    if (c && UUID_REGEX.test(String(c))) return String(c);
+  }
+  return null;
 }
 
 // ============================================================================
@@ -328,6 +346,266 @@ registerNode({
 });
 
 // ============================================================================
+// HELPERS REUTILIZABLES DE MENSAJERÍA Y VALIDACIÓN
+// ============================================================================
+
+export interface ResolvedMessagingTarget {
+  destination: string;
+  instanceRow: any;
+  isWhatsApp: boolean;
+  isMetaIg: boolean;
+  isMetaFb: boolean;
+  isTelegram: boolean;
+}
+
+/**
+ * Resuelve el destinatario, la conexión activa, comprueba permisos y compatibilidad de canal
+ */
+export async function resolveMessagingTarget(
+  ctx: AutomationExecutionContext,
+  config?: { connectionPolicy?: "same_as_trigger" | "specific"; specificInstanceId?: string | null },
+): Promise<ResolvedMessagingTarget> {
+  const destination =
+    ctx.externalConversationId ||
+    ctx.context.trigger?.phone ||
+    ctx.context.card?.numero ||
+    ctx.context.trigger?.from?.id;
+
+  if (!destination) {
+    throw new Error("No hay destinatario ni conversación identificada para enviar el mensaje.");
+  }
+
+  let targetInstanceId = ctx.sourceInstanceId;
+  if (config?.connectionPolicy === "specific" && config.specificInstanceId) {
+    targetInstanceId = config.specificInstanceId;
+  }
+
+  if (!targetInstanceId) {
+    const channel = String(
+      ctx.sourceChannel ||
+      ctx.context.trigger?.channel ||
+      ctx.context.card?.canal_chat ||
+      ""
+    ).toLowerCase();
+
+    // P1: Si hay canal identificado (Instagram, Telegram, Messenger), busca conexión de ese canal
+    if (channel && channel !== "whatsapp") {
+      let provPattern = channel;
+      if (channel.includes("instagram")) provPattern = "instagram";
+      else if (channel.includes("messenger")) provPattern = "messenger";
+      else if (channel.includes("telegram")) provPattern = "telegram";
+
+      const { data: instCandidate } = await (supabaseAdmin as any)
+        .from("whatsapp_instances")
+        .select("id, instance_name")
+        .eq("company_id", ctx.companyId)
+        .ilike("provider", `%${provPattern}%`)
+        .in("status", ["connected", "ativo", "open", "ready"])
+        .limit(1)
+        .maybeSingle();
+
+      if (instCandidate) {
+        targetInstanceId = instCandidate.id;
+      } else {
+        throw new Error(
+          `Não foi encontrada conexão ativa compatível com o canal do contato (${channel}). O envio automático não converterá o canal em WhatsApp silenciosamente.`
+        );
+      }
+    }
+
+    if (!targetInstanceId) {
+      const { getActiveInstance } = await import("@/lib/wa-dispatch.server");
+      const activeInst = await getActiveInstance(ctx.companyId).catch(() => null);
+      if (activeInst) {
+        targetInstanceId = (activeInst as any).id || activeInst.instance_name;
+      }
+    }
+  }
+
+  if (!targetInstanceId) {
+    throw new Error("No se pudo determinar una conexión válida para el envío.");
+  }
+
+  const { data: instanceRow } = await (supabaseAdmin as any)
+    .from("whatsapp_instances")
+    .select("id, company_id, instance_name, instance_token, provider, provider_type, phone_number_id, waba_id, status, paused")
+    .eq("company_id", ctx.companyId)
+    .or(`id.eq.${targetInstanceId},instance_name.eq.${targetInstanceId}`)
+    .maybeSingle();
+
+  if (!instanceRow) {
+    throw new Error(`La conexión de envío (${targetInstanceId}) no existe o no pertenece a esta empresa.`);
+  }
+
+  // Comprobar que la instancia no esté pausada (H10)
+  if (instanceRow.paused) {
+    throw new Error(`La conexión ${instanceRow.instance_name || targetInstanceId} está pausada.`);
+  }
+
+  const st = String(instanceRow.status || "").toLowerCase();
+  if (!["connected", "ativo", "open", "ready"].includes(st)) {
+    throw new Error(`La conexión ${instanceRow.instance_name || targetInstanceId} no está conectada (estado: ${instanceRow.status}).`);
+  }
+
+  // Validación de compatibilidad entre canal/proveedor y destino (H17)
+  const prov = String(instanceRow.provider || "").toLowerCase();
+  const isMetaIg = prov.includes("instagram");
+  const isMetaFb = prov.includes("messenger");
+  const isTelegram = prov.includes("telegram");
+  const isWhatsApp = !isMetaIg && !isMetaFb && !isTelegram;
+
+  const channel = String(ctx.sourceChannel || ctx.context.trigger?.channel || "").toLowerCase();
+  const compatible =
+    !channel ||
+    ((channel === "whatsapp" || channel === "whatsapp_official") && isWhatsApp) ||
+    ((channel === "instagram" || channel === "instagram_dm") && isMetaIg) ||
+    ((channel === "messenger" || channel === "facebook_messenger") && isMetaFb) ||
+    (channel === "telegram" && isTelegram);
+
+  if (!compatible) {
+    throw new Error(`La conexión seleccionada no corresponde al canal de origen (${channel}); falta una identidad de contacto para cruzar canales.`);
+  }
+  if (isWhatsApp && destination.includes("@") && !destination.includes("@s.whatsapp.net") && !destination.includes("@g.us")) {
+    throw new Error(`El identificador de destinatario "${destination}" no es compatible con el canal WhatsApp.`);
+  }
+
+  return {
+    destination,
+    instanceRow,
+    isWhatsApp,
+    isMetaIg,
+    isMetaFb,
+    isTelegram,
+  };
+}
+
+/**
+ * Normaliza texto eliminando acentos y espacios extras
+ */
+export function normalizeKeywordText(text: string): string {
+  return String(text || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+/**
+ * Coincidencia de opción interactiva por número de orden, ID exacto o texto de etiqueta
+ */
+export function matchInteractiveOption(
+  rawText: string,
+  options: Array<{ id: string; label: string }>,
+): { id: string; label: string } | null {
+  if (!rawText || !Array.isArray(options) || options.length === 0) return null;
+  const clean = normalizeKeywordText(rawText);
+
+  // 1. Por número de orden exacto ("1", "2", etc.)
+  const numericMatch = clean.match(/^(\d+)\.?$/);
+  if (numericMatch) {
+    const idx = parseInt(numericMatch[1], 10) - 1;
+    if (idx >= 0 && idx < options.length) {
+      return options[idx];
+    }
+  }
+
+  // 2. Por ID exacto ("opt_1", "opt_2", etc.)
+  const byId = options.find((o) => normalizeKeywordText(o.id) === clean);
+  if (byId) return byId;
+
+  // 3. Por coincidencia exacta de la etiqueta (label)
+  const byExactLabel = options.find((o) => normalizeKeywordText(o.label) === clean);
+  if (byExactLabel) return byExactLabel;
+
+  // 4. Coincidencia si una sola opción contiene o es contenida por el texto
+  const partials = options.filter((o) => {
+    const norm = normalizeKeywordText(o.label);
+    return norm.includes(clean) || clean.includes(norm);
+  });
+  if (partials.length === 1) return partials[0];
+
+  return null;
+}
+
+/**
+ * Valida y transforma datos capturados según el tipo esperado
+ */
+export function validateAndParseCollectedInput(
+  rawText: string,
+  type: "text" | "email" | "phone" | "number" | "date",
+): { valid: boolean; value?: string | number } {
+  const text = String(rawText || "").trim();
+  if (!text) return { valid: false };
+
+  if (type === "text") {
+    return { valid: true, value: text };
+  }
+
+  if (type === "email") {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+    const match = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    if (match && emailRegex.test(match[0])) {
+      return { valid: true, value: match[0].toLowerCase() };
+    }
+    return { valid: false };
+  }
+
+  if (type === "phone") {
+    const digits = text.replace(/\D/g, "");
+    if (digits.length >= 10 && digits.length <= 15) {
+      return { valid: true, value: digits };
+    }
+    return { valid: false };
+  }
+
+  if (type === "number") {
+    // Manejar formato "R$ 1.500,50" o "1500.50"
+    const cleaned = text
+      .replace(/[R$\s]/gi, "")
+      .replace(/\.(?=\d{3}(,|$))/g, "")
+      .replace(",", ".");
+    const num = Number(cleaned);
+    if (Number.isFinite(num)) {
+      return { valid: true, value: num };
+    }
+    return { valid: false };
+  }
+
+  if (type === "date") {
+    // Soporta DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD
+    const dmy = text.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
+    if (dmy) {
+      const day = parseInt(dmy[1], 10);
+      const month = parseInt(dmy[2], 10);
+      const year = parseInt(dmy[3], 10);
+      const d = new Date(Date.UTC(year, month - 1, day));
+      if (d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === day) {
+        return {
+          valid: true,
+          value: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+        };
+      }
+    }
+    const ymd = text.match(/^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})$/);
+    if (ymd) {
+      const year = parseInt(ymd[1], 10);
+      const month = parseInt(ymd[2], 10);
+      const day = parseInt(ymd[3], 10);
+      const d = new Date(Date.UTC(year, month - 1, day));
+      if (d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === day) {
+        return {
+          valid: true,
+          value: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+        };
+      }
+    }
+    return { valid: false };
+  }
+
+  return { valid: true, value: text };
+}
+
+// ============================================================================
 // 3. ACCIONES DE MENSAJERÍA Y CRM (ACTIONS)
 // ============================================================================
 
@@ -346,109 +624,242 @@ registerNode({
   }),
   async execute(ctx, config) {
     const interpolated = interpolateVariables(config.text, ctx.context);
-    const destination =
-      ctx.externalConversationId ||
-      ctx.context.trigger?.phone ||
-      ctx.context.card?.numero;
-
-    if (!destination) {
-      throw new Error("No hay destinatario ni conversación identificada para enviar el mensaje.");
-    }
-
-    let targetInstanceId = ctx.sourceInstanceId;
-    if (config.connectionPolicy === "specific" && config.specificInstanceId) {
-      targetInstanceId = config.specificInstanceId;
-    }
-
-    if (!targetInstanceId) {
-      const channel = String(ctx.sourceChannel || ctx.context.trigger?.channel || ctx.context.card?.canal || "").toLowerCase();
-      // P1: Se houver canal identificado (Instagram, Telegram, Messenger), busca conexão daquele canal
-      if (channel && channel !== "whatsapp") {
-        let provPattern = channel;
-        if (channel.includes("instagram")) provPattern = "instagram";
-        else if (channel.includes("messenger")) provPattern = "messenger";
-        else if (channel.includes("telegram")) provPattern = "telegram";
-
-        const { data: instCandidate } = await (supabaseAdmin as any)
-          .from("whatsapp_instances")
-          .select("id, instance_name")
-          .eq("company_id", ctx.companyId)
-          .ilike("provider", `%${provPattern}%`)
-          .in("status", ["connected", "ativo", "open", "ready"])
-          .limit(1)
-          .maybeSingle();
-
-        if (instCandidate) {
-          targetInstanceId = instCandidate.id;
-        } else {
-          // P1.D: Bloqueia conversão implícita de canal não-WhatsApp para WhatsApp
-          throw new Error(`Não foi encontrada conexão ativa compatível com o canal do contato (${channel}). O envio automático não converterá o canal em WhatsApp silenciosamente.`);
-        }
-      }
-
-      if (!targetInstanceId) {
-        const { getActiveInstance } = await import("@/lib/wa-dispatch.server");
-        const activeInst = await getActiveInstance(ctx.companyId).catch(() => null);
-        if (activeInst) {
-          targetInstanceId = (activeInst as any).id || activeInst.instance_name;
-        }
-      }
-    }
-
-    if (!targetInstanceId) {
-      throw new Error("No se pudo determinar una conexión de WhatsApp válida para enviar el mensaje.");
-    }
-
-    const { data: instanceRow } = await (supabaseAdmin as any)
-      .from("whatsapp_instances")
-      .select("id, company_id, instance_name, instance_token, provider, provider_type, phone_number_id, waba_id, status, paused")
-      .eq("company_id", ctx.companyId)
-      .or(`id.eq.${targetInstanceId},instance_name.eq.${targetInstanceId}`)
-      .maybeSingle();
-
-    if (!instanceRow) {
-      throw new Error(`La conexión de envío (${targetInstanceId}) no existe o no pertenece a esta empresa.`);
-    }
-
-    // Comprobar que la instancia no esté pausada (H10)
-    if (instanceRow.paused) {
-      throw new Error(`La conexión ${instanceRow.instance_name || targetInstanceId} está pausada.`);
-    }
-
-    const st = String(instanceRow.status || "").toLowerCase();
-    if (!["connected", "ativo", "open", "ready"].includes(st)) {
-      throw new Error(`La conexión ${instanceRow.instance_name || targetInstanceId} no está conectada (estado: ${instanceRow.status}).`);
-    }
-
-    // Validación de compatibilidad entre canal/proveedor y destino (H17)
-    const prov = String(instanceRow.provider || "").toLowerCase();
-    const isMetaIg = prov.includes("instagram");
-    const isMetaFb = prov.includes("messenger");
-    const isTelegram = prov.includes("telegram");
-    const isWhatsApp = !isMetaIg && !isMetaFb && !isTelegram;
-
-    const channel = String(ctx.sourceChannel || ctx.context.trigger?.channel || "").toLowerCase();
-    const compatible = !channel ||
-      ((channel === "whatsapp" || channel === "whatsapp_official") && isWhatsApp) ||
-      ((channel === "instagram" || channel === "instagram_dm") && isMetaIg) ||
-      ((channel === "messenger" || channel === "facebook_messenger") && isMetaFb) ||
-      (channel === "telegram" && isTelegram);
-    if (!compatible) {
-      throw new Error(`La conexión seleccionada no corresponde al canal de origen (${channel}); falta una identidad de contacto para cruzar canales.`);
-    }
-    if (isWhatsApp && (destination.includes("@") && !destination.includes("@s.whatsapp.net") && !destination.includes("@g.us"))) {
-      throw new Error(`El identificador de destinatario "${destination}" no es compatible con el canal WhatsApp.`);
-    }
+    const target = await resolveMessagingTarget(ctx, config);
 
     const { waSendText } = await import("@/lib/wa-dispatch.server");
-    const result = await waSendText(instanceRow, destination, interpolated);
+    const result = await waSendText(target.instanceRow, target.destination, interpolated);
 
     return {
       kind: "next",
       port: "next",
       output: {
         messageId: (result as any)?.id || (result as any)?.key?.id || null,
-        instanceId: instanceRow.id,
+        instanceId: target.instanceRow.id,
+      },
+    };
+  },
+});
+
+// 2.1: messaging.send_media
+registerNode({
+  type: "messaging.send_media",
+  version: 1,
+  category: "action",
+  name: "Enviar Mídia / Arquivo",
+  description: "Envia imagem, vídeo, áudio ou PDF (R2 ou URL pública) com legenda opcional.",
+  icon: "Image",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    mediaType: z.enum(["image", "video", "audio", "document"]).default("image"),
+    mediaUrl: z.string().min(1, "Informe a URL ou faça upload do arquivo"),
+    caption: z.string().optional().default(""),
+    fileName: z.string().optional().nullable(),
+    connectionPolicy: z.enum(["same_as_trigger", "specific"]).default("same_as_trigger"),
+    specificInstanceId: z.string().optional().nullable(),
+  }),
+  async execute(ctx, config) {
+    const target = await resolveMessagingTarget(ctx, config);
+    const caption = config.caption ? interpolateVariables(config.caption, ctx.context) : "";
+
+    const { waSendMedia, waSendAudio } = await import("@/lib/wa-dispatch.server");
+    let result: any = null;
+    if (config.mediaType === "audio") {
+      result = await waSendAudio(target.instanceRow, target.destination, config.mediaUrl);
+    } else {
+      result = await waSendMedia(target.instanceRow, target.destination, {
+        url: config.mediaUrl,
+        type: config.mediaType,
+        caption: caption || undefined,
+        fileName: config.fileName || undefined,
+      });
+    }
+
+    return {
+      kind: "next",
+      port: "next",
+      output: {
+        messageId: (result as any)?.id || (result as any)?.key?.id || null,
+        mediaType: config.mediaType,
+        instanceId: target.instanceRow.id,
+      },
+    };
+  },
+});
+
+// 2.2: messaging.send_interactive
+const InteractiveOptionSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().trim().min(1, "Texto da opção obrigatório").max(24, "Máximo 24 caracteres"),
+});
+
+registerNode({
+  type: "messaging.send_interactive",
+  version: 1,
+  category: "control",
+  name: "Menu / Botões Interativos",
+  description: "Envia opções clicáveis ou menu numerado e direciona cada escolha para um ramo diferente.",
+  icon: "ListChecks",
+  outputPorts: ["opt_1", "opt_2", "opt_3", "opt_4", "opt_5", "fallback", "timeout"],
+  resolveOutputPorts(config: any) {
+    const optIds = Array.isArray(config?.options) ? config.options.map((o: any) => String(o.id)) : [];
+    return [...optIds, "fallback", "timeout"];
+  },
+  configSchema: z.object({
+    bodyText: z.string().min(1, "Escreva a mensagem do menu"),
+    footerText: z.string().optional().default(""),
+    options: z.array(InteractiveOptionSchema).min(1, "Adicione ao menos 1 opção").max(5, "Máximo 5 opções"),
+    timeoutMinutes: z.number().positive().default(60),
+    maxInvalidRetries: z.number().int().min(0).max(3).default(1),
+    invalidReplyText: z.string().optional().default("Não entendi sua resposta. Responda com o número ou texto de uma das opções acima."),
+    connectionPolicy: z.enum(["same_as_trigger", "specific"]).default("same_as_trigger"),
+    specificInstanceId: z.string().optional().nullable(),
+  }),
+  async execute(ctx, config) {
+    const target = await resolveMessagingTarget(ctx, config);
+    const body = interpolateVariables(config.bodyText, ctx.context);
+    const footer = config.footerText ? interpolateVariables(config.footerText, ctx.context) : "";
+    const options = config.options.map((o: any) => ({
+      ...o,
+      label: interpolateVariables(o.label, ctx.context),
+    }));
+
+    // Tentativa de botões nativos quando WhatsApp D-API e <= 3 opções
+    let sentNative = false;
+    if (target.isWhatsApp && options.length <= 3 && target.instanceRow.instance_name) {
+      try {
+        const { dapiSendButtons } = await import("@/lib/dapi.server");
+        await dapiSendButtons(
+          target.instanceRow.instance_name,
+          target.destination,
+          {
+            body,
+            footer: footer || undefined,
+            buttons: options.map((opt: any) => ({
+              type: "quick_reply",
+              title: opt.label,
+              id: opt.id,
+            })),
+          },
+          target.instanceRow.instance_token
+        );
+        sentNative = true;
+      } catch (err: any) {
+        console.warn("[messaging.send_interactive] Falha no envio de botões nativos, usando menu formatado:", err?.message);
+      }
+    }
+
+    if (!sentNative) {
+      // Menu numerado limpo e universal para todos os canais (WhatsApp, IG, Messenger, Telegram)
+      const formattedMenu = `${body}\n\n${options.map((o: any, i: number) => `${i + 1}. ${o.label}`).join("\n")}${footer ? `\n\n_${footer}_` : ""}`;
+      const { waSendText } = await import("@/lib/wa-dispatch.server");
+      await waSendText(target.instanceRow, target.destination, formattedMenu);
+    }
+
+    return {
+      kind: "wait",
+      resumeAt: new Date(Date.now() + config.timeoutMinutes * 60_000).toISOString(),
+      waitKey: `interactive_${ctx.nodeId}`,
+    };
+  },
+});
+
+// 2.3: messaging.collect_input
+registerNode({
+  type: "messaging.collect_input",
+  version: 1,
+  category: "control",
+  name: "Capturar Dado do Lead",
+  description: "Faz uma pergunta, valida o formato (email, telefone, número, data ou texto) e salva direto no CRM.",
+  icon: "FormInput",
+  outputPorts: ["valid", "invalid", "timeout"],
+  configSchema: z.object({
+    promptText: z.string().min(1, "Escreva a pergunta a enviar"),
+    validationType: z.enum(["text", "email", "phone", "number", "date"]).default("text"),
+    targetField: z.enum(["nome", "email", "valor", "custom"]).default("custom"),
+    customFieldKey: z.string().optional().default(""),
+    invalidMessage: z.string().optional().default("Formato inválido. Por favor, informe novamente."),
+    maxRetries: z.number().int().min(0).max(5).default(2),
+    timeoutMinutes: z.number().positive().default(60),
+    connectionPolicy: z.enum(["same_as_trigger", "specific"]).default("same_as_trigger"),
+    specificInstanceId: z.string().optional().nullable(),
+  }),
+  async execute(ctx, config) {
+    const target = await resolveMessagingTarget(ctx, config);
+    const prompt = interpolateVariables(config.promptText, ctx.context);
+
+    const { waSendText } = await import("@/lib/wa-dispatch.server");
+    await waSendText(target.instanceRow, target.destination, prompt);
+
+    return {
+      kind: "wait",
+      resumeAt: new Date(Date.now() + config.timeoutMinutes * 60_000).toISOString(),
+      waitKey: `collect_${ctx.nodeId}`,
+    };
+  },
+});
+
+// 2.4: messaging.send_template
+registerNode({
+  type: "messaging.send_template",
+  version: 1,
+  category: "action",
+  name: "Enviar Template WhatsApp (HSM)",
+  description: "Dispara modelo aprovado pela Meta para reativar conversas fora da janela de 24h.",
+  icon: "FileCheck2",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    templateName: z.string().trim().min(1, "Informe o nome do template aprovado"),
+    languageCode: z.string().trim().min(2).default("pt_BR"),
+    bodyParams: z.array(z.string()).default([]),
+    headerMediaUrl: z.string().optional().nullable(),
+    connectionPolicy: z.enum(["same_as_trigger", "specific"]).default("same_as_trigger"),
+    specificInstanceId: z.string().optional().nullable(),
+  }),
+  async execute(ctx, config) {
+    const target = await resolveMessagingTarget(ctx, config);
+    if (!target.isWhatsApp) {
+      throw new Error("Templates oficiais da Meta (HSM) só podem ser enviados através de conexões de WhatsApp.");
+    }
+
+    const interpolatedParams = (config.bodyParams || []).map((p: string) => interpolateVariables(p, ctx.context));
+    const components: any[] = [];
+
+    if (config.headerMediaUrl) {
+      components.push({
+        type: "header",
+        parameters: [
+          {
+            type: "image",
+            image: { link: config.headerMediaUrl },
+          },
+        ],
+      });
+    }
+
+    if (interpolatedParams.length > 0) {
+      components.push({
+        type: "body",
+        parameters: interpolatedParams.map((text: string) => ({
+          type: "text",
+          text,
+        })),
+      });
+    }
+
+    const { waSendTemplate } = await import("@/lib/wa-dispatch.server");
+    const result = await waSendTemplate(target.instanceRow, target.destination, {
+      name: config.templateName,
+      language: config.languageCode,
+      components: components.length > 0 ? components : undefined,
+    });
+
+    return {
+      kind: "next",
+      port: "next",
+      output: {
+        messageId: (result as any)?.id || (result as any)?.key?.id || null,
+        templateName: config.templateName,
+        instanceId: target.instanceRow.id,
       },
     };
   },
@@ -466,7 +877,7 @@ registerNode({
     stageId: z.string().min(1, "Selecciona la etapa de destino"),
   }),
   async execute(ctx, config) {
-    const cardId = ctx.subject?.id || ctx.context.card?.id || ctx.context.trigger?.cardId;
+    const cardId = resolveValidCardId(ctx);
     if (!cardId) {
       throw new Error("No hay tarjeta de lead vinculada a esta ejecución.");
     }
@@ -502,7 +913,7 @@ registerNode({
     tag: z.string().min(1, "Escribe el nombre de la etiqueta"),
   }),
   async execute(ctx, config) {
-    const cardId = ctx.subject?.id || ctx.context.card?.id || ctx.context.trigger?.cardId;
+    const cardId = resolveValidCardId(ctx);
     if (!cardId) throw new Error("No hay tarjeta de lead vinculada.");
 
     const { data: card } = await (supabaseAdmin as any)
@@ -542,7 +953,7 @@ registerNode({
     tag: z.string().min(1, "Escribe el nombre de la etiqueta"),
   }),
   async execute(ctx, config) {
-    const cardId = ctx.subject?.id || ctx.context.card?.id || ctx.context.trigger?.cardId;
+    const cardId = resolveValidCardId(ctx);
     if (!cardId) throw new Error("No hay tarjeta de lead vinculada.");
 
     const { data: card } = await (supabaseAdmin as any)
@@ -582,7 +993,7 @@ registerNode({
     ownerId: z.string().min(1, "Selecciona el responsable"),
   }),
   async execute(ctx, config) {
-    const cardId = ctx.subject?.id || ctx.context.card?.id || ctx.context.trigger?.cardId;
+    const cardId = resolveValidCardId(ctx);
     if (!cardId) throw new Error("No hay tarjeta de lead vinculada.");
 
     const { error: upErr } = await (supabaseAdmin as any)
@@ -609,7 +1020,7 @@ registerNode({
     stageId: z.string().min(1, "Selecciona la etapa de destino"),
   }),
   async execute(ctx, config) {
-    const cardId = ctx.subject?.id || ctx.context.card?.id || ctx.context.trigger?.cardId;
+    const cardId = resolveValidCardId(ctx);
     if (!cardId) throw new Error("No hay tarjeta de lead vinculada.");
 
     const { data: stageCheck } = await (supabaseAdmin as any)
@@ -671,7 +1082,7 @@ registerNode({
 
       // Registrar notificación/evento en el historial del lead
       try {
-        const cardId = ctx.subject?.id || ctx.context.card?.id || ctx.context.trigger?.cardId;
+        const cardId = resolveValidCardId(ctx);
         if (cardId) {
           await (supabaseAdmin as any).from("lead_evento").insert({
             company_id: ctx.companyId,
@@ -946,7 +1357,7 @@ registerNode({
       });
 
       try {
-        const cardId = ctx.subject?.id || ctx.context.card?.id || ctx.context.trigger?.cardId;
+        const cardId = resolveValidCardId(ctx);
         if (cardId) {
           await (supabaseAdmin as any).from("lead_evento").insert({
             company_id: ctx.companyId,
@@ -1444,6 +1855,7 @@ registerNode({
           .update({ external_conversation_id: recipientId })
           .eq("id", ctx.executionId);
       } catch {}
+      ctx.externalConversationId = recipientId;
 
       // Tomar control temporal de la conversación (lease de 10 minutos liberado automáticamente al finalizar el flujo)
       try {

@@ -63,6 +63,13 @@ export async function recordInboundAutomationEvent(input: {
       // Acelera la respuesta en procesos persistentes; el cron recupera si serverless termina.
       void processInboundFallbackJobs(1).catch((err) =>
         console.error("[inbound-event] Fallback inmediato:", err?.message));
+    } else {
+      try {
+        const { drainImmediateAutomationJobs } = await import("@/lib/automations/queue.server");
+        await drainImmediateAutomationJobs({ workerId: "hot_inbound", maxJobs: 8, maxTimeMs: 3000 });
+      } catch (drainErr: any) {
+        console.warn("[hot-drain] Error no bloqueante al drenar jobs:", drainErr?.message);
+      }
     }
     return { triggered: result.triggered, duplicate: false };
   } catch (err: any) {
