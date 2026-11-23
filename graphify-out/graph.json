@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-23T03:42:26.125589+00:00",
+  "generated_at": "2026-11-23T04:27:06.051583+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -1771,7 +1771,7 @@
     },
     {
       "path": "src/components/config/equipe-tab.tsx",
-      "bytes": 40526
+      "bytes": 40825
     },
     {
       "path": "src/components/config/formularios-tab.tsx",
@@ -2047,7 +2047,7 @@
     },
     {
       "path": "src/components/comercial/comercial-widgets.tsx",
-      "bytes": 7132
+      "bytes": 7654
     },
     {
       "path": "src/components/comercial/venda-dialog.tsx",
@@ -2059,7 +2059,7 @@
     },
     {
       "path": "src/components/comercial/period-filter.tsx",
-      "bytes": 3507
+      "bytes": 4255
     },
     {
       "path": "src/components/agente/avatar-library.ts",
@@ -2207,7 +2207,7 @@
     },
     {
       "path": "src/components/agenda/list-view.tsx",
-      "bytes": 22504
+      "bytes": 23685
     },
     {
       "path": "src/components/agenda/option-select.tsx",
@@ -2455,7 +2455,7 @@
     },
     {
       "path": "src/lib/i18n/translations.ts",
-      "bytes": 77802
+      "bytes": 91592
     },
     {
       "path": "src/lib/mcp/index.ts",
@@ -2615,7 +2615,7 @@
     },
     {
       "path": "src/routes/app/agendamentos.tsx",
-      "bytes": 25980
+      "bytes": 26436
     },
     {
       "path": "src/routes/app/meu-plano.tsx",
@@ -2659,7 +2659,7 @@
     },
     {
       "path": "src/routes/app/catalogo.tsx",
-      "bytes": 8788
+      "bytes": 9192
     },
     {
       "path": "src/routes/app/treinamentos.$courseId.tsx",
@@ -2687,7 +2687,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 263619
+      "bytes": 264531
     },
     {
       "path": "src/routes/app/publicacoes.tsx",
@@ -2695,11 +2695,11 @@
     },
     {
       "path": "src/routes/app/comercial.tsx",
-      "bytes": 49433
+      "bytes": 51405
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 151816
+      "bytes": 153248
     },
     {
       "path": "src/routes/app/prospeccao.tsx",
@@ -11028,6 +11028,10 @@
       "target": "./distribuicao-tab"
     },
     {
+      "source": "src/components/config/equipe-tab.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
       "source": "src/components/config/formularios-tab.tsx",
       "target": "react"
     },
@@ -12276,6 +12280,10 @@
       "target": "@/components/ui/button"
     },
     {
+      "source": "src/components/comercial/comercial-widgets.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
       "source": "src/components/comercial/venda-dialog.tsx",
       "target": "react"
     },
@@ -12390,6 +12398,10 @@
     {
       "source": "src/components/comercial/period-filter.tsx",
       "target": "@/lib/comercial-range"
+    },
+    {
+      "source": "src/components/comercial/period-filter.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/components/agente/agent-copilot-sheet.tsx",
@@ -13778,6 +13790,10 @@
     {
       "source": "src/components/agenda/list-view.tsx",
       "target": "@/lib/utils"
+    },
+    {
+      "source": "src/components/agenda/list-view.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/components/agenda/list-view.tsx",
@@ -16101,6 +16117,10 @@
     },
     {
       "source": "src/routes/app/agendamentos.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
+      "source": "src/routes/app/agendamentos.tsx",
       "target": "@/lib/agenda.functions"
     },
     {
@@ -16658,6 +16678,10 @@
     {
       "source": "src/routes/app/catalogo.tsx",
       "target": "@/config/brand"
+    },
+    {
+      "source": "src/routes/app/catalogo.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/routes/app/treinamentos.$courseId.tsx",
@@ -17452,6 +17476,10 @@
       "target": "sonner"
     },
     {
+      "source": "src/routes/app/comercial.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
       "source": "src/routes/app/agente.tsx",
       "target": "@tanstack/react-router"
     },
@@ -17602,6 +17630,10 @@
     {
       "source": "src/routes/app/agente.tsx",
       "target": "@/components/agente/agent-copilot-sheet"
+    },
+    {
+      "source": "src/routes/app/agente.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/routes/app/agente.tsx",
