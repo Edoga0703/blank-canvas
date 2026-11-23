@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-23T16:04:11.422541+00:00",
+  "generated_at": "2026-11-23T16:24:52.035753+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -787,7 +787,7 @@
     },
     {
       "path": "src/lib/whatsapp.functions.ts",
-      "bytes": 51155
+      "bytes": 51160
     },
     {
       "path": "src/lib/meta-oauth.functions.ts",
@@ -819,7 +819,7 @@
     },
     {
       "path": "src/lib/lovable-ai.server.ts",
-      "bytes": 14734
+      "bytes": 15010
     },
     {
       "path": "src/lib/sectors.functions.ts",
@@ -2527,7 +2527,7 @@
     },
     {
       "path": "src/routes/master/sistema.tsx",
-      "bytes": 29213
+      "bytes": 29240
     },
     {
       "path": "src/routes/master/cadastros.tsx",
