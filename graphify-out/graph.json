@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-23T02:32:57.496474+00:00",
+  "generated_at": "2026-11-23T03:42:26.125589+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -1555,7 +1555,7 @@
     },
     {
       "path": "src/components/app-shell.tsx",
-      "bytes": 37815
+      "bytes": 39479
     },
     {
       "path": "src/components/brand-mark.tsx",
@@ -2451,11 +2451,11 @@
     },
     {
       "path": "src/lib/i18n/context.tsx",
-      "bytes": 14284
+      "bytes": 18099
     },
     {
       "path": "src/lib/i18n/translations.ts",
-      "bytes": 75112
+      "bytes": 77802
     },
     {
       "path": "src/lib/mcp/index.ts",
@@ -2679,7 +2679,7 @@
     },
     {
       "path": "src/routes/app/configuracoes.tsx",
-      "bytes": 72377
+      "bytes": 75839
     },
     {
       "path": "src/routes/app/parceiro.tsx",
@@ -2699,7 +2699,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 149920
+      "bytes": 151816
     },
     {
       "path": "src/routes/app/prospeccao.tsx",
@@ -9074,6 +9074,10 @@
     {
       "source": "src/components/app-shell.tsx",
       "target": "lucide-react"
+    },
+    {
+      "source": "src/components/app-shell.tsx",
+      "target": "@/components/language-switcher"
     },
     {
       "source": "src/components/app-shell.tsx",
