@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-23T17:47:36.426408+00:00",
+  "generated_at": "2026-11-23T18:09:31.513633+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -787,7 +787,7 @@
     },
     {
       "path": "src/lib/whatsapp.functions.ts",
-      "bytes": 51160
+      "bytes": 51184
     },
     {
       "path": "src/lib/meta-oauth.functions.ts",
@@ -819,7 +819,7 @@
     },
     {
       "path": "src/lib/lovable-ai.server.ts",
-      "bytes": 15620
+      "bytes": 16035
     },
     {
       "path": "src/lib/sectors.functions.ts",
@@ -1087,7 +1087,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 53185
+      "bytes": 53209
     },
     {
       "path": "src/lib/meta-response-window.server.ts",
@@ -1195,7 +1195,7 @@
     },
     {
       "path": "src/lib/ai-prompt.ts",
-      "bytes": 55806
+      "bytes": 51913
     },
     {
       "path": "src/lib/chat-media.functions.ts",
@@ -1443,7 +1443,7 @@
     },
     {
       "path": "src/lib/agent-ai.functions.ts",
-      "bytes": 44124
+      "bytes": 44146
     },
     {
       "path": "src/lib/team.functions.ts",
