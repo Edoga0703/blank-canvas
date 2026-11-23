@@ -466,8 +466,7 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
       throw new Error("Muitas mensagens seguidas para este contato. Aguarde alguns segundos.");
     }
 
-    const { assertWithinLimit } = await import("./plan-limits.server");
-    await assertWithinLimit(companyId, "mensagens");
+    // Mensagens em Capiconversa são ilimitadas (sem bloqueio de envio por cota)
 
     let quoted: any = undefined;
     let quotedText: string | null = null;

@@ -552,7 +552,8 @@ export const translations: Record<SupportedLanguage, Record<string, any>> = {
       "start_conversation_to_test": "Inicia una conversación para probar el comportamiento del agente.",
       "type_as_client": "Escribe como un cliente...",
       "correct_response": "Respuesta correcta",
-      "company_info_desc": "Configuraciones generales y reglas de negocio"
+      "company_info_desc": "Configuraciones generales y reglas de negocio",
+      "typing": "Escribiendo..."
     },
     "sales": {
       "title": "Comercial",
@@ -1693,7 +1694,8 @@ export const translations: Record<SupportedLanguage, Record<string, any>> = {
       "start_conversation_to_test": "Start a conversation to test agent behavior.",
       "type_as_client": "Type as a customer...",
       "correct_response": "Correct response",
-      "company_info_desc": "General settings and business rules"
+      "company_info_desc": "General settings and business rules",
+      "typing": "Typing..."
     },
     "sales": {
       "title": "Sales & Revenue",
@@ -2834,7 +2836,8 @@ export const translations: Record<SupportedLanguage, Record<string, any>> = {
       "start_conversation_to_test": "Inicie uma conversa para testar o comportamento do agente.",
       "type_as_client": "Digite como um cliente...",
       "correct_response": "Resposta correta",
-      "company_info_desc": "Configurações gerais e regras de negócio"
+      "company_info_desc": "Configurações gerais e regras de negócio",
+      "typing": "Digitando..."
     },
     "sales": {
       "title": "Comercial",

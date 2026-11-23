@@ -400,15 +400,15 @@ function SistemaPage() {
               <Select
                 value={globalAi.ai_provider}
                 onValueChange={(v) => {
-                  const defaultModel = v === "drael" ? "drael-v1" : v === "openai" ? "gpt-4o-mini" : "google/gemini-2.5-flash";
+                  const defaultModel = v === "drael" ? "drael-v1" : v === "openai" ? "gpt-4o-mini" : v === "gemini" ? "gemini-1.5-flash" : "claude-3-5-sonnet-latest";
                   setGlobalAi({ ...globalAi, ai_provider: v, ai_model: defaultModel });
                 }}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="drael">Drael AI (drael.sh / drael-v1 — Base Independente Recomendada)</SelectItem>
+                  <SelectItem value="gemini">Google Gemini Direto (generativelanguage.googleapis.com — Gemini 1.5 Flash)</SelectItem>
                   <SelectItem value="openai">OpenAI Direto (api.openai.com / GPT-4o mini)</SelectItem>
-                  <SelectItem value="gemini">Google Gemini Direto (generativelanguage.googleapis.com)</SelectItem>
                   <SelectItem value="anthropic">Anthropic Direto (api.anthropic.com / Claude)</SelectItem>
                 </SelectContent>
               </Select>
@@ -418,15 +418,17 @@ function SistemaPage() {
               <Input
                 value={globalAi.ai_model}
                 onChange={e => setGlobalAi({ ...globalAi, ai_model: e.target.value })}
-                placeholder="ex: drael-v1, gpt-4o-mini ou gemini-2.5-flash"
+                placeholder="ex: gemini-1.5-flash, drael-v1 ou gpt-4o-mini"
                 list="ai-models"
               />
               <datalist id="ai-models">
+                <option value="gemini-1.5-flash" />
+                <option value="gemini-2.0-flash" />
+                <option value="gemini-1.5-pro" />
                 <option value="drael-v1" />
                 <option value="drael-fast" />
                 <option value="gpt-4o-mini" />
                 <option value="gpt-4o" />
-                <option value="gemini-2.5-flash" />
                 <option value="claude-3-5-sonnet-latest" />
               </datalist>
             </div>

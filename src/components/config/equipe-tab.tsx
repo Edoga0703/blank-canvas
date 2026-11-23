@@ -41,7 +41,7 @@ import { useLanguage } from "@/lib/i18n/context";
 type Member = {
   id: string;
   user_id: string;
-  role: "owner" | "admin" | "atendente";
+  role: "owner" | "admin" | "supervisor" | "atendente";
   ativo: boolean;
   email: string | null;
   nome: string | null;
@@ -194,7 +194,7 @@ function UsuariosPanel({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
-  const [role, setRole] = useState<"admin" | "atendente">("atendente");
+  const [role, setRole] = useState<"admin" | "supervisor" | "atendente">("atendente");
   const [customRoleId, setCustomRoleId] = useState<string>("__none__");
   const [maxChats, setMaxChats] = useState<number>(5);
   const [selDeps, setSelDeps] = useState<string[]>([]);
@@ -444,8 +444,8 @@ function UsuariosPanel({
                     <div className="text-[12px] text-muted-foreground truncate">{m.email}</div>
                     <div className="flex flex-wrap items-center gap-1 mt-1.5">
                       <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
-                        {(isOwnerRow || m.role === "admin") ? <ShieldCheck className="size-3 text-primary" /> : <User className="size-3" />}
-                        {isOwnerRow ? "Super Admin" : m.role === "admin" ? "Admin" : "Atendente"}
+                        {(isOwnerRow || m.role === "admin") ? <ShieldCheck className="size-3 text-primary" /> : m.role === "supervisor" ? <Shield className="size-3 text-amber-600" /> : <User className="size-3" />}
+                        {isOwnerRow ? "Super Admin" : m.role === "admin" ? "Admin" : m.role === "supervisor" ? "Supervisor" : "Sub-agente"}
                       </span>
                       {m.instances.length > 0 && (
                         <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600">
@@ -698,12 +698,13 @@ function UsuariosPanel({
               </div>
 
               <div>
-                <Label>Função base</Label>
+                <Label>Nível de Acesso / Função base</Label>
                 <Select value={role} onValueChange={(v) => setRole(v as any)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="atendente">Atendente</SelectItem>
-                    <SelectItem value="admin" disabled={!isOwner}>Admin</SelectItem>
+                    <SelectItem value="atendente">Sub-agente / Atendente</SelectItem>
+                    <SelectItem value="supervisor">Supervisor / Gerente</SelectItem>
+                    <SelectItem value="admin" disabled={!isOwner}>Administrador</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

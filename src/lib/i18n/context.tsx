@@ -290,12 +290,19 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         const { data: session } = await supabase.auth.getSession();
         if (!session?.session?.user) return;
 
-        // 1. Priorizar metadatos de usuario si existen
-        const userPref = session.session.user.user_metadata?.preferred_language;
-        if (userPref && (userPref === "es" || userPref === "en" || userPref === "pt")) {
-          const saved = localStorage.getItem(STORAGE_KEY);
-          if (active && saved !== userPref) {
-            setLanguageState(userPref as SupportedLanguage);
+        // 1. Priorizar idioma guardado localmente o en metadatos de usuario
+        const saved = localStorage.getItem(STORAGE_KEY) as SupportedLanguage | null;
+        const userPref = session.session.user.user_metadata?.preferred_language as SupportedLanguage | undefined;
+        
+        if (saved && (saved === "es" || saved === "en" || saved === "pt")) {
+          // El usuario tiene preferencia local activa: mantenerla y sincronizar a DB
+          if (userPref !== saved) {
+            void supabase.auth.updateUser({ data: { preferred_language: saved } });
+          }
+        } else if (userPref && (userPref === "es" || userPref === "en" || userPref === "pt")) {
+          // Primera visita en este navegador: hidratar desde el perfil del usuario
+          if (active) {
+            setLanguageState(userPref);
             localStorage.setItem(STORAGE_KEY, userPref);
           }
         }

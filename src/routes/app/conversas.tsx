@@ -344,20 +344,20 @@ function ConversasPage() {
   const { t, formatDate, formatTime } = useLanguage();
   const getFilterLabel = (f: Filter) => {
     switch (f) {
-      case "todas": return t("chat.filter_all", undefined, "Todas as Mensagens");
-      case "nao_lidas": return t("chat.filter_unread", undefined, "Aguardando Resposta");
-      case "minhas": return t("chat.filter_mine", undefined, "Meus Atendimentos");
+      case "todas": return t("chat.filter_all", undefined, "Todas las Conversaciones");
+      case "nao_lidas": return t("chat.filter_unread", undefined, "Esperando Respuesta");
+      case "minhas": return t("chat.filter_mine", undefined, "Mis Atenciones");
       case "grupos": return t("chat.filter_groups", undefined, "Grupos");
-      case "sem_responsavel": return t("chat.filter_unassigned", undefined, "Sem Responsável");
-      case "ia_ativa": return t("chat.filter_ai", undefined, "Atendimento IA");
-      case "resolvidas": return t("chat.filter_closed", undefined, "Encerradas");
+      case "sem_responsavel": return t("chat.filter_unassigned", undefined, "Sin Responsable");
+      case "ia_ativa": return t("chat.filter_ai", undefined, "Atención IA");
+      case "resolvidas": return t("chat.filter_closed", undefined, "Cerradas");
     }
   };
   const getQuickLabel = (key: Filter) => {
     switch (key) {
       case "todas": return t("chat.quick_all", undefined, "Todas");
-      case "nao_lidas": return t("chat.quick_unread", undefined, "Não lidas");
-      case "minhas": return t("chat.quick_mine", undefined, "Minhas");
+      case "nao_lidas": return t("chat.quick_unread", undefined, "No leídas");
+      case "minhas": return t("chat.quick_mine", undefined, "Mías");
       case "grupos": return t("chat.filter_groups", undefined, "Grupos");
       default: return key;
     }
@@ -1893,8 +1893,8 @@ function ConversasPage() {
 
         <nav aria-label="Pastas de conversas" className="inbox-panel hidden xl:flex flex-col p-3 min-h-0">
           <div className="px-2 pt-3 pb-5 border-b border-border">
-            <h2 className="text-base font-extrabold text-foreground">{t("chat.messages", undefined, "Mensagens")}</h2>
-            <p className="text-[11px] text-muted-foreground mt-0.5">{t("chat.inboxes", undefined, "Caixas de entrada")}</p>
+            <h2 className="text-base font-extrabold text-foreground">{t("chat.messages", undefined, "Mensajes")}</h2>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{t("chat.inboxes", undefined, "Bandejas de entrada")}</p>
           </div>
           <div className="flex-1 overflow-y-auto py-4 space-y-1">
             {(Object.keys(FILTER_LABELS) as Filter[])
@@ -1912,7 +1912,7 @@ function ConversasPage() {
                 );
               })}
           </div>
-          <div className="border-t border-border px-2 py-3 text-[11px] text-muted-foreground">{conversations.length} {t("chat.conversations_count", undefined, "conversas")}</div>
+          <div className="border-t border-border px-2 py-3 text-[11px] text-muted-foreground">{conversations.length} {t("chat.conversations_count", undefined, "conversaciones")}</div>
         </nav>
 
         {/* ============ LEFT — INBOX ============ */}
@@ -1920,17 +1920,17 @@ function ConversasPage() {
           <div
             onMouseDown={(e) => { e.preventDefault(); resizingRef.current = true; document.body.style.cursor = "col-resize"; document.body.style.userSelect = "none"; }}
             onDoubleClick={() => setInboxWidth(operationalMode ? 410 : 340)}
-            title="Arraste para redimensionar (duplo clique para redefinir)"
+            title={t("chat.drag_resize", undefined, "Arrastra para redimensionar (doble clic para restablecer)")}
             className="hidden lg:block absolute top-0 right-0 h-full w-1.5 -mr-[3px] cursor-col-resize z-20 hover:bg-[color:var(--brand)]/30 active:bg-[color:var(--brand)]/50 transition-colors"
           />
            <div className="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
-             <div className="min-w-0"><h2 className="font-display text-[19px] font-extrabold text-foreground">{t("chat.title", undefined, "Conversas")}</h2><p className="text-xs text-muted-foreground truncate" title={activeFilterSubtitle}>{activeFilterSubtitle}</p></div>
+             <div className="min-w-0"><h2 className="font-display text-[19px] font-extrabold text-foreground">{t("chat.title", undefined, "Conversaciones")}</h2><p className="text-xs text-muted-foreground truncate" title={activeFilterSubtitle}>{activeFilterSubtitle}</p></div>
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setNewConvOpen(true)}
-                title="Nova conversa"
-                aria-label="Nova conversa"
+                title={t("chat.new_conversation", undefined, "Nueva conversación")}
+                aria-label={t("chat.new_conversation", undefined, "Nueva conversación")}
                 className="inline-flex items-center justify-center size-8 rounded-xl bg-[color:var(--brand)] text-primary-foreground shadow-sm hover:opacity-90 transition"
               >
                 <Plus className="size-4" />
@@ -1939,8 +1939,8 @@ function ConversasPage() {
               <button
                 type="button"
                 onClick={() => setContactPickerOpen(true)}
-                title="Iniciar conversa com contato salvo"
-                aria-label="Iniciar conversa com contato salvo"
+                title={t("chat.start_saved_contact", undefined, "Iniciar conversación con contacto guardado")}
+                aria-label={t("chat.start_saved_contact", undefined, "Iniciar conversación con contacto guardado")}
                 className="inline-flex items-center justify-center size-8 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
               >
                 <ContactIcon className="size-4" />
@@ -2609,20 +2609,20 @@ function ConversasPage() {
                         </div>
                       </div>
                       <p className={`text-[12px] truncate flex items-center gap-1 ${precisaAtender ? "text-foreground/90 font-medium" : "text-muted-foreground"}`}>
-                        {c.last.direcao === "saida" && <span className="font-semibold">{t("chat.you", undefined, "Você:")} </span>}
-                        {c.last.midia_tipo === "image" ? <><ImageIcon className="size-3 shrink-0" /><span>{t("chat.media_image", undefined, "Imagem")}</span></>
-                          : c.last.midia_tipo === "audio" ? <><MicIcon className="size-3 shrink-0" /><span>{t("chat.media_audio", undefined, "Áudio")}</span></>
-                          : c.last.midia_tipo === "video" ? <><VideoIcon className="size-3 shrink-0" /><span>{t("chat.media_video", undefined, "Vídeo")}</span></>
+                        {c.last.direcao === "saida" && <span className="font-semibold">{t("chat.you", undefined, "Tú:")} </span>}
+                        {c.last.midia_tipo === "image" ? <><ImageIcon className="size-3 shrink-0" /><span>{t("chat.media_image", undefined, "Imagen")}</span></>
+                          : c.last.midia_tipo === "audio" ? <><MicIcon className="size-3 shrink-0" /><span>{t("chat.media_audio", undefined, "Audio")}</span></>
+                          : c.last.midia_tipo === "video" ? <><VideoIcon className="size-3 shrink-0" /><span>{t("chat.media_video", undefined, "Video")}</span></>
                           : c.last.midia_tipo === "document" ? <><FileText className="size-3 shrink-0" /><span>{t("chat.media_document", undefined, "Documento")}</span></>
                           : <span className="truncate">{c.last.texto || "…"}</span>}
                       </p>
                       <div className="flex items-center flex-wrap gap-1 mt-0.5">
                         {!conversaEhGrupo && transferidaPelaIa && !on && (
                           <span className="inline-flex items-center gap-1 h-[18px] px-1.5 rounded-md bg-[color:var(--brand)] text-white text-[10.5px] font-bold">
-                            ⚡ {t("chat.ai_qualified_action", undefined, "Qualificado pela IA · atender")}
+                            ⚡ {t("chat.ai_qualified_action", undefined, "Calificado por IA · atender")}
                           </span>
                         )}
-                        {!conversaEhGrupo && isMine && <MiniChip tone="brand">👤 {t("chat.you_badge", undefined, "Você")}</MiniChip>}
+                        {!conversaEhGrupo && isMine && <MiniChip tone="brand">👤 {t("chat.you_badge", undefined, "Tú")}</MiniChip>}
                         {conversaEhGrupo ? null : !pausesLoaded ? null : iaAtiva ? (
                           <MiniChip tone="ai">⚡ IA</MiniChip>
                         ) : card?.owner_id ? (
@@ -2788,7 +2788,7 @@ function ConversasPage() {
                               </div>
                               <p className="text-[12px] text-muted-foreground line-clamp-2 leading-relaxed">
                                 {msg.direcao === "saida" && (
-                                  <span className="font-semibold text-foreground/80 mr-1">Você:</span>
+                                  <span className="font-semibold text-foreground/80 mr-1">{t("chat.you", undefined, "Tú:")}</span>
                                 )}
                                 {highlightMatchedTextInSnippet(msg.texto, search.trim())}
                               </p>
@@ -2803,7 +2803,7 @@ function ConversasPage() {
             ) : (
               <ul className="flex-1 overflow-auto pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-0">
                 {conversations.length === 0 && (
-                  <li className="p-8 text-sm text-muted-foreground text-center">Nenhuma conversa neste filtro.</li>
+                  <li className="p-8 text-sm text-muted-foreground text-center">{t("chat.no_conversations_in_filter", undefined, "Ninguna conversación en este filtro.")}</li>
                 )}
                 {visibleConversations.map(renderConversationRow)}
                 {conversations.length > visibleConversations.length && (
@@ -2813,7 +2813,7 @@ function ConversasPage() {
                       onClick={() => setConversationFeedLimit((prev) => prev + 50)}
                       className="w-full text-xs font-semibold text-primary hover:underline px-4 py-2.5 rounded-lg bg-accent/60 hover:bg-accent transition-colors flex items-center justify-center gap-1.5"
                     >
-                      <span>Carregar mais conversas ({visibleConversations.length} de {conversations.length})</span>
+                      <span>{t("chat.load_more_conversations", undefined, "Cargar más conversaciones")} ({visibleConversations.length} {t("common.of", undefined, "de")} {conversations.length})</span>
                     </button>
                   </li>
                 )}
@@ -2828,7 +2828,7 @@ function ConversasPage() {
             <div className="flex-1 w-full h-full grid place-items-center bg-card px-6">
               <div className="flex flex-col items-center gap-5 text-center">
                 <div className="grid size-16 place-items-center rounded-[20px] bg-accent text-primary"><MessageSquareText className="size-8" strokeWidth={1.6} /></div>
-                <div><h3 className="text-lg font-extrabold text-foreground">{t("chat.your_inbox", undefined, "Sua caixa de entrada")}</h3><p className="mt-1 text-sm text-muted-foreground">{t("chat.your_inbox_subtitle", undefined, "Selecione uma conversa para começar.")}</p></div>
+                <div><h3 className="text-lg font-extrabold text-foreground">{t("chat.your_inbox", undefined, "Tu bandeja de entrada")}</h3><p className="mt-1 text-sm text-muted-foreground">{t("chat.your_inbox_subtitle", undefined, "Selecciona una conversación para comenzar.")}</p></div>
               </div>
             </div>
           ) : (

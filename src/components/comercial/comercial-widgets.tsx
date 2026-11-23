@@ -83,7 +83,7 @@ export function MetaCard({
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{cardTitle}</p>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-black text-slate-900">{pctVal}%</span>
-            <span className="text-xs font-bold text-muted-foreground">{t("sales.achieved", undefined, "atingido")}</span>
+            <span className="text-xs font-bold text-muted-foreground">{t("sales.achieved", undefined, "alcanzado")}</span>
           </div>
         </div>
         {onEdit ? (
@@ -125,14 +125,14 @@ export function MetaConfigCard({
 } = {}) {
   const { t, currencySymbol, formatDate } = useLanguage();
   const currentPeriod = periodoLabel || formatDate(new Date(), { month: "long", year: "numeric" });
-  const effectiveMetrica = metricaLabel || `${t("sales.revenue", undefined, "Receita")} (${currencySymbol})`;
-  const effectiveVisibilidade = visibilidadeLabel || t("sales.entire_unit", undefined, "Toda a unidade");
+  const effectiveMetrica = metricaLabel || `${t("sales.revenue", undefined, "Ingresos")} (${currencySymbol})`;
+  const effectiveVisibilidade = visibilidadeLabel || t("sales.entire_unit", undefined, "Toda la unidad");
 
   return (
     <div className="rounded-2xl border border-[color:var(--hairline)] bg-white p-8 space-y-8 shadow-sm">
       <div className="space-y-1">
-        <h3 className="font-bold text-lg text-slate-900">{t("sales.goal_config", undefined, "Configuração da meta")}</h3>
-        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("sales.goal_config_subtitle", undefined, "Ajuste os parâmetros de performance")}</p>
+        <h3 className="font-bold text-lg text-slate-900">{t("sales.goal_config", undefined, "Configuración de la meta")}</h3>
+        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("sales.goal_config_subtitle", undefined, "Ajusta los parámetros de rendimiento")}</p>
       </div>
       
       <div className="space-y-6">

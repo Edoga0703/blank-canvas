@@ -198,8 +198,8 @@ export function PublicacoesPage() {
     return (
       <div className="p-6 max-w-4xl mx-auto space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">{t("publications.title", undefined, "Publicações")}</h1>
-          <p className="text-sm text-muted-foreground">{t("publications.subtitle", undefined, "Publique no Feed do Instagram e Facebook pelo CRM.")}</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t("publications.title", undefined, "Publicaciones")}</h1>
+          <p className="text-sm text-muted-foreground">{t("publications.subtitle", undefined, "Publica en el Feed de Instagram y Facebook desde el CRM.")}</p>
         </header>
 
         <Card className="p-8 text-center space-y-4 border-dashed border-2">
@@ -207,15 +207,15 @@ export function PublicacoesPage() {
             <Instagram className="size-8" />
           </div>
           <div className="space-y-1 max-w-md mx-auto">
-            <h3 className="font-semibold text-lg">{t("publications.no_accounts_title", undefined, "Nenhuma conta do Instagram ou Facebook conectada")}</h3>
+            <h3 className="font-semibold text-lg">{t("publications.no_accounts_title", undefined, "Ninguna cuenta de Instagram o Facebook conectada")}</h3>
             <p className="text-sm text-muted-foreground">
-              {t("publications.no_accounts_desc", undefined, "Para publicar e gerenciar seu feed, conecte sua conta profissional do Instagram ou Página do Facebook no painel de Conexão.")}
+              {t("publications.no_accounts_desc", undefined, "Para publicar y gestionar tu feed, conecta tu cuenta profesional de Instagram o Página de Facebook en el panel de Conexión.")}
             </p>
           </div>
           <Button asChild className="gap-2">
             <Link to="/app/conexao">
               <Share2 className="size-4" />
-              {t("publications.connect_meta_channels", undefined, "Conectar Canais Meta")}
+              {t("publications.connect_meta_channels", undefined, "Conectar Canales Meta")}
             </Link>
           </Button>
         </Card>
@@ -230,11 +230,11 @@ export function PublicacoesPage() {
         <div>
           <div className="flex items-center gap-2 text-primary font-semibold text-xs tracking-wider uppercase mb-1">
             <Share2 className="size-4" />
-            {t("publications.section_badge", undefined, "Redes Sociais & Conteúdo")}
+            {t("publications.section_badge", undefined, "Redes Sociales y Contenido")}
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{t("publications.title", undefined, "Publicações")}</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{t("publications.title", undefined, "Publicaciones")}</h1>
           <p className="text-sm text-muted-foreground">
-            {t("publications.subtitle", undefined, "Crie, publique e visualize as postagens do seu Instagram e Facebook diretamente por aqui.")}
+            {t("publications.subtitle", undefined, "Crea, publica y visualiza las publicaciones de tu Instagram y Facebook directamente desde aquí.")}
           </p>
         </div>
 
@@ -267,11 +267,11 @@ export function PublicacoesPage() {
         <TabsList className="mb-6">
           <TabsTrigger value="editor" className="gap-2">
             <Sparkles className="size-4" />
-            {t("publications.tab_create", undefined, "Criar Publicação")}
+            {t("publications.tab_create", undefined, "Crear Publicación")}
           </TabsTrigger>
           <TabsTrigger value="feed" className="gap-2">
             <ImageIcon className="size-4" />
-            {t("publications.tab_feed", undefined, "Feed & Publicadas")} ({feedPosts.length})
+            {t("publications.tab_feed", undefined, "Feed y Publicadas")} ({feedPosts.length})
           </TabsTrigger>
         </TabsList>
 
@@ -298,7 +298,7 @@ export function PublicacoesPage() {
                 {/* Formato de Mídia */}
                 <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    {t("publications.post_type", undefined, "Tipo de Publicação")}
+                    {t("publications.post_type", undefined, "Tipo de Publicación")}
                   </label>
                   <div className="flex gap-2">
                     <Button
@@ -309,7 +309,7 @@ export function PublicacoesPage() {
                       className="gap-2 flex-1"
                     >
                       <ImageIcon className="size-4" />
-                      {t("publications.photo_image", undefined, "Foto / Imagem")}
+                      {t("publications.photo_image", undefined, "Foto / Imagen")}
                     </Button>
                     <Button
                       type="button"
@@ -319,7 +319,7 @@ export function PublicacoesPage() {
                       className="gap-2 flex-1"
                     >
                       <Video className="size-4" />
-                      {t("publications.video_reels", undefined, "Vídeo / Reels")}
+                      {t("publications.video_reels", undefined, "Video / Reels")}
                     </Button>
                   </div>
                 </div>
@@ -327,11 +327,11 @@ export function PublicacoesPage() {
                 {/* Imagem / Mídia */}
                 <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    {t("publications.post_media", undefined, "Mídia da Postagem")}
+                    {t("publications.post_media", undefined, "Multimedia de la Publicación")}
                   </label>
                   <div className="flex gap-2">
                     <Input
-                      placeholder={t("publications.url_placeholder", undefined, "Cole a URL pública da imagem ou faça upload...")}
+                      placeholder={t("publications.url_placeholder", undefined, "Pega la URL pública de la imagen o sube un archivo...")}
                       value={mediaUrl}
                       onChange={(e) => setMediaUrl(e.target.value)}
                       className="text-sm"
@@ -361,7 +361,7 @@ export function PublicacoesPage() {
                     </label>
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    {t("publications.media_hint", undefined, "Para o Instagram, a mídia precisa ser uma URL pública direta (JPG, PNG ou MP4).")}
+                    {t("publications.media_hint", undefined, "Para Instagram, el archivo debe ser una URL pública directa (JPG, PNG o MP4).")}
                   </p>
                 </div>
 
@@ -369,14 +369,14 @@ export function PublicacoesPage() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      {t("publications.caption_title", undefined, "Legenda / Texto da Publicação")}
+                      {t("publications.caption_title", undefined, "Pie de foto / Texto de la Publicación")}
                     </label>
                     <span className="text-[11px] text-muted-foreground">
                       {caption.length} / 2200 {t("publications.characters", undefined, "caracteres")}
                     </span>
                   </div>
                   <Textarea
-                    placeholder={t("publications.caption_placeholder", undefined, "Escreva a legenda incrível para o seu post... Adicione hashtags como #vendas #negocios")}
+                    placeholder={t("publications.caption_placeholder", undefined, "Escribe una leyenda increíble para tu publicación... Añade hashtags como #ventas #negocios")}
                     value={caption}
                     onChange={(e) => setCaption(e.target.value)}
                     rows={6}
@@ -411,7 +411,7 @@ export function PublicacoesPage() {
             <div className="lg:col-span-5 flex flex-col items-center">
               <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
                 <Sparkles className="size-3.5 text-primary" />
-                {t("publications.post_preview", undefined, "Pré-visualização do Post")}
+                {t("publications.post_preview", undefined, "Vista Previa de la Publicación")}
               </div>
 
               {/* Celular Mockup */}
@@ -426,7 +426,7 @@ export function PublicacoesPage() {
                     </div>
                     <div>
                       <p className="text-xs font-bold leading-tight">{activeChannel?.name || "@suaconta"}</p>
-                      <p className="text-[10px] text-neutral-400">{t("publications.sponsored_organic", undefined, "Patrocinado / Orgânico")}</p>
+                      <p className="text-[10px] text-neutral-400">{t("publications.sponsored_organic", undefined, "Patrocinado / Orgánico")}</p>
                     </div>
                   </div>
                   <span className="text-neutral-400 text-sm font-bold">•••</span>
@@ -443,7 +443,7 @@ export function PublicacoesPage() {
                   ) : (
                     <div className="text-center p-6 text-neutral-600 space-y-2">
                       <ImageIcon className="size-10 mx-auto opacity-40" />
-                      <p className="text-xs">{t("publications.media_will_appear", undefined, "Sua imagem ou vídeo aparecerá aqui")}</p>
+                      <p className="text-xs">{t("publications.media_will_appear", undefined, "Tu imagen o video aparecerá aquí")}</p>
                     </div>
                   )}
                 </div>
@@ -460,17 +460,17 @@ export function PublicacoesPage() {
 
                   {/* Legenda e Texto */}
                   <div className="text-xs space-y-1">
-                    <p className="font-semibold text-neutral-200 text-[11px]">{t("publications.one_like", undefined, "1 curtida")}</p>
+                    <p className="font-semibold text-neutral-200 text-[11px]">{t("publications.one_like", undefined, "1 me gusta")}</p>
                     <p className="text-[11.5px] leading-relaxed text-neutral-300">
                       <span className="font-bold text-white mr-1.5">{activeChannel?.name}</span>
                       {caption ? (
                         <span className="whitespace-pre-wrap">{caption}</span>
                       ) : (
-                        <span className="text-neutral-500 italic">{t("publications.caption_will_appear", undefined, "Sua legenda aparecerá aqui...")}</span>
+                        <span className="text-neutral-500 italic">{t("publications.caption_will_appear", undefined, "Tu pie de foto aparecerá aquí...")}</span>
                       )}
                     </p>
                     <p className="text-[9px] text-neutral-500 uppercase tracking-wider pt-1">
-                      {t("publications.seconds_ago", undefined, "Há alguns segundos")}
+                      {t("publications.seconds_ago", undefined, "Hace unos segundos")}
                     </p>
                   </div>
                 </div>

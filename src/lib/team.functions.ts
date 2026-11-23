@@ -1,10 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-async function getOwnedCompanyId(supabase: any, userId: string): Promise<{ companyId: string; role: string }> {
+async function getOwnedCompanyId(supabase: any, userId: string): Promise<{ companyId: string; role: string; customRoleId?: string | null }> {
   const { data, error } = await supabase
     .from("company_user")
-    .select("company_id, role")
+    .select("company_id, role, custom_role_id")
     .eq("user_id", userId)
     .eq("ativo", true)
     .order("created_at", { ascending: true })
@@ -12,13 +12,26 @@ async function getOwnedCompanyId(supabase: any, userId: string): Promise<{ compa
     .maybeSingle();
   if (error) throw error;
   if (!data) throw new Error("Sem empresa.");
-  return { companyId: data.company_id as string, role: data.role as string };
+  return { companyId: data.company_id as string, role: data.role as string, customRoleId: data.custom_role_id };
 }
 
-function assertAdmin(role: string) {
-  if (role !== "owner" && role !== "admin") {
-    throw new Error("Apenas owner/admin podem gerenciar a equipe.");
+async function assertCanManageTeam(supabase: any, memberInfo: { companyId: string; role: string; customRoleId?: string | null }) {
+  if (memberInfo.role === "owner" || memberInfo.role === "admin" || memberInfo.role === "supervisor") {
+    return true;
   }
+  if (memberInfo.customRoleId) {
+    const { data: crole } = await supabase
+      .from("company_role")
+      .select("permissions")
+      .eq("id", memberInfo.customRoleId)
+      .eq("ativo", true)
+      .maybeSingle();
+    const perms = crole?.permissions as any;
+    if (perms?.configuracoes?.manage_users === true || perms?.equipe?.manage === true || perms?.manage_users === true) {
+      return true;
+    }
+  }
+  throw new Error("Apenas administradores, supervisores ou usuários com permissão de gerenciamento podem gerenciar sub-agentes e atendentes.");
 }
 
 export const listTeam = createServerFn({ method: "POST" })
@@ -221,7 +234,7 @@ type UpsertMemberInput = {
   nome: string;
   email: string;
   password: string;
-  role: "admin" | "atendente";
+  role: "admin" | "supervisor" | "atendente";
   avatarBase64?: string | null;
   max_chats?: number;
   custom_role_id?: string | null;
@@ -239,7 +252,7 @@ export const inviteMember = createServerFn({ method: "POST" })
     if (!nome) throw new Error("Informe o nome");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Email inválido");
     if (password.length < 8) throw new Error("Senha deve ter no mínimo 8 caracteres");
-    if (d.role !== "admin" && d.role !== "atendente") throw new Error("Função inválida");
+    if (d.role !== "admin" && d.role !== "supervisor" && d.role !== "atendente") throw new Error("Função inválida");
     return {
       nome, email, password, role: d.role,
       avatarBase64: d.avatarBase64 || null,
@@ -252,8 +265,12 @@ export const inviteMember = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const { companyId, role } = await getOwnedCompanyId(supabase, userId);
-    assertAdmin(role);
+    const memberInfo = await getOwnedCompanyId(supabase, userId);
+    await assertCanManageTeam(supabase, memberInfo);
+    if (memberInfo.role !== "owner" && memberInfo.role !== "admin" && data.role === "admin") {
+      throw new Error("Apenas administradores podem convidar outros administradores.");
+    }
+    const { companyId } = memberInfo;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     let targetUserId: string | null = null;
@@ -319,11 +336,11 @@ export const setMemberActive = createServerFn({ method: "POST" })
   .inputValidator((d: { memberId: string; ativo: boolean }) => d)
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const { companyId, role } = await getOwnedCompanyId(supabase, userId);
-    assertAdmin(role);
+    const memberInfo = await getOwnedCompanyId(supabase, userId);
+    await assertCanManageTeam(supabase, memberInfo);
     if (data.ativo) {
       const { assertWithinLimit } = await import("./plan-limits.server");
-      await assertWithinLimit(companyId, "usuarios");
+      await assertWithinLimit(memberInfo.companyId, "usuarios");
     }
     const { error } = await supabase.from("company_user").update({ ativo: data.ativo }).eq("id", data.memberId);
     if (error) throw error;
@@ -332,11 +349,11 @@ export const setMemberActive = createServerFn({ method: "POST" })
 
 export const setMemberRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { memberId: string; role: "owner" | "admin" | "atendente" }) => d)
+  .inputValidator((d: { memberId: string; role: "owner" | "admin" | "supervisor" | "atendente" }) => d)
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const { role } = await getOwnedCompanyId(supabase, userId);
-    if (role !== "owner") throw new Error("Apenas o owner pode alterar papéis.");
+    if (role !== "owner" && role !== "admin") throw new Error("Apenas administradores podem alterar papéis.");
     const { error } = await supabase.from("company_user").update({ role: data.role }).eq("id", data.memberId);
     if (error) throw error;
     return { ok: true };
@@ -379,14 +396,14 @@ export const setMemberInstance = createServerFn({ method: "POST" })
   .inputValidator((d: { memberUserId: string; instanceName: string | null }) => d)
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const { companyId, role } = await getOwnedCompanyId(supabase, userId);
-    assertAdmin(role);
+    const memberInfo = await getOwnedCompanyId(supabase, userId);
+    await assertCanManageTeam(supabase, memberInfo);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("whatsapp_instances").update({ user_id: null as any })
-      .eq("company_id", companyId).eq("user_id", data.memberUserId);
+      .eq("company_id", memberInfo.companyId).eq("user_id", data.memberUserId);
     if (data.instanceName) {
       const { error } = await supabaseAdmin.from("whatsapp_instances")
-        .update({ user_id: data.memberUserId }).eq("company_id", companyId).eq("instance_name", data.instanceName);
+        .update({ user_id: data.memberUserId }).eq("company_id", memberInfo.companyId).eq("instance_name", data.instanceName);
       if (error) throw error;
     }
     return { ok: true };
@@ -398,7 +415,7 @@ export const updateMember = createServerFn({ method: "POST" })
     memberId: string;
     nome?: string;
     password?: string;
-    role?: "admin" | "atendente";
+    role?: "admin" | "supervisor" | "atendente";
     avatarBase64?: string | null;
     max_chats?: number;
     custom_role_id?: string | null;
@@ -408,8 +425,9 @@ export const updateMember = createServerFn({ method: "POST" })
   }) => d)
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const { companyId, role } = await getOwnedCompanyId(supabase, userId);
-    assertAdmin(role);
+    const memberInfo = await getOwnedCompanyId(supabase, userId);
+    await assertCanManageTeam(supabase, memberInfo);
+    const { companyId, role } = memberInfo;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: mem, error: mErr } = await supabaseAdmin
@@ -469,8 +487,9 @@ export const removeMember = createServerFn({ method: "POST" })
   .inputValidator((d: { memberId: string }) => d)
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const { companyId, role } = await getOwnedCompanyId(supabase, userId);
-    assertAdmin(role);
+    const memberInfo = await getOwnedCompanyId(supabase, userId);
+    await assertCanManageTeam(supabase, memberInfo);
+    const { companyId, role } = memberInfo;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: mem } = await supabaseAdmin

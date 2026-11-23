@@ -9,8 +9,14 @@ import { useLanguage } from "@/lib/i18n/context";
 
 export type PeriodValue = { range: Range; label: string; preset: string };
 
-export function defaultPeriod(): PeriodValue {
-  return { range: monthRange(), label: "Este mês", preset: "mes" };
+export function defaultPeriod(lang?: string): PeriodValue {
+  const isPt = lang === "pt";
+  const isEn = lang === "en";
+  return {
+    range: monthRange(),
+    label: isPt ? "Este mês" : isEn ? "This month" : "Este mes",
+    preset: "mes"
+  };
 }
 
 const PRESET_DEFS = [

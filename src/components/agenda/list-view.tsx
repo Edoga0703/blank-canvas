@@ -53,7 +53,7 @@ type Props = {
 const POR_PAGINA = 20;
 
 const ROTULOS_PERIODO: Record<string, string> = {
-  todos: "Todo período", hoje: "Hoje", semana: "Próximos 7 dias", mes: "Este mês", passado: "Passados",
+  todos: "Todo el período", hoje: "Hoy", semana: "Próximos 7 días", mes: "Este mes", passado: "Pasados",
 };
 
 export function ListView({
@@ -70,7 +70,7 @@ export function ListView({
   const [tempAte, setTempAte] = useState("");
 
   const rotulosPeriodo: Record<string, string> = {
-    todos: t("schedules.all_periods", undefined, "Todo período"),
+    todos: t("schedules.all_periods", undefined, "Todo el período"),
     hoje: language === "es" ? "Hoy" : language === "en" ? "Today" : "Hoje",
     semana: language === "es" ? "Próximos 7 días" : language === "en" ? "Next 7 days" : "Próximos 7 dias",
     mes: language === "es" ? "Este mes" : language === "en" ? "This month" : "Este mês",
@@ -182,22 +182,22 @@ export function ListView({
           <Input
             aria-label="Buscar agendamentos"
             className="pl-8 h-8 text-xs"
-            placeholder={t("schedules.search_placeholder", undefined, "Buscar por nome, telefone ou empresa")}
+            placeholder={t("schedules.search_placeholder", undefined, "Buscar por nombre, teléfono o empresa")}
             value={filtros.busca}
             onChange={(e) => { setFiltros({ ...filtros, busca: e.target.value }); setPagina(1); }}
           />
         </div>
         <Select value={filtros.responsavel} onValueChange={(v) => setFiltros({ ...filtros, responsavel: v })}>
-          <SelectTrigger className="h-8 w-[150px] text-xs" aria-label="Responsável"><SelectValue placeholder={t("schedules.assignee", undefined, "Responsável")} /></SelectTrigger>
+          <SelectTrigger className="h-8 w-[150px] text-xs" aria-label="Responsable"><SelectValue placeholder={t("schedules.assignee", undefined, "Responsable")} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="todos">{t("schedules.all_assignees", undefined, "Todos os responsáveis")}</SelectItem>
+            <SelectItem value="todos">{t("schedules.all_assignees", undefined, "Todos los responsables")}</SelectItem>
             {profissionais.map((p) => <SelectItem key={p.user_id} value={p.user_id}>{p.nome}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filtros.status} onValueChange={(v) => setFiltros({ ...filtros, status: v })}>
-          <SelectTrigger className="h-8 w-[150px] text-xs" aria-label="Status"><SelectValue placeholder={t("schedules.status", undefined, "Status")} /></SelectTrigger>
+          <SelectTrigger className="h-8 w-[150px] text-xs" aria-label="Estado"><SelectValue placeholder={t("schedules.status", undefined, "Estado")} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="todos">{t("schedules.all_statuses", undefined, "Todos os status")}</SelectItem>
+            <SelectItem value="todos">{t("schedules.all_statuses", undefined, "Todos los estados")}</SelectItem>
             {Object.entries(STATUS_COMPROMISSO).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -472,13 +472,13 @@ export function EmptyAgenda({ onCriar, onMensagem }: { onCriar: () => void; onMe
   return (
     <div className="rounded-lg border bg-card p-10 text-center">
       <CalendarX2 className="w-8 h-8 mx-auto text-muted-foreground" aria-hidden="true" />
-      <h3 className="mt-2 font-semibold">{t("schedules.agenda_free", undefined, "Sua agenda está livre neste período")}</h3>
+      <h3 className="mt-2 font-semibold">{t("schedules.agenda_free", undefined, "Tu agenda está libre en este período")}</h3>
       <p className="text-sm text-muted-foreground">
-        {t("schedules.agenda_free_desc", undefined, "Crie um compromisso, programe uma mensagem ou configure os horários da sua equipe.")}
+        {t("schedules.agenda_free_desc", undefined, "Crea un compromiso, programa un mensaje o configura los horarios de tu equipo.")}
       </p>
       <div className="mt-3 flex justify-center gap-2">
-        <Button size="sm" onClick={onCriar}>{t("schedules.create_appointment", undefined, "Criar compromisso")}</Button>
-        {onMensagem && <Button size="sm" variant="outline" onClick={onMensagem}>{t("schedules.message", undefined, "Programar mensagem")}</Button>}
+        <Button size="sm" onClick={onCriar}>{t("schedules.create_appointment", undefined, "Crear compromiso")}</Button>
+        {onMensagem && <Button size="sm" variant="outline" onClick={onMensagem}>{t("schedules.message", undefined, "Programar mensaje")}</Button>}
       </div>
     </div>
   );

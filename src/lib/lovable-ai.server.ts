@@ -38,17 +38,16 @@ async function fetchJson(url: string, init: RequestInit, timeoutMs = 30_000) {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function sanitizeGatewayGeminiModel(model?: string): string {
-  if (!model) return "gemini-2.5-flash";
-  const m = model.trim();
+  if (!model) return "gemini-1.5-flash";
+  const m = model.trim().replace(/^google\//, "");
   if (
-    m === "google/gemini-2.0-flash-exp" ||
+    m === "gemini-2.5-flash" ||
     m === "gemini-2.0-flash-exp" ||
-    m === "google/gemini-2.0-flash" ||
-    m === "gemini-2.0-flash"
+    m === "gemini-exp-1206"
   ) {
-    return "gemini-2.5-flash";
+    return "gemini-1.5-flash";
   }
-  return m.replace(/^google\//, "") || "gemini-2.5-flash";
+  return m || "gemini-1.5-flash";
 }
 
 export async function lovableAiChat(
@@ -144,7 +143,7 @@ export async function lovableAiChat(
   if (provider === "gemini") {
     const directGeminiKey = globalGeminiKey?.trim();
     if (directGeminiKey) {
-      const rawModel = cfg.model || globalModel || "gemini-2.5-flash";
+      const rawModel = cfg.model || globalModel || "gemini-1.5-flash";
       const model = sanitizeGatewayGeminiModel(rawModel);
       return directGeminiChat(directGeminiKey, model, msgs);
     }
@@ -179,8 +178,8 @@ async function directGeminiChat(
   messages: ChatMsg[],
   temperature = 0.2,
 ): Promise<string> {
-  const cleanModel = model.replace(/^google\//, "") || "gemini-2.5-flash";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${encodeURIComponent(key)}`;
+  let cleanModel = sanitizeGatewayGeminiModel(model);
+  const getUrl = (m: string) => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(key)}`;
 
   const systemMsg = messages.find((m) => m.role === "system");
   const contents = messages
@@ -209,8 +208,8 @@ async function directGeminiChat(
 
   for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
     try {
-      const res = await fetchJson(
-        url,
+      let res = await fetchJson(
+        getUrl(cleanModel),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -218,6 +217,21 @@ async function directGeminiChat(
         },
         25_000,
       );
+
+      // Auto-fallback para gemini-1.5-flash caso o modelo experimental retorne 404 Not Found
+      if (res.status === 404 && cleanModel !== "gemini-1.5-flash") {
+        console.warn(`[Gemini Direct] Modelo '${cleanModel}' retornou 404 no Google AI Studio. Fazendo fallback automático para 'gemini-1.5-flash'...`);
+        cleanModel = "gemini-1.5-flash";
+        res = await fetchJson(
+          getUrl(cleanModel),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          },
+          25_000,
+        );
+      }
 
       if (!res.ok) {
         const errText = await res.text().catch(() => "");
