@@ -11,6 +11,7 @@ export interface AiProviderConfig {
   model?: string;
   openaiKey?: string;
   anthropicKey?: string;
+  geminiKey?: string;
 }
 
 const MAX_TENTATIVAS = 3;
@@ -141,7 +142,7 @@ export async function lovableAiChat(
 
   // 4. Provedor Google Gemini direto (generativelanguage.googleapis.com)
   if (provider === "gemini") {
-    const directGeminiKey = globalGeminiKey?.trim();
+    const directGeminiKey = cfg.geminiKey?.trim() || globalGeminiKey?.trim();
     if (directGeminiKey) {
       const rawModel = cfg.model || globalModel || "gemini-1.5-flash";
       const model = sanitizeGatewayGeminiModel(rawModel);

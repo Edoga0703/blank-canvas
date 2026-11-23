@@ -64,7 +64,7 @@ const TIPO_LABELS: Record<AgentTipo, { label: string; sub: string }> = {
 };
 
 function AgentePage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const ctx = Route.useRouteContext();
   const search = Route.useSearch();
   const searchAgentId = search?.id;
