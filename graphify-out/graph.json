@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-23T04:27:06.051583+00:00",
+  "generated_at": "2026-11-23T05:38:58.072106+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -1655,7 +1655,7 @@
     },
     {
       "path": "src/components/conexao/nova-conexao-dialog.tsx",
-      "bytes": 21241
+      "bytes": 22381
     },
     {
       "path": "src/components/conexao/telegram-connect-dialog.tsx",
@@ -1675,7 +1675,7 @@
     },
     {
       "path": "src/components/templates/template-detail-dialog.tsx",
-      "bytes": 5001
+      "bytes": 5845
     },
     {
       "path": "src/components/templates/template-form-dialog.tsx",
@@ -1843,7 +1843,7 @@
     },
     {
       "path": "src/components/training/training-layout.tsx",
-      "bytes": 5568
+      "bytes": 5833
     },
     {
       "path": "src/components/training/course-shelf.tsx",
@@ -2455,7 +2455,7 @@
     },
     {
       "path": "src/lib/i18n/translations.ts",
-      "bytes": 91592
+      "bytes": 138740
     },
     {
       "path": "src/lib/mcp/index.ts",
@@ -2647,7 +2647,7 @@
     },
     {
       "path": "src/routes/app/conexao.tsx",
-      "bytes": 28929
+      "bytes": 30092
     },
     {
       "path": "src/routes/app/contatos.tsx",
@@ -2675,7 +2675,7 @@
     },
     {
       "path": "src/routes/app/templates.tsx",
-      "bytes": 15963
+      "bytes": 18083
     },
     {
       "path": "src/routes/app/configuracoes.tsx",
@@ -2683,7 +2683,7 @@
     },
     {
       "path": "src/routes/app/parceiro.tsx",
-      "bytes": 13225
+      "bytes": 13541
     },
     {
       "path": "src/routes/app/conversas.tsx",
@@ -2691,11 +2691,11 @@
     },
     {
       "path": "src/routes/app/publicacoes.tsx",
-      "bytes": 22658
+      "bytes": 24661
     },
     {
       "path": "src/routes/app/comercial.tsx",
-      "bytes": 51405
+      "bytes": 52177
     },
     {
       "path": "src/routes/app/agente.tsx",
@@ -2703,15 +2703,15 @@
     },
     {
       "path": "src/routes/app/prospeccao.tsx",
-      "bytes": 33918
+      "bytes": 35044
     },
     {
       "path": "src/routes/app/relatorios.tsx",
-      "bytes": 21746
+      "bytes": 24440
     },
     {
       "path": "src/routes/app/conteudo.tsx",
-      "bytes": 6736
+      "bytes": 7182
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -2719,11 +2719,11 @@
     },
     {
       "path": "src/routes/app/respostas-rapidas.tsx",
-      "bytes": 16753
+      "bytes": 19034
     },
     {
       "path": "src/routes/app/plugins.tsx",
-      "bytes": 16082
+      "bytes": 16375
     },
     {
       "path": "src/routes/app/automacoes.$workflowId.tsx",
@@ -9917,6 +9917,10 @@
     },
     {
       "source": "src/components/conexao/nova-conexao-dialog.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
+      "source": "src/components/conexao/nova-conexao-dialog.tsx",
       "target": "lucide-react"
     },
     {
@@ -10094,6 +10098,10 @@
     {
       "source": "src/components/templates/template-detail-dialog.tsx",
       "target": "@/lib/hsm-templates.functions"
+    },
+    {
+      "source": "src/components/templates/template-detail-dialog.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/components/templates/template-form-dialog.tsx",
@@ -11550,6 +11558,10 @@
     {
       "source": "src/components/training/training-layout.tsx",
       "target": "@/assets/sidebar-promo.png.asset.json"
+    },
+    {
+      "source": "src/components/training/training-layout.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/components/training/course-shelf.tsx",
@@ -16821,6 +16833,10 @@
     },
     {
       "source": "src/routes/app/templates.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
+      "source": "src/routes/app/templates.tsx",
       "target": "@/lib/hsm-templates.functions"
     },
     {
@@ -17084,6 +17100,10 @@
       "target": "@/components/ui/dialog"
     },
     {
+      "source": "src/routes/app/parceiro.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
       "source": "src/routes/app/conversas.tsx",
       "target": "@/lib/br-phone"
     },
@@ -17334,6 +17354,10 @@
     {
       "source": "src/routes/app/publicacoes.tsx",
       "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/routes/app/publicacoes.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/routes/app/publicacoes.tsx",
@@ -17720,6 +17744,10 @@
       "target": "@/integrations/supabase/client"
     },
     {
+      "source": "src/routes/app/prospeccao.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
       "source": "src/routes/app/relatorios.tsx",
       "target": "@tanstack/react-router"
     },
@@ -17730,6 +17758,10 @@
     {
       "source": "src/routes/app/relatorios.tsx",
       "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/routes/app/relatorios.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/routes/app/relatorios.tsx",
@@ -17829,6 +17861,10 @@
     },
     {
       "source": "src/routes/app/conteudo.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
+      "source": "src/routes/app/conteudo.tsx",
       "target": "@/lib/social-content.types"
     },
     {
@@ -17846,6 +17882,10 @@
     {
       "source": "src/routes/app/respostas-rapidas.tsx",
       "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/routes/app/respostas-rapidas.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/routes/app/respostas-rapidas.tsx",
@@ -17970,6 +18010,10 @@
     {
       "source": "src/routes/app/plugins.tsx",
       "target": "@/components/ui/textarea"
+    },
+    {
+      "source": "src/routes/app/plugins.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/routes/app/automacoes.$workflowId.tsx",
