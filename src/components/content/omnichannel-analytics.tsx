@@ -379,36 +379,36 @@ export function OmnichannelAnalytics({ accounts }: Props) {
   // Benchmarking por Formato
   const formatBenchmarks = [
     {
-      format: "Vídeo Curto Vertical (Reels / Shorts / TikTok)",
+      format: "Reels & Vídeos Curtos (Instagram & Facebook)",
       share: "86% do alcance global",
       cps: 94,
       leadsRatio: "15.4%",
       icon: Film,
-      hint: "Principal responsável por trazer clientes novos que ainda não conheciam a sua marca.",
+      hint: "Principal formato para atrair novos clientes que ainda não seguiam seu perfil.",
     },
     {
-      format: "Banner Promocional / Imagem Estática",
+      format: "Fotos & Banners (Feed Instagram / Facebook)",
       share: "9% do alcance global",
       cps: 72,
       leadsRatio: "8.1%",
       icon: ImageIcon,
-      hint: "Excelente para comunicar avisos urgentes, prazos e condições comerciais diretas.",
+      hint: "Excelente para comunicar avisos urgentes, promoções e produtos com clareza.",
     },
     {
-      format: "Carrossel Explicativo (Passo a Passo)",
+      format: "Carrosséis & Álbuns de Imagens",
       share: "5% do alcance global",
       cps: 82,
       leadsRatio: "11.6%",
       icon: Layers,
-      hint: "Gera a maior quantidade de compartilhamentos e salvamentos entre equipes.",
+      hint: "Gera a maior quantidade de comentários e salvamentos para consulta posterior.",
     },
   ];
 
   const bestHours = [
-    { day: "Segunda-feira", time: "18:30 - 20:00", score: "88/100", hint: "Pico de visualizações no TikTok", platform: "TikTok" },
-    { day: "Terça-feira", time: "19:00 - 21:00", score: "92/100", hint: "Maior retenção no YouTube Shorts", platform: "Shorts" },
-    { day: "Quinta-feira", time: "18:00 - 20:30", score: "96/100", hint: "Melhor dia para ofertas e lançamentos comerciais", platform: "Geral" },
-    { day: "Sábado", time: "13:30 - 16:00", score: "98/100", hint: "Maior taxa de viralidade e compartilhamentos", platform: "Multicanal" },
+    { day: "Segunda-feira", time: "18:30 - 20:00", score: "88/100", hint: "Pico de visualizações no Instagram", platform: "Instagram" },
+    { day: "Terça-feira", time: "19:00 - 21:00", score: "92/100", hint: "Maior engajamento no Facebook", platform: "Facebook" },
+    { day: "Quinta-feira", time: "18:00 - 20:30", score: "96/100", hint: "Melhor dia para ofertas e conversões comerciais", platform: "Geral" },
+    { day: "Sábado", time: "13:30 - 16:00", score: "98/100", hint: "Maior taxa de compartilhamentos e mensagens diretas", platform: "Instagram" },
   ];
 
   // Copiar resumo executivo para WhatsApp ou relatório
@@ -652,10 +652,12 @@ export function OmnichannelAnalytics({ accounts }: Props) {
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <Zap className="size-3.5 text-amber-500" />
-              <span>Diferencial Entre Plataformas (Mesmo Vídeo nas 4 Redes)</span>
+              <span>{isRealData ? "Publicações Sincronizadas & Desempenho Real (Meta)" : "Diferencial Entre Plataformas"}</span>
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Como nossos vídeos foram publicados simultaneamente pelo CRM, podemos avaliar a performance de cada algoritmo em condições idênticas.
+              {isRealData
+                ? "Publicações extraídas diretamente das contas conectadas na Meta com métricas apuradas de curtidas, comentários e links."
+                : "Como nossos vídeos foram publicados simultaneamente pelo CRM, podemos avaliar a performance de cada algoritmo em condições idênticas."}
             </p>
           </div>
 
@@ -755,8 +757,8 @@ export function OmnichannelAnalytics({ accounts }: Props) {
                 {/* Gráfico Visual de Barras: Participação de Views de Cada Rede */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground font-medium">
-                    <span>Divisão de Visualizações por Rede Social:</span>
-                    <span className="font-bold text-foreground">{post.totalViews} views totais</span>
+                    <span>{isRealData ? "Distribuição por Rede:" : "Divisão de Visualizações por Rede Social:"}</span>
+                    <span className="font-bold text-foreground">{post.totalViews} views apuradas</span>
                   </div>
 
                   <div className="w-full h-3.5 rounded-full flex overflow-hidden gap-0.5 bg-muted/40 shadow-inner">
