@@ -62,6 +62,7 @@ import {
 import { sendWhatsappText, sendWhatsappMedia, sendWhatsappAudio } from "@/lib/whatsapp.functions";
 import { transcribeAudio } from "@/lib/transcribe.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { useLanguage } from "@/lib/i18n/context";
 
 
 const SITE_BADGE: Record<string, { label: string; cls: string }> = {
@@ -94,6 +95,7 @@ export const Route = createFileRoute("/app/prospeccao")({
 });
 
 function ProspeccaoPage() {
+  const { t } = useLanguage();
   const qc = useQueryClient();
   const listar = useServerFn(listarProspectos);
   const google = useServerFn(rastrearGoogle);
@@ -200,7 +202,7 @@ function ProspeccaoPage() {
       <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
         <header className="space-y-5 border-b px-5 py-5 lg:px-6">
           <div>
-            <h1 className="font-prospect-display text-2xl font-bold text-foreground">Radar de Prospecção</h1>
+            <h1 className="font-prospect-display text-2xl font-bold text-foreground">{t("radar.title", undefined, "Radar de Prospecção")}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Encontre empresas, avalie oportunidades e envie contatos qualificados para o CRM.
             </p>
@@ -209,10 +211,10 @@ function ProspeccaoPage() {
           <Tabs defaultValue="google">
             <TabsList className="h-9">
           <TabsTrigger value="google">
-            <MapPin className="mr-2 h-4 w-4" /> Google Maps
+            <MapPin className="mr-2 h-4 w-4" /> {t("radar.tab_google", undefined, "Google Maps")}
           </TabsTrigger>
           <TabsTrigger value="cnpj">
-            <Building2 className="mr-2 h-4 w-4" /> CNPJ / Receita
+            <Building2 className="mr-2 h-4 w-4" /> {t("radar.tab_cnpj", undefined, "CNPJ / Receita")}
           </TabsTrigger>
             </TabsList>
 
@@ -222,7 +224,7 @@ function ProspeccaoPage() {
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     className="h-9 bg-background pl-9"
-                    placeholder="Segmento"
+                    placeholder={t("radar.segment_term", undefined, "Segmento")}
                     value={termo}
                     onChange={(e) => setTermo(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && mGoogle.mutate()}
@@ -232,14 +234,14 @@ function ProspeccaoPage() {
                   <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     className="h-9 bg-background pl-9"
-                    placeholder="Localização"
+                    placeholder={t("radar.location", undefined, "Localização")}
                     value={local}
                     onChange={(e) => setLocal(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && mGoogle.mutate()}
                   />
                 </div>
                 <div className="flex h-9 w-44 shrink-0 items-center gap-2 rounded-md border bg-background px-3">
-                  <span className="shrink-0 text-xs text-muted-foreground">Raio</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{t("radar.radius", undefined, "Raio")}</span>
                   <Slider
                     value={[Number(raioKm)]}
                     min={1}
@@ -250,7 +252,7 @@ function ProspeccaoPage() {
                   <span className="w-11 shrink-0 text-right text-xs font-semibold">{raioKm} km</span>
                 </div>
                 <div className="flex h-9 w-44 shrink-0 items-center gap-2 rounded-md border bg-background px-3">
-                  <span className="shrink-0 text-xs text-muted-foreground">Qtd.</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{t("radar.limit", undefined, "Qtd.")}</span>
                   <Slider
                     value={[Number(limite)]}
                     min={1}
@@ -266,7 +268,7 @@ function ProspeccaoPage() {
                   ) : (
                     <Search className="mr-2 h-4 w-4" />
                   )}
-                  Buscar
+                  {mGoogle.isPending ? t("radar.searching", undefined, "Buscando...") : t("radar.search_companies", undefined, "Buscar")}
                 </Button>
               </div>
             </TabsContent>
@@ -276,7 +278,7 @@ function ProspeccaoPage() {
               <Textarea
                 rows={4}
                   className="bg-background"
-                placeholder="Cole os CNPJs (um por linha ou separados por vírgula). Até 30 por vez."
+                placeholder={t("radar.cnpj_placeholder", undefined, "Cole os CNPJs (um por linha ou separados por vírgula). Até 30 por vez.")}
                 value={listaCnpj}
                 onChange={(e) => setListaCnpj(e.target.value)}
               />
@@ -286,7 +288,7 @@ function ProspeccaoPage() {
                 ) : (
                   <Search className="mr-2 h-4 w-4" />
                 )}
-                Consultar
+                {t("radar.consult", undefined, "Consultar")}
               </Button>
               </div>
             </TabsContent>
@@ -304,7 +306,7 @@ function ProspeccaoPage() {
                   visao === "atual" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
                 }`}
               >
-                Busca atual
+                {t("radar.current_search", undefined, "Busca atual")}
               </button>
               <button
                 type="button"
@@ -313,7 +315,7 @@ function ProspeccaoPage() {
                   visao === "historico" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
                 }`}
               >
-                Histórico geral
+                {t("radar.general_history", undefined, "Histórico geral")}
               </button>
             </div>
             {visao === "atual" && !loteAtual ? (
@@ -324,7 +326,7 @@ function ProspeccaoPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="mr-2 flex items-baseline gap-2">
-              <h2 className="font-prospect-display text-sm font-semibold">Empresas rastreadas</h2>
+              <h2 className="font-prospect-display text-sm font-semibold">{t("radar.tracked_companies", undefined, "Empresas rastreadas")}</h2>
               <span className="text-xs font-semibold text-muted-foreground">{rows.length}</span>
             </div>
             <Select value={status} onValueChange={setStatus}>
@@ -332,10 +334,10 @@ function ProspeccaoPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="novo">Novos</SelectItem>
-                <SelectItem value="importado">Importados</SelectItem>
-                <SelectItem value="descartado">Descartados</SelectItem>
-                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="novo">{t("radar.status_new", undefined, "Novos")}</SelectItem>
+                <SelectItem value="importado">{t("radar.status_imported", undefined, "Importados")}</SelectItem>
+                <SelectItem value="descartado">{t("radar.status_discarded", undefined, "Descartados")}</SelectItem>
+                <SelectItem value="todos">{t("radar.status_all", undefined, "Todos")}</SelectItem>
               </SelectContent>
             </Select>
             <Select value={contato} onValueChange={setContato}>
@@ -343,9 +345,9 @@ function ProspeccaoPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos">Abordados e não abordados</SelectItem>
-                <SelectItem value="nao_abordados">Só os não abordados</SelectItem>
-                <SelectItem value="abordados">Só os já abordados</SelectItem>
+                <SelectItem value="todos">{t("radar.contact_all", undefined, "Abordados e não abordados")}</SelectItem>
+                <SelectItem value="nao_abordados">{t("radar.contact_none", undefined, "Só os não abordados")}</SelectItem>
+                <SelectItem value="abordados">{t("radar.contact_yes", undefined, "Só os já abordados")}</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filtroSite} onValueChange={setFiltroSite}>
@@ -353,11 +355,11 @@ function ProspeccaoPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos">Todos os sites</SelectItem>
-                <SelectItem value="oportunidade">Oportunidade Fábrica de Site</SelectItem>
-                <SelectItem value="sem_site">Sem site</SelectItem>
-                <SelectItem value="ativo">Site saudável</SelectItem>
-                <SelectItem value="nao_analisado">Ainda não analisados</SelectItem>
+                <SelectItem value="todos">{t("radar.site_all", undefined, "Todos os sites")}</SelectItem>
+                <SelectItem value="oportunidade">{t("radar.site_opportunity", undefined, "Oportunidade Fábrica de Site")}</SelectItem>
+                <SelectItem value="sem_site">{t("radar.site_none", undefined, "Sem site")}</SelectItem>
+                <SelectItem value="ativo">{t("radar.site_healthy", undefined, "Site saudável")}</SelectItem>
+                <SelectItem value="nao_analisado">{t("radar.site_untested", undefined, "Ainda não analisados")}</SelectItem>
               </SelectContent>
             </Select>
 

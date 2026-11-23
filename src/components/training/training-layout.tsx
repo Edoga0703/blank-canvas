@@ -5,15 +5,17 @@ import { ChevronLeft, GraduationCap, PlayCircle, Library, Award, Search, User, M
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import sidebarPromoAsset from "@/assets/sidebar-promo.png.asset.json";
+import { useLanguage } from "@/lib/i18n/context";
 
 export function TrainingLayout({ children }: { children: ReactNode }) {
+  const { t } = useLanguage();
   const loc = useLocation();
 
   const navItems = [
-    { icon: Home, label: "Inicio", to: "/app/treinamentos" },
-    { icon: MessageSquare, label: "Suporte", to: "https://metrixcrm.com.br/suporte", external: true },
-    { icon: Users, label: "Comunidade", to: "https://comunidade.metrixcrm.com.br", external: true },
-    { icon: Heart, label: "Favoritos", to: "/app/treinamentos?filter=favorites" },
+    { icon: Home, label: t("academy.home", undefined, "Início"), to: "/app/treinamentos" },
+    { icon: MessageSquare, label: t("academy.support", undefined, "Suporte"), to: "https://metrixcrm.com.br/suporte", external: true },
+    { icon: Users, label: t("academy.community", undefined, "Comunidade"), to: "https://comunidade.metrixcrm.com.br", external: true },
+    { icon: Heart, label: t("academy.favorites", undefined, "Favoritos"), to: "/app/treinamentos?filter=favorites" },
   ];
 
   return (
@@ -79,7 +81,7 @@ export function TrainingLayout({ children }: { children: ReactNode }) {
           <Link to="/app/dashboard">
             <Button variant="ghost" className="w-full justify-start gap-4 text-[#7B8794] hover:text-[#12263A] hover:bg-[#F2F4F6] px-4 h-12 rounded-xl transition-all">
               <LogOut className="size-5" />
-              <span className="text-sm font-medium">Retornar</span>
+              <span className="text-sm font-medium">{t("academy.return_to_crm", undefined, "Retornar ao CRM")}</span>
             </Button>
           </Link>
         </div>

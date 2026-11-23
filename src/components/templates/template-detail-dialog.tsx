@@ -2,15 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, Clock, CheckCircle2, XCircle, FileText } from "lucide-react";
 import type { HsmListItem } from "@/lib/hsm-templates.functions";
-
-const STATUS_UI = {
-  aprovado: { icon: CheckCircle2, cls: "bg-emerald-50 text-emerald-700 border-emerald-200", label: "Aprovado", desc: "Template aprovado e pronto para uso em campanhas." },
-  pendente: { icon: Clock, cls: "bg-amber-50 text-amber-700 border-amber-200", label: "Aguardando aprovação", desc: "A Meta normalmente aprova templates em até 24h. Você será notificado automaticamente quando o status mudar." },
-  reprovado: { icon: XCircle, cls: "bg-red-50 text-red-700 border-red-200", label: "Reprovado", desc: "A Meta rejeitou este template. Revise e envie novamente." },
-  rascunho: { icon: FileText, cls: "bg-muted text-muted-foreground border-border", label: "Rascunho", desc: "Ainda não foi enviado para aprovação da Meta." },
-} as const;
-
-const CAT_LABEL: Record<string, string> = { MARKETING: "MARKETING", UTILITY: "UTILITY", AUTHENTICATION: "AUTHENTICATION" };
+import { useLanguage } from "@/lib/i18n/context";
 
 export function TemplateDetailDialog({
   open, onOpenChange, template, onEdit, onDelete,
@@ -21,7 +13,22 @@ export function TemplateDetailDialog({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useLanguage();
   if (!template) return null;
+
+  const STATUS_UI = {
+    aprovado: { icon: CheckCircle2, cls: "bg-emerald-50 text-emerald-700 border-emerald-200", label: t("templates.status_approved", undefined, "Aprovado"), desc: t("templates.status_approved_desc", undefined, "Template aprovado e pronto para uso em campanhas.") },
+    pendente: { icon: Clock, cls: "bg-amber-50 text-amber-700 border-amber-200", label: t("templates.status_pending", undefined, "Aguardando aprovação"), desc: t("templates.status_pending_desc", undefined, "A Meta normalmente aprova templates em até 24h. Você será notificado automaticamente quando o status mudar.") },
+    reprovado: { icon: XCircle, cls: "bg-red-50 text-red-700 border-red-200", label: t("templates.status_rejected", undefined, "Reprovado"), desc: t("templates.status_rejected_desc", undefined, "A Meta rejeitou este template. Revise e envie novamente.") },
+    rascunho: { icon: FileText, cls: "bg-muted text-muted-foreground border-border", label: t("templates.status_draft", undefined, "Rascunho"), desc: t("templates.status_draft_desc", undefined, "Ainda não foi enviado para aprovação da Meta.") },
+  } as const;
+
+  const CAT_LABEL: Record<string, string> = {
+    MARKETING: t("templates.category_marketing", undefined, "Marketing"),
+    UTILITY: t("templates.category_utility", undefined, "Utilidade"),
+    AUTHENTICATION: t("templates.category_auth", undefined, "Autenticação"),
+  };
+
   const ui = STATUS_UI[template.status] ?? STATUS_UI.rascunho;
   const Icon = ui.icon;
   const connName = template.instance_display_name || template.instance_name || "—";
@@ -34,7 +41,7 @@ export function TemplateDetailDialog({
         <DialogHeader>
           <DialogTitle className="text-lg">{template.nome}</DialogTitle>
           <p className="text-xs text-muted-foreground uppercase tracking-wider">
-            {CAT_LABEL[template.categoria]} · {template.idioma} · {connName}
+            {CAT_LABEL[template.categoria] ?? template.categoria} · {template.idioma} · {connName}
           </p>
         </DialogHeader>
 
@@ -44,20 +51,20 @@ export function TemplateDetailDialog({
             <p className="font-semibold text-sm">{ui.label}</p>
             <p className="text-xs opacity-90 mt-0.5">{ui.desc}</p>
             {template.status === "reprovado" && template.meta_ultimo_erro && (
-              <p className="text-xs mt-1"><b>Motivo:</b> {template.meta_ultimo_erro}</p>
+              <p className="text-xs mt-1"><b>{t("templates.reason", undefined, "Motivo:")}</b> {template.meta_ultimo_erro}</p>
             )}
           </div>
         </div>
 
         <div className="mt-2">
-          <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-2">Preview como aparece no WhatsApp</p>
+          <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-2">{t("templates.preview_title", undefined, "Preview como aparece no WhatsApp")}</p>
           <div className="rounded-lg p-3" style={{ background: "#e5ddd5" }}>
             <div className="bg-white rounded-lg p-2.5 max-w-full shadow-sm relative">
               {template.header_tipo === "TEXT" && template.header_conteudo && (
                 <p className="font-semibold text-sm mb-1">{template.header_conteudo}</p>
               )}
               {template.header_tipo === "MEDIA" && (
-                <div className="rounded bg-muted h-24 grid place-items-center text-[11px] text-muted-foreground mb-2">📎 Mídia</div>
+                <div className="rounded bg-muted h-24 grid place-items-center text-[11px] text-muted-foreground mb-2">📎 {t("templates.media", undefined, "Mídia")}</div>
               )}
               <p className="text-sm whitespace-pre-wrap text-slate-800">{template.corpo}</p>
               {template.rodape && <p className="text-[11px] text-slate-500 mt-1">{template.rodape}</p>}
@@ -88,12 +95,12 @@ export function TemplateDetailDialog({
 
         <DialogFooter className="gap-2">
           <Button variant="ghost" onClick={onDelete} className="text-red-600 mr-auto">
-            <Trash2 className="size-4 mr-1.5" /> Excluir
+            <Trash2 className="size-4 mr-1.5" /> {t("common.delete", undefined, "Excluir")}
           </Button>
           <Button variant="outline" onClick={onEdit}>
-            <Pencil className="size-4 mr-1.5" /> Editar
+            <Pencil className="size-4 mr-1.5" /> {t("common.edit", undefined, "Editar")}
           </Button>
-          <Button onClick={() => onOpenChange(false)}>Fechar</Button>
+          <Button onClick={() => onOpenChange(false)}>{t("common.close", undefined, "Fechar")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

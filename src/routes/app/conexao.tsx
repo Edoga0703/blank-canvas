@@ -299,9 +299,9 @@ function ConexoesPage() {
   const channels: Channel[] = [
     {
       key: "meta_tracking",
-      title: "Meta Pixel & Conversions API (CAPI)",
-      desc: "Rastreo de Anúncios · Configuração do Pixel, Dataset ID e conversões automáticas para Meta Ads",
-      badge: "Pixel & CAPI",
+      title: t("connection.meta_tracking_title", undefined, "Meta Pixel & Conversions API (CAPI)"),
+      desc: t("connection.meta_tracking_desc", undefined, "Rastreo de Anúncios · Configuração do Pixel, Dataset ID e conversões automáticas para Meta Ads"),
+      badge: t("connection.meta_tracking_badge", undefined, "Pixel & CAPI"),
       icon: <Activity className="size-6 text-blue-500" />,
       match: () => false,
       onIntegrate: () => setActiveTab("tracking"),
@@ -309,9 +309,9 @@ function ConexoesPage() {
     },
     {
       key: "dapi",
-      title: "WhatsApp (QR Code / Pareamento)",
-      desc: "Não Oficial · Conecte seu celular físico em segundos com QR Code",
-      badge: "Não Oficial",
+      title: t("connection.dapi_title", undefined, "WhatsApp (QR Code / Pareamento)"),
+      desc: t("connection.dapi_desc", undefined, "Não Oficial · Conecte seu celular físico em segundos com QR Code"),
+      badge: t("connection.dapi_badge", undefined, "Não Oficial"),
       icon: <WhatsAppGlyph className="size-6 text-emerald-500" />,
       match: (i) => {
         const p = i.provider ?? i.provider_type ?? "dapi";
@@ -322,9 +322,9 @@ function ConexoesPage() {
     },
     {
       key: "dapi_official",
-      title: "WhatsApp API Oficial Meta (Cloud API)",
-      desc: "Oficial Meta · Sem risco de bloqueio, com templates HSM e selo",
-      badge: "API Oficial Meta",
+      title: t("connection.official_title", undefined, "WhatsApp API Oficial Meta (Cloud API)"),
+      desc: t("connection.official_desc", undefined, "Oficial Meta · Sem risco de bloqueio, com templates HSM e selo"),
+      badge: t("connection.official_badge", undefined, "API Oficial Meta"),
       icon: <WhatsAppGlyph className="size-6 text-[#25D366]" />,
       match: (i) => {
         const p = i.provider ?? i.provider_type;
@@ -339,8 +339,8 @@ function ConexoesPage() {
     channels.push({
       key: "telegram",
       title: pluginName("telegram", "Telegram"),
-      desc: "Conexão de bot via BotFather",
-      badge: "Bot API",
+      desc: t("connection.telegram_desc", undefined, "Conexão de bot via BotFather"),
+      badge: t("connection.telegram_badge", undefined, "Bot API"),
       icon: <TelegramGlyph className="size-6 text-[#229ED9]" />,
       match: (i) => i.provider === "telegram",
       onIntegrate: () => setTelegramOpen(true),
@@ -352,8 +352,8 @@ function ConexoesPage() {
     channels.push({
       key: "instagram",
       title: pluginName("instagram", "Instagram Direct"),
-      desc: "Mensagens diretas do Instagram via Meta Graph API",
-      badge: "Oficial Meta",
+      desc: t("connection.instagram_desc", undefined, "Mensagens diretas do Instagram via Meta Graph API"),
+      badge: t("connection.instagram_badge", undefined, "Oficial Meta"),
       icon: <InstagramGlyph className="size-6 text-[#E4405F]" />,
       match: (i) => i.provider === "meta_instagram",
       onIntegrate: () => setMetaDialog("instagram"),
@@ -362,8 +362,8 @@ function ConexoesPage() {
     channels.push({
       key: "messenger",
       title: pluginName("messenger", "Facebook Messenger"),
-      desc: "Páginas do Facebook via Meta Graph API",
-      badge: "Oficial Meta",
+      desc: t("connection.messenger_desc", undefined, "Páginas do Facebook via Meta Graph API"),
+      badge: t("connection.messenger_badge", undefined, "Oficial Meta"),
       icon: <MessengerGlyph className="size-6 text-[#0084FF]" />,
       match: (i) => i.provider === "meta_messenger",
       onIntegrate: () => setMetaDialog("facebook"),
@@ -421,7 +421,7 @@ function ConexoesPage() {
         {instances.length > 3 && (
           <div className="relative w-full sm:max-w-sm">
             <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar conta..." className="pl-9 h-9" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("connection.search_account", undefined, "Buscar conta...")} className="pl-9 h-9" />
           </div>
         )}
 
@@ -456,7 +456,7 @@ function ConexoesPage() {
                   </div>
                   {accounts.length === 0 ? (
                     <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={ch.onIntegrate} disabled={!canAddChannel(ch.key)}>
-                      <Plug className="size-3.5" /> Integrar
+                      <Plug className="size-3.5" /> {t("connection.integrate", undefined, "Integrar")}
                     </Button>
                   ) : ch.multi && canAddChannel(ch.key) ? (
                     <Tooltip>
@@ -465,7 +465,7 @@ function ConexoesPage() {
                           <Plus className="size-4" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Adicionar outra conta</TooltipContent>
+                      <TooltipContent>{t("connection.add_another_account", undefined, "Adicionar outra conta")}</TooltipContent>
                     </Tooltip>
                   ) : null}
                 </div>
@@ -484,33 +484,33 @@ function ConexoesPage() {
                               <StatusBadge status={inst.status} paused={inst.paused} />
                               {isOfficial ? (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-blue-500/10 text-blue-700 border-blue-500/30">
-                                  API Oficial Meta
+                                  {t("connection.official_badge", undefined, "API Oficial Meta")}
                                 </Badge>
                               ) : inst.provider === "dapi" ? (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-emerald-500/10 text-emerald-700 border-emerald-500/30">
-                                  QR Code (Não Oficial)
+                                  {t("connection.dapi_badge", undefined, "QR Code (Não Oficial)")}
                                 </Badge>
                               ) : null}
                             </button>
                             <div className="flex items-center gap-0.5 shrink-0">
                               {isOfficial ? (
-                                <IconAction tip="Sincronizar Webhook Oficial" onClick={() => doReconfWebhook(inst)} disabled={isBusy}>
+                                <IconAction tip={t("connection.sync_webhook", undefined, "Sincronizar Webhook Oficial")} onClick={() => doReconfWebhook(inst)} disabled={isBusy}>
                                   <Plug className="size-4" />
                                 </IconAction>
                               ) : inst.provider === "dapi" ? (
-                                <IconAction tip="Reconectar / Gerar QR" onClick={() => doReconnect(inst)} disabled={isBusy}>
+                                <IconAction tip={t("connection.reconnect_qr", undefined, "Reconectar / Gerar QR")} onClick={() => doReconnect(inst)} disabled={isBusy}>
                                   <QrCode className="size-4" />
                                 </IconAction>
                               ) : null}
-                              <IconAction tip={inst.paused ? "Retomar" : "Pausar"} onClick={() => doTogglePause(inst)} disabled={isBusy || inst.status !== "connected"}>
+                              <IconAction tip={inst.paused ? t("connection.resume", undefined, "Retomar") : t("connection.pause", undefined, "Pausar")} onClick={() => doTogglePause(inst)} disabled={isBusy || inst.status !== "connected"}>
                                 {inst.paused ? <Play className="size-4" /> : <Pause className="size-4" />}
                               </IconAction>
                               {(inst.status === "connected" || inst.status === "connecting") && (inst.provider === "dapi" || isOfficial) && (
-                                <IconAction tip={inst.status === "connecting" ? "Cancelar conexão" : "Desconectar"} onClick={() => doDisconnect(inst)} disabled={isBusy}>
+                                <IconAction tip={inst.status === "connecting" ? t("connection.cancel_connection", undefined, "Cancelar conexão") : t("connection.disconnect", undefined, "Desconectar")} onClick={() => doDisconnect(inst)} disabled={isBusy}>
                                   <Power className="size-4" />
                                 </IconAction>
                               )}
-                              <IconAction tip="Excluir conexão" onClick={() => doDelete(inst)} disabled={isBusy} destructive>
+                              <IconAction tip={t("connection.delete_connection", undefined, "Excluir conexão")} onClick={() => doDelete(inst)} disabled={isBusy} destructive>
                                 <Trash2 className="size-4" />
                               </IconAction>
                               <Button variant="ghost" size="icon" className="size-8" onClick={() => setExpanded(isOpen ? null : inst.instance_name)}>

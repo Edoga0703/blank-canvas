@@ -25,6 +25,7 @@ import { invalidateCapacidades } from "@/hooks/use-capacidades";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useLanguage } from "@/lib/i18n/context";
 
 
 export const Route = createFileRoute("/app/plugins")({
@@ -69,6 +70,7 @@ const CATEGORIA_LABELS: Record<string, string> = {
 
 
 function PluginsStorePage() {
+  const { t } = useLanguage();
   const list = useServerFn(listStorePlugins);
   const listBanners = useServerFn(listPluginBanners);
   const install = useServerFn(installPlugin);
@@ -210,8 +212,8 @@ function PluginsStorePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Loja de Plugins</h1>
-        <p className="text-sm text-muted-foreground">Turbine seu CRM com novas funcionalidades e integrações.</p>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{t("plugins.title", undefined, "Loja de Plugins")}</h1>
+        <p className="text-sm text-muted-foreground">{t("plugins.subtitle", undefined, "Turbine seu CRM com novas funcionalidades e integrações.")}</p>
       </div>
 
 
@@ -234,7 +236,7 @@ function PluginsStorePage() {
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="O que você deseja integrar ao seu CRM hoje?"
+              placeholder={t("plugins.search_placeholder", undefined, "O que você deseja integrar ao seu CRM hoje?")}
               className="pl-12 h-12 text-base bg-muted/20 border-none rounded-xl focus-visible:ring-2 focus-visible:ring-primary/20 transition-all hover:bg-muted/40"
             />
           </div>
@@ -245,7 +247,7 @@ function PluginsStorePage() {
               className={`h-12 px-4 rounded-xl transition-all font-medium ${soInstalados ? "bg-primary/10 text-primary border-primary/20" : "bg-muted/20 border-none hover:bg-muted/40"}`}
               onClick={() => setSoInstalados((v) => !v)}
             >
-              Instalados
+              {t("plugins.only_installed", undefined, "Instalados")}
               <Badge variant="secondary" className="ml-2">{instalados}</Badge>
             </Button>
 
@@ -265,7 +267,7 @@ function PluginsStorePage() {
               onClick={() => setShowSuggest(true)}
             >
               <Lightbulb className="size-4 text-amber-500" />
-              <span className="hidden sm:inline">Sugerir Integração</span>
+              <span className="hidden sm:inline">{t("plugins.suggest_integration", undefined, "Sugerir Integração")}</span>
             </Button>
           </div>
 

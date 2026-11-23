@@ -20,6 +20,7 @@ import { getPartnerReferralStats, requestPartnerWithdrawal } from "@/lib/parceir
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useLanguage } from "@/lib/i18n/context";
 
 export const Route = createFileRoute("/app/parceiro")({
   head: () => ({
@@ -32,6 +33,7 @@ export const Route = createFileRoute("/app/parceiro")({
 });
 
 function PartnerClientDashboard() {
+  const { t, formatCurrency } = useLanguage();
   const load = useServerFn(getPartnerReferralStats);
   const reqWithdraw = useServerFn(requestPartnerWithdrawal);
   const [data, setData] = useState<any>(null);
@@ -70,12 +72,12 @@ function PartnerClientDashboard() {
     return (
       <Card className="p-10 text-center border-dashed max-w-2xl mx-auto mt-10">
         <Users className="size-12 mx-auto text-muted-foreground mb-4 opacity-20" />
-        <h2 className="text-xl font-semibold mb-2">Você ainda não é um parceiro</h2>
+        <h2 className="text-xl font-semibold mb-2">{t("partner.not_partner_title", undefined, "Você ainda não é um parceiro")}</h2>
         <p className="text-muted-foreground mb-6">
-          Entre em contato com o suporte para ativar seu painel de parceiro e começar a lucrar com indicações.
+          {t("partner.not_partner_desc", undefined, "Entre em contato com o suporte para ativar seu painel de parceiro e começar a lucrar com indicações.")}
         </p>
         <Button onClick={() => window.dispatchEvent(new CustomEvent("support:open"))}>
-          Falar com suporte
+          {t("partner.contact_support", undefined, "Falar com suporte")}
         </Button>
       </Card>
     );
@@ -83,8 +85,7 @@ function PartnerClientDashboard() {
 
   const { partner, referrals } = data;
   const m = data.metrics ?? { cliques: 0, cliques30d: 0, indicacoes: referrals.length, ativos: 0, trial: 0, inadimplentes: 0, conversao: 0 };
-  const brl = (cents: number) =>
-    (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const brl = (cents: number) => formatCurrency(cents / 100);
 
   const referralUrl = `${window.location.origin}/entrar?ref=${partner.codigo_indicacao}`;
 
@@ -92,8 +93,8 @@ function PartnerClientDashboard() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-[26px] leading-tight tracking-tight">Portal do Parceiro</h1>
-          <p className="text-sm text-muted-foreground">Bem-vindo, {partner.codigo_indicacao}! Acompanhe seu crescimento.</p>
+          <h1 className="font-display text-[26px] leading-tight tracking-tight">{t("partner.title", undefined, "Portal do Parceiro")}</h1>
+          <p className="text-sm text-muted-foreground">{t("partner.welcome", { code: partner.codigo_indicacao }, `Bem-vindo, ${partner.codigo_indicacao}! Acompanhe seu crescimento.`)}</p>
         </div>
         <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-[color:var(--hairline)] shadow-sm">
           <div className="px-3 py-1.5 bg-muted/50 rounded-lg flex items-center gap-3">
@@ -101,7 +102,7 @@ function PartnerClientDashboard() {
             <button 
               onClick={() => {
                 navigator.clipboard.writeText(referralUrl);
-                toast.success("Link copiado!");
+                toast.success(t("partner.link_copied", undefined, "Link copiado!"));
               }}
               className="text-muted-foreground hover:text-brand-600 transition-colors"
             >

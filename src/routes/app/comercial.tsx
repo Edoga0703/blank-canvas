@@ -54,9 +54,17 @@ const REPORTS = [
 ] as const;
 
 function ComercialPage() {
-  const { t, formatCurrency, formatDate } = useLanguage();
+  const { t, language, formatCurrency, formatDate } = useLanguage();
   const fmtBRL = useCallback((cents: number) => formatCurrency((cents || 0) / 100), [formatCurrency]);
   const fmtDate = useCallback((iso?: string | null) => (iso ? formatDate(iso, { day: "2-digit", month: "short", year: "2-digit" }) : "—"), [formatDate]);
+  const getPresetLabel = useCallback((pv: PeriodValue) => {
+    if (pv.preset === "mes") return language === "es" ? "Este mes" : language === "en" ? "This month" : "Este mês";
+    if (pv.preset === "mes-anterior") return language === "es" ? "Mes anterior" : language === "en" ? "Previous month" : "Mês anterior";
+    if (pv.preset === "7") return language === "es" ? "Últimos 7 días" : language === "en" ? "Last 7 days" : "Últimos 7 dias";
+    if (pv.preset === "30") return language === "es" ? "Últimos 30 días" : language === "en" ? "Last 30 days" : "Últimos 30 dias";
+    if (pv.preset === "90") return language === "es" ? "Últimos 90 días" : language === "en" ? "Last 90 days" : "Últimos 90 dias";
+    return pv.label;
+  }, [language]);
   const ctx = Route.useRouteContext();
   const companyId = ctx.company?.id ?? "";
   const qc = useQueryClient();
@@ -344,7 +352,7 @@ function ComercialPage() {
         {/* ================= VISÃO GERAL ================= */}
         <TabsContent value="visao-geral" className="space-y-6 pt-6">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("sales.period", undefined, "Período")}: {periodoGeral.label}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("sales.period", undefined, "Período")}: {getPresetLabel(periodoGeral)}</p>
             <PeriodFilter value={periodoGeral} onChange={setPeriodoGeral} />
           </div>
 

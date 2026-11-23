@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useLanguage } from "@/lib/i18n/context";
 import {
   CheckCircle2,
   Loader2,
@@ -48,37 +49,6 @@ type ProviderCard = {
   badge?: { label: string; className: string };
 };
 
-const PROVIDERS: ProviderCard[] = [
-  {
-    key: "dapi",
-    name: "WhatsApp Não Oficial (QR Code / Celular)",
-    price: "Instantâneo",
-    desc: "Conecte seu celular físico em segundos escaneando o QR Code ou digitando o número para receber código de 8 dígitos.",
-    bullets: [
-      "Sem burocracia ou aprovação da Meta",
-      "Pareamento por QR Code ou código de 8 dígitos",
-      "Envio de mensagens, áudios PTT e mídias",
-      "Reconexão automática com proxy dedicado",
-    ],
-    icon: <QrCode className="size-6" />,
-    badge: { label: "Não Oficial · Celular", className: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30" },
-  },
-  {
-    key: "oficial_meta",
-    name: "WhatsApp API Oficial Meta (Cloud API)",
-    price: "Oficial Meta",
-    desc: "WhatsApp Business Cloud API oficial via D-API. Conexão corporativa direta com a Meta, com suporte a Coexistência e selo de verificação.",
-    bullets: [
-      "Suporte a Coexistência (celular + API oficial juntos)",
-      "Popup Oficial D-API (Embedded Signup em 1 clique)",
-      "Sem risco de bloqueio ou banimento de número",
-      "Compatível com envio em massa e templates HSM",
-    ],
-    icon: <Sparkles className="size-6" />,
-    badge: { label: "Oficial Meta Cloud", className: "bg-blue-500/15 text-blue-700 border-blue-500/30" },
-  },
-];
-
 export function NovaConexaoDialog({
   open,
   onOpenChange,
@@ -87,6 +57,7 @@ export function NovaConexaoDialog({
   creating,
   initialProvider = null,
 }: Props) {
+  const { t } = useLanguage();
   const [selected, setSelected] = useState<ProviderKey | null>(null);
   const [officialMode, setOfficialMode] = useState<"popup" | "manual">("popup");
   const [signupMode, setSignupMode] = useState<"coexistence" | "standard">("coexistence");
@@ -97,6 +68,37 @@ export function NovaConexaoDialog({
   const [apiKey, setApiKey] = useState("");
   const [accountId, setAccountId] = useState("");
   const [phoneNumberId, setPhoneNumberId] = useState("");
+
+  const PROVIDERS: ProviderCard[] = [
+    {
+      key: "dapi",
+      name: t("connection.dapi_provider_name", undefined, "WhatsApp Não Oficial (QR Code / Celular)"),
+      price: t("connection.dapi_provider_price", undefined, "Instantâneo"),
+      desc: t("connection.dapi_provider_desc", undefined, "Conecte seu celular físico em segundos escaneando o QR Code ou digitando o número para receber código de 8 dígitos."),
+      bullets: [
+        t("connection.dapi_bullet_1", undefined, "Sem burocracia ou aprovação da Meta"),
+        t("connection.dapi_bullet_2", undefined, "Pareamento por QR Code ou código de 8 dígitos"),
+        t("connection.dapi_bullet_3", undefined, "Envio de mensagens, áudios PTT e mídias"),
+        t("connection.dapi_bullet_4", undefined, "Reconexão automática com proxy dedicado"),
+      ],
+      icon: <QrCode className="size-6" />,
+      badge: { label: t("connection.dapi_badge", undefined, "Não Oficial · Celular"), className: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30" },
+    },
+    {
+      key: "oficial_meta",
+      name: t("connection.official_provider_name", undefined, "WhatsApp API Oficial Meta (Cloud API)"),
+      price: t("connection.official_provider_price", undefined, "Oficial Meta"),
+      desc: t("connection.official_provider_desc", undefined, "WhatsApp Business Cloud API oficial via D-API. Conexão corporativa direta com a Meta, com suporte a Coexistência e selo de verificação."),
+      bullets: [
+        t("connection.official_bullet_1", undefined, "Suporte a Coexistência (celular + API oficial juntos)"),
+        t("connection.official_bullet_2", undefined, "Popup Oficial D-API (Embedded Signup em 1 clique)"),
+        t("connection.official_bullet_3", undefined, "Sem risco de bloqueio ou banimento de número"),
+        t("connection.official_bullet_4", undefined, "Compatível com envio em massa e templates HSM"),
+      ],
+      icon: <Sparkles className="size-6" />,
+      badge: { label: t("connection.official_badge", undefined, "Oficial Meta Cloud"), className: "bg-blue-500/15 text-blue-700 border-blue-500/30" },
+    },
+  ];
 
   useEffect(() => {
     if (!open) return;
@@ -170,9 +172,9 @@ export function NovaConexaoDialog({
     <Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(true) : close())}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Nova Conexão WhatsApp (D-API)</DialogTitle>
+          <DialogTitle>{t("connection.dialog_title", undefined, "Nova Conexão WhatsApp (D-API)")}</DialogTitle>
           <DialogDescription>
-            Escolha entre conexão instantânea para celular físico (Não Oficial) ou conexão corporativa direta da Meta (Oficial Cloud API).
+            {t("connection.dialog_desc", undefined, "Escolha entre conexão instantânea para celular físico (Não Oficial) ou conexão corporativa direta da Meta (Oficial Cloud API).")}
           </DialogDescription>
         </DialogHeader>
 
@@ -189,7 +191,7 @@ export function NovaConexaoDialog({
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <QrCode className="size-3.5" /> WhatsApp Não Oficial (QR / Celular)
+            <QrCode className="size-3.5" /> {t("connection.tab_qr", undefined, "WhatsApp Não Oficial (QR / Celular)")}
           </button>
           <button
             type="button"
@@ -203,7 +205,7 @@ export function NovaConexaoDialog({
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Sparkles className="size-3.5" /> WhatsApp API Oficial (Meta Cloud)
+            <Sparkles className="size-3.5" /> {t("connection.tab_official", undefined, "WhatsApp API Oficial (Meta Cloud)")}
           </button>
         </div>
 
@@ -260,7 +262,7 @@ export function NovaConexaoDialog({
             </Card>
 
             <div className="space-y-2">
-              <Label htmlFor="conn-name">Nome da conexão</Label>
+              <Label htmlFor="conn-name">{t("connection.conn_name_label", undefined, "Nome da conexão")}</Label>
               <Input
                 id="conn-name"
                 autoFocus
@@ -277,7 +279,7 @@ export function NovaConexaoDialog({
 
             <div className="flex justify-between gap-2">
               <Button variant="ghost" size="sm" onClick={() => setSelected(null)} disabled={creating}>
-                <ArrowLeft className="size-4 mr-1" /> Voltar
+                <ArrowLeft className="size-4 mr-1" /> {t("connection.back", undefined, "Voltar")}
               </Button>
               <Button
                 onClick={async () => {
@@ -291,10 +293,10 @@ export function NovaConexaoDialog({
               >
                 {creating ? (
                   <>
-                    <Loader2 className="size-4 mr-1.5 animate-spin" /> Criando…
+                    <Loader2 className="size-4 mr-1.5 animate-spin" /> {t("common.loading", undefined, "Criando…")}
                   </>
                 ) : (
-                  "Salvar e gerar QR"
+                  t("connection.create_connection", undefined, "Salvar e gerar QR")
                 )}
               </Button>
             </div>
@@ -310,9 +312,9 @@ export function NovaConexaoDialog({
                     {provider.icon}
                   </div>
                   <div>
-                    <div className="font-semibold">WhatsApp API Oficial · Meta Cloud API (D-API)</div>
+                    <div className="font-semibold">{t("connection.official_provider_name", undefined, "WhatsApp API Oficial Meta (Cloud API)")}</div>
                     <div className="text-xs text-muted-foreground">
-                      Conecte via Popup Oficial da Meta (com Coexistência no celular) ou informe as credenciais WABA manualmente.
+                      {t("connection.dialog_desc", undefined, "Conecte via Popup Oficial da Meta ou informe as credenciais WABA manualmente.")}
                     </div>
                   </div>
                 </div>
@@ -327,7 +329,7 @@ export function NovaConexaoDialog({
                       officialMode === "popup" ? "bg-background shadow-sm" : "text-muted-foreground"
                     }`}
                   >
-                    Conexão Rápida (Popup)
+                    {t("connection.subtab_quick", undefined, "Conexão Rápida (Popup)")}
                   </button>
                   <button
                     type="button"
@@ -339,14 +341,14 @@ export function NovaConexaoDialog({
                       officialMode === "manual" ? "bg-background shadow-sm" : "text-muted-foreground"
                     }`}
                   >
-                    Credenciais WABA
+                    {t("connection.subtab_waba", undefined, "Credenciais WABA")}
                   </button>
                 </div>
               </div>
             </Card>
 
             <div className="space-y-1.5">
-              <Label htmlFor="off-name">Nome da conexão (opcional)</Label>
+              <Label htmlFor="off-name">{t("connection.conn_name_label", undefined, "Nome da conexão")}</Label>
               <Input
                 id="off-name"
                 value={name}
@@ -359,7 +361,7 @@ export function NovaConexaoDialog({
             {officialMode === "popup" ? (
               <div className="space-y-3">
                 <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Escolha o modo de conexão oficial
+                  {t("connection.official_provider_name", undefined, "Escolha o modo de conexão oficial")}
                 </div>
 
                 <div className="grid gap-2.5 sm:grid-cols-2">
@@ -419,20 +421,11 @@ export function NovaConexaoDialog({
 
                 <Card className="p-3 bg-muted/40 border-dashed text-xs text-muted-foreground space-y-1.5">
                   <div className="font-medium text-foreground flex items-center gap-1.5">
-                    <HelpCircle className="size-3.5 text-primary" /> O que acontecerá ao clicar no botão:
+                    <HelpCircle className="size-3.5 text-primary" /> {t("connection.embedded_title", undefined, "Embedded Signup · D-API Provedor Oficial")}
                   </div>
-                  <ol className="list-decimal list-inside space-y-0.5 pl-1 text-[11px]">
-                    <li>Uma janela segura da D-API (<code className="font-mono">connect.d-api.cloud</code>) abrirá a autenticação da Meta.</li>
-                    <li>Faça login no Facebook e selecione seu portfólio de negócios (WABA).</li>
-                    {signupMode === "coexistence" ? (
-                      <li>
-                        <b>No celular:</b> abra WhatsApp Business &gt; Aparelhos Conectados &gt; Conectar Aparelho e escaneie o QR da Meta.
-                      </li>
-                    ) : (
-                      <li>Selecione o número de telefone da sua empresa para operar via Cloud API.</li>
-                    )}
-                    <li>Ao concluir, a janela fechará sozinha e o número estará pronto para uso.</li>
-                  </ol>
+                  <p className="text-[11px] leading-relaxed">
+                    {t("connection.embedded_desc", undefined, "Ao clicar em Conectar com a Meta, abrirá a janela hospedada da D-API para autenticar sua conta do Facebook Business e selecionar o número. Quando concluir, a conexão será registrada automaticamente via postMessage.")}
+                  </p>
                 </Card>
               </div>
             ) : (
@@ -478,7 +471,7 @@ export function NovaConexaoDialog({
                 onClick={() => setSelected(null)}
                 disabled={creating || popupLoading}
               >
-                <ArrowLeft className="size-4 mr-1" /> Voltar
+                <ArrowLeft className="size-4 mr-1" /> {t("connection.back", undefined, "Voltar")}
               </Button>
               {officialMode === "popup" ? (
                 <Button
@@ -492,7 +485,7 @@ export function NovaConexaoDialog({
                     </>
                   ) : (
                     <>
-                      Conectar com a Meta (Popup) <ExternalLink className="size-4 ml-1" />
+                      {t("connection.connect_meta_popup", undefined, "Conectar com a Meta (Popup)")} <ExternalLink className="size-4 ml-1" />
                     </>
                   )}
                 </Button>
@@ -517,7 +510,7 @@ export function NovaConexaoDialog({
                     </>
                   ) : (
                     <>
-                      Salvar Credenciais Oficiais <ExternalLink className="size-4 ml-1.5" />
+                      {t("connection.create_connection", undefined, "Salvar Credenciais Oficiais")} <ExternalLink className="size-4 ml-1.5" />
                     </>
                   )}
                 </Button>
