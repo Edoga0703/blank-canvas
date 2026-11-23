@@ -291,7 +291,7 @@ Puedo ayudarte a:
                     : "bg-muted/60 text-foreground border border-border/60 rounded-bl-xs"
                 )}
               >
-                <div className="whitespace-pre-wrap">{msg.content}</div>
+                <div className="whitespace-pre-wrap break-words">{msg.content}</div>
 
                 {/* Structured Action Proposals */}
                 {msg.proposals && msg.proposals.length > 0 && (

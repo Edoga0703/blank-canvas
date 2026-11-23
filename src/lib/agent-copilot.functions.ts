@@ -67,7 +67,7 @@ export const askAgentCopilot = createServerFn({ method: "POST" })
       content: m.content,
     }));
 
-    // 3. Executa chat com a IA nativa do sistema
+    // 3. Executa chat com a IA nativa do sistema (garante até 8192 tokens para respostas completas)
     const rawOutput = await lovableAiChat(
       [
         { role: "system", content: systemPrompt },
@@ -76,6 +76,8 @@ export const askAgentCopilot = createServerFn({ method: "POST" })
       {
         provider: agentCtx.agent?.ai_provider || "gemini",
         model: agentCtx.agent?.ai_model || "gemini-3.5-flash-lite",
+        maxTokens: 8192,
+        temperature: 0.2,
       }
     );
 

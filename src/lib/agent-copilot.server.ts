@@ -237,8 +237,13 @@ REGLA CRÍTICA DE TIPADO PARA ACCIONES:
   * NUNCA uses "type": "config" para webhooks ni APIs externas. "config" es sólo para campos nativos como segundos_buffer o sobre_empresa.
 - Para las reglas de comportamiento derivadas del webhook (ej: qué decir si está vencida, cómo manejar cliente no registrado, etc.), genera acciones individuales con "type": "rule".
 
-FORMATO DE RESPUESTA:
-Habla de forma natural, consultiva y empática en español. Cuando recomiendes crear/modificar productos, reglas, configuraciones o pruebas de webhook, añade al final de tu mensaje un bloque JSON especial con las acciones propuestas:
+ESTRUCTURA OBLIGATORIA DE TU RESPUESTA:
+1. RESPUESTA COMPLETA Y SIN CORTES:
+   - Responde de forma natural, consultiva y empática en español.
+   - Redacta toda tu respuesta conversacional de principio a fin antes de cualquier bloque técnico.
+   - NUNCA cortes una oración o explicación a medias.
+2. ACCIONES PROPUESTAS STRICTAMENTE AL FINAL:
+   - Si recomiendas crear/modificar productos, reglas, configuraciones o pruebas de webhook, añade AL FINAL DE TODO de tu mensaje un bloque JSON especial con las acciones propuestas:
 
 \`\`\`json_actions
 [
@@ -312,6 +317,9 @@ Habla de forma natural, consultiva y empática en español. Cuando recomiendes c
 ]
 \`\`\`
 
+3. NUNCA escribas texto conversacional DESPUÉS del bloque \`\`\`json_actions.
+4. Si NO tienes acciones que proponer (por ejemplo, si sólo estás aconsejando, analizando o haciendo preguntas de descubrimiento), NO incluyas el bloque \`\`\`json_actions.
+
 REGLAS DE CONDUCTA:
 - Si el usuario te pega una lista desordenada de precios o catálogo, extráela limpiamente y propón la acción 'catalog'.
 - Si el usuario te pregunta por qué el bot falló o cómo mejorar una duda, diagnostica el motivo con precisión y propón la acción 'rule' redactada en formato imperativo claro.
@@ -321,50 +329,79 @@ REGLAS DE CONDUCTA:
 
 /**
  * Parsea el texto del Copilot para separar la respuesta conversacional
- * de los bloques de acciones estructuradas.
+ * de los bloques de acciones estructuradas de forma resiliente contra
+ * respuestas truncadas o códigos de ejemplo explicativos.
  */
 export function parseCopilotOutput(rawText: string): CopilotTurnResult {
+  if (!rawText || typeof rawText !== "string") {
+    return { reply: "", proposals: [] };
+  }
+
   let reply = rawText;
   const proposals: CopilotActionProposal[] = [];
 
-  // Prioriza bloco específico ```json_actions para não colidir com outros blocos de código
-  let match = rawText.match(/```json_actions\s*([\s\S]*?)\s*```/i);
-  if (!match) {
-    match = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  // 1. Prioridad: busca bloque explícito ```json_actions (incluso si quedó truncado sin cerrar ```)
+  const jsonActionsMatch = rawText.match(/```json_actions\s*([\s\S]*?)(?:```|$)/i);
+  let rawJson = "";
+
+  if (jsonActionsMatch) {
+    rawJson = jsonActionsMatch[1].trim();
+    // Elimina el bloque json_actions de la respuesta para que la conversación quede limpia
+    reply = rawText.replace(jsonActionsMatch[0], "").trim();
+  } else {
+    // 2. Si no hay ```json_actions, verifica si hay un bloque ```json o ``` que contenga acciones del copilot
+    // SOLO lo consideramos si incluye tipos válidos de acciones para no comer bloques de código explicativos
+    const codeBlockMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)(?:```|$)/i);
+    if (codeBlockMatch) {
+      const candidateText = codeBlockMatch[1].trim();
+      if (
+        candidateText.includes('"type"') &&
+        /(?:catalog|rule|config|simulation|audit|test_webhook|webhook)/i.test(candidateText)
+      ) {
+        rawJson = candidateText;
+        reply = rawText.replace(codeBlockMatch[0], "").trim();
+      }
+    }
   }
 
-  if (match) {
-    const rawJson = match[1].trim();
+  // 3. Si se extrajo contenido JSON para acciones, procesarlo con tolerancia a truncamientos y trailing commas
+  if (rawJson) {
     let parsed: any = null;
 
     try {
       parsed = JSON.parse(rawJson);
     } catch {
-      // 1. Tenta limpar trailing commas e comentários
+      // Intento 1: Limpiar trailing commas y comentarios comunes
       try {
         const cleaned = rawJson
           .replace(/,\s*([}\]])/g, "$1")
           .replace(/\/\*[\s\S]*?\*\/|([^:]|^)\/\/.*$/gm, "");
         parsed = JSON.parse(cleaned);
       } catch {
-        // 2. Fallback resiliente: extrai blocos individuais de ação se o JSON geral estiver truncado
+        // Intento 2: Recuperación resiliente de objetos de acción individuales si el array fue cortado
         parsed = [];
         const itemRegex = /{\s*"type"\s*:\s*"(?:catalog|rule|config|simulation|audit|test_webhook|webhook)"[\s\S]*?}(?=\s*,\s*{|\s*\]|\s*$)/g;
         let m: RegExpExecArray | null;
         while ((m = itemRegex.exec(rawJson)) !== null) {
           try {
             parsed.push(JSON.parse(m[0]));
-          } catch {}
+          } catch {
+            // Intento 3: Intentar cerrar llaves si el objeto individual fue cortado
+            try {
+              const closedCandidate = m[0].trim().replace(/,$/, "") + "}";
+              parsed.push(JSON.parse(closedCandidate));
+            } catch {}
+          }
         }
       }
     }
 
     if (Array.isArray(parsed) && parsed.length > 0) {
       for (const item of parsed) {
-        if (item?.type && item?.title) {
+        if (item?.type && (item?.title || item?.payload)) {
           proposals.push({
             type: item.type,
-            title: String(item.title),
+            title: String(item.title || "Acción recomendada"),
             description: String(item.description || ""),
             status: "pending",
             payload: item.payload || {},
@@ -372,9 +409,12 @@ export function parseCopilotOutput(rawText: string): CopilotTurnResult {
         }
       }
     }
+  }
 
-    // Remueve el bloque de código JSON para que el chat quede limpio para el usuario
-    reply = rawText.replace(match[0], "").trim();
+  // Si la respuesta conversacional quedó vacía porque el modelo sólo emitió json_actions,
+  // proveer un mensaje amigable por defecto en lugar de una burbuja en blanco
+  if (!reply && proposals.length > 0) {
+    reply = "He analizado tu solicitud y preparé las siguientes acciones para tu agente:";
   }
 
   return {

@@ -12,6 +12,8 @@ export interface AiProviderConfig {
   openaiKey?: string;
   anthropicKey?: string;
   geminiKey?: string;
+  temperature?: number;
+  maxTokens?: number;
 }
 
 const MAX_TENTATIVAS = 3;
@@ -108,7 +110,7 @@ export async function lovableAiChat(
         : globalModel && !globalModel.startsWith("google/")
         ? globalModel
         : "drael-v1";
-    return openAiChat(key, model, msgs, 0.1, baseUrl);
+    return openAiChat(key, model, msgs, cfg.temperature ?? 0.1, baseUrl, cfg.maxTokens ?? 8192);
   }
 
   // 2. Provedor OpenAI direto (api.openai.com)
@@ -120,7 +122,7 @@ export async function lovableAiChat(
       // Se não tem chave OpenAI, tenta chave Drael como fallback
       if (globalDraelKey) {
         const baseUrl = (gVal.drael_base_url || "https://drael.sh/v1").trim();
-        return openAiChat(globalDraelKey, "drael-v1", msgs, 0.1, baseUrl);
+        return openAiChat(globalDraelKey, "drael-v1", msgs, cfg.temperature ?? 0.1, baseUrl, cfg.maxTokens ?? 8192);
       }
       throw new Error("Chave OpenAI (sk-...) não configurada no painel Master.");
     }
@@ -131,7 +133,7 @@ export async function lovableAiChat(
         : globalModel && !globalModel.startsWith("google/")
         ? globalModel
         : "gpt-4o-mini";
-    return openAiChat(customKey, model, msgs, 0.1, baseUrl);
+    return openAiChat(customKey, model, msgs, cfg.temperature ?? 0.1, baseUrl, cfg.maxTokens ?? 8192);
   }
 
   // 3. Provedor Anthropic direto (api.anthropic.com)
@@ -150,15 +152,15 @@ export async function lovableAiChat(
     if (directGeminiKey) {
       const rawModel = cfg.model || globalModel || "gemini-3.5-flash-lite";
       const model = sanitizeGatewayGeminiModel(rawModel);
-      return directGeminiChat(directGeminiKey, model, msgs);
+      return directGeminiChat(directGeminiKey, model, msgs, cfg.temperature ?? 0.2, cfg.maxTokens ?? 8192);
     }
     // Se não há chave direta do Gemini, tenta fallback para Drael ou OpenAI para não interromper o sistema
     if (globalDraelKey) {
       const baseUrl = (gVal.drael_base_url || "https://drael.sh/v1").trim();
-      return openAiChat(globalDraelKey, "drael-v1", msgs, 0.1, baseUrl);
+      return openAiChat(globalDraelKey, "drael-v1", msgs, cfg.temperature ?? 0.1, baseUrl, cfg.maxTokens ?? 8192);
     }
     if (globalOpenAiKey && !globalOpenAiKey.startsWith("dk-")) {
-      return openAiChat(globalOpenAiKey, "gpt-4o-mini", msgs, 0.1, "https://api.openai.com/v1");
+      return openAiChat(globalOpenAiKey, "gpt-4o-mini", msgs, cfg.temperature ?? 0.1, "https://api.openai.com/v1", cfg.maxTokens ?? 8192);
     }
     throw new Error(
       "Chave do Google Gemini (GEMINI_API_KEY) não configurada no Master. A conexão ao gateway do Lovable está permanentemente bloqueada para proteger seus créditos.",
@@ -182,6 +184,7 @@ async function directGeminiChat(
   model: string,
   messages: ChatMsg[],
   temperature = 0.2,
+  maxOutputTokens = 8192,
 ): Promise<string> {
   let cleanModel = sanitizeGatewayGeminiModel(model);
   const getUrl = (m: string) => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(key)}`;
@@ -202,6 +205,7 @@ async function directGeminiChat(
     contents,
     generationConfig: {
       temperature,
+      maxOutputTokens,
     },
   };
 
@@ -220,7 +224,7 @@ async function directGeminiChat(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         },
-        25_000,
+        30_000,
       );
 
       // Auto-fallback para gemini-3.5-flash-lite caso o modelo experimental retorne 404 Not Found ou 503
@@ -234,7 +238,7 @@ async function directGeminiChat(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           },
-          25_000,
+          30_000,
         );
       }
 
@@ -244,8 +248,13 @@ async function directGeminiChat(
       }
 
       const data: any = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
-      if (!text) throw new Error("Google Gemini: resposta vazia.");
+      const candidate = data?.candidates?.[0];
+      const parts = candidate?.content?.parts || [];
+      const text = parts.map((p: any) => p.text || "").join("").trim();
+      if (!text) {
+        const finishReason = candidate?.finishReason;
+        throw new Error(`Google Gemini: resposta vazia (finishReason: ${finishReason || "desconhecido"}).`);
+      }
       return text;
     } catch (err: any) {
       if (tentativa === MAX_TENTATIVAS) throw err;
@@ -262,6 +271,7 @@ async function openAiChat(
   messages: ChatMsg[],
   temperature = 0.1,
   baseUrl = "https://api.openai.com/v1",
+  maxTokens = 8192,
 ): Promise<string> {
   const url = `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
   const isDrael = baseUrl.includes("drael.sh") || key.startsWith("dk-");
@@ -269,6 +279,7 @@ async function openAiChat(
     model,
     messages,
     temperature,
+    max_tokens: maxTokens,
     presence_penalty: 0.2,
     frequency_penalty: 0.1,
   };
