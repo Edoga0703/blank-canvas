@@ -414,45 +414,18 @@ export const generateAgentAvatar = createServerFn({ method: "POST" })
       Context: Professional business avatar for ${agent.segmento || "business"}.
       ${data.customPrompt ? `Additional instructions: ${data.customPrompt}` : ""}`;
 
-    // 2. Gera imagem via Lovable AI Gateway (inline: import dinâmico quebra após o split)
-    const apiKey = process.env['LOVABLE_API_KEY'];
-    if (!apiKey) throw new Error("LOVABLE_API_KEY ausente.");
-
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "fetch", "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        prompt: basePrompt,
-        size: "1024x1024",
-      }),
-
-
-    });
-
-    if (!aiRes.ok) {
-      const t = await aiRes.text().catch(() => "");
-      if (aiRes.status === 402) throw new Error("Créditos de IA insuficientes para gerar o avatar.");
-      throw new Error(`Falha ao gerar avatar (${aiRes.status}): ${t.slice(0, 160)}`);
-    }
-
-    const aiJson: any = await aiRes.json();
-    const b64 =
-      aiJson?.data?.[0]?.b64_json ||
-      aiJson?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    const urlOut = aiJson?.data?.[0]?.url;
+    // 2. Gera avatar usando o provedor de IA independente ou avatar dinâmico (Zero créditos Lovable)
+    const { lovableAiImage } = await import("@/lib/lovable-ai.server");
+    const avatarImgUrl = await lovableAiImage(basePrompt);
 
     let blob: Blob;
-    if (b64) {
-      const raw = String(b64).includes(",") ? String(b64).split(",")[1] : String(b64);
-      const bin = atob(raw);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      blob = new Blob([bytes], { type: "image/png" });
-    } else if (urlOut) {
-      blob = await (await fetch(urlOut)).blob();
-    } else {
-      throw new Error("A IA não retornou uma imagem.");
+    try {
+      const imgRes = await fetch(avatarImgUrl);
+      if (!imgRes.ok) throw new Error("Falha ao obter imagem");
+      blob = await imgRes.blob();
+    } catch {
+      // Fallback seguro se fetch falhar
+      blob = new Blob([`<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"><rect width="256" height="256" fill="#6366f1"/><text x="128" y="140" fill="#fff" font-size="64" font-family="sans-serif" text-anchor="middle">IA</text></svg>`], { type: "image/svg+xml" });
     }
 
     const fileName = `${(agent as any).company_id}/avatar-${data.agentId}-${Date.now()}.png`;

@@ -3203,7 +3203,7 @@ function ConversasPage() {
                     : null;
                   const quotedSnippet = quotedMsg
                     ? {
-                        sender: quotedMsg.direcao === "saida" ? "Você" : (quotedMsg.contato_nome ?? "Contato"),
+                        sender: quotedMsg.direcao === "saida" ? t("chat.you_badge", undefined, "Você") : (quotedMsg.contato_nome ?? t("chat.contact", undefined, "Contato")),
                         text: stripAiMediaAnalysis(quotedMsg.texto) || (quotedMsg.midia_tipo ? `[${quotedMsg.midia_tipo}]` : ""),
                         id: quotedMsg.id,
                       }
@@ -3218,7 +3218,7 @@ function ConversasPage() {
                           null;
                         if (quotedTxt) {
                           return {
-                            sender: "Mensagem citada",
+                            sender: t("chat.quoted_message", undefined, "Mensagem citada"),
                             text: stripAiMediaAnalysis(quotedTxt),
                             id: null,
                           };
@@ -3603,6 +3603,7 @@ function Bubble({
   isFlashing?: boolean;
 }) {
   const instanceMeta = getInstanceVisualMeta(m.instance_id, m.provider, instances);
+  const { t } = useLanguage();
   const isOut = m.direcao === "saida";
   const ia = m.autor === "ia";
   const automacao = m.autor === "automacao";
@@ -3626,16 +3627,16 @@ function Bubble({
     if (busy) return;
     const ok = window.confirm(
       isOut
-        ? "Apagar esta mensagem no WhatsApp e no sistema?"
-        : "Remover esta mensagem do histórico do sistema?",
+        ? t("chat.confirm_delete_message_wa", undefined, "Apagar esta mensagem no WhatsApp e no sistema?")
+        : t("chat.confirm_delete_message_sys", undefined, "Remover esta mensagem do histórico do sistema?"),
     );
     if (!ok) return;
     setBusy(true);
     try {
       const res: any = await deleteFn({ data: { messageId: m.id } });
-      toast.success(res?.syncedToWhatsapp ? "Mensagem apagada no WhatsApp" : "Mensagem removida do histórico");
+      toast.success(res?.syncedToWhatsapp ? t("chat.message_deleted_wa", undefined, "Mensagem apagada no WhatsApp") : t("chat.message_deleted_sys", undefined, "Mensagem removida do histórico"));
     } catch (e: any) {
-      toast.error(e?.message ?? "Não foi possível apagar");
+      toast.error(e?.message ?? t("common.delete_error", undefined, "Não foi possível apagar"));
     } finally {
       setBusy(false);
       setShowActions(false);
@@ -3667,14 +3668,14 @@ function Bubble({
   }
 
   async function saveEdit() {
-    const t = editText.trim();
-    if (!t || t === m.texto) { setEditing(false); return; }
+    const tVal = editText.trim();
+    if (!tVal || tVal === m.texto) { setEditing(false); return; }
     try {
-      const res: any = await editFn({ data: { messageId: m.id, texto: t } });
-      if (res?.ok === false) { toast.error(res.error ?? "Falha ao editar"); return; }
+      const res: any = await editFn({ data: { messageId: m.id, texto: tVal } });
+      if (res?.ok === false) { toast.error(res.error ?? t("chat.message_edit_failed", undefined, "Falha ao editar")); return; }
       setEditing(false);
-      toast.success("Mensagem editada");
-    } catch (e: any) { toast.error(e?.message ?? "Falha ao editar"); }
+      toast.success(t("chat.message_edited", undefined, "Mensagem editada"));
+    } catch (e: any) { toast.error(e?.message ?? t("chat.message_edit_failed", undefined, "Falha ao editar")); }
   }
 
   const ageMs = Date.now() - new Date(m.created_at).getTime();
@@ -3716,15 +3717,15 @@ function Bubble({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align={isOut ? "end" : "start"} className="z-50">
-                <DropdownMenuItem onClick={() => onReply?.(m)}><Reply className="mr-2 size-4" />Responder</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setForwardOpen(true)}><Forward className="mr-2 size-4" />Encaminhar</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowReactions(true)}><Smile className="mr-2 size-4" />Reagir</DropdownMenuItem>
-                {media?.url && <DropdownMenuItem onClick={() => { const a = document.createElement("a"); a.href = media.url; a.download = media.nome || "arquivo"; a.target = "_blank"; a.click(); }}><Download className="mr-2 size-4" />Baixar</DropdownMenuItem>}
-                {canEdit && <DropdownMenuItem onClick={() => { setEditText(m.texto); setEditing(true); }}><Pencil className="mr-2 size-4" />Editar</DropdownMenuItem>}
+                <DropdownMenuItem onClick={() => onReply?.(m)}><Reply className="mr-2 size-4" />{t("chat.reply", undefined, "Responder")}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setForwardOpen(true)}><Forward className="mr-2 size-4" />{t("chat.forward", undefined, "Encaminhar")}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowReactions(true)}><Smile className="mr-2 size-4" />{t("chat.react", undefined, "Reagir")}</DropdownMenuItem>
+                {media?.url && <DropdownMenuItem onClick={() => { const a = document.createElement("a"); a.href = media.url; a.download = media.nome || "arquivo"; a.target = "_blank"; a.click(); }}><Download className="mr-2 size-4" />{t("chat.download", undefined, "Baixar")}</DropdownMenuItem>}
+                {canEdit && <DropdownMenuItem onClick={() => { setEditText(m.texto); setEditing(true); }}><Pencil className="mr-2 size-4" />{t("common.edit", undefined, "Editar")}</DropdownMenuItem>}
                 {canDelete && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-destructive" onClick={() => void removeMessage()}><Trash2 className="mr-2 size-4" />Apagar</DropdownMenuItem>
+                    <DropdownMenuItem className="text-destructive" onClick={() => void removeMessage()}><Trash2 className="mr-2 size-4" />{t("common.delete", undefined, "Apagar")}</DropdownMenuItem>
                   </>
                 )}
               </DropdownMenuContent>
@@ -3755,7 +3756,7 @@ function Bubble({
                 }
               }}
               className={`mb-1.5 px-2.5 py-1.5 rounded border-l-4 text-[11.5px] cursor-pointer transition-opacity hover:opacity-90 ${isOut ? "bg-white/15 border-white/80 text-white" : "bg-black/5 border-[color:var(--brand)] text-foreground"} truncate`}
-              title="Ir para a mensagem citada"
+              title={t("chat.go_to_quoted", undefined, "Ir para a mensagem citada")}
             >
               <div className="opacity-75 text-[10px] font-bold tracking-tight">{quotedSnippet.sender}</div>
               <div className="truncate opacity-95 text-[11.5px] font-normal">{quotedSnippet.text}</div>
@@ -3770,7 +3771,7 @@ function Bubble({
 
               ) : null}
               <span className="block text-[9.5px] font-bold opacity-80 uppercase tracking-wider flex items-center gap-1.5">
-                {ia ? "⚡ Agente IA" : automacao ? "🤖 Automação da etapa" : templateData.isTemplate ? "📑 Plantilla" : "Atendente"}
+                {ia ? t("chat.agent_ai", undefined, "⚡ Agente IA") : automacao ? t("chat.automation_step", undefined, "🤖 Automação da etapa") : templateData.isTemplate ? t("chat.template_badge", undefined, "📑 Plantilla") : t("chat.attendant", undefined, "Atendente")}
               </span>
               {templateData.isTemplate && !ia && !automacao && (
                 <span className="inline-flex items-center gap-1 text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-white/20 text-white border border-white/25">
@@ -3803,7 +3804,7 @@ function Bubble({
           {isDeleted ? (
             <div className="italic opacity-60 flex items-center gap-1.5 text-[12.5px] py-0.5">
               <span className="text-[12px] opacity-70">🚫</span>
-              <span>Esta mensagem foi apagada</span>
+              <span>{t("chat.deleted_message", undefined, "Esta mensagem foi apagada")}</span>
             </div>
           ) : editing ? (
             <div className="flex flex-col gap-2 min-w-[240px]">
@@ -3815,8 +3816,8 @@ function Bubble({
                 className="w-full text-[13px] rounded-md p-2 bg-white/10 text-inherit border border-white/20 outline-none resize-none"
               />
               <div className="flex justify-end gap-1.5">
-                <button onClick={() => { setEditing(false); setEditText(m.texto); }} className="text-[11px] px-2 py-1 rounded bg-white/10 hover:bg-white/20">Cancelar</button>
-                <button onClick={() => void saveEdit()} className="text-[11px] px-2 py-1 rounded bg-white/25 hover:bg-white/35 font-semibold">Salvar</button>
+                <button onClick={() => { setEditing(false); setEditText(m.texto); }} className="text-[11px] px-2 py-1 rounded bg-white/10 hover:bg-white/20">{t("common.cancel", undefined, "Cancelar")}</button>
+                <button onClick={() => void saveEdit()} className="text-[11px] px-2 py-1 rounded bg-white/25 hover:bg-white/35 font-semibold">{t("common.save", undefined, "Salvar")}</button>
               </div>
             </div>
           ) : (

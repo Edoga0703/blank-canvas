@@ -1104,8 +1104,6 @@ export const gerarMensagemIA = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const c = await ctx(supabase, userId);
-    const key = process.env["LOVABLE_API_KEY"];
-    if (!key) throw new Error("IA indisponível no momento.");
 
     const { data: empresa } = await supabase
       .from("company")
@@ -1120,54 +1118,22 @@ export const gerarMensagemIA = createServerFn({ method: "POST" })
       data.objetivo ? `Objetivo da mensagem: ${data.objetivo}.` : "Objetivo: mensagem cordial de contato.",
     ].filter(Boolean).join("\n");
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Lovable-API-Key": key,
-        "X-Lovable-AIG-SDK": "fetch",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        stream: true,
-        reasoning: { effort: "low", summary: "auto" },
-        instructions:
-          "Você escreve mensagens curtas de WhatsApp em português do Brasil para empresas. " +
+    const { lovableAiChat } = await import("@/lib/lovable-ai.server");
+    const texto = await lovableAiChat([
+      {
+        role: "system",
+        content:
+          "Você escreve mensagens curtas de WhatsApp para empresas. " +
           "Tom cordial e profissional, no máximo 3 linhas, sem emojis em excesso (no máximo 1), " +
           "sem assinatura e sem colchetes ou campos para preencher. Responda apenas com o texto da mensagem.",
-        input: partes,
-      }),
-    });
+      },
+      {
+        role: "user",
+        content: partes,
+      },
+    ]);
 
-    if (!res.ok || !res.body) {
-      if (res.status === 429) throw new Error("Muitas solicitações de IA. Tente novamente em instantes.");
-      if (res.status === 402) throw new Error("Créditos de IA esgotados. Adicione créditos para continuar.");
-      throw new Error("Não foi possível gerar a mensagem agora.");
-    }
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let texto = "";
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const linhas = buffer.split("\n");
-      buffer = linhas.pop() || "";
-      for (const linha of linhas) {
-        if (!linha.startsWith("data:")) continue;
-        const raw = linha.slice(5).trim();
-        if (!raw || raw === "[DONE]") continue;
-        try {
-          const ev = JSON.parse(raw);
-          if (ev.type === "response.output_text.delta" && typeof ev.delta === "string") texto += ev.delta;
-          if (ev.type === "response.completed" && !texto && ev.response?.output_text) texto = ev.response.output_text;
-        } catch { /* ignora chunk parcial */ }
-      }
-    }
-
-    return { texto: texto.trim() };
+    return { texto: (texto || "").trim() };
   });
 
 /** Dados mínimos para o popup de nova mensagem usado nos atalhos (chat/CRM). */

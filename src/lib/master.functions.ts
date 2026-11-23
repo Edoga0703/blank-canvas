@@ -938,8 +938,9 @@ export const getGlobalAiConfig = createServerFn({ method: "GET" })
       openai_api_key: openKey.startsWith("dk-") ? "" : openKey,
       drael_api_key: draelKey,
       anthropic_api_key: val.anthropic_api_key || process.env.ANTHROPIC_API_KEY || "",
-      ai_provider: val.ai_provider || process.env.GLOBAL_AI_PROVIDER || "gemini",
-      ai_model: val.ai_model || process.env.GLOBAL_AI_MODEL || "google/gemini-2.5-flash",
+      gemini_api_key: val.gemini_api_key || process.env.GEMINI_API_KEY || "",
+      ai_provider: val.ai_provider || process.env.GLOBAL_AI_PROVIDER || "drael",
+      ai_model: val.ai_model || process.env.GLOBAL_AI_MODEL || "drael-v1",
     };
   });
 

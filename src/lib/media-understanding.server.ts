@@ -1,13 +1,6 @@
 // Compreensão de mídia recebida pelo WhatsApp para o agente de IA:
-// transcreve áudios, descreve imagens/vídeos e lê documentos (PDF).
-
-const GATEWAY = "https://ai.gateway.lovable.dev/v1";
-
-function apiKey() {
-  const key = process.env["LOVABLE_API_KEY"];
-  if (!key) throw new Error("LOVABLE_API_KEY ausente.");
-  return key;
-}
+// transcreve áudios, descreve imagens/vídeos e lê documentos (PDF) via provedores diretos (OpenAI/Gemini).
+// Conexão ao Lovable Gateway desativada para proteger créditos do workspace.
 
 function toBase64(bytes: Uint8Array): string {
   let bin = "";
@@ -18,10 +11,34 @@ function toBase64(bytes: Uint8Array): string {
   return btoa(bin);
 }
 
+async function getMasterAiKeys() {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: globalSettings } = await (supabaseAdmin as any)
+      .from("master_settings")
+      .select("value")
+      .eq("key", "global_ai_config")
+      .maybeSingle();
+
+    const gVal = (globalSettings?.value as any) || {};
+    const openAiKey = (gVal.openai_api_key || process.env.OPENAI_API_KEY || "").trim();
+    const geminiKey = (gVal.gemini_api_key || process.env.GEMINI_API_KEY || "").trim();
+    return {
+      openAiKey: openAiKey.startsWith("dk-") ? "" : openAiKey,
+      geminiKey,
+    };
+  } catch {
+    const open = (process.env.OPENAI_API_KEY || "").trim();
+    return {
+      openAiKey: open.startsWith("dk-") ? "" : open,
+      geminiKey: (process.env.GEMINI_API_KEY || "").trim(),
+    };
+  }
+}
+
 async function download(url: string): Promise<{ bytes: Uint8Array; mime: string } | null> {
   try {
     if (!url) return null;
-    // Suporte direto a Data URIs Base64 (ex: retornados por dapiDownloadMedia)
     if (url.startsWith("data:")) {
       const commaIdx = url.indexOf(",");
       if (commaIdx === -1) return null;
@@ -47,8 +64,11 @@ async function download(url: string): Promise<{ bytes: Uint8Array; mime: string 
   }
 }
 
-/** Transcreve um áudio recebido. Retorna null se não for possível. */
+/** Transcreve um áudio recebido via Whisper direto (se chave OpenAI estiver configurada). */
 export async function transcribeIncomingAudio(url: string, mime?: string | null): Promise<string | null> {
+  const { openAiKey } = await getMasterAiKeys();
+  if (!openAiKey) return null; // Sem chave direta, pula sem consumir Lovable
+
   const file = await download(url);
   if (!file || file.bytes.byteLength < 512) return null;
   const finalMime = (mime || file.mime || "audio/ogg").split(";")[0];
@@ -64,24 +84,24 @@ export async function transcribeIncomingAudio(url: string, mime?: string | null)
   const ext = extMap[finalMime] || "ogg";
 
   const form = new FormData();
-  form.append("model", "openai/gpt-4o-mini-transcribe");
+  form.append("model", "whisper-1");
   form.append("file", new Blob([file.bytes.buffer as ArrayBuffer], { type: finalMime }), `audio.${ext}`);
 
-  const res = await fetch(`${GATEWAY}/audio/transcriptions`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey()}`, "Lovable-API-Key": apiKey() },
-    body: form,
-  });
-  if (!res.ok) {
-    console.warn("[media-understanding] transcription failed:", res.status, await res.text().catch(() => ""));
+  try {
+    const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${openAiKey}` },
+      body: form,
+    });
+    if (!res.ok) return null;
+    const json: any = await res.json().catch(() => null);
+    return (json?.text || "").trim() || null;
+  } catch {
     return null;
   }
-  const json: any = await res.json().catch(() => null);
-  const text = (json?.text || "").trim();
-  return text || null;
 }
 
-/** Descreve uma imagem/vídeo ou lê um documento recebido. */
+/** Descreve uma imagem/vídeo ou lê um documento recebido usando visão direta. */
 export async function describeIncomingFile(
   url: string,
   tipo: "image" | "video" | "document",
@@ -89,74 +109,74 @@ export async function describeIncomingFile(
   caption?: string | null,
   options?: { provider?: string; model?: string },
 ): Promise<string | null> {
+  const { openAiKey } = await getMasterAiKeys();
+  if (!openAiKey) return null; // Sem chave direta de visão, não chama Lovable
+
   const file = await download(url);
   if (!file) return null;
   const finalMime = (mime || file.mime || "application/octet-stream").split(";")[0];
   const dataUrl = `data:${finalMime};base64,${toBase64(file.bytes)}`;
 
-  const instrucao = tipo === "document"
-    ? "Analiza este documento enviado por el cliente. Si es un comprobante de pago, factura, presupuesto o contrato, extrae de manera estructurada con subtítulos, viñetas y negritas: Tipo de documento, Estatus, Montos y monedas, Número de referencia/factura, Bancos o entidades emisora y receptora, Fecha/hora y Partes involucradas. Responde en el mismo idioma del documento (español por defecto) con formato limpio, espaciado y profesional."
-    : "Analiza y describe de forma estructurada esta imagen enviada por el cliente. Si es un comprobante de pago (ej. Pago Móvil, Transferencia bancaria, Zelle), factura o recibo, extrae detalladamente con subtítulos, viñetas y negritas: Estatus de la transacción, Monto y moneda, Banco emisor y receptor, Número de referencia, Fecha y hora, y Datos de las partes (teléfono, cédula o beneficiario). Si es un producto o foto general, describe lo que aparece con textos y detalles útiles. Responde en el mismo idioma del contenido (español por defecto) con formato limpio, ordenado y espaciado.";
+  const instrucao =
+    tipo === "document"
+      ? "Analiza este documento enviado por el cliente. Si es un comprobante de pago, factura, presupuesto o contrato, extrae de manera estructurada con subtítulos, viñetas y negritas: Tipo de documento, Estatus, Montos y monedas, Número de referencia/factura, Bancos o entidades emisora y receptora, Fecha/hora y Partes involucradas. Responde en el mismo idioma del documento (español por defecto) con formato limpio, espaciado y profesional."
+      : "Analiza y describe de forma estructurada esta imagen enviada por el cliente. Si es un comprobante de pago (ej. Pago Móvil, Transferencia bancaria, Zelle), factura o recibo, extrae detalladamente con subtítulos, viñetas y negritas: Estatus de la transacción, Monto y moneda, Banco emisor y receptor, Número de referencia, Fecha y hora, y Datos de las partes (teléfono, cédula o beneficiario). Si es un producto o foto general, describe lo que aparece con textos y detalles útiles. Responde en el mismo idioma del contenido (español por defecto) con formato limpio, ordenado y espaciado.";
 
   const content: any[] = [{ type: "text", text: caption ? `${instrucao}\nLegenda do cliente: ${caption}` : instrucao }];
   if (tipo === "image") {
     content.push({ type: "image_url", image_url: { url: dataUrl } });
   } else if (tipo === "video") {
-    content.push({ type: "video_url", video_url: { url: dataUrl } });
+    return null; // Vídeo requer processamento assíncrono complexo
   } else {
     if (finalMime !== "application/pdf") return null;
-    content.push({ type: "file", file: { filename: "documento.pdf", file_data: dataUrl } });
-  }
-
-  let selectedModel = "openai/gpt-4o-mini";
-  if (options?.model && !options.model.startsWith("google/")) {
-    selectedModel = options.model.includes("/") ? options.model : `openai/${options.model}`;
-  } else if (options?.provider === "anthropic") {
-    selectedModel = "anthropic/claude-3-5-sonnet-latest";
-  } else if (options?.provider === "gemini") {
-    selectedModel = "google/gemini-2.5-flash";
-  }
-
-  const res = await fetch(`${GATEWAY}/chat/completions`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey()}`, "Lovable-API-Key": apiKey(), "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: selectedModel,
-      messages: [{ role: "user", content }],
-    }),
-  });
-  if (!res.ok) {
-    console.warn("[media-understanding] vision failed:", res.status, await res.text().catch(() => ""));
     return null;
   }
-  const json: any = await res.json().catch(() => null);
-  const out = (json?.choices?.[0]?.message?.content || "").trim();
-  return out || null;
+
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openAiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: options?.model || "gpt-4o-mini",
+        messages: [{ role: "user", content }],
+      }),
+    });
+    if (!res.ok) return null;
+    const json: any = await res.json().catch(() => null);
+    const out = (json?.choices?.[0]?.message?.content || "").trim();
+    return out || null;
+  } catch {
+    return null;
+  }
 }
 
-/** Gera áudio (base64) a partir de um texto, para a IA responder em áudio. */
+/** Gera áudio (base64) a partir de um texto, via OpenAI TTS direto se houver chave. */
 export async function textToSpeechBase64(texto: string): Promise<string | null> {
+  const { openAiKey } = await getMasterAiKeys();
+  if (!openAiKey) return null;
+
   try {
-    const res = await fetch(`${GATEWAY}/audio/speech`, {
+    const res = await fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey()}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${openAiKey}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
-        model: "openai/gpt-4o-mini-tts",
+        model: "tts-1",
         input: texto.slice(0, 1500),
         voice: "alloy",
         response_format: "mp3",
-        stream_format: "audio",
       }),
     });
-    if (!res.ok) {
-      console.warn("[media-understanding] tts failed:", res.status, await res.text().catch(() => ""));
-      return null;
-    }
+    if (!res.ok) return null;
     const bytes = new Uint8Array(await res.arrayBuffer());
     if (!bytes.byteLength) return null;
     return toBase64(bytes);
-  } catch (e: any) {
-    console.warn("[media-understanding] tts error:", e?.message);
+  } catch {
     return null;
   }
 }
@@ -194,8 +214,7 @@ export async function understandIncomingMedia(params: {
 
 /**
  * Obtiene la descripción de una imagen/documento desde el caché (raw_payload.ai_media_description)
- * o la analiza UNA ÚNICA VEZ y la persiste en PostgreSQL para futuros contextos (atención IA y análisis de leads).
- * Evita llamadas redundantes y ahorra el 100% de tokens de visión repetidos.
+ * o la analiza UNA ÚNICA VEZ y la persiste en PostgreSQL para futuros contextos.
  */
 export async function getOrAnalyzeMessageMedia(
   supabaseAdmin: any,
@@ -237,7 +256,6 @@ export async function getOrAnalyzeMessageMedia(
 
     if (desc && desc.trim().length > 0) {
       const cleanDesc = desc.trim();
-      // 3. Guardar en raw_payload para reusar en futuros contextos
       const currentPayload =
         typeof msg.raw_payload === "object" && msg.raw_payload !== null
           ? { ...msg.raw_payload }

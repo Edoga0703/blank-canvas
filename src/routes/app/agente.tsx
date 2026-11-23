@@ -78,8 +78,8 @@ function AgentePage() {
   const gDisc = useServerFn(disconnectGoogle);
 
   const [activeTab, setActiveTab] = useState<string>(searchTab || "conhecimento");
-  const [aiProvider, setAiProvider] = useState("gemini");
-  const [aiModel, setAiModel] = useState("google/gemini-2.5-flash");
+  const [aiProvider, setAiProvider] = useState("drael");
+  const [aiModel, setAiModel] = useState("drael-v1");
   const [temperatura, setTemperatura] = useState(0.5);
   const [agendamentoAtivo, setAgendamentoAtivo] = useState(false);
   const [servicosAgendaveis, setServicosAgendaveis] = useState("");
@@ -2097,9 +2097,9 @@ function AgentePage() {
                             <SelectValue placeholder="Selecione o provedor" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="gemini">Google Gemini (Nativo / Alta Velocidad)</SelectItem>
-                            <SelectItem value="drael">Drael AI (drael.sh / drael-v1 — Base del Sistema)</SelectItem>
+                            <SelectItem value="drael">Drael AI (drael.sh / drael-v1 — Base Recomendada)</SelectItem>
                             <SelectItem value="openai">OpenAI (ChatGPT / GPT-4o mini)</SelectItem>
+                            <SelectItem value="gemini">Google Gemini (Directo)</SelectItem>
                             <SelectItem value="anthropic">Anthropic (Claude 3.5)</SelectItem>
                           </SelectContent>
                         </Select>

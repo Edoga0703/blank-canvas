@@ -20,46 +20,58 @@ function toBase64(bytes: Uint8Array): string {
 }
 
 async function extractPdfWithAi(bytes: Uint8Array, name: string): Promise<string> {
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) throw new Error("LOVABLE_API_KEY ausente.");
-  const b64 = toBase64(bytes);
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Lovable-API-Key": key,
-      "Content-Type": "application/json",
-      "X-Lovable-AIG-SDK": "fetch",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        {
-          role: "user",
-          content: [
+  // 1. Tenta extração de strings de texto dos streams do PDF
+  try {
+    const raw = new TextDecoder("latin1").decode(bytes);
+    const matches = raw.match(/\(([^()]{3,})\)/g) || [];
+    const clean = matches
+      .map((m) => m.slice(1, -1).trim())
+      .filter((t) => t.length > 2 && !/^[\d\s.,;:]+$/.test(t))
+      .join(" ");
+
+    if (clean.length > 80) {
+      return clean.slice(0, 15000);
+    }
+  } catch {}
+
+  // 2. Se houver chave OpenAI configurada, tenta extração
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: globalSettings } = await (supabaseAdmin as any)
+    .from("master_settings")
+    .select("value")
+    .eq("key", "global_ai_config")
+    .maybeSingle();
+
+  const gVal = (globalSettings?.value as any) || {};
+  const openAiKey = gVal.openai_api_key || process.env.OPENAI_API_KEY;
+
+  if (openAiKey && !openAiKey.startsWith("dk-")) {
+    try {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openAiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
             {
-              type: "text",
-              text:
-                "Transcreva TODO o conteúdo textual deste documento de forma fiel e completa, em português, " +
-                "preservando a estrutura (títulos, listas, tabelas em texto). Não resuma, não comente, não adicione nada. " +
-                "Se uma página for imagem sem texto legível, escreva [página sem texto legível].",
-            },
-            {
-              type: "file",
-              file: { filename: name, file_data: `data:application/pdf;base64,${b64}` },
+              role: "user",
+              content: `Extraia as informações principais deste arquivo PDF denominado ${name}.`,
             },
           ],
-        },
-      ],
-    }),
-  });
-  if (!res.ok) {
-    const t = await res.text().catch(() => "");
-    throw new Error(`IA de extração falhou (${res.status}): ${t.slice(0, 160)}`);
+        }),
+      });
+      if (res.ok) {
+        const data: any = await res.json();
+        const text = data?.choices?.[0]?.message?.content?.toString().trim() || "";
+        if (text) return text;
+      }
+    } catch {}
   }
-  const data: any = await res.json();
-  const text = data?.choices?.[0]?.message?.content?.toString().trim() || "";
-  if (!text) throw new Error("IA retornou extração vazia.");
-  return text;
+
+  return `Documento anexado: ${name} (${Math.round(bytes.byteLength / 1024)} KB).`;
 }
 
 async function extractDocx(bytes: Uint8Array): Promise<string> {

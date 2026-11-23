@@ -79,14 +79,15 @@ function SistemaPage() {
     openai_api_key: "",
     drael_api_key: "",
     anthropic_api_key: "",
-    ai_provider: "openai",
-    ai_model: "gpt-4o-mini",
+    gemini_api_key: "",
+    ai_provider: "drael",
+    ai_model: "drael-v1",
   });
-  const [savedKeys, setSavedKeys] = useState({ openai: false, drael: false, anthropic: false });
+  const [savedKeys, setSavedKeys] = useState({ openai: false, drael: false, anthropic: false, gemini: false });
   const [testing, setTesting] = useState(false);
   const [savingAi, setSavingAi] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
-  const [showKeys, setShowKeys] = useState({ openai: false, drael: false, anthropic: false });
+  const [showKeys, setShowKeys] = useState({ openai: false, drael: false, anthropic: false, gemini: false });
 
   async function copyKey(key: string, provider: string) {
     try {
@@ -125,6 +126,7 @@ function SistemaPage() {
           openai: !!cfg.openai_api_key,
           drael: !!cfg.drael_api_key,
           anthropic: !!cfg.anthropic_api_key,
+          gemini: !!cfg.gemini_api_key,
         });
       }).catch(() => {});
     })();
@@ -227,6 +229,7 @@ function SistemaPage() {
         openai: !!globalAi.openai_api_key,
         drael: !!globalAi.drael_api_key,
         anthropic: !!globalAi.anthropic_api_key,
+        gemini: !!globalAi.gemini_api_key,
       });
       toast.success("Configuração de IA salva com sucesso");
     } catch (e: any) {
@@ -403,9 +406,10 @@ function SistemaPage() {
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="gemini">Google Gemini (Nativo / Alta Velocidad)</SelectItem>
-                  <SelectItem value="drael">Drael AI (drael.sh / drael-v1 — Base Recomendada)</SelectItem>
-                  <SelectItem value="openai">OpenAI (ChatGPT / GPT-4o)</SelectItem>
+                  <SelectItem value="drael">Drael AI (drael.sh / drael-v1 — Base Independente Recomendada)</SelectItem>
+                  <SelectItem value="openai">OpenAI Direto (api.openai.com / GPT-4o mini)</SelectItem>
+                  <SelectItem value="gemini">Google Gemini Direto (generativelanguage.googleapis.com)</SelectItem>
+                  <SelectItem value="anthropic">Anthropic Direto (api.anthropic.com / Claude)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -414,17 +418,16 @@ function SistemaPage() {
               <Input
                 value={globalAi.ai_model}
                 onChange={e => setGlobalAi({ ...globalAi, ai_model: e.target.value })}
-                placeholder="ex: google/gemini-2.5-flash ou drael-v1"
+                placeholder="ex: drael-v1, gpt-4o-mini ou gemini-2.5-flash"
                 list="ai-models"
               />
               <datalist id="ai-models">
-                <option value="google/gemini-2.5-flash" />
-                <option value="google/gemini-2.5-flash-lite" />
-                <option value="google/gemini-1.5-flash" />
                 <option value="drael-v1" />
                 <option value="drael-fast" />
                 <option value="gpt-4o-mini" />
                 <option value="gpt-4o" />
+                <option value="gemini-2.5-flash" />
+                <option value="claude-3-5-sonnet-latest" />
               </datalist>
             </div>
           </div>
@@ -462,13 +465,13 @@ function SistemaPage() {
                   <Copy className="size-4" />
                 </Button>
               </div>
-              <p className="text-[11px] text-muted-foreground">Endpoint: <code className="bg-muted px-1 rounded">https://drael.sh/v1</code> — Nuestra IA base recomendada.</p>
+              <p className="text-[11px] text-muted-foreground">Endpoint: <code className="bg-muted px-1 rounded">https://drael.sh/v1</code> — Nossa IA base independente recomendada.</p>
             </div>
 
             {/* OpenAI API Key */}
             <div className="space-y-2 pt-2 border-t">
               <Label className="flex items-center gap-2">
-                <Key className="size-3 text-emerald-600" /> API Key OpenAI / ChatGPT (sk-...)
+                <Key className="size-3 text-emerald-600" /> API Key OpenAI Direto (sk-...)
                 {savedKeys.openai && (
                   <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-semibold"><ShieldCheck className="size-3" /> OpenAI configurado</span>
                 )}
@@ -497,13 +500,48 @@ function SistemaPage() {
                   <Copy className="size-4" />
                 </Button>
               </div>
-              <p className="text-[11px] text-muted-foreground">Endpoint: <code className="bg-muted px-1 rounded">https://api.openai.com/v1</code> (GPT-4o, GPT-4o mini).</p>
+              <p className="text-[11px] text-muted-foreground">Endpoint: <code className="bg-muted px-1 rounded">https://api.openai.com/v1</code> (GPT-4o, GPT-4o mini, Whisper).</p>
             </div>
 
-            {/* Google Gemini note */}
-            <div className="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/50 text-[11.5px] text-blue-900 dark:text-blue-200 flex items-center gap-2">
-              <Sparkles className="size-4 text-blue-600 shrink-0" />
-              <span><strong>Google Gemini:</strong> Funciona de forma nativa a través del Gateway de Capi Conversa con Gemini 2.5 Flash sin requerir API key manual.</span>
+            {/* Google Gemini Direct API Key */}
+            <div className="space-y-2 pt-2 border-t">
+              <Label className="flex items-center gap-2">
+                <Key className="size-3 text-blue-600" /> API Key Google Gemini Direto (AIzaSy...)
+                {savedKeys.gemini && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-semibold"><ShieldCheck className="size-3" /> Gemini configurado</span>
+                )}
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type={showKeys.gemini ? "text" : "password"}
+                  value={globalAi.gemini_api_key}
+                  onChange={e => setGlobalAi({ ...globalAi, gemini_api_key: e.target.value })}
+                  placeholder="AIzaSy..."
+                  className="flex-1 font-mono text-xs"
+                />
+                <Button
+                  type="button" variant="ghost" size="icon" className="size-9 shrink-0"
+                  title={showKeys.gemini ? "Ocultar chave" : "Mostrar chave"}
+                  onClick={() => setShowKeys(s => ({ ...s, gemini: !s.gemini }))}
+                >
+                  {showKeys.gemini ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </Button>
+                <Button
+                  type="button" variant="ghost" size="icon" className="size-9 shrink-0"
+                  title="Copiar chave"
+                  disabled={!globalAi.gemini_api_key}
+                  onClick={() => copyKey(globalAi.gemini_api_key, "Gemini")}
+                >
+                  <Copy className="size-4" />
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Endpoint direto: <code className="bg-muted px-1 rounded">https://generativelanguage.googleapis.com</code> (Google AI Studio — chave própria).</p>
+            </div>
+
+            {/* Zero Lovable Credits Protection Note */}
+            <div className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/50 text-[11.5px] text-emerald-900 dark:text-emerald-200 flex items-center gap-2">
+              <ShieldCheck className="size-4 text-emerald-600 shrink-0" />
+              <span><strong>Independência Total:</strong> As chamadas ao Lovable Gateway estão bloqueadas. Todas as inferências de IA consomem exclusivamente as chaves próprias configuradas acima, com <strong>zero consumo de créditos do workspace Lovable</strong>.</span>
             </div>
           </div>
 

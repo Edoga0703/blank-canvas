@@ -10,8 +10,19 @@ export const transcribeAudio = createServerFn({ method: "POST" })
     return { base64: input.base64, mime: input.mime || "audio/webm" };
   })
   .handler(async ({ data }) => {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("LOVABLE_API_KEY ausente.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: globalSettings } = await (supabaseAdmin as any)
+      .from("master_settings")
+      .select("value")
+      .eq("key", "global_ai_config")
+      .maybeSingle();
+
+    const gVal = (globalSettings?.value as any) || {};
+    const openAiKey = gVal.openai_api_key || process.env.OPENAI_API_KEY;
+
+    if (!openAiKey || openAiKey.startsWith("dk-")) {
+      return { text: "(Áudio recebido. Transcrição automática de áudio requer chave OpenAI Whisper configurada no Master.)" };
+    }
 
     const bin = Uint8Array.from(atob(data.base64), (c) => c.charCodeAt(0));
     if (bin.byteLength < 1024) {
@@ -29,19 +40,17 @@ export const transcribeAudio = createServerFn({ method: "POST" })
     const ext = extMap[mime] || "webm";
 
     const form = new FormData();
-    form.append("model", "openai/gpt-4o-mini-transcribe");
+    form.append("model", "whisper-1");
     form.append("file", new Blob([bin], { type: mime }), `audio.${ext}`);
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
+    const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}` },
+      headers: { Authorization: `Bearer ${openAiKey}` },
       body: form,
     });
 
     if (!res.ok) {
       const t = await res.text().catch(() => "");
-      if (res.status === 429) throw new Error("Limite de uso da IA atingido. Aguarde um momento.");
-      if (res.status === 402) throw new Error("Créditos de IA esgotados no workspace.");
       throw new Error(`Falha ao transcrever: ${res.status} ${t.slice(0, 200)}`);
     }
     const json = await res.json();
@@ -139,8 +148,19 @@ export const transcribeChatAudio = createServerFn({ method: "POST" })
     if (buf.byteLength < 512) throw new Error("Áudio muito curto.");
     if (buf.byteLength > 24 * 1024 * 1024) throw new Error("Áudio muito grande para transcrever.");
 
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("LOVABLE_API_KEY ausente.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: globalSettings } = await (supabaseAdmin as any)
+      .from("master_settings")
+      .select("value")
+      .eq("key", "global_ai_config")
+      .maybeSingle();
+
+    const gVal = (globalSettings?.value as any) || {};
+    const openAiKey = gVal.openai_api_key || process.env.OPENAI_API_KEY;
+
+    if (!openAiKey || openAiKey.startsWith("dk-")) {
+      return { text: "(Áudio recebido no chat. Transcrição automática de áudio requer chave OpenAI Whisper configurada no Master.)" };
+    }
 
     mime = mime || (msg.midia_mime || "audio/ogg").split(";")[0];
     const extMap: Record<string, string> = {
@@ -154,18 +174,16 @@ export const transcribeChatAudio = createServerFn({ method: "POST" })
     const ext = extMap[mime] || "ogg";
 
     const form = new FormData();
-    form.append("model", "openai/gpt-4o-mini-transcribe");
+    form.append("model", "whisper-1");
     form.append("file", new Blob([buf as any], { type: mime }), `audio.${ext}`);
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
+    const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}` },
+      headers: { Authorization: `Bearer ${openAiKey}` },
       body: form,
     });
     if (!res.ok) {
       const t = await res.text().catch(() => "");
-      if (res.status === 429) throw new Error("Limite de uso da IA atingido. Aguarde um momento.");
-      if (res.status === 402) throw new Error("Créditos de IA esgotados no workspace.");
       throw new Error(`Falha ao transcrever: ${res.status} ${t.slice(0, 200)}`);
     }
     const json = await res.json();

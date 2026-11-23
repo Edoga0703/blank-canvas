@@ -5,6 +5,7 @@ import { resolveChatMediaUrl } from "@/lib/chat-media.functions";
 import { transcribeChatAudio } from "@/lib/transcribe.functions";
 import { useCapacidadeAtiva } from "@/hooks/use-capacidades";
 import { WhatsappAudio } from "@/components/chat/whatsapp-audio";
+import { useLanguage } from "@/lib/i18n/context";
 
 type Props = {
   messageId: string;
@@ -21,6 +22,7 @@ type Props = {
  * via server function autenticada (resolveChatMediaUrl).
  */
 export function ChatMedia({ messageId, tipo, url, nome, outbound, onOpen }: Props) {
+  const { t } = useLanguage();
   const resolveFn = useServerFn(resolveChatMediaUrl);
   const [src, setSrc] = useState<string | null>(url);
   const [resolvedTipo, setResolvedTipo] = useState(tipo);
@@ -71,7 +73,7 @@ export function ChatMedia({ messageId, tipo, url, nome, outbound, onOpen }: Prop
   if (loading) {
     return (
       <div className="mb-1.5 flex items-center gap-2 rounded-md bg-black/10 px-2 py-1.5 text-[12px]">
-        <Loader2 className="size-4 animate-spin" /> Recuperando mídia…
+        <Loader2 className="size-4 animate-spin" /> {t("chat.recovering_media", undefined, "Recuperando mídia…")}
       </div>
     );
   }
@@ -85,7 +87,7 @@ export function ChatMedia({ messageId, tipo, url, nome, outbound, onOpen }: Prop
         className="mb-1.5 flex items-center gap-2 rounded-md bg-black/10 px-2 py-1.5 text-[12px] hover:bg-black/20"
       >
         <ImageOff className="size-4 shrink-0" />
-        <span>{exhausted ? "Mensagem não suportada" : "Mídia indisponível"}</span>
+        <span>{exhausted ? t("chat.unsupported_message", undefined, "Mensagem não suportada") : t("chat.media_unavailable", undefined, "Mídia indisponível")}</span>
         <RefreshCw className="size-3 opacity-70" />
       </button>
     );
