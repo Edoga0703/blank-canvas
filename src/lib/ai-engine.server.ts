@@ -625,6 +625,7 @@ export async function processAiResponse(
       {
         provider: cfg.ai_provider || "gemini",
         model: cfg.ai_model || undefined,
+        jsonMode: true,
       }
     );
 

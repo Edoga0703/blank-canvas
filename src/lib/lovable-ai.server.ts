@@ -14,6 +14,7 @@ export interface AiProviderConfig {
   geminiKey?: string;
   temperature?: number;
   maxTokens?: number;
+  jsonMode?: boolean;
 }
 
 const MAX_TENTATIVAS = 3;
@@ -110,7 +111,7 @@ export async function lovableAiChat(
         : globalModel && !globalModel.startsWith("google/")
         ? globalModel
         : "drael-v1";
-    return openAiChat(key, model, msgs, cfg.temperature ?? 0.1, baseUrl, cfg.maxTokens ?? 8192);
+    return openAiChat(key, model, msgs, cfg.temperature ?? 0.1, baseUrl, cfg.maxTokens ?? 8192, cfg.jsonMode ?? false);
   }
 
   // 2. Provedor OpenAI direto (api.openai.com)
@@ -122,7 +123,7 @@ export async function lovableAiChat(
       // Se não tem chave OpenAI, tenta chave Drael como fallback
       if (globalDraelKey) {
         const baseUrl = (gVal.drael_base_url || "https://drael.sh/v1").trim();
-        return openAiChat(globalDraelKey, "drael-v1", msgs, cfg.temperature ?? 0.1, baseUrl, cfg.maxTokens ?? 8192);
+        return openAiChat(globalDraelKey, "drael-v1", msgs, cfg.temperature ?? 0.1, baseUrl, cfg.maxTokens ?? 8192, cfg.jsonMode ?? false);
       }
       throw new Error("Chave OpenAI (sk-...) não configurada no painel Master.");
     }
@@ -133,7 +134,7 @@ export async function lovableAiChat(
         : globalModel && !globalModel.startsWith("google/")
         ? globalModel
         : "gpt-4o-mini";
-    return openAiChat(customKey, model, msgs, cfg.temperature ?? 0.1, baseUrl, cfg.maxTokens ?? 8192);
+    return openAiChat(customKey, model, msgs, cfg.temperature ?? 0.1, baseUrl, cfg.maxTokens ?? 8192, cfg.jsonMode ?? false);
   }
 
   // 3. Provedor Anthropic direto (api.anthropic.com)
@@ -152,15 +153,15 @@ export async function lovableAiChat(
     if (directGeminiKey) {
       const rawModel = cfg.model || globalModel || "gemini-3.5-flash-lite";
       const model = sanitizeGatewayGeminiModel(rawModel);
-      return directGeminiChat(directGeminiKey, model, msgs, cfg.temperature ?? 0.2, cfg.maxTokens ?? 8192);
+      return directGeminiChat(directGeminiKey, model, msgs, cfg.temperature ?? 0.2, cfg.maxTokens ?? 8192, cfg.jsonMode ?? false);
     }
     // Se não há chave direta do Gemini, tenta fallback para Drael ou OpenAI para não interromper o sistema
     if (globalDraelKey) {
       const baseUrl = (gVal.drael_base_url || "https://drael.sh/v1").trim();
-      return openAiChat(globalDraelKey, "drael-v1", msgs, cfg.temperature ?? 0.1, baseUrl, cfg.maxTokens ?? 8192);
+      return openAiChat(globalDraelKey, "drael-v1", msgs, cfg.temperature ?? 0.1, baseUrl, cfg.maxTokens ?? 8192, cfg.jsonMode ?? false);
     }
     if (globalOpenAiKey && !globalOpenAiKey.startsWith("dk-")) {
-      return openAiChat(globalOpenAiKey, "gpt-4o-mini", msgs, cfg.temperature ?? 0.1, "https://api.openai.com/v1", cfg.maxTokens ?? 8192);
+      return openAiChat(globalOpenAiKey, "gpt-4o-mini", msgs, cfg.temperature ?? 0.1, "https://api.openai.com/v1", cfg.maxTokens ?? 8192, cfg.jsonMode ?? false);
     }
     throw new Error(
       "Chave do Google Gemini (GEMINI_API_KEY) não configurada no Master. A conexão ao gateway do Lovable está permanentemente bloqueada para proteger seus créditos.",
@@ -170,7 +171,7 @@ export async function lovableAiChat(
   // 5. Fallback final para Drael se houver chave
   if (globalDraelKey) {
     const baseUrl = (gVal.drael_base_url || "https://drael.sh/v1").trim();
-    return openAiChat(globalDraelKey, "drael-v1", msgs, 0.1, baseUrl);
+    return openAiChat(globalDraelKey, "drael-v1", msgs, 0.1, baseUrl, 8192, cfg.jsonMode ?? false);
   }
 
   throw new Error(
@@ -185,6 +186,7 @@ async function directGeminiChat(
   messages: ChatMsg[],
   temperature = 0.2,
   maxOutputTokens = 8192,
+  jsonMode = false,
 ): Promise<string> {
   let cleanModel = sanitizeGatewayGeminiModel(model);
   const getUrl = (m: string) => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(key)}`;
@@ -201,12 +203,17 @@ async function directGeminiChat(
     contents.push({ role: "user", parts: [{ text: "Olá" }] });
   }
 
+  const generationConfig: any = {
+    temperature,
+    maxOutputTokens,
+  };
+  if (jsonMode) {
+    generationConfig.responseMimeType = "application/json";
+  }
+
   const payload: any = {
     contents,
-    generationConfig: {
-      temperature,
-      maxOutputTokens,
-    },
+    generationConfig,
   };
 
   if (systemMsg?.content) {
@@ -272,6 +279,7 @@ async function openAiChat(
   temperature = 0.1,
   baseUrl = "https://api.openai.com/v1",
   maxTokens = 8192,
+  jsonMode = false,
 ): Promise<string> {
   const url = `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
   const isDrael = baseUrl.includes("drael.sh") || key.startsWith("dk-");
@@ -283,6 +291,9 @@ async function openAiChat(
     presence_penalty: 0.2,
     frequency_penalty: 0.1,
   };
+  if (jsonMode) {
+    payload.response_format = { type: "json_object" };
+  }
   if (isDrael) {
     payload.tools = []; // Evita activar herramientas implícitas en Drael
   }

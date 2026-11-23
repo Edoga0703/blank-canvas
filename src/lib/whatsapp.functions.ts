@@ -1101,6 +1101,7 @@ export const testAiReply = createServerFn({ method: "POST" })
       {
         provider,
         model,
+        jsonMode: true,
       },
     );
     const parsed = parseAiOutput(raw, stages);

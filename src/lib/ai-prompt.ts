@@ -580,134 +580,27 @@ ESTILO DE MENSAGEM:
 - Não soe como robô ("Como posso ajudá-lo hoje?"). Soe como um atendente real e atencioso.`,
   ];
 
-  if (partes) {
-    blocos.push(
-      isEs
-        ? `FORMATO DE LA RESPUESTA (OBLIGATORIO):
-Responde en 1 a 3 mensajes cortos, separados por el marcador "${PART_SEPARATOR}" (tres barras verticales).
-Cada parte es una "burbuja" corta, como si estuvieras escribiendo de una en una por WhatsApp.
-Ejemplo: "hola, ¿cómo estás? ${PART_SEPARATOR} soy Ana de la empresa ${PART_SEPARATOR} cuéntame, ¿en qué te puedo apoyar hoy?"
-Si una sola frase resuelve, usa UNA sola parte y listo (sin el marcador). Nunca más de 3 partes.
-IMPORTANTE: Sigue rigurosamente las instrucciones de "REGLAS ESTRICTAS" y "BASE DE CONOCIMIENTO".`
-        : isEn
-        ? `RESPONSE FORMAT (MANDATORY):
-Respond in 1 to 3 short messages, separated by "${PART_SEPARATOR}".
-Each part is a short bubble as if typing one by one on WhatsApp.
-Example: "hello, how are you? ${PART_SEPARATOR} this is Anna from the team ${PART_SEPARATOR} how can I help you today?"
-If one sentence is enough, use ONE part without marker. Never more than 3 parts.`
-        : `FORMATO DA RESPOSTA (OBRIGATÓRIO):
-Responda em 1 a 3 mensagens curtas, separadas pelo marcador "${PART_SEPARATOR}" (três pipes).
-Cada parte é uma "bolha" curta, como se você estivesse digitando uma de cada vez no WhatsApp.
-Exemplo: "oi, tudo bem? ${PART_SEPARATOR} aqui é a Ana da Padaria do Bairro ${PART_SEPARATOR} me conta, é pra retirar ou entrega?"
-Se uma frase só já resolve, use UMA parte e pronto (sem o marcador). Nunca mais de 3 partes.
-IMPORTANTE: Siga rigorosamente as instruções do campo "REGRAS RÍGIDAS" e "BASE DE CONHECIMENTO". Você deve obedecer as correções fornecidas e as informações do agente sem desvios.`
-    );
-  } else {
-    blocos.push(
-      isEs
-        ? `FORMATO DE LA RESPUESTA: un solo mensaje, corto y natural.
-IMPORTANTE: Sigue rigurosamente las instrucciones de "REGLAS ESTRICTAS" y "BASE DE CONOCIMIENTO".`
-        : isEn
-        ? `RESPONSE FORMAT: one single message, short and natural.`
-        : `FORMATO DA RESPOSTA: uma mensagem só, curta e natural.
-IMPORTANTE: Siga rigorosamente as instruções do campo "REGRAS RÍGIDAS" e "BASE DE CONHECIMENTO". Você deve obedecer as correções fornecidas e as informações do agente sem desvios.`
-    );
-  }
-
   if (c.agendamento_ativo && opts?.googleConectado) {
     const nowIso = new Date().toISOString();
     blocos.push(
       isEs
-        ? `AGENDAMIENTO REAL (Google Calendar conectado):
-Hoy es ${nowIso} (UTC). Cuando el cliente CONFIRME un horario específico (día + hora) para un servicio agendable, en la MISMA respuesta, en una nueva línea, escribe exactamente:
-[AGENDAR: AAAA-MM-DDTHH:MM | AAAA-MM-DDTHH:MM | título corto]
-La primera fecha es el inicio, la segunda es el fin (usa ${c.duracao_padrao || "30 min"} si el cliente no lo indica). Usa el huso -03:00 en los horarios. Este marcador es interno y NO aparece para el cliente.`
-        : `AGENDAMENTO REAL (Google Agenda conectado):
-Hoje é ${nowIso} (UTC, fuso America/Sao_Paulo). Quando o cliente CONFIRMAR um horário específico (dia + hora) para um serviço agendável, na MESMA resposta, em uma nova linha, escreva exatamente:
-[AGENDAR: AAAA-MM-DDTHH:MM | AAAA-MM-DDTHH:MM | título curto]
-A primeira data é o início, a segunda é o fim (use ${c.duracao_padrao || "30 min"} se o cliente não disser). Use o fuso -03:00 nos horários. Esse marcador é interno e NÃO aparece pro cliente.`
+        ? `AGENDAMIENTO (Google Calendar): Hoy es ${nowIso} (UTC). Si el cliente confirma una cita con día y hora para un servicio agendable, registra las fechas en el campo "agendamiento" del JSON (huso -03:00). Duración estándar: ${c.duracao_padrao || "30 min"}.`
+        : `AGENDAMENTO (Google Agenda): Hoje é ${nowIso} (UTC, fuso America/Sao_Paulo). Quando o cliente confirmar um horário para serviço agendável, preencha o campo "agendamiento" do JSON. Duração padrão: ${c.duracao_padrao || "30 min"}.`
     );
   }
 
-  if (opts?.olistPedido) {
-    blocos.push(
-      isEs
-        ? `REGISTRO DE PEDIDO EN ERP:
-Puedes registrar el pedido de venta en el ERP. Antes de hacerlo, es OBLIGATORIO confirmar con el cliente en la conversación: 1) artículos y cantidades, 2) monto total, 3) retiro o entrega, 4) forma de pago. Tras confirmarlo todo, en la MISMA respuesta escribe exactamente:
-[PEDIDO: {"itens":[{"nome":"nombre","cod":"codigo","qtd":1,"valor":0.00}],"entrega":"retirada","pagamento":"pix"}]
-Usa únicamente datos reales del catálogo. Este marcador es interno y no aparece para el cliente.`
-        : `FECHAMENTO DE PEDIDO NO ERP (Olist conectado):
-Você pode LANÇAR o pedido de venda no ERP. Antes disso, é OBRIGATÓRIO confirmar com o cliente, na conversa:
-1) os itens e as quantidades, 2) o valor total, 3) se é retirada ou entrega, 4) a forma de pagamento.
-Só depois de o cliente responder confirmando tudo, na MESMA resposta, em uma nova linha, escreva exatamente:
-[PEDIDO: {"itens":[{"nome":"nome do item","cod":"codigo","qtd":1,"valor":0.00}],"entrega":"retirada","pagamento":"pix"}]
-Use apenas itens, códigos e preços do catálogo ao vivo do ERP. Nunca invente item, código, preço ou desconto.
-Nunca emita esse marcador sem a confirmação explícita do cliente. Ele é interno e NÃO aparece pro cliente.`
-    );
-  }
-
+  // PROTOCOLO UNIVERSAL DE RESPUESTA EN FORMATO JSON CANÓNICO (VÁLIDO PARA TODOS LOS MODELOS E INTEGRACIONES)
   blocos.push(
     isEs
-      ? `AL FINAL DE LA RESPUESTA, en una nueva línea, escribe exactamente:
-[ESTAGIO: ${stageNames}]
-Elige 1 entre las etapas reales del CRM de la empresa listadas arriba. ${stagesFinaisNomes.length ? `Usa una etapa final (${stagesFinaisNomes.join(" / ")}) ÚNICAMENTE si el cliente confirmó claramente o rechazó. ` : ""}Este marcador es interno y NO aparece para el cliente.`
-      : `AO FINAL DA RESPOSTA, em uma nova linha, escreva exatamente:
-[ESTAGIO: ${stageNames}]
-Escolha 1 entre as etapas reais do CRM da empresa listadas acima. ${stagesFinaisNomes.length ? `Use uma etapa final (${stagesFinaisNomes.join(" / ")}) APENAS se o cliente confirmou (ganho) ou recusou claramente (perda). ` : ""}Esse marcador é interno, NÃO aparece pro cliente.`
-  );
+      ? `═══════════════════════════════════════════════════════
+FORMATO DE RESPUESTA OBLIGATORIO (PROTOCOLO JSON CANÓNICO):
+Tu respuesta DEBE ser SIEMPRE y EXCLUSIVAMENTE un objeto JSON válido, sin texto adicional fuera del JSON.
 
-  blocos.push(
-    isEs
-      ? `MARCADORES DE ACCIONES (OBLIGATORIO): Al final de cada respuesta, en una nueva línea, incluye los marcadores necesarios:
-[INTENCAO: POSITIVA|NEGATIVA|NEUTRA]
-- POSITIVA: interés claro, aceptó propuesta o quiere avanzar.
-- NEGATIVA: rechazó, sin interés, pidió detener el contacto.
-- NEUTRA: dudas informativas, saludos o respuestas ambiguas.
-
-[QUALIFICADO]
-- Incluye el marcador [QUALIFICADO] ÚNICAMENTE cuando consideres que ya obtuviste los datos clave (nombre, necesidad, urgencia) y el lead está calificado. Nunca en el primer mensaje.
-
-Los marcadores son internos y no aparecen para el cliente.`
-      : `MARCADORES DE AÇÕES (OBRIGATÓRIO): Ao final de toda resposta, em uma nova linha, inclua os marcadores necessários:
-[INTENCAO: POSITIVA|NEGATIVA|NEUTRA]
-- POSITIVA: interesse claro, aceitou proposta, quer seguir.
-- NEGATIVA: recusou, sem interesse, pediu para parar.
-- NEUTRA: dúvidas simples, saudações ou respostas ambíguas.
-
-[QUALIFICADO]
-- Inclua o marcador [QUALIFICADO] APENAS quando você considerar que já obteve as informações necessárias (nome, necessidade, urgência) e o lead está pronto para ser encaminhado. Nunca inclua na primeira mensagem.
-
-Os marcadores são internos e não aparecem para o cliente.`
-  );
-
-  blocos.push(
-    isEs
-      ? `SUGERENCIA DE MEJORA / AMBIGÜEDAD (APRENDIZAJE CONTINUO):
-Si detectas alguna ambigüedad en el mensaje del cliente (ej: modismos regionales con doble sentido como 'cancelar' que significa pagar/liquidar vs dar de baja, dudas de productos/precios no listados o falta de regla clara en "REGLAS ESTRICTAS"), al final de la respuesta incluye EXACTAMENTE:
-[SUGESTAO: Duda: <explica la duda o ambigüedad detectada> | Regra: <regla recomendada para añadir al agente>]
-Si NO hay ambigüedades, NUNCA incluyas el marcador [SUGESTAO]. Este marcador es estrictamente interno.`
-      : `SUGESTÃO DE MELHORIA / AMBIGUIDADE (CRÍTICO PARA O APRENDIZADO):
-Se você detectar alguma ambiguidade na fala do cliente (ex: gírias regionais com duplo sentido como 'cancelar' significando 'pagar/liquidar' vs 'dar de baixa', dúvidas de produtos/preços não listados, procedimento indefinido ou falta de regra clara em "REGRAS RÍGIDAS"), ao final de toda a resposta, em uma nova linha, inclua EXATAMENTE o marcador:
-[SUGESTAO: Duda: <explique a ambiguidade ou dúvida encontrada> | Regra: <regra concisa recomendada para ser adicionada ao agente>]
-
-Exemplo:
-[SUGESTAO: Duda: O cliente disse 'cancelar' com menção a pagamento/monto. No espanhol da Venezuela, isso significa 'pagar/liquidar' e não dar baixa. | Regra: Quando o cliente disser 'cancelar' junto com pagamento móvel, monto ou renovação, entender como quitar/pagar a assinatura.]
-
-Se NÃO houver ambiguidade ou dúvida, NUNCA inclua o marcador [SUGESTAO].
-Este marcador é estritamente interno e NUNCA aparece para o cliente.`
-  );
-
-
-  // El protocolo JSON estructurado se reserva para Drael o cuando se requiera explícitamente,
-  // para no confundir a Gemini / OpenAI / Claude con salidas en JSON en lugar de texto natural.
-  if ((c.ai_provider || "").toLowerCase() === "drael") {
-    blocos.push(`═══════════════════════════════════════════════════════
-PROTOCOLO DE RESPUESTA ESTRUCTURADO (DRAEL SPECIFICATION):
-Puedes responder en formato JSON estructurado canónico con el siguiente esquema:
+ESQUEMA OBLIGATORIO:
 {
   "respuesta_cliente": {
     "mensajes": [
-      "Texto corto y directo para el cliente..."
+      "Mensaje 1 directo para el cliente..."
     ],
     "tono": "amigable"
   },
@@ -717,28 +610,83 @@ Puedes responder en formato JSON estructurado canónico con el siguiente esquema
     "calificado": false
   },
   "acciones_crm": {
-    "cambiar_etapa": "NombreDeEtapaValida | null",
+    "cambiar_etapa": "${stageNames} | null",
     "pausar_ia_para_humano": false,
     "agregar_etiquetas": []
   },
-  "tracking_pixel": {
-    "evento": "Lead | Purchase | InitiateCheckout | Contact | null",
-    "valor": 0.0,
-    "moneda": "USD | VES"
-  },
-  "ejecucion_codigo": {
-    "ejecutar": false,
-    "lenguaje": "javascript",
-    "codigo": null
-  },
-  "webhook_saliente": {
-    "disparar": false,
-    "evento": null,
-    "payload": null
-  }
+  "agendamiento": null,
+  "pedido": null,
+  "sugestao": null,
+  "tracking_pixel": null
 }
-═══════════════════════════════════════════════════════`);
-  }
+
+DIRECTIVAS ESTRICTAS DE CADA CAMPO:
+1. "respuesta_cliente.mensajes":
+   - Array con 1 a 3 mensajes cortos (máximo 3) en estilo conversación de WhatsApp o Instagram.
+   - Cada string en el array representa una burbuja de chat. Si 1 sola frase resuelve, pon un array con 1 solo mensaje.
+   - Lenguaje natural, empático, conciso y profesional. NUNCA incluyas código, JSON ni etiquetas dentro del texto para el cliente.
+2. "intencion":
+   - "categoria": clasifica el motivo principal del mensaje.
+   - "sentimiento": "POSITIVA", "NEGATIVA" o "NEUTRA".
+   - "calificado": true ÚNICAMENTE cuando ya se hayan obtenido los datos necesarios (nombre, necesidad, urgencia) y el lead esté calificado para avanzar.
+3. "acciones_crm":
+   - "cambiar_etapa": elige 1 etapa entre las etapas reales del CRM (${stageNames}) si la conversación amerita mover al lead, o null si permanece en la etapa actual. ${stagesFinaisNomes.length ? `(Usa etapas finales como ${stagesFinaisNomes.join(" / ")} ÚNICAMENTE ante confirmación o rechazo explícito).` : ""}
+   - "pausar_ia_para_humano": true si el cliente solicita expresamente hablar con un humano o si se requiere atención personalizada inmediata.
+4. "agendamiento":
+   - Si el cliente confirmó una fecha y hora específica para un servicio agendable: { "inicio": "AAAA-MM-DDTHH:MM", "fim": "AAAA-MM-DDTHH:MM", "titulo": "Cita" }, de lo contrario null.
+5. "pedido":
+   - Si el cliente confirmó formalmente un pedido: { "itens": [{"nome": "nombre", "qtd": 1, "valor": 0}], "entrega": "retirada", "pagamento": "pix" }, de lo contrario null.
+6. "sugestao":
+   - Si detectas alguna ambigüedad o duda no cubierta en tus reglas rígidas: { "duda": "explicación", "regra": "regla sugerida" }, de lo contrario null.
+═══════════════════════════════════════════════════════`
+      : `═══════════════════════════════════════════════════════
+FORMATO DA RESPOSTA OBRIGATÓRIO (PROTOCOLO JSON CANÔNICO):
+Sua resposta DEVE ser SEMPRE e EXCLUSIVAMENTE um objeto JSON válido, sem texto fora do JSON.
+
+ESQUEMA OBRIGATÓRIO:
+{
+  "respuesta_cliente": {
+    "mensajes": [
+      "Mensagem 1 direta para o cliente..."
+    ],
+    "tono": "amigavel"
+  },
+  "intencion": {
+    "categoria": "CONSULTA_PRECIO | CONSULTA_VENCIMIENTO | RECLAMO | COMPRA | DUDA | NEUTRA",
+    "sentimiento": "POSITIVA | NEGATIVA | NEUTRA",
+    "calificado": false
+  },
+  "acciones_crm": {
+    "cambiar_etapa": "${stageNames} | null",
+    "pausar_ia_para_humano": false,
+    "agregar_etiquetas": []
+  },
+  "agendamiento": null,
+  "pedido": null,
+  "sugestao": null,
+  "tracking_pixel": null
+}
+
+DIRETIVAS ESTRITAS DE CADA CAMPO:
+1. "respuesta_cliente.mensajes":
+   - Array com 1 a 3 mensagens curtas no estilo WhatsApp / Instagram.
+   - Cada elemento é uma bolha de chat. Se 1 frase resolver, inclua apenas 1 elemento. NUNCA mais de 3.
+   - NUNCA inclua JSON ou marcadores internos dentro do texto visível para o cliente.
+2. "intencion":
+   - "categoria": motivo da mensagem.
+   - "sentimiento": "POSITIVA", "NEGATIVA" ou "NEUTRA".
+   - "calificado": true APENAS quando obtiver os dados essenciais e o lead estiver pronto para avançar.
+3. "acciones_crm":
+   - "cambiar_etapa": escolha 1 etapa real do CRM (${stageNames}) se a conversa justificar, ou null para manter. ${stagesFinaisNomes.length ? `(Use etapas finais como ${stagesFinaisNomes.join(" / ")} APENAS se o cliente confirmou ou recusou claramente).` : ""}
+   - "pausar_ia_para_humano": true se o cliente pedir expressamente para falar com um humano.
+4. "agendamiento":
+   - Se o cliente confirmou data e hora: { "inicio": "AAAA-MM-DDTHH:MM", "fim": "AAAA-MM-DDTHH:MM", "titulo": "Agendamento" }, senão null.
+5. "pedido":
+   - Se o cliente confirmou um pedido: { "itens": [{"nome": "item", "qtd": 1, "valor": 0}], "entrega": "...", "pagamento": "..." }, senão null.
+6. "sugestao":
+   - Se detectar ambiguidade ou dúvida não coberta nas regras: { "duda": "...", "regra": "..." }, senão null.
+═══════════════════════════════════════════════════════`
+  );
 
   return blocos.filter(Boolean).join("\n\n");
 }
@@ -945,7 +893,7 @@ export function parseAiOutput(
     const intent = intentRaw ? String(intentRaw).toUpperCase() : null;
     const handoff = Boolean(structured.acciones_crm?.pausar_ia_para_humano ?? structured.handoff ?? false);
     const qualified = Boolean(structured.intencion?.calificado ?? structured.qualified ?? false);
-    const agendar = structured.acciones_crm?.agendamiento || structured.agendar || null;
+    const agendar = structured.agendamiento || structured.acciones_crm?.agendamiento || structured.agendar || null;
     const pixelTracking = structured.tracking_pixel || structured.pixel_tracking || null;
     const codeExecution = structured.ejecucion_codigo || structured.code_execution || null;
     const webhookSaliente = structured.webhook_saliente || structured.outbound_webhook || null;
