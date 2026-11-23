@@ -742,32 +742,49 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
       insertedId = inserted?.id ?? null;
     }
 
-    if (insertedId && data.storageKey) {
+    const directMediaUrl = (!data.storageKey && (data.media || data.midiaUrl)) ? (data.media || data.midiaUrl) : null;
+
+    if (insertedId) {
       const { createHash } = await import("node:crypto");
-      const attachmentKey = createHash("sha256").update(data.storageKey).digest("hex");
-      const { error: attachmentError } = await (sbAdmin as any).from("message_attachments").upsert({
-        company_id: companyId,
-        mensagem_id: insertedId,
-        attachment_key: attachmentKey,
-        kind: data.mediatype,
-        storage_key: data.storageKey,
-        mime_type: data.mimetype,
-        file_name: data.fileName ?? null,
-      }, { onConflict: "mensagem_id,attachment_key" });
-      if (attachmentError) throw new Error(`No se pudo registrar el archivo enviado: ${attachmentError.message}`);
+      const keySeed = data.storageKey || directMediaUrl || insertedId;
+      const attachmentKey = createHash("sha256").update(keySeed).digest("hex");
+      try {
+        await (sbAdmin as any).from("message_attachments").upsert({
+          company_id: companyId,
+          mensagem_id: insertedId,
+          attachment_key: attachmentKey,
+          kind: data.mediatype,
+          storage_key: data.storageKey ?? null,
+          storage_url: directMediaUrl,
+          provider_url: directMediaUrl,
+          mime_type: data.mimetype,
+          file_name: data.fileName ?? null,
+        }, { onConflict: "mensagem_id,attachment_key" });
+      } catch (attachmentErr: any) {
+        console.warn("[sendWhatsappMedia] Erro ao registrar anexo em message_attachments:", attachmentErr?.message);
+      }
     }
 
     if (insertedId) {
       try {
-        const { generateMediaToken } = await import("@/routes/api/public/chat-media");
-        const { sig, exp } = generateMediaToken(insertedId);
-        const proxiedUrl = `/api/public/chat-media?id=${insertedId}&sig=${sig}&exp=${exp}`;
-        await (sbAdmin as any)
-          .from("mensagens")
-          .update({ midia_url: proxiedUrl })
-          .eq("id", insertedId);
+        if (data.storageKey) {
+          // Arquivos no Cloudflare R2 privado requerem URL autenticada/proxy
+          const { generateMediaToken } = await import("@/routes/api/public/chat-media");
+          const { sig, exp } = generateMediaToken(insertedId);
+          const proxiedUrl = `/api/public/chat-media?id=${insertedId}&sig=${sig}&exp=${exp}`;
+          await (sbAdmin as any)
+            .from("mensagens")
+            .update({ midia_url: proxiedUrl })
+            .eq("id", insertedId);
+        } else if (directMediaUrl) {
+          // Garante que a URL direta pública (ex: Supabase Storage do catálogo) permaneça no registro
+          await (sbAdmin as any)
+            .from("mensagens")
+            .update({ midia_url: directMediaUrl })
+            .eq("id", insertedId);
+        }
       } catch (err) {
-        console.warn("[sendWhatsappMedia] Error generating proxied media URL:", err);
+        console.warn("[sendWhatsappMedia] Error generating media URL for message:", err);
       }
     }
 

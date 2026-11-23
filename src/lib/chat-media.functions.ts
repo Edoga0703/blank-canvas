@@ -58,7 +58,7 @@ export const resolveChatMediaUrl = createServerFn({ method: "POST" })
     // 2) Mensagem na tabela mensagens validando company_id
     const { data: msg } = await supabaseAdmin
       .from("mensagens")
-      .select("id,company_id,numero,provider,midia_url,midia_tipo,midia_mime,midia_nome,whatsapp_message_id,raw_payload")
+      .select("id,company_id,numero,provider,texto,midia_url,midia_tipo,midia_mime,midia_nome,whatsapp_message_id,raw_payload")
       .eq("id", data.messageId)
       .eq("company_id", companyId)
       .maybeSingle();
@@ -86,6 +86,23 @@ export const resolveChatMediaUrl = createServerFn({ method: "POST" })
         return { url: msg.midia_url, tipo: msg.midia_tipo };
       }
       return { url: proxiedUrl, tipo: msg.midia_tipo };
+    }
+
+    // Fallback para itens de catálogo enviados se midia_url foi perdida
+    if (msg.company_id && msg.texto && msg.texto.includes("🛍️ *")) {
+      const matchName = msg.texto.match(/🛍️ \*([^*]+)\*/);
+      if (matchName?.[1]) {
+        const { data: prod } = await (supabaseAdmin as any)
+          .from("produto")
+          .select("foto_url, fotos")
+          .eq("company_id", msg.company_id)
+          .ilike("nome", matchName[1].trim())
+          .maybeSingle();
+        const prodImg = prod?.foto_url || (prod?.fotos && prod?.fotos[0]);
+        if (prodImg && typeof prodImg === "string" && prodImg.startsWith("http")) {
+          return { url: prodImg, tipo: "image" };
+        }
+      }
     }
 
     // 3) Sem mídia salva: tenta baixar via D-API

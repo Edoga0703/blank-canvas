@@ -4262,6 +4262,7 @@ function Composer({
       const fotoPrincipal = prod.foto_url || (prod.fotos && prod.fotos[0]) || null;
       if (fotoPrincipal) {
         setBusy(true);
+        const tmpId = onLocalMedia?.(fotoPrincipal, "image", "image/jpeg") ?? null;
         try {
           await sendMediaFn({
             data: {
@@ -4276,6 +4277,7 @@ function Composer({
               instanceId: activeSendInstance?.id ?? undefined,
             },
           });
+          if (tmpId) setTimeout(() => onLocalMediaFail?.(tmpId), 500);
 
           // Se tiver fotos adicionais no catálogo, envia sequencialmente
           if (prod.fotos && prod.fotos.length > 1) {
@@ -4301,6 +4303,7 @@ function Composer({
             }
           }
         } catch (e: any) {
+          if (tmpId) onLocalMediaFail?.(tmpId);
           toast.error(e?.message ?? "Falha ao enviar produto");
         } finally {
           setBusy(false);

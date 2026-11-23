@@ -219,7 +219,7 @@ export const Route = createFileRoute("/api/public/chat-media")({
         // 2) Chequear tabla mensagens
         let msgQuery = supabaseAdmin
           .from("mensagens")
-          .select("id,company_id,numero,provider,midia_url,midia_tipo,midia_mime,midia_nome,whatsapp_message_id,raw_payload")
+          .select("id,company_id,numero,provider,texto,midia_url,midia_tipo,midia_mime,midia_nome,whatsapp_message_id,raw_payload")
           .eq("id", messageId);
         if (authorizedCompanyId) {
           msgQuery = msgQuery.eq("company_id", authorizedCompanyId);
@@ -278,6 +278,23 @@ export const Route = createFileRoute("/api/public/chat-media")({
           }
           if (msg.midia_url.startsWith("http")) {
             return proxyStream(msg.midia_url, request, fallbackMime, isDownload ? downloadFileName : null);
+          }
+        }
+
+        // Caso produto de catálogo anexado
+        if (msg?.company_id && msg?.texto && msg.texto.includes("🛍️ *")) {
+          const matchName = msg.texto.match(/🛍️ \*([^*]+)\*/);
+          if (matchName?.[1]) {
+            const { data: prod } = await (supabaseAdmin as any)
+              .from("produto")
+              .select("foto_url, fotos")
+              .eq("company_id", msg.company_id)
+              .ilike("nome", matchName[1].trim())
+              .maybeSingle();
+            const prodImg = prod?.foto_url || (prod?.fotos && prod?.fotos[0]);
+            if (prodImg && typeof prodImg === "string" && prodImg.startsWith("http")) {
+              return proxyStream(prodImg, request, fallbackMime, isDownload ? downloadFileName : null);
+            }
           }
         }
 
