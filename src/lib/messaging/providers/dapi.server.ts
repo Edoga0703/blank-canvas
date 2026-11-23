@@ -302,6 +302,12 @@ export const dapiProvider: MessagingProvider = {
 
       const text = extractText(data);
 
+      const rawTs = data.messageTimestamp || data.timestamp || body.timestamp;
+      const numTs = typeof rawTs === "number" ? rawTs : (typeof rawTs === "string" && /^\d+$/.test(rawTs.trim()) ? Number(rawTs.trim()) : NaN);
+      const safeOccurredAt = !isNaN(numTs) && numTs > 0
+        ? new Date(numTs < 10_000_000_000 ? numTs * 1000 : numTs).toISOString()
+        : (rawTs && !isNaN(new Date(rawTs).getTime()) ? new Date(rawTs).toISOString() : new Date().toISOString());
+
       return [
         {
           type: "message",
@@ -314,7 +320,7 @@ export const dapiProvider: MessagingProvider = {
           author: fromMe ? "human" : "contact",
           kind,
           text,
-          occurredAt: body.timestamp || new Date().toISOString(),
+          occurredAt: safeOccurredAt,
           replyToExternalMessageId:
             data.quotedMessageId ||
             data.quoted_message_id ||

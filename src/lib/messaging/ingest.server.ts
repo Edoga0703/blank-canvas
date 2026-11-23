@@ -194,6 +194,7 @@ async function persistMessage(
         whatsapp_message_id: event.externalMessageId,
         reply_to_id: replyToUuid,
         provider_timestamp: event.occurredAt,
+        created_at: event.occurredAt || new Date().toISOString(),
         midia_url: safeMidiaUrl,
         midia_tipo: firstAtt?.kind ?? null,
         midia_mime: firstAtt?.mimeType ?? null,
