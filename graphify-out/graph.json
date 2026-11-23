@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-23T16:40:03.898669+00:00",
+  "generated_at": "2026-11-23T17:04:28.287326+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -1351,7 +1351,7 @@
     },
     {
       "path": "src/lib/knowledge-extract.server.ts",
-      "bytes": 4358
+      "bytes": 5777
     },
     {
       "path": "src/lib/ensure-session.ts",
@@ -1359,7 +1359,7 @@
     },
     {
       "path": "src/lib/agent-copilot.functions.ts",
-      "bytes": 14284
+      "bytes": 14280
     },
     {
       "path": "src/lib/csat-config.functions.ts",
@@ -1443,7 +1443,7 @@
     },
     {
       "path": "src/lib/agent-ai.functions.ts",
-      "bytes": 43753
+      "bytes": 44124
     },
     {
       "path": "src/lib/team.functions.ts",
@@ -2703,7 +2703,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 157092
+      "bytes": 165161
     },
     {
       "path": "src/routes/app/prospeccao.tsx",
