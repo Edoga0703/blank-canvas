@@ -16,6 +16,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { brand } from "@/config/brand";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useLanguage } from "@/lib/i18n/context";
 import {
   getAgendaData, saveCompromisso, moverCompromisso, setStatusCompromisso,
   excluirItem, acaoEmMassa, saveMensagemProgramada, acaoMensagem, saveLocal,
@@ -72,6 +73,7 @@ function horariosDe(prof: Profissional | undefined, empresa: BusinessHours | nul
 }
 
 function AgendamentosPage() {
+  const { t } = useLanguage();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const isMobile = useIsMobile();
@@ -397,9 +399,9 @@ function AgendamentosPage() {
     <div className="p-3 sm:p-4 space-y-4 pb-24">
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold truncate">Agendamentos</h1>
+          <h1 className="text-xl sm:text-2xl font-bold truncate">{t("schedules.title", undefined, "Agendamentos")}</h1>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            Compromissos e mensagens programadas no mesmo lugar.
+            {t("schedules.subtitle", undefined, "Compromissos e mensagens programadas no mesmo lugar.")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -407,10 +409,10 @@ function AgendamentosPage() {
             variant="outline" size="sm" className="hidden sm:inline-flex"
             onClick={() => { setMsgForm(mensagemVazia({ dia: dateOnly(dia), profissional_id: meuId })); setMsgAberto(true); }}
           >
-            <MessageSquare className="w-4 h-4 mr-1" /> Mensagem
+            <MessageSquare className="w-4 h-4 mr-1" /> {t("schedules.message", undefined, "Mensagem")}
           </Button>
           <Button size="sm" className="hidden sm:inline-flex" onClick={() => abrirNovo()}>
-            <Plus className="w-4 h-4 mr-1" /> Compromisso
+            <Plus className="w-4 h-4 mr-1" /> {t("schedules.appointment", undefined, "Compromisso")}
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -420,10 +422,10 @@ function AgendamentosPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setBlockAberto(true)}>
-                <Lock className="w-4 h-4 mr-2" /> Bloquear horário
+                <Lock className="w-4 h-4 mr-2" /> {t("schedules.block_time", undefined, "Bloquear horário")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setSearch({ area: "config" })}>
-                <Settings2 className="w-4 h-4 mr-2" /> Horários e serviços
+                <Settings2 className="w-4 h-4 mr-2" /> {t("schedules.hours_services", undefined, "Horários e serviços")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -432,9 +434,9 @@ function AgendamentosPage() {
 
       <Tabs value={search.area} onValueChange={(v) => setSearch({ area: v as Area })}>
         <TabsList className="h-9 w-full sm:w-auto">
-          <TabsTrigger value="lista" className="text-xs">Lista</TabsTrigger>
-          <TabsTrigger value="calendario" className="text-xs">Calendário</TabsTrigger>
-          <TabsTrigger value="config" className="text-xs">Configurações</TabsTrigger>
+          <TabsTrigger value="lista" className="text-xs">{t("schedules.tab_list", undefined, "Lista")}</TabsTrigger>
+          <TabsTrigger value="calendario" className="text-xs">{t("schedules.tab_calendar", undefined, "Calendário")}</TabsTrigger>
+          <TabsTrigger value="config" className="text-xs">{t("schedules.tab_settings", undefined, "Configurações")}</TabsTrigger>
         </TabsList>
       </Tabs>
 

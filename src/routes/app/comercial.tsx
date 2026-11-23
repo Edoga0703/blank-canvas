@@ -27,6 +27,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
+import { useLanguage } from "@/lib/i18n/context";
 
 export const Route = createFileRoute("/app/comercial")({
   head: () => ({
@@ -53,6 +54,9 @@ const REPORTS = [
 ] as const;
 
 function ComercialPage() {
+  const { t, formatCurrency, formatDate } = useLanguage();
+  const fmtBRL = useCallback((cents: number) => formatCurrency((cents || 0) / 100), [formatCurrency]);
+  const fmtDate = useCallback((iso?: string | null) => (iso ? formatDate(iso, { day: "2-digit", month: "short", year: "2-digit" }) : "—"), [formatDate]);
   const ctx = Route.useRouteContext();
   const companyId = ctx.company?.id ?? "";
   const qc = useQueryClient();
@@ -315,18 +319,24 @@ function ComercialPage() {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="font-display text-[26px] font-extrabold tracking-tight flex items-center gap-2">
-            Comercial <HelpTip text="Acompanhe vendas, metas, produtos e o desempenho da equipe." />
+            {t("sales.title", undefined, "Comercial")} <HelpTip text="Acompanhe vendas, metas, produtos e o desempenho da equipe." />
           </h1>
-          <p className="text-sm text-muted-foreground">Receita, metas e performance de vendas em um só lugar.</p>
+          <p className="text-sm text-muted-foreground">{t("sales.subtitle", undefined, "Receita, metas e performance de vendas em um só lugar.")}</p>
         </div>
         <Button onClick={() => setVendaDialog({ open: true, venda: null })} className="gap-2">
-          <Plus className="size-4" /> Nova venda
+          <Plus className="size-4" /> {t("sales.new_sale", undefined, "Nova venda")}
         </Button>
       </div>
 
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="bg-[color:var(--panel)] p-1 rounded-xl border border-[color:var(--hairline)] h-auto w-full sm:w-auto overflow-x-auto justify-start">
-          {[["visao-geral", "Visão geral"], ["vendas", "Vendas"], ["metas", "Metas"], ["produtos", "Produtos"], ["relatorios", "Relatórios"]].map(([v, l]) => (
+          {[
+            ["visao-geral", t("sales.overview", undefined, "Visão geral")],
+            ["vendas", t("sales.sales", undefined, "Vendas")],
+            ["metas", t("sales.goals", undefined, "Metas")],
+            ["produtos", t("sales.products", undefined, "Produtos")],
+            ["relatorios", t("sales.reports", undefined, "Relatórios")],
+          ].map(([v, l]) => (
             <TabsTrigger key={v} value={v} className="rounded-lg font-bold text-xs px-4 py-2 data-[state=active]:bg-[color:var(--brand)] data-[state=active]:text-white">{l}</TabsTrigger>
           ))}
         </TabsList>
@@ -334,33 +344,38 @@ function ComercialPage() {
         {/* ================= VISÃO GERAL ================= */}
         <TabsContent value="visao-geral" className="space-y-6 pt-6">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Período: {periodoGeral.label}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("sales.period", undefined, "Período")}: {periodoGeral.label}</p>
             <PeriodFilter value={periodoGeral} onChange={setPeriodoGeral} />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <KpiCard icon={<DollarSign />} label="Receita" value={fmtBRL(stats.receitaMes)} variation={stats.variacaoReceita} hero />
-            <KpiCard icon={<Receipt />} label="Vendas" value={String(stats.vendasRealizadas)} />
-            <KpiCard icon={<TrendingUp />} label="Ticket médio" value={fmtBRL(stats.ticketMedio)} />
+            <KpiCard icon={<DollarSign />} label={t("sales.revenue", undefined, "Receita")} value={fmtBRL(stats.receitaMes)} variation={stats.variacaoReceita} hero />
+            <KpiCard icon={<Receipt />} label={t("sales.sales_count", undefined, "Vendas")} value={String(stats.vendasRealizadas)} />
+            <KpiCard icon={<TrendingUp />} label={t("sales.average_ticket", undefined, "Ticket médio")} value={fmtBRL(stats.ticketMedio)} />
             <MetaCard meta={stats.metaGeral} receitaMes={stats.receitaMes} pct={stats.metaAlcancada} onEdit={() => setMetaDialog({ open: true, target: { userId: null, valorCents: stats.metaGeral } })} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="font-bold text-sm flex items-center gap-2"><Receipt className="size-4 text-[color:var(--brand)]" /> Vendas recentes</h2>
-                <Button variant="ghost" size="sm" className="text-xs font-bold text-[color:var(--brand)]" onClick={() => setTab("vendas")}>Ver todas</Button>
+                <h2 className="font-bold text-sm flex items-center gap-2"><Receipt className="size-4 text-[color:var(--brand)]" /> {t("sales.recent_sales", undefined, "Vendas recentes")}</h2>
+                <Button variant="ghost" size="sm" className="text-xs font-bold text-[color:var(--brand)]" onClick={() => setTab("vendas")}>{t("sales.view_all", undefined, "Ver todas")}</Button>
               </div>
               <div className="bg-[color:var(--panel)] rounded-2xl border border-[color:var(--hairline)] overflow-hidden">
                 <table className="w-full text-left">
                   <thead className="bg-muted/40 text-[10px] uppercase font-semibold text-muted-foreground tracking-wider border-b border-[color:var(--hairline)]">
-                    <tr><th className="px-5 py-3">Data</th><th className="px-5 py-3">Cliente</th><th className="px-5 py-3">Item</th><th className="px-5 py-3 text-right">Valor</th></tr>
+                    <tr>
+                      <th className="px-5 py-3">{t("sales.col_date", undefined, "Data")}</th>
+                      <th className="px-5 py-3">{t("sales.customer", undefined, "Cliente")}</th>
+                      <th className="px-5 py-3">{t("sales.item", undefined, "Item")}</th>
+                      <th className="px-5 py-3 text-right">{t("sales.value", undefined, "Valor")}</th>
+                    </tr>
                   </thead>
                   <tbody className="divide-y divide-[color:var(--hairline)]">
                     {loadingVendas ? (
                       <tr><td colSpan={4} className="p-10 text-center text-xs text-muted-foreground">Carregando...</td></tr>
                     ) : vendas.length === 0 ? (
-                      <tr><td colSpan={4} className="p-10 text-center text-xs text-muted-foreground">Nenhuma venda no período.</td></tr>
+                      <tr><td colSpan={4} className="p-10 text-center text-xs text-muted-foreground">{t("sales.no_sales_period", undefined, "Nenhuma venda no período.")}</td></tr>
                     ) : vendas.slice(0, 6).map((v) => (
                       <tr key={v.id} className="hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => setSelectedVenda(v)}>
                         <td className="px-5 py-4 text-[11px] font-bold text-muted-foreground uppercase">{fmtDate(v.vendido_em)}</td>
@@ -375,7 +390,7 @@ function ComercialPage() {
             </div>
 
             <div className="space-y-3">
-              <h2 className="font-bold text-sm flex items-center gap-2"><Trophy className="size-4 text-amber-500" /> Ranking do período</h2>
+              <h2 className="font-bold text-sm flex items-center gap-2"><Trophy className="size-4 text-amber-500" /> {t("sales.ranking_period", undefined, "Ranking do período")}</h2>
               <div className="bg-[color:var(--panel)] rounded-2xl border border-[color:var(--hairline)] p-5 space-y-5">
                 {team.length === 0 && <p className="text-xs text-muted-foreground py-6 text-center">Sem dados de equipe.</p>}
                 {team.slice(0, 3).map((member, i) => (
@@ -396,7 +411,7 @@ function ComercialPage() {
                   </div>
                 ))}
                 <div className="pt-3 border-t border-[color:var(--hairline)]">
-                  <Button variant="ghost" className="w-full text-xs font-bold text-[color:var(--brand)]" onClick={() => setRankingOpen(true)}>Ver ranking completo</Button>
+                  <Button variant="ghost" className="w-full text-xs font-bold text-[color:var(--brand)]" onClick={() => setRankingOpen(true)}>{t("sales.view_full_ranking", undefined, "Ver ranking completo")}</Button>
                 </div>
               </div>
             </div>
@@ -410,35 +425,35 @@ function ComercialPage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="relative flex-1 max-w-sm">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                  <Input placeholder="Buscar por cliente, item ou vendedor..." className="pl-9 rounded-xl h-10" value={busca} onChange={(e) => setBusca(e.target.value)} />
+                  <Input placeholder={t("sales.search_placeholder", undefined, "Buscar por cliente, item ou vendedor...")} className="pl-9 rounded-xl h-10" value={busca} onChange={(e) => setBusca(e.target.value)} />
                 </div>
                 <PeriodFilter value={periodoVendas} onChange={setPeriodoVendas} />
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Select value={fItem} onValueChange={setFItem}>
-                  <SelectTrigger className="h-9 rounded-xl w-[190px] text-xs font-semibold"><SelectValue placeholder="Item" /></SelectTrigger>
+                  <SelectTrigger className="h-9 rounded-xl w-[190px] text-xs font-semibold"><SelectValue placeholder={t("sales.item", undefined, "Item")} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="todos">Todos os itens</SelectItem>
+                    <SelectItem value="todos">{t("sales.all_items", undefined, "Todos os itens")}</SelectItem>
                     {opcoesItem.map((i) => <SelectItem key={i} value={i}>{i}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <Select value={fCanal} onValueChange={setFCanal}>
                   <SelectTrigger className="h-9 rounded-xl w-[170px] text-xs font-semibold"><SelectValue placeholder="Canal" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="todos">Todos os canais</SelectItem>
+                    <SelectItem value="todos">{t("sales.all_channels", undefined, "Todos os canais")}</SelectItem>
                     {opcoesCanal.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <Select value={fVendedor} onValueChange={setFVendedor}>
-                  <SelectTrigger className="h-9 rounded-xl w-[190px] text-xs font-semibold"><SelectValue placeholder="Vendedor" /></SelectTrigger>
+                  <SelectTrigger className="h-9 rounded-xl w-[190px] text-xs font-semibold"><SelectValue placeholder={t("sales.seller", undefined, "Vendedor")} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="todos">Todos os vendedores</SelectItem>
+                    <SelectItem value="todos">{t("sales.all_sellers", undefined, "Todos os vendedores")}</SelectItem>
                     {opcoesVendedor.map((v) => <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 {filtrosAtivos && (
                   <Button variant="ghost" size="sm" className="h-9 rounded-xl text-xs font-bold" onClick={() => { setFItem("todos"); setFCanal("todos"); setFVendedor("todos"); setBusca(""); }}>
-                    Limpar filtros
+                    {t("sales.clear_filters", undefined, "Limpar filtros")}
                   </Button>
                 )}
                 <div className="ml-auto flex items-center gap-3">
@@ -446,7 +461,7 @@ function ComercialPage() {
                     {filteredVendas.length} venda(s) · <span className="text-[color:var(--brand)]">{fmtBRL(totalFiltrado)}</span>
                   </span>
                   <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold gap-2" onClick={handleExportVendas}>
-                    <Download className="size-4" /> Exportar
+                    <Download className="size-4" /> {t("sales.export", undefined, "Exportar")}
                   </Button>
                 </div>
               </div>
@@ -457,16 +472,20 @@ function ComercialPage() {
               <table className="w-full text-left">
                 <thead className="bg-muted/40 text-[10px] uppercase font-semibold text-muted-foreground tracking-wider border-b border-[color:var(--hairline)]">
                   <tr>
-                    <th className="px-5 py-3">Data</th><th className="px-5 py-3">Cliente</th><th className="px-5 py-3">Item</th>
-                    <th className="px-5 py-3">Vendedor</th><th className="px-5 py-3">Pagamento</th>
-                    <th className="px-5 py-3 text-right">Valor</th><th className="px-5 py-3 text-right">Ações</th>
+                    <th className="px-5 py-3">{t("sales.col_date", undefined, "Data")}</th>
+                    <th className="px-5 py-3">{t("sales.customer", undefined, "Cliente")}</th>
+                    <th className="px-5 py-3">{t("sales.item", undefined, "Item")}</th>
+                    <th className="px-5 py-3">{t("sales.seller", undefined, "Vendedor")}</th>
+                    <th className="px-5 py-3">{t("sales.col_payment", undefined, "Pagamento")}</th>
+                    <th className="px-5 py-3 text-right">{t("sales.value", undefined, "Valor")}</th>
+                    <th className="px-5 py-3 text-right">{t("sales.col_actions", undefined, "Ações")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[color:var(--hairline)]">
                   {loadingVendas ? (
                     <tr><td colSpan={7} className="p-10 text-center text-xs text-muted-foreground"><Loader2 className="size-4 animate-spin inline mr-2" />Carregando...</td></tr>
                   ) : filteredVendas.length === 0 ? (
-                    <tr><td colSpan={7} className="p-10 text-center text-xs text-muted-foreground">Nenhuma venda encontrada no período.</td></tr>
+                    <tr><td colSpan={7} className="p-10 text-center text-xs text-muted-foreground">{t("sales.no_sales_period", undefined, "Nenhuma venda encontrada no período.")}</td></tr>
                   ) : filteredVendas.map((v) => {
                     const s = v.owner_id ? sellerMap.get(v.owner_id) : null;
                     return (

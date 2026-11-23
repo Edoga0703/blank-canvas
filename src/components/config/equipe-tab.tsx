@@ -34,6 +34,7 @@ import { PlanUsageBadge } from "@/components/plan-usage-badge";
 import { FuncoesTab } from "./funcoes-tab";
 import { LogsTab } from "./logs-tab";
 import { DistribuicaoTab } from "./distribuicao-tab";
+import { useLanguage } from "@/lib/i18n/context";
 
 
 
@@ -92,6 +93,7 @@ function toneFor(seed: string) {
  * `showHeader` renders the "Usuários" page title and "+ Novo Usuário" action.
  */
 export function EquipeTab({ isOwner, role, showHeader = false }: { isOwner: boolean; role?: string; showHeader?: boolean }) {
+  const { t } = useLanguage();
   const [tab, setTab] = useState("usuarios");
   const [createSignal, setCreateSignal] = useState(0);
 
@@ -100,12 +102,12 @@ export function EquipeTab({ isOwner, role, showHeader = false }: { isOwner: bool
       {showHeader && (
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Usuários</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground">Gerencie usuários, funções e permissões</p>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{t("users.title", undefined, "Usuários")}</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">{t("users.subtitle", undefined, "Gerencie usuários, funções e permissões")}</p>
           </div>
           {tab === "usuarios" && (role === "owner" || role === "admin") && (
             <Button size="sm" className="h-9 shrink-0" onClick={() => setCreateSignal((v) => v + 1)}>
-              <UserPlus className="size-4 mr-1.5" /> <span className="hidden sm:inline">Novo Usuário</span><span className="sm:hidden">Novo</span>
+              <UserPlus className="size-4 mr-1.5" /> <span className="hidden sm:inline">{t("users.invite_user", undefined, "Novo Usuário")}</span><span className="sm:hidden">Novo</span>
             </Button>
           )}
         </div>
@@ -158,6 +160,7 @@ function UsuariosPanel({
   createSignal: number;
   showInlineCreate: boolean;
 }) {
+  const { t } = useLanguage();
   const list = useServerFn(listTeam);
   const invite = useServerFn(inviteMember);
   const update = useServerFn(updateMember);
@@ -348,13 +351,13 @@ function UsuariosPanel({
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 min-w-0 sm:min-w-[240px] max-w-full sm:max-w-md">
           <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-9 h-9 sm:h-10 rounded-xl bg-background" placeholder="Buscar usuário..." value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input className="pl-9 h-9 sm:h-10 rounded-xl bg-background" placeholder={t("users.search_placeholder", undefined, "Buscar usuário...")} value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
 
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" className="h-9 sm:h-10 rounded-xl shrink-0 px-3">
-              <Filter className="size-4 sm:mr-1.5" /> <span className="hidden sm:inline">Filtros</span>
+              <Filter className="size-4 sm:mr-1.5" /> <span className="hidden sm:inline">{t("users.filters", undefined, "Filtros")}</span>
             </Button>
           </PopoverTrigger>
 

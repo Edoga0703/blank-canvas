@@ -9,6 +9,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/i18n/context";
 import {
   ArrowUpDown, CalendarDays, Download, MoreVertical, Search, X, CalendarX2, FileText, FileSpreadsheet, Check,
 } from "lucide-react";
@@ -59,6 +60,7 @@ export function ListView({
   itens, profissionais, servicos, filtros, setFiltros, podeEditar,
   onAbrir, onEditar, onStatus, onMassa, onCriar,
 }: Props) {
+  const { t, language } = useLanguage();
   const [ordem, setOrdem] = useState<{ campo: "data" | "contato" | "status"; asc: boolean }>({ campo: "data", asc: true });
   const [pagina, setPagina] = useState(1);
   const [selecao, setSelecao] = useState<string[]>([]);
@@ -67,11 +69,19 @@ export function ListView({
   const [tempDe, setTempDe] = useState("");
   const [tempAte, setTempAte] = useState("");
 
+  const rotulosPeriodo: Record<string, string> = {
+    todos: t("schedules.all_periods", undefined, "Todo período"),
+    hoje: language === "es" ? "Hoy" : language === "en" ? "Today" : "Hoje",
+    semana: language === "es" ? "Próximos 7 días" : language === "en" ? "Next 7 days" : "Próximos 7 dias",
+    mes: language === "es" ? "Este mes" : language === "en" ? "This month" : "Este mês",
+    passado: language === "es" ? "Pasados" : language === "en" ? "Past" : "Passados",
+  };
+
   const brlData = (s?: string) => (s ? s.split("-").reverse().join("/") : "");
   const labelPeriodo =
     filtros.periodo === "personalizado"
-      ? filtros.de && filtros.ate ? `${brlData(filtros.de)} – ${brlData(filtros.ate)}` : "Personalizado…"
-      : ROTULOS_PERIODO[filtros.periodo] || "Período";
+      ? filtros.de && filtros.ate ? `${brlData(filtros.de)} – ${brlData(filtros.ate)}` : (language === "es" ? "Personalizado…" : language === "en" ? "Custom…" : "Personalizado…")
+      : rotulosPeriodo[filtros.periodo] || (language === "es" ? "Período" : language === "en" ? "Period" : "Período");
   const escolherPeriodo = (v: string) => {
     setFiltros({ ...filtros, periodo: v, ...(v === "personalizado" ? {} : { de: "", ate: "" }) });
     setPagina(1);
@@ -172,22 +182,22 @@ export function ListView({
           <Input
             aria-label="Buscar agendamentos"
             className="pl-8 h-8 text-xs"
-            placeholder="Buscar por nome, telefone ou empresa"
+            placeholder={t("schedules.search_placeholder", undefined, "Buscar por nome, telefone ou empresa")}
             value={filtros.busca}
             onChange={(e) => { setFiltros({ ...filtros, busca: e.target.value }); setPagina(1); }}
           />
         </div>
         <Select value={filtros.responsavel} onValueChange={(v) => setFiltros({ ...filtros, responsavel: v })}>
-          <SelectTrigger className="h-8 w-[150px] text-xs" aria-label="Responsável"><SelectValue placeholder="Responsável" /></SelectTrigger>
+          <SelectTrigger className="h-8 w-[150px] text-xs" aria-label="Responsável"><SelectValue placeholder={t("schedules.assignee", undefined, "Responsável")} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="todos">Todos responsáveis</SelectItem>
+            <SelectItem value="todos">{t("schedules.all_assignees", undefined, "Todos os responsáveis")}</SelectItem>
             {profissionais.map((p) => <SelectItem key={p.user_id} value={p.user_id}>{p.nome}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filtros.status} onValueChange={(v) => setFiltros({ ...filtros, status: v })}>
-          <SelectTrigger className="h-8 w-[150px] text-xs" aria-label="Status"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="h-8 w-[150px] text-xs" aria-label="Status"><SelectValue placeholder={t("schedules.status", undefined, "Status")} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="todos">Todos os status</SelectItem>
+            <SelectItem value="todos">{t("schedules.all_statuses", undefined, "Todos os status")}</SelectItem>
             {Object.entries(STATUS_COMPROMISSO).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -202,7 +212,7 @@ export function ListView({
           <PopoverContent align="start" className="w-64 p-1.5">
             {!mostrarDatas ? (
               <div className="flex flex-col">
-                {Object.entries(ROTULOS_PERIODO).map(([k, label]) => (
+                {Object.entries(rotulosPeriodo).map(([k, label]) => (
                   <button
                     key={k}
                     type="button"
@@ -262,7 +272,7 @@ export function ListView({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="h-8">
-              <Download className="w-4 h-4 mr-1" /> Exportar
+              <Download className="w-4 h-4 mr-1" /> {t("schedules.export", undefined, "Exportar")}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -458,16 +468,17 @@ export function ListView({
 }
 
 export function EmptyAgenda({ onCriar, onMensagem }: { onCriar: () => void; onMensagem?: () => void }) {
+  const { t } = useLanguage();
   return (
     <div className="rounded-lg border bg-card p-10 text-center">
       <CalendarX2 className="w-8 h-8 mx-auto text-muted-foreground" aria-hidden="true" />
-      <h3 className="mt-2 font-semibold">Sua agenda está livre neste período</h3>
+      <h3 className="mt-2 font-semibold">{t("schedules.agenda_free", undefined, "Sua agenda está livre neste período")}</h3>
       <p className="text-sm text-muted-foreground">
-        Crie um compromisso, programe uma mensagem ou configure os horários da sua equipe.
+        {t("schedules.agenda_free_desc", undefined, "Crie um compromisso, programe uma mensagem ou configure os horários da sua equipe.")}
       </p>
       <div className="mt-3 flex justify-center gap-2">
-        <Button size="sm" onClick={onCriar}>Criar compromisso</Button>
-        {onMensagem && <Button size="sm" variant="outline" onClick={onMensagem}>Programar mensagem</Button>}
+        <Button size="sm" onClick={onCriar}>{t("schedules.create_appointment", undefined, "Criar compromisso")}</Button>
+        {onMensagem && <Button size="sm" variant="outline" onClick={onMensagem}>{t("schedules.message", undefined, "Programar mensagem")}</Button>}
       </div>
     </div>
   );

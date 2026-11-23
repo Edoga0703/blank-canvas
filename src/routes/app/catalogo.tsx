@@ -11,15 +11,15 @@ import { Plus, Trash2, Pencil, Search, Loader2, ImageIcon, Images } from "lucide
 import { HelpTip } from "@/components/help-tip";
 import { ProdutoEditDialog } from "@/components/catalogo/produto-edit-dialog";
 import { brand } from "@/config/brand";
+import { useLanguage } from "@/lib/i18n/context";
 
 export const Route = createFileRoute("/app/catalogo")({
   head: () => ({ meta: [{ title: `${brand.name} — Catálogo` }] }),
   component: Page,
 });
 
-const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
 function Page() {
+  const { t, formatCurrency } = useLanguage();
   const ctx = Route.useRouteContext() as any;
   const companyId = ctx?.company?.id as string | undefined;
   const list = useServerFn(listProdutos);
@@ -72,16 +72,16 @@ function Page() {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="font-display text-[26px] font-extrabold tracking-tight flex items-center gap-2">
-            Catálogo <HelpTip text="Cadastre produtos e serviços com foto, preço e duração. É a fonte única usada pela IA, pelo Comercial e pelos Agendamentos." />
+            {t("catalog.title", undefined, "Catálogo")} <HelpTip text="Cadastre produtos e serviços com foto, preço e duração. É a fonte única usada pela IA, pelo Comercial e pelos Agendamentos." />
           </h1>
-          <p className="text-sm text-muted-foreground">Produtos e serviços em um só lugar — usados pela IA, pelo Comercial e pelos Agendamentos.</p>
+          <p className="text-sm text-muted-foreground">{t("catalog.subtitle", undefined, "Produtos e serviços em um só lugar — usados pela IA, pelo Comercial e pelos Agendamentos.")}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setEditing({ ativo: true, tipo: "servico", agendavel: true, duracao_min: 30 })} className="gap-2">
-            <Plus className="size-4" /> Novo serviço
+            <Plus className="size-4" /> {t("catalog.new_service", undefined, "Novo serviço")}
           </Button>
           <Button onClick={() => setEditing({ ativo: true, tipo: "produto" })} className="gap-2">
-            <Plus className="size-4" /> Novo produto
+            <Plus className="size-4" /> {t("catalog.new_product", undefined, "Novo produto")}
           </Button>
         </div>
       </div>
@@ -89,10 +89,10 @@ function Page() {
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative max-w-md flex-1 min-w-[240px]">
           <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome, SKU, categoria..." className="pl-9" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("catalog.search_placeholder", undefined, "Buscar por nome, SKU, categoria...")} className="pl-9" />
         </div>
         <div className="inline-flex rounded-xl border border-[color:var(--hairline)] p-1 bg-[color:var(--panel)]">
-          {([["todos", "Todos"], ["produto", "Produtos"], ["servico", "Serviços"]] as const).map(([v, label]) => (
+          {([["todos", t("catalog.filter_all", undefined, "Todos")], ["produto", t("catalog.filter_products", undefined, "Produtos")], ["servico", t("catalog.filter_services", undefined, "Serviços")]] as const).map(([v, label]) => (
             <button
               key={v}
               type="button"
@@ -110,7 +110,7 @@ function Page() {
         <div className="flex items-center gap-2 text-muted-foreground py-8"><Loader2 className="size-4 animate-spin" /> Carregando...</div>
       ) : grouped.length === 0 ? (
         <div className="rounded-2xl border border-[color:var(--hairline)] bg-[color:var(--panel)] p-12 text-center text-muted-foreground text-sm">
-          Nenhum produto ainda. Clique em <b>Novo produto</b> para começar.
+          {t("catalog.no_products", undefined, "Nenhum produto ainda. Clique em Novo produto para começar.")}
         </div>
       ) : (
         <div className="space-y-6">
@@ -138,7 +138,7 @@ function Page() {
                         </span>
                       )}
                       {!p.ativo && (
-                        <span className="absolute top-2 left-2 text-[10px] font-bold uppercase bg-black/70 text-white px-2 py-0.5 rounded">Inativo</span>
+                        <span className="absolute top-2 left-2 text-[10px] font-bold uppercase bg-black/70 text-white px-2 py-0.5 rounded">{t("catalog.inactive", undefined, "Inativo")}</span>
                       )}
                       <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
                         <Button size="icon" variant="secondary" className="size-7" onClick={() => setEditing(p)}>
@@ -151,7 +151,7 @@ function Page() {
                     </div>
                     <div className="p-3 space-y-1">
                       <div className="font-semibold text-sm truncate">{p.nome}</div>
-                      <div className="text-[color:var(--brand)] font-bold">{brl(Number(p.preco) || 0)}</div>
+                      <div className="text-[color:var(--brand)] font-bold">{formatCurrency(Number(p.preco) || 0)}</div>
                       {p.descricao && <div className="text-[12px] text-muted-foreground line-clamp-2">{p.descricao}</div>}
                       {p.sku && <div className="text-[10px] text-muted-foreground uppercase tracking-wider">SKU: {p.sku}</div>}
                     </div>

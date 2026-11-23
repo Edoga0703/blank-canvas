@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { brand } from "@/config/brand";
-import { useLanguage, translateDefaultStageName, translateDefaultPipelineName } from "@/lib/i18n/context";
+import { useLanguage, translateDefaultStageName, translateDefaultPipelineName, getSavedLanguage, getLocaleCode } from "@/lib/i18n/context";
 import { AgentAvatar } from "@/components/agente/agent-avatar";
 import {
   Hand, MessageSquareText, Send, Search, Bot,
@@ -1893,8 +1893,8 @@ function ConversasPage() {
 
         <nav aria-label="Pastas de conversas" className="inbox-panel hidden xl:flex flex-col p-3 min-h-0">
           <div className="px-2 pt-3 pb-5 border-b border-border">
-            <h2 className="text-base font-extrabold text-foreground">Mensagens</h2>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Caixas de entrada</p>
+            <h2 className="text-base font-extrabold text-foreground">{t("chat.messages", undefined, "Mensagens")}</h2>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{t("chat.inboxes", undefined, "Caixas de entrada")}</p>
           </div>
           <div className="flex-1 overflow-y-auto py-4 space-y-1">
             {(Object.keys(FILTER_LABELS) as Filter[])
@@ -1906,13 +1906,13 @@ function ConversasPage() {
                   <Button key={key} variant="ghost" onClick={() => setFilter(key)} aria-current={activeFilter ? "page" : undefined}
                     className={`w-full h-auto min-h-10 justify-start gap-2 rounded-xl px-2.5 py-2 text-left text-[11px] font-semibold whitespace-normal leading-tight ${activeFilter ? "bg-accent text-primary hover:bg-accent" : "text-muted-foreground hover:text-foreground"}`}>
                     <FilterIcon className="size-4 shrink-0" strokeWidth={1.8} />
-                    <span className="min-w-0 flex-1">{FILTER_LABELS[key]}</span>
+                    <span className="min-w-0 flex-1">{getFilterLabel(key)}</span>
                     {(tabCounts[key] ?? 0) > 0 && <span className={`min-w-5 rounded-full px-1 text-center text-[10px] ${activeFilter ? "bg-card text-primary" : "bg-muted text-muted-foreground"}`}>{tabCounts[key]}</span>}
                   </Button>
                 );
               })}
           </div>
-          <div className="border-t border-border px-2 py-3 text-[11px] text-muted-foreground">{conversations.length} conversas</div>
+          <div className="border-t border-border px-2 py-3 text-[11px] text-muted-foreground">{conversations.length} {t("chat.conversations_count", undefined, "conversas")}</div>
         </nav>
 
         {/* ============ LEFT — INBOX ============ */}
@@ -1924,7 +1924,7 @@ function ConversasPage() {
             className="hidden lg:block absolute top-0 right-0 h-full w-1.5 -mr-[3px] cursor-col-resize z-20 hover:bg-[color:var(--brand)]/30 active:bg-[color:var(--brand)]/50 transition-colors"
           />
            <div className="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
-             <div className="min-w-0"><h2 className="font-display text-[19px] font-extrabold text-foreground">Conversas</h2><p className="text-xs text-muted-foreground truncate" title={activeFilterSubtitle}>{activeFilterSubtitle}</p></div>
+             <div className="min-w-0"><h2 className="font-display text-[19px] font-extrabold text-foreground">{t("chat.title", undefined, "Conversas")}</h2><p className="text-xs text-muted-foreground truncate" title={activeFilterSubtitle}>{activeFilterSubtitle}</p></div>
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
@@ -2415,7 +2415,7 @@ function ConversasPage() {
                         : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
                     }`}
                   >
-                    {qf.label}
+                    {getQuickLabel(qf.key)}
                     <span className={`text-[10px] font-bold tabular-nums ${active ? "opacity-90" : "opacity-60"}`}>
                       {count}
                     </span>
@@ -2477,7 +2477,7 @@ function ConversasPage() {
                 onClick={() => setFilter(baseFilter)}
                 className="mt-2 inline-flex items-center gap-1.5 h-6 pl-2.5 pr-1.5 rounded-full bg-[color:var(--brand)]/10 text-[color:var(--brand)] text-[11px] font-semibold"
               >
-                {FILTER_LABELS[filter]}
+                {getFilterLabel(filter)}
                 <X className="size-3" />
               </button>
             )}
@@ -2609,28 +2609,28 @@ function ConversasPage() {
                         </div>
                       </div>
                       <p className={`text-[12px] truncate flex items-center gap-1 ${precisaAtender ? "text-foreground/90 font-medium" : "text-muted-foreground"}`}>
-                        {c.last.direcao === "saida" && <span className="font-semibold">Você:</span>}
-                        {c.last.midia_tipo === "image" ? <><ImageIcon className="size-3 shrink-0" /><span>Imagem</span></>
-                          : c.last.midia_tipo === "audio" ? <><MicIcon className="size-3 shrink-0" /><span>Áudio</span></>
-                          : c.last.midia_tipo === "video" ? <><VideoIcon className="size-3 shrink-0" /><span>Vídeo</span></>
-                          : c.last.midia_tipo === "document" ? <><FileText className="size-3 shrink-0" /><span>Documento</span></>
+                        {c.last.direcao === "saida" && <span className="font-semibold">{t("chat.you", undefined, "Você:")} </span>}
+                        {c.last.midia_tipo === "image" ? <><ImageIcon className="size-3 shrink-0" /><span>{t("chat.media_image", undefined, "Imagem")}</span></>
+                          : c.last.midia_tipo === "audio" ? <><MicIcon className="size-3 shrink-0" /><span>{t("chat.media_audio", undefined, "Áudio")}</span></>
+                          : c.last.midia_tipo === "video" ? <><VideoIcon className="size-3 shrink-0" /><span>{t("chat.media_video", undefined, "Vídeo")}</span></>
+                          : c.last.midia_tipo === "document" ? <><FileText className="size-3 shrink-0" /><span>{t("chat.media_document", undefined, "Documento")}</span></>
                           : <span className="truncate">{c.last.texto || "…"}</span>}
                       </p>
                       <div className="flex items-center flex-wrap gap-1 mt-0.5">
                         {!conversaEhGrupo && transferidaPelaIa && !on && (
                           <span className="inline-flex items-center gap-1 h-[18px] px-1.5 rounded-md bg-[color:var(--brand)] text-white text-[10.5px] font-bold">
-                            ⚡ Qualificado pela IA · atender
+                            ⚡ {t("chat.ai_qualified_action", undefined, "Qualificado pela IA · atender")}
                           </span>
                         )}
-                        {!conversaEhGrupo && isMine && <MiniChip tone="brand">👤 Você</MiniChip>}
+                        {!conversaEhGrupo && isMine && <MiniChip tone="brand">👤 {t("chat.you_badge", undefined, "Você")}</MiniChip>}
                         {conversaEhGrupo ? null : !pausesLoaded ? null : iaAtiva ? (
                           <MiniChip tone="ai">⚡ IA</MiniChip>
                         ) : card?.owner_id ? (
                           <MiniChip tone="human">
-                            {members.find((m) => m.user_id === card.owner_id)?.nome || "Atendente"}
+                            {members.find((m) => m.user_id === card.owner_id)?.nome || t("chat.attendant", undefined, "Atendente")}
                           </MiniChip>
                         ) : (
-                          <MiniChip tone="human">Humano</MiniChip>
+                          <MiniChip tone="human">{t("chat.human", undefined, "Humano")}</MiniChip>
                         )}
                         {!conversaEhGrupo && stage && <StageChip nome={stage.nome} cor={stage.cor} />}
                       </div>
@@ -2828,7 +2828,7 @@ function ConversasPage() {
             <div className="flex-1 w-full h-full grid place-items-center bg-card px-6">
               <div className="flex flex-col items-center gap-5 text-center">
                 <div className="grid size-16 place-items-center rounded-[20px] bg-accent text-primary"><MessageSquareText className="size-8" strokeWidth={1.6} /></div>
-                <div><h3 className="text-lg font-extrabold text-foreground">Sua caixa de entrada</h3><p className="mt-1 text-sm text-muted-foreground">Selecione uma conversa para começar.</p></div>
+                <div><h3 className="text-lg font-extrabold text-foreground">{t("chat.your_inbox", undefined, "Sua caixa de entrada")}</h3><p className="mt-1 text-sm text-muted-foreground">{t("chat.your_inbox_subtitle", undefined, "Selecione uma conversa para começar.")}</p></div>
               </div>
             </div>
           ) : (
@@ -5324,9 +5324,11 @@ function formatDaySeparator(iso: string) {
   const d = new Date(iso);
   const today = new Date();
   const yest = new Date(); yest.setDate(today.getDate() - 1);
-  if (isSameDay(iso, today.toISOString())) return "Hoje";
-  if (isSameDay(iso, yest.toISOString())) return "Ontem";
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+  const lang = getSavedLanguage();
+  const locale = getLocaleCode(lang);
+  if (isSameDay(iso, today.toISOString())) return lang === "es" ? "Hoy" : lang === "en" ? "Today" : "Hoje";
+  if (isSameDay(iso, yest.toISOString())) return lang === "es" ? "Ayer" : lang === "en" ? "Yesterday" : "Ontem";
+  return d.toLocaleDateString(locale, { day: "2-digit", month: "long", year: "numeric" });
 }
 
 // Formato estilo WhatsApp para a lista de conversas
@@ -5335,13 +5337,15 @@ function formatListTimestamp(iso: string) {
   const now = new Date();
   const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86400000);
-  if (diffDays <= 0) return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-  if (diffDays === 1) return "Ontem";
+  const lang = getSavedLanguage();
+  const locale = getLocaleCode(lang);
+  if (diffDays <= 0) return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+  if (diffDays === 1) return lang === "es" ? "Ayer" : lang === "en" ? "Yesterday" : "Ontem";
   if (diffDays < 7) {
-    const w = d.toLocaleDateString("pt-BR", { weekday: "long" });
+    const w = d.toLocaleDateString(locale, { weekday: "long" });
     return w.charAt(0).toUpperCase() + w.slice(1).replace("-feira", "");
   }
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+  return d.toLocaleDateString(locale, { day: "2-digit", month: "2-digit", year: "2-digit" });
 }
 
 // ============ Nova conversa ============

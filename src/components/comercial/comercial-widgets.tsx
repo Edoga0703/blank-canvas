@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { TrendingUp, Users, Calendar, Target, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/lib/i18n/context";
 
 export function KpiCard({
   title,
@@ -21,6 +22,7 @@ export function KpiCard({
   highlight?: boolean;
   hero?: boolean;
 }) {
+  const { t } = useLanguage();
   const isHero = highlight ?? hero;
   const heading = title ?? label ?? "";
   return (
@@ -38,7 +40,7 @@ export function KpiCard({
         <div className="flex items-center gap-1.5 pt-2 border-t border-[color:var(--hairline)]">
           <TrendingUp className="size-3 text-emerald-500" />
           <span className="text-[10px] text-muted-foreground">
-            {subtitle ?? `${variation! > 0 ? "+" : ""}${variation!.toFixed(1)}% vs período anterior`}
+            {subtitle ?? `${variation! > 0 ? "+" : ""}${variation!.toFixed(1)}% ${t("sales.vs_previous_period", undefined, "vs período anterior")}`}
           </span>
         </div>
       )}
@@ -47,7 +49,7 @@ export function KpiCard({
 }
 
 export function MetaCard({
-  title = "Meta mensal",
+  title,
   meta,
   realizado,
   receitaMes,
@@ -67,20 +69,21 @@ export function MetaCard({
   icon?: ReactNode;
   color?: "indigo" | "emerald" | "amber";
 }) {
-  const fmtMoney = (cents: number) =>
-    ((cents || 0) / 100).toLocaleString("es-ES", { style: "currency", currency: "USD" });
+  const { t, formatCurrency } = useLanguage();
+  const cardTitle = title ?? t("sales.monthly_goal", undefined, "Meta mensal");
+  const fmtMoney = (cents: number) => formatCurrency((cents || 0) / 100);
   const pctVal = Number.isFinite(perc) ? Number(perc) : Number(pct || 0);
   const metaLabel = typeof meta === "number" ? fmtMoney(meta) : meta;
-  const realizadoLabel = realizado ?? (typeof receitaMes === "number" ? fmtMoney(receitaMes) : "$ 0,00");
+  const realizadoLabel = realizado ?? (typeof receitaMes === "number" ? fmtMoney(receitaMes) : formatCurrency(0));
 
   return (
     <div className="rounded-2xl border border-[color:var(--hairline)] bg-white p-6 space-y-6 shadow-sm hover:shadow-md transition-all">
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{title}</p>
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{cardTitle}</p>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-black text-slate-900">{pctVal}%</span>
-            <span className="text-xs font-bold text-muted-foreground">atingido</span>
+            <span className="text-xs font-bold text-muted-foreground">{t("sales.achieved", undefined, "atingido")}</span>
           </div>
         </div>
         {onEdit ? (
@@ -102,7 +105,7 @@ export function MetaCard({
         </div>
         <div className="flex justify-between items-center text-[10px] font-bold text-muted-foreground">
           <span>{realizadoLabel}</span>
-          <span>Meta: {metaLabel}</span>
+          <span>{t("sales.goal", undefined, "Meta")}: {metaLabel}</span>
         </div>
       </div>
     </div>
@@ -120,13 +123,14 @@ export function MetaConfigCard({
   metricaLabel?: string;
   visibilidadeLabel?: string;
 } = {}) {
-  const currentPeriod = periodoLabel || new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date());
+  const { t, formatDate } = useLanguage();
+  const currentPeriod = periodoLabel || formatDate(new Date(), { month: "long", year: "numeric" });
 
   return (
     <div className="rounded-2xl border border-[color:var(--hairline)] bg-white p-8 space-y-8 shadow-sm">
       <div className="space-y-1">
-        <h3 className="font-bold text-lg text-slate-900">Configuração da meta</h3>
-        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Ajuste os parâmetros de performance</p>
+        <h3 className="font-bold text-lg text-slate-900">{t("sales.goal_config", undefined, "Configuração da meta")}</h3>
+        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("sales.goal_config_subtitle", undefined, "Ajuste os parâmetros de performance")}</p>
       </div>
       
       <div className="space-y-6">
@@ -135,7 +139,7 @@ export function MetaConfigCard({
             <Calendar className="size-5" />
           </div>
           <div>
-            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Período</p>
+            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">{t("sales.period", undefined, "Período")}</p>
             <p className="text-xs font-bold text-slate-800 uppercase tracking-wider capitalize">{currentPeriod}</p>
           </div>
         </div>
@@ -145,7 +149,7 @@ export function MetaConfigCard({
             <Target className="size-5" />
           </div>
           <div>
-            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Métrica principal</p>
+            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">{t("sales.main_metric", undefined, "Métrica principal")}</p>
             <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">{metricaLabel}</p>
           </div>
         </div>
@@ -155,7 +159,7 @@ export function MetaConfigCard({
             <Users className="size-5" />
           </div>
           <div>
-            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Visibilidade</p>
+            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">{t("sales.visibility", undefined, "Visibilidade")}</p>
             <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">{visibilidadeLabel}</p>
           </div>
         </div>
@@ -165,7 +169,7 @@ export function MetaConfigCard({
         onClick={onEdit}
         className="w-full rounded-2xl h-12 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] uppercase tracking-wider shadow-lg shadow-slate-900/10 mt-4 cursor-pointer"
       >
-        Editar definições
+        {t("sales.edit_definitions", undefined, "Editar definições")}
       </Button>
     </div>
   );

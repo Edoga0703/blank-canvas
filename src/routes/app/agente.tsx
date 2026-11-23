@@ -38,6 +38,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AvatarBuilder } from "@/components/agente/avatar-builder";
 import { AgentAvatar } from "@/components/agente/agent-avatar";
 import { AgentCopilotSheet } from "@/components/agente/agent-copilot-sheet";
+import { useLanguage } from "@/lib/i18n/context";
 
 import { cn } from "@/lib/utils";
 
@@ -63,6 +64,7 @@ const TIPO_LABELS: Record<AgentTipo, { label: string; sub: string }> = {
 };
 
 function AgentePage() {
+  const { t } = useLanguage();
   const ctx = Route.useRouteContext();
   const search = Route.useSearch();
   const searchAgentId = search?.id;
@@ -912,7 +914,7 @@ function AgentePage() {
     <div className="w-full lg:w-72 shrink-0 flex flex-col gap-4 border-r border-[var(--border)] pr-6 mb-6 lg:mb-0">
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="font-display text-lg font-bold">Agente Studio</h2>
+          <h2 className="font-display text-lg font-bold">{t("ai.agent_studio", undefined, "Agente Studio")}</h2>
           <Button size="icon" variant="ghost" onClick={() => setNewAgentOpen(true)} className="size-8">
             <Plus className="size-4" />
           </Button>
@@ -921,7 +923,7 @@ function AgentePage() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
           <Input 
-            placeholder="Buscar agente..." 
+            placeholder={t("ai.search_agent", undefined, "Buscar agente...")} 
             value={searchDraft}
             onChange={(e) => setSearchDraft(e.target.value)}
             className="pl-9 h-9 text-xs"
@@ -1256,10 +1258,10 @@ function AgentePage() {
                     className="h-7 text-[10px] gap-2 rounded-lg border-slate-200"
                     onClick={() => setAvatarBuilderOpen(true)}
                   >
-                    <Pencil className="size-3" /> Editar avatar
+                    <Pencil className="size-3" /> {t("ai.edit_avatar", undefined, "Editar avatar")}
                   </Button>
                   <Badge variant={currentAgent?.is_active !== false ? "outline" : "secondary"} className={cn("text-[10px] uppercase", currentAgent?.is_active !== false ? "border-green-500/50 text-green-600 bg-green-50" : "")}>
-                    {currentAgent?.is_active !== false ? "Ativo" : "Inativo"}
+                    {currentAgent?.is_active !== false ? t("ai.active", undefined, "Ativo") : t("ai.inactive", undefined, "Inativo")}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground flex items-center gap-2">
@@ -1275,7 +1277,7 @@ function AgentePage() {
                 className="gap-2 text-xs cursor-pointer" 
                 onClick={() => setActiveTab("avancado")}
               >
-                <Settings2 className="size-3.5" /> Configuração avançada
+                <Settings2 className="size-3.5" /> {t("ai.advanced_config", undefined, "Configuração avançada")}
               </Button>
               <Button 
                 onClick={() => { setHistoryDialogOpen(true); void loadHistory(); }} 
@@ -1283,7 +1285,7 @@ function AgentePage() {
                 size="sm" 
                 className="gap-2 text-xs cursor-pointer hover:bg-slate-50"
               >
-                <History className="size-3.5" /> Histórico
+                <History className="size-3.5" /> {t("ai.history", undefined, "Histórico")}
               </Button>
               <Button 
                 onClick={() => setPreviewDialogOpen(true)} 
@@ -1291,27 +1293,27 @@ function AgentePage() {
                 size="sm" 
                 className="gap-2 text-xs cursor-pointer hover:bg-slate-50"
               >
-                <Eye className="size-3.5" /> Pré-visualizar
+                <Eye className="size-3.5" /> {t("ai.preview", undefined, "Pré-visualizar")}
               </Button>
               <Button onClick={() => { setCopilotInitialPrompt(null); setCopilotOpen(true); }} size="sm" className="gap-2 text-xs bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-xs">
                 <Sparkles className="size-3.5" /> Entrenar con Copilot IA
               </Button>
               <Button onClick={save} disabled={saving} size="sm" className="gap-2 text-xs bg-[var(--brand)] hover:bg-[var(--brand)]/90">
                 {saving ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />} 
-                Salvar alterações
+                {t("ai.save_changes", undefined, "Salvar alterações")}
               </Button>
             </div>
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="w-full justify-start bg-transparent border-b border-[var(--border)] rounded-none h-12 p-0 gap-6 overflow-x-auto">
-              <TabsTrigger value="visao" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">Visão geral</TabsTrigger>
-              <TabsTrigger value="conhecimento" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">Conhecimento</TabsTrigger>
-              <TabsTrigger value="comportamento" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">Comportamento</TabsTrigger>
-              <TabsTrigger value="fluxo" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">Treinamento</TabsTrigger>
-              <TabsTrigger value="canais" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">Canais</TabsTrigger>
-              <TabsTrigger value="avancado" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">Avançado</TabsTrigger>
-              <TabsTrigger value="analises" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">Análises</TabsTrigger>
+              <TabsTrigger value="visao" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">{t("ai.overview", undefined, "Visão geral")}</TabsTrigger>
+              <TabsTrigger value="conhecimento" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">{t("ai.knowledge", undefined, "Conhecimento")}</TabsTrigger>
+              <TabsTrigger value="comportamento" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">{t("ai.behavior", undefined, "Comportamento")}</TabsTrigger>
+              <TabsTrigger value="fluxo" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">{t("ai.training", undefined, "Treinamento")}</TabsTrigger>
+              <TabsTrigger value="canais" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">{t("ai.channels", undefined, "Canais")}</TabsTrigger>
+              <TabsTrigger value="avancado" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">{t("ai.advanced", undefined, "Avançado")}</TabsTrigger>
+              <TabsTrigger value="analises" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">{t("ai.analytics", undefined, "Análises")}</TabsTrigger>
             </TabsList>
 
             <div className="grid lg:grid-cols-[1fr_360px] gap-8 pt-8">
@@ -1319,8 +1321,8 @@ function AgentePage() {
                 <TabsContent value="conhecimento" className="mt-0 space-y-8">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-bold">Base de conhecimento</h3>
-                      <p className="text-xs text-muted-foreground">Organize as informações que o agente usa para responder.</p>
+                      <h3 className="text-lg font-bold">{t("ai.knowledge_base", undefined, "Base de conhecimento")}</h3>
+                      <p className="text-xs text-muted-foreground">{t("ai.knowledge_subtitle", undefined, "Organize as informações que o agente usa para responder.")}</p>
                     </div>
                     <Button 
                       variant="outline" 
@@ -1328,7 +1330,7 @@ function AgentePage() {
                       className="gap-2 border-[var(--brand)] text-[var(--brand)] hover:bg-[var(--brand)]/5"
                       onClick={() => setTeachOpen(true)}
                     >
-                      <Plus className="size-3.5" /> Adicionar conhecimento
+                      <Plus className="size-3.5" /> {t("ai.add_knowledge", undefined, "Adicionar conhecimento")}
                     </Button>
                   </div>
 
@@ -1342,16 +1344,16 @@ function AgentePage() {
                           {(Array.isArray(cfg?.knowledge_files) ? cfg.knowledge_files.length : 0) + (livre?.trim() ? 1 : 0) + (Array.isArray(cfg?.produtos_servicos) ? cfg.produtos_servicos.length : 0)}
                         </span>
                       </div>
-                      <p className="text-[11px] text-muted-foreground uppercase font-semibold">Fontes vinculadas</p>
+                      <p className="text-[11px] text-muted-foreground uppercase font-semibold">{t("ai.linked_sources", undefined, "Fontes vinculadas")}</p>
                     </div>
                     <div className="p-4 rounded-xl border border-[var(--border)] bg-white space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="size-8 rounded-lg bg-green-50 flex items-center justify-center">
                           <Zap className="size-4 text-green-600" />
                         </div>
-                        <span className="text-[10px] text-green-600 font-medium">Atualizado agora</span>
+                        <span className="text-[10px] text-green-600 font-medium">{t("ai.updated_now", undefined, "Atualizado agora")}</span>
                       </div>
-                      <p className="text-[11px] text-muted-foreground uppercase font-semibold">Status</p>
+                      <p className="text-[11px] text-muted-foreground uppercase font-semibold">{t("ai.status", undefined, "Status")}</p>
                     </div>
                     <div className="p-4 rounded-xl border border-[var(--border)] bg-white space-y-2">
                       <div className="flex items-center justify-between">
@@ -1360,7 +1362,7 @@ function AgentePage() {
                         </div>
                         <span className="text-lg font-bold">100%</span>
                       </div>
-                      <p className="text-[11px] text-muted-foreground uppercase font-semibold">Processado</p>
+                      <p className="text-[11px] text-muted-foreground uppercase font-semibold">{t("ai.processed", undefined, "Processado")}</p>
                     </div>
                   </div>
 
@@ -1370,8 +1372,8 @@ function AgentePage() {
                         <div className="w-full">
                           <KnowledgeCard 
                             icon={<LayoutGrid className="size-4" />} 
-                            title="Informações da Empresa" 
-                            description={livre || "Configurações gerais e regras de negócio"}
+                            title={t("ai.company_info", undefined, "Informações da Empresa")} 
+                            description={livre || t("ai.company_info_desc", undefined, "Configurações gerais e regras de negócio")}
                             status="Ativo"
                           />
                         </div>
@@ -1395,7 +1397,7 @@ function AgentePage() {
                         <div className="w-full">
                           <KnowledgeCard 
                             icon={<ShoppingBag className="size-4" />} 
-                            title="Catálogo de Produtos" 
+                            title={t("ai.product_catalog", undefined, "Catálogo de Produtos")} 
                             description={produtos.length > 0 ? `${produtos.length} produto(s) sincronizado(s) no sistema` : "Integrado com o catálogo de produtos e serviços"}
                             badge={produtos.length > 0 ? `${produtos.length} produtos` : "Automático"}
                           />
@@ -1428,7 +1430,7 @@ function AgentePage() {
                         <div className="w-full">
                           <KnowledgeCard 
                             icon={<Share2 className="size-4" />} 
-                            title="Fluxo de CRM" 
+                            title={t("ai.crm_flow", undefined, "Fluxo de CRM")} 
                             description={stages.length > 0 ? `${stages.length} etapas ativas no funil de vendas` : "Regras de movimentação automática entre etapas"}
                             badge={stages.length > 0 ? `${stages.length} etapas` : "Automático"}
                           />
@@ -1532,8 +1534,8 @@ function AgentePage() {
                       {uploadingFile ? <Loader2 className="size-6 animate-spin" /> : <Database className="size-6" />}
                     </div>
                     <div>
-                      <h4 className="font-bold text-sm">Treinar com novos arquivos</h4>
-                      <p className="text-xs text-muted-foreground">Clique ou arraste arquivos (PDF, TXT, DOCX)</p>
+                      <h4 className="font-bold text-sm">{t("ai.train_with_files", undefined, "Treinar com novos arquivos")}</h4>
+                      <p className="text-xs text-muted-foreground">{t("ai.drag_files", undefined, "Clique ou arraste arquivos (PDF, TXT, DOCX)")}</p>
                     </div>
                   </div>
 
@@ -2414,23 +2416,23 @@ function AgentePage() {
               </div>
 
               <div className="space-y-8">
-                <Section title="Testar agente" icon={<Bot className="size-3.5" />}>
+                <Section title={t("ai.test_agent", undefined, "Testar agente")} icon={<Bot className="size-3.5" />}>
 
 
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <div className="size-2 rounded-full bg-green-500" />
-                      <span className="text-[10px] text-muted-foreground font-medium">{cfg?.nome_agente || "Agente"} está ativo</span>
+                      <span className="text-[10px] text-muted-foreground font-medium">{cfg?.nome_agente || t("ai.agent", undefined, "Agente")} {t("ai.is_active", undefined, "está ativo")}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button variant="ghost" size="sm" onClick={() => setChat([])} className="h-7 text-[10px] gap-1">
-                        <RefreshCcw className="size-3" /> Novo teste
+                        <RefreshCcw className="size-3" /> {t("ai.new_test", undefined, "Novo teste")}
                       </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 cursor-pointer">
                             <UserCircle2 className="size-3" />
-                            <span>Simular lead</span>
+                            <span>{t("ai.simulate_lead", undefined, "Simular lead")}</span>
                             <ChevronDown className="size-2.5 opacity-60" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -2462,7 +2464,7 @@ function AgentePage() {
                     {chat.length === 0 && !testing && (
                       <div className="h-full flex flex-col items-center justify-center text-center gap-2 p-6">
                         <Bot className="size-8 text-muted-foreground/30" />
-                        <p className="text-xs text-muted-foreground">Inicie uma conversa para testar o comportamento do agente.</p>
+                        <p className="text-xs text-muted-foreground">{t("ai.start_conversation_to_test", undefined, "Inicie uma conversa para testar o comportamento do agente.")}</p>
                       </div>
                     )}
                     {chat.map((m, i) =>
@@ -2534,7 +2536,7 @@ function AgentePage() {
                       value={testInput}
                       onChange={(e) => setTestInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void runTest(); } }}
-                      placeholder="Digite como um cliente..."
+                      placeholder={t("ai.type_as_client", undefined, "Digite como um cliente...")}
                       disabled={testing}
                       className="pr-10 bg-white"
                     />
@@ -2572,7 +2574,7 @@ function AgentePage() {
                       }}
                       className="text-[10px] h-8 gap-1.5 border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800 cursor-pointer"
                     >
-                      <CheckCircle2 className="size-3.5" /> Resposta correta
+                      <CheckCircle2 className="size-3.5" /> {t("ai.correct_response", undefined, "Resposta correta")}
                     </Button>
                     <Button 
                       variant="outline" 
@@ -2587,7 +2589,7 @@ function AgentePage() {
                       }}
                       className="text-[10px] h-8 gap-1.5 border-orange-200 text-orange-700 hover:bg-orange-50 hover:text-orange-800 cursor-pointer"
                     >
-                      <Sparkles className="size-3.5" /> Precisa melhorar
+                      <Sparkles className="size-3.5" /> {t("ai.needs_improvement", undefined, "Precisa melhorar")}
                     </Button>
                   </div>
                 </Section>
