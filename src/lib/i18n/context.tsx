@@ -24,6 +24,7 @@ export function getLocaleCode(lang: SupportedLanguage): string {
 }
 
 export const DEFAULT_STAGE_TRANSLATIONS: Record<string, string> = {
+  // Português
   "novo lead": "crm.stage_novo_lead",
   "novo": "crm.stage_novo_lead",
   "qualificação": "crm.stage_qualificacao",
@@ -44,9 +45,52 @@ export const DEFAULT_STAGE_TRANSLATIONS: Record<string, string> = {
   "fechamento": "crm.stage_fechamento",
   "visita": "crm.stage_visita",
   "contrato": "crm.stage_contrato",
+
+  // Español
+  "nuevo lead": "crm.stage_novo_lead",
+  "nuevo": "crm.stage_novo_lead",
+  "lead nuevo": "crm.stage_novo_lead",
+  "cualificación": "crm.stage_qualificacao",
+  "cualificacion": "crm.stage_qualificacao",
+  "calificación": "crm.stage_qualificacao",
+  "calificacion": "crm.stage_qualificacao",
+  "en atención": "crm.stage_em_atendimento",
+  "en atencion": "crm.stage_em_atendimento",
+  "en curso": "crm.stage_em_atendimento",
+  "en espera": "crm.stage_aguardando",
+  "esperando": "crm.stage_aguardando",
+  "pendiente": "crm.stage_aguardando",
+  "propuesta": "crm.stage_proposta",
+  "negociación": "crm.stage_negociacao",
+  "negociacion": "crm.stage_negociacao",
+  "ganado": "crm.stage_ganho",
+  "ganada": "crm.stage_ganho",
+  "perdida": "crm.stage_perda",
+  "por hacer": "crm.stage_a_fazer",
+  "en progreso": "crm.stage_em_andamento",
+  "en marcha": "crm.stage_em_andamento",
+  "completado": "crm.stage_concluido",
+  "finalizado": "crm.stage_concluido",
+  "cierre": "crm.stage_fechamento",
+
+  // English
+  "new lead": "crm.stage_novo_lead",
+  "qualification": "crm.stage_qualificacao",
+  "in progress": "crm.stage_em_atendimento",
+  "waiting": "crm.stage_aguardando",
+  "proposal": "crm.stage_proposta",
+  "negotiation": "crm.stage_negociacao",
+  "won": "crm.stage_ganho",
+  "lost": "crm.stage_perda",
+  "to do": "crm.stage_a_fazer",
+  "done": "crm.stage_concluido",
+  "closing": "crm.stage_fechamento",
+  "visit": "crm.stage_visita",
+  "contract": "crm.stage_contrato",
 };
 
 export const DEFAULT_PIPELINE_TRANSLATIONS: Record<string, string> = {
+  // Português
   "funil de vendas": "crm.pipeline_vendas",
   "funil padrão": "crm.pipeline_vendas",
   "funil padrao": "crm.pipeline_vendas",
@@ -54,6 +98,23 @@ export const DEFAULT_PIPELINE_TRANSLATIONS: Record<string, string> = {
   "pos-venda": "crm.pipeline_pos_venda",
   "pos venda": "crm.pipeline_pos_venda",
   "suporte": "crm.pipeline_suporte",
+  "suporte técnico": "crm.pipeline_suporte",
+
+  // Español
+  "embudo de ventas": "crm.pipeline_vendas",
+  "embudo estándar": "crm.pipeline_vendas",
+  "embudo estandar": "crm.pipeline_vendas",
+  "ventas": "crm.pipeline_vendas",
+  "post-venta": "crm.pipeline_pos_venda",
+  "post venta": "crm.pipeline_pos_venda",
+  "soporte": "crm.pipeline_suporte",
+  "soporte técnico": "crm.pipeline_suporte",
+
+  // English
+  "sales pipeline": "crm.pipeline_vendas",
+  "default pipeline": "crm.pipeline_vendas",
+  "after-sales": "crm.pipeline_pos_venda",
+  "support": "crm.pipeline_suporte",
 };
 
 export function getSavedLanguage(): SupportedLanguage {
@@ -147,6 +208,30 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
   }, [language]);
 
+  // Sincronizar entre pestañas y eventos personalizados
+  useEffect(() => {
+    function handleStorage(e: StorageEvent) {
+      if (e.key === STORAGE_KEY && e.newValue) {
+        const val = e.newValue as SupportedLanguage;
+        if (val === "es" || val === "en" || val === "pt") {
+          setLanguageState(val);
+        }
+      }
+    }
+    function handleCustom(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.language && (detail.language === "es" || detail.language === "en" || detail.language === "pt")) {
+        setLanguageState(detail.language);
+      }
+    }
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("capiversa-language-changed", handleCustom);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("capiversa-language-changed", handleCustom);
+    };
+  }, []);
+
   useEffect(() => {
     // Hidratar idioma guardado en base de datos si localStorage no fue inicializado aún
     let active = true;
@@ -155,6 +240,19 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         const { supabase } = await import("@/integrations/supabase/client");
         const { data: session } = await supabase.auth.getSession();
         if (!session?.session?.user) return;
+
+        // 1. Priorizar metadatos de usuario si existen
+        const userPref = session.session.user.user_metadata?.preferred_language;
+        if (userPref && (userPref === "es" || userPref === "en" || userPref === "pt")) {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (active && saved !== userPref) {
+            setLanguageState(userPref as SupportedLanguage);
+            localStorage.setItem(STORAGE_KEY, userPref);
+          }
+          return;
+        }
+
+        // 2. Revisar configuración de agente de la empresa
         const { data: cu } = await supabase
           .from("company_user")
           .select("company_id")
@@ -186,6 +284,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const setLanguage = useCallback(async (newLang: SupportedLanguage) => {
     setLanguageState(newLang);
+    if (typeof document !== "undefined") {
+      document.documentElement.lang = newLang;
+    }
     try {
       localStorage.setItem(STORAGE_KEY, newLang);
       window.dispatchEvent(new CustomEvent("capiversa-language-changed", { detail: { language: newLang } }));
@@ -197,6 +298,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data: session } = await supabase.auth.getSession();
       if (session?.session?.user) {
+        // Sincronizar metadatos de usuario en auth para persistir entre sesiones
+        void supabase.auth.updateUser({ data: { preferred_language: newLang } });
+
         const { data: cu } = await supabase
           .from("company_user")
           .select("company_id")

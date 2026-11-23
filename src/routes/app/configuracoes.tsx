@@ -76,7 +76,7 @@ function formatCpfCnpj(value: string): string {
 
 function ConfigPage() {
   const ctx = Route.useRouteContext();
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage, t, formatDate, formatCurrency } = useLanguage();
   const [selectedIdioma, setSelectedIdioma] = useState<string>(language);
   useEffect(() => { setSelectedIdioma(language); }, [language]);
   const companyId = ctx.company?.id;
@@ -330,6 +330,7 @@ function ConfigPage() {
       <Tabs defaultValue="perfil">
         <TabsList className="flex h-auto gap-1 bg-transparent p-0 border-b border-border rounded-none w-full justify-start overflow-x-auto no-scrollbar flex-nowrap md:flex-wrap">
           <StyledTab value="perfil" icon={<User className="size-4" />}>{t("config.profile_tab", undefined, "Perfil")}</StyledTab>
+          <StyledTab value="idioma" icon={<Globe className="size-4" />}>{t("config.language_tab", undefined, "Idioma")}</StyledTab>
           
           {!isAtendente && <StyledTab value="tags" icon={<Tag className="size-4" />}>{t("config.tags_tab", undefined, "Tags")}</StyledTab>}
            
@@ -339,7 +340,7 @@ function ConfigPage() {
           <StyledTab value="sugestoes" icon={<Lightbulb className="size-4" />}>{t("config.suggestions_tab", undefined, "Sugestões")}</StyledTab>
           {!isAtendente && <StyledTab value="integracoes" icon={<Webhook className="size-4" />}>{t("config.integrations_tab", undefined, "Integrações")}</StyledTab>}
           {!isAtendente && formulariosOn && <StyledTab value="formularios" icon={<FileText className="size-4" />}>{t("config.forms_tab", undefined, "Formulários")}</StyledTab>}
-          {!isAtendente && <StyledTab value="storage" icon={<HardDrive className="size-4" />}>Armazenamento</StyledTab>}
+          {!isAtendente && <StyledTab value="storage" icon={<HardDrive className="size-4" />}>{t("config.storage_tab", undefined, "Armazenamento")}</StyledTab>}
           {!isAtendente && <StyledTab value="plano" icon={<CreditCard className="size-4" />}>{t("config.plan_tab", undefined, "Plano")}</StyledTab>}
 
         </TabsList>
@@ -361,22 +362,22 @@ function ConfigPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium">Foto de perfil</div>
-                    <div className="text-xs text-muted-foreground">PNG ou JPG até 5 MB.</div>
+                    <div className="text-sm font-medium">{t("config.profile_photo", undefined, "Foto de perfil")}</div>
+                    <div className="text-xs text-muted-foreground">{t("config.profile_photo_tip", undefined, "PNG ou JPG até 5 MB.")}</div>
                   </div>
                   <AvatarUploadDialog
                     userId={userId}
                     onUploaded={(url) => setPerfil((p) => ({ ...p, avatar_url: url }))}
                     trigger={
                       <Button variant="outline" size="sm" type="button">
-                        <Upload className="size-4 mr-1.5" /> Alterar foto
+                        <Upload className="size-4 mr-1.5" /> {t("config.change_photo", undefined, "Alterar foto")}
                       </Button>
                     }
                   />
                 </div>
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
-                    <Label>Nome de exibição</Label>
+                    <Label>{t("config.display_name", undefined, "Nome de exibição")}</Label>
                     <Input value={perfil.nome} onChange={(e) => setPerfil({ ...perfil, nome: e.target.value })} />
                   </div>
                   <div>
@@ -389,7 +390,7 @@ function ConfigPage() {
                 <div className="space-y-1.5 pt-1">
                   <Label className="flex items-center gap-1.5 text-xs font-semibold">
                     <Globe className="size-3.5 text-primary" />
-                    Idioma do Painel / Sistema
+                    {t("config.system_language_preference", undefined, "Idioma do Painel / Sistema")}
                   </Label>
                   <div className="grid grid-cols-3 gap-2">
                     {[
@@ -402,7 +403,7 @@ function ConfigPage() {
                         type="button"
                         onClick={() => { setSelectedIdioma(item.code); void setLanguage(item.code as any); }}
                         className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-medium transition-all ${
-                          selectedIdioma === item.code
+                          (selectedIdioma || language) === item.code
                             ? "border-primary bg-primary/10 text-primary font-bold shadow-xs ring-1 ring-primary/20"
                             : "border-border bg-card hover:bg-muted/50 text-foreground"
                         }`}
@@ -413,7 +414,7 @@ function ConfigPage() {
                     ))}
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    Define o idioma do CRM e do assistente IA. Clique em "Salvar Perfil" para aplicar.
+                    {t("config.system_language_tip", undefined, "Define o idioma do CRM e do assistente IA.")}
                   </p>
                 </div>
                 {ctx.company?.atendimento_operacional === true && (
@@ -441,8 +442,8 @@ function ConfigPage() {
                       onChange={(e) => setPerfil({ ...perfil, csat_auto_finalizar: e.target.checked })}
                     />
                     <span className="text-sm">
-                      <span className="font-medium">Enviar pesquisa ao finalizar</span>
-                      <span className="block text-xs text-muted-foreground">Esta preferência vale somente para os seus atendimentos.</span>
+                      <span className="font-medium">{t("config.send_csat_on_finish", undefined, "Enviar pesquisa ao finalizar")}</span>
+                      <span className="block text-xs text-muted-foreground">{t("config.send_csat_on_finish_desc", undefined, "Esta preferência vale somente para os seus atendimentos.")}</span>
                     </span>
                   </label>
                 )}
@@ -674,6 +675,49 @@ function ConfigPage() {
         <TabsContent value="distribuicao"><DistribuicaoTab /></TabsContent>
         <TabsContent value="storage"><StorageVaultsTab /></TabsContent>
         <TabsContent value="plano"><PlanoCard company={company} sub={sub} /></TabsContent>
+
+        <TabsContent value="idioma" className="mt-4 sm:mt-5 space-y-4">
+          <Card className="p-5 sm:p-6 space-y-6 max-w-4xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Globe className="size-5 text-primary" />
+                  <h3 className="font-semibold text-lg">{t("config.language_section_title", undefined, "Idioma do Sistema e Inteligência Artificial")}</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {t("config.language_section_desc", undefined, "Escolha o idioma em que a interface será exibida e no qual o Agente de IA responderá aos clientes.")}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                {t("config.select_language_prompt", undefined, "Selecione o idioma principal:")}
+              </h4>
+              <LanguageSwitcher variant="cards" />
+            </div>
+
+            <div className="rounded-xl border border-border/80 bg-muted/40 p-4 space-y-3">
+              <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                {language === "es" ? "Vista previa y formatos activos" : language === "en" ? "Active Preview & Formats" : "Pré-visualização e formatos ativos"}
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="p-3 rounded-lg bg-background border border-border/60">
+                  <span className="text-muted-foreground block mb-1">{t("config.current_locale", undefined, "Idioma atual:")}</span>
+                  <span className="font-bold text-foreground text-sm uppercase">{language === "pt" ? "🇧🇷 Português" : language === "en" ? "🇺🇸 English" : "🇪🇸 Español"}</span>
+                </div>
+                <div className="p-3 rounded-lg bg-background border border-border/60">
+                  <span className="text-muted-foreground block mb-1">{t("config.currency_format", undefined, "Formato de moeda:")}</span>
+                  <span className="font-bold text-foreground text-sm">{formatCurrency(1250.50)}</span>
+                </div>
+                <div className="p-3 rounded-lg bg-background border border-border/60">
+                  <span className="text-muted-foreground block mb-1">{t("config.date_format", undefined, "Formato de data e hora:")}</span>
+                  <span className="font-bold text-foreground text-sm">{formatDate(new Date(), { dateStyle: "medium" })}</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </TabsContent>
 
       </Tabs>
     </div>

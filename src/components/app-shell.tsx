@@ -9,8 +9,9 @@ import {
   ChevronsLeft, ChevronsRight, Zap, ChevronDown, CalendarClock, Zap as Bolt, Bell, Volume2, VolumeX,
   PanelLeft, User as UserIcon, Package, Puzzle, MoreHorizontal, Workflow, TrendingUp, FileText,
   GraduationCap, CreditCard, Radar, Share2, Images,
-  Activity
+  Activity, Check, Globe
 } from "lucide-react";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { AgentAvatar } from "@/components/agente/agent-avatar";
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -349,6 +350,7 @@ export function AppShell({
           <img src={logoFull.url} alt={brand.name} className="h-10 w-auto object-contain" loading="eager" decoding="async" />
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          <LanguageSwitcher variant="compact" />
           <NotificationsBell companyId={company?.id} />
           <button
             onClick={toggleSounds}
@@ -359,7 +361,7 @@ export function AppShell({
           </button>
           <button
             onClick={signOut}
-            title="Sair"
+            title={t("nav.logout", undefined, "Sair")}
             className="size-9 grid place-items-center rounded-lg text-muted-foreground hover:text-foreground"
           >
             <LogOut className="size-[18px]" />
@@ -485,7 +487,7 @@ function Sidebar({
   activePath, company, isSuperAdmin, isAdmin, isPartner, primary, companyName, companyLogo, signOut, collapsed, onToggleCollapsed, unreadConversations, onNavigateStart, userName, userEmail, userAvatar, userId,
 }: any) {
   const loc = useLocation();
-  const { t } = useLanguage();
+  const { t, language, setLanguage, languages } = useLanguage();
   const flags = useFeatureFlags();
   const { muted: soundsMuted, toggle: toggleSounds } = useSoundsMuted();
   const [activeAgent, setActiveAgent] = useState<any>(null);
@@ -534,7 +536,7 @@ function Sidebar({
          <Link to="/app/dashboard" title="Capi Conversa" className={collapsed ? "grid size-11 place-items-center rounded-xl bg-muted overflow-hidden" : "flex-1 min-w-0 flex items-center justify-center"}>
            {collapsed ? <img src="/favicon.png" alt="Capi Conversa" className="size-9 object-contain" /> : <img src={logoFull.url} alt={brand.name} className="h-11 w-full object-contain" />}
          </Link>
-         {!collapsed && <button type="button" onClick={onToggleCollapsed} title="Recolher menu" aria-label="Recolher menu" className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-foreground hover:bg-accent"><ChevronsLeft className="size-5" /></button>}
+         {!collapsed && <button type="button" onClick={onToggleCollapsed} title={t("nav.collapse_menu", undefined, "Recolher menu")} aria-label={t("nav.collapse_menu", undefined, "Recolher menu")} className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-foreground hover:bg-accent"><ChevronsLeft className="size-5" /></button>}
        </div>
 
 
@@ -564,7 +566,13 @@ function Sidebar({
       </nav>
 
        <div className={`shrink-0 border-t border-border ${collapsed ? "p-3" : "p-3"}`}>
-        {collapsed && <button type="button" onClick={onToggleCollapsed} title="Expandir menu" aria-label="Expandir menu" className="mb-3 grid size-10 place-items-center rounded-full bg-muted text-foreground hover:bg-accent"><ChevronsRight className="size-5" /></button>}
+        {collapsed && <button type="button" onClick={onToggleCollapsed} title={t("nav.expand_menu", undefined, "Expandir menu")} aria-label={t("nav.expand_menu", undefined, "Expandir menu")} className="mb-3 grid size-10 place-items-center rounded-full bg-muted text-foreground hover:bg-accent"><ChevronsRight className="size-5" /></button>}
+
+        {/* Seletor rápido de Idioma acessível direto na barra lateral */}
+        <div className={`mb-2.5 flex items-center ${collapsed ? "justify-center" : "px-0.5"}`}>
+          <LanguageSwitcher variant={collapsed ? "compact" : "segmented"} className="w-full justify-center" />
+        </div>
+
         <DropdownMenu>
 
 
@@ -624,7 +632,7 @@ function Sidebar({
             </div>
             <DropdownMenuItem onClick={(e) => { e.preventDefault(); toggleSounds(); }}>
               {soundsMuted ? <VolumeX className="size-4 mr-2" /> : <Volume2 className="size-4 mr-2" />}
-              {soundsMuted ? "Ativar sons" : "Silenciar sons"}
+              {soundsMuted ? t("common.unmute_sounds", undefined, "Ativar sons") : t("common.mute_sounds", undefined, "Silenciar sons")}
             </DropdownMenuItem>
 
 
@@ -638,6 +646,23 @@ function Sidebar({
             <DropdownMenuItem onClick={() => window.dispatchEvent(new Event("tour:start"))}>
               <Zap className="size-4 mr-2" />{t("common.retake_tour", undefined, "Fazer tour novamente")}
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-[11px] font-semibold uppercase text-muted-foreground flex items-center gap-1.5 py-1">
+              <Globe className="size-3.5 text-primary" /> {t("common.language", undefined, "Idioma")}
+            </DropdownMenuLabel>
+            {languages.map((l) => (
+              <DropdownMenuItem
+                key={l.code}
+                onClick={() => setLanguage(l.code)}
+                className="flex items-center justify-between cursor-pointer text-xs py-1.5"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="text-sm">{l.flag}</span>
+                  <span className={l.code === language ? "font-bold text-primary" : ""}>{l.nativeName}</span>
+                </span>
+                {l.code === language && <Check className="size-3.5 text-primary" />}
+              </DropdownMenuItem>
+            ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
               <LogOut className="size-4 mr-2" />{t("nav.logout", undefined, "Sair")}

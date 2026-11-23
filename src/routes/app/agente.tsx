@@ -18,7 +18,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Bot, Loader2, Save, Send, Sparkles, Wand2, ChevronDown, Settings2, RefreshCcw, HelpCircle, ArrowLeft, CheckCircle2, Plus, Trash2, LayoutGrid, Search, UserCircle2, Eye, History, FileText, ShoppingBag, Zap, Share2, BarChart3, Database, Camera, Image as ImageIcon } from "lucide-react";
+import { Bot, Loader2, Save, Send, Sparkles, Wand2, ChevronDown, Settings2, RefreshCcw, HelpCircle, ArrowLeft, CheckCircle2, Plus, Trash2, LayoutGrid, Search, UserCircle2, Eye, History, FileText, ShoppingBag, Zap, Share2, BarChart3, Database, Camera, Image as ImageIcon, Globe } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { brand } from "@/config/brand";
@@ -1546,6 +1546,36 @@ function AgentePage() {
                         <div className="space-y-2">
                           <Label>Nome do Agente</Label>
                           <Input value={cfg?.nome_agente || ""} onChange={(e) => setCfg({...cfg, nome_agente: e.target.value})} placeholder="Ex: Consultor de Vendas" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-1.5 font-medium text-xs">
+                            <Globe className="size-3.5 text-primary" />
+                            Idioma de Atendimento da IA
+                          </Label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { code: "es", label: "Español", flag: "🇪🇸" },
+                              { code: "pt", label: "Português", flag: "🇧🇷" },
+                              { code: "en", label: "English", flag: "🇺🇸" },
+                            ].map((item) => (
+                              <button
+                                key={item.code}
+                                type="button"
+                                onClick={() => setCfg({ ...cfg, idioma: item.code })}
+                                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
+                                  (cfg?.idioma || "es") === item.code
+                                    ? "border-primary bg-primary/10 text-primary font-bold ring-1 ring-primary/20"
+                                    : "border-border bg-card hover:bg-muted/50 text-foreground"
+                                }`}
+                              >
+                                <span>{item.flag}</span>
+                                <span>{item.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            Define o idioma no qual a IA conversará com os clientes no WhatsApp e redes sociais.
+                          </p>
                         </div>
                         <div className="space-y-2">
                           <Label>Papel e Objetivo</Label>
