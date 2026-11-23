@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-23T06:56:20.866532+00:00",
+  "generated_at": "2026-11-23T09:02:47.727582+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -819,7 +819,7 @@
     },
     {
       "path": "src/lib/lovable-ai.server.ts",
-      "bytes": 14968
+      "bytes": 14123
     },
     {
       "path": "src/lib/sectors.functions.ts",
@@ -879,7 +879,7 @@
     },
     {
       "path": "src/lib/master.functions.ts",
-      "bytes": 52465
+      "bytes": 52527
     },
     {
       "path": "src/lib/plugin-gate.server.ts",
@@ -1011,7 +1011,7 @@
     },
     {
       "path": "src/lib/media-understanding.server.ts",
-      "bytes": 10420
+      "bytes": 10505
     },
     {
       "path": "src/lib/handoff.server.ts",
@@ -1055,7 +1055,7 @@
     },
     {
       "path": "src/lib/agenda.functions.ts",
-      "bytes": 43028
+      "bytes": 41511
     },
     {
       "path": "src/lib/dashboard-ops.functions.ts",
@@ -1231,7 +1231,7 @@
     },
     {
       "path": "src/lib/transcribe.functions.ts",
-      "bytes": 6775
+      "bytes": 7321
     },
     {
       "path": "src/lib/templates.functions.ts",
@@ -1351,7 +1351,7 @@
     },
     {
       "path": "src/lib/knowledge-extract.server.ts",
-      "bytes": 4111
+      "bytes": 4358
     },
     {
       "path": "src/lib/ensure-session.ts",
@@ -1443,7 +1443,7 @@
     },
     {
       "path": "src/lib/agent-ai.functions.ts",
-      "bytes": 44550
+      "bytes": 43753
     },
     {
       "path": "src/lib/team.functions.ts",
@@ -2267,7 +2267,7 @@
     },
     {
       "path": "src/components/chat/chat-media.tsx",
-      "bytes": 8641
+      "bytes": 8847
     },
     {
       "path": "src/components/master/crm-admin/connection-header.tsx",
@@ -2455,7 +2455,7 @@
     },
     {
       "path": "src/lib/i18n/translations.ts",
-      "bytes": 138740
+      "bytes": 154952
     },
     {
       "path": "src/lib/i18n/currencies.ts",
@@ -2527,7 +2527,7 @@
     },
     {
       "path": "src/routes/master/sistema.tsx",
-      "bytes": 26714
+      "bytes": 29051
     },
     {
       "path": "src/routes/master/cadastros.tsx",
@@ -2691,7 +2691,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 264613
+      "bytes": 265579
     },
     {
       "path": "src/routes/app/publicacoes.tsx",
@@ -2703,7 +2703,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 153248
+      "bytes": 153216
     },
     {
       "path": "src/routes/app/prospeccao.tsx",
@@ -2783,7 +2783,7 @@
     },
     {
       "path": "src/routes/api/public/ai-health.ts",
-      "bytes": 3012
+      "bytes": 2003
     },
     {
       "path": "src/routes/api/public/lovable-whatsapp.ts",
@@ -5432,6 +5432,10 @@
       "target": "@/integrations/supabase/client.server"
     },
     {
+      "source": "src/lib/lovable-ai.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
       "source": "src/lib/sectors.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -6280,6 +6284,10 @@
       "target": "./telegram-content-sync.server"
     },
     {
+      "source": "src/lib/media-understanding.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
       "source": "src/lib/lead-photos.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -6482,6 +6490,10 @@
     {
       "source": "src/lib/agenda.functions.ts",
       "target": "./wa-dispatch.server"
+    },
+    {
+      "source": "src/lib/agenda.functions.ts",
+      "target": "@/lib/lovable-ai.server"
     },
     {
       "source": "src/lib/agenda.functions.ts",
@@ -7457,6 +7469,10 @@
     },
     {
       "source": "src/lib/transcribe.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/transcribe.functions.ts",
       "target": "./company-cache"
     },
     {
@@ -7470,6 +7486,10 @@
     {
       "source": "src/lib/transcribe.functions.ts",
       "target": "./chat-media.functions"
+    },
+    {
+      "source": "src/lib/transcribe.functions.ts",
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/transcribe.functions.ts",
@@ -7921,6 +7941,10 @@
     },
     {
       "source": "src/lib/whatsapp-fleet.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/knowledge-extract.server.ts",
       "target": "@/integrations/supabase/client.server"
     },
     {
@@ -8478,6 +8502,10 @@
     {
       "source": "src/lib/agent-ai.functions.ts",
       "target": "./company-cache"
+    },
+    {
+      "source": "src/lib/agent-ai.functions.ts",
+      "target": "@/lib/lovable-ai.server"
     },
     {
       "source": "src/lib/agent-ai.functions.ts",
@@ -14208,6 +14236,10 @@
       "target": "@/components/chat/whatsapp-audio"
     },
     {
+      "source": "src/components/chat/chat-media.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
       "source": "src/components/master/crm-admin/connection-header.tsx",
       "target": "@/components/ui/card"
     },
@@ -18546,6 +18578,14 @@
     {
       "source": "src/routes/api/public/ai-health.ts",
       "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/api/public/ai-health.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/routes/api/public/ai-health.ts",
+      "target": "@/lib/lovable-ai.server"
     },
     {
       "source": "src/routes/api/public/lovable-whatsapp.ts",
