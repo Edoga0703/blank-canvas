@@ -189,7 +189,7 @@ Analise e devolva o JSON.`;
         { role: "system", content: system },
         { role: "user", content: user },
       ],
-      { provider: "gemini", model: "google/gemini-2.5-flash" },
+      { provider: "gemini", model: "gemini-3.5-flash-lite" },
     );
 
     const parsed = extractJson(raw);
@@ -281,7 +281,7 @@ Gere o JSON do agente.`;
         { role: "system", content: system },
         { role: "user", content: user },
       ],
-      { provider: "gemini", model: "google/gemini-2.5-flash" },
+      { provider: "gemini", model: "gemini-3.5-flash-lite" },
     );
 
     const parsed = extractJson(raw) as Partial<GeneratedAgentConfig>;
@@ -643,9 +643,13 @@ export const saveAgentConfig = createServerFn({ method: "POST" })
 
 export const createAgent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { nome: string; tipo: string }) => {
+  .inputValidator((d: { nome: string; tipo: string; descricao?: string }) => {
     if (!d?.nome?.trim()) throw new Error("Digite o nome do agente.");
-    return { nome: d.nome.trim(), tipo: d.tipo };
+    return {
+      nome: d.nome.trim(),
+      tipo: d.tipo,
+      descricao: typeof d?.descricao === "string" ? d.descricao.trim() : "",
+    };
   })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
@@ -660,9 +664,16 @@ export const createAgent = createServerFn({ method: "POST" })
         nome_agente: data.nome,
         tipo: (data.tipo || "qualificacao").toLowerCase(),
         is_default: false,
-        sobre_empresa: "",
+        sobre_empresa: data.descricao || "",
+        descricao_negocio: data.descricao || "",
         papel_objetivo: "",
-        estilo_comunicacao: "Humano e prestativo",
+        estilo_comunicacao: "Humano, cordial y prestativo",
+        ai_provider: "gemini",
+        ai_model: "gemini-3.5-flash-lite",
+        idioma: "es",
+        responder_em_partes: true,
+        segundos_buffer: 5,
+        temperatura: 0.5,
       } as any)
       .select()
       .single();

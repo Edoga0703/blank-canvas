@@ -34,7 +34,7 @@ async function extractPdfWithAi(bytes: Uint8Array, name: string): Promise<string
     }
   } catch {}
 
-  // 2. Se houver chave OpenAI configurada, tenta extração
+  // 2. Si hay clave Google Gemini o OpenAI configurada, intenta extracción con IA
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: globalSettings } = await (supabaseAdmin as any)
     .from("master_settings")
@@ -43,6 +43,45 @@ async function extractPdfWithAi(bytes: Uint8Array, name: string): Promise<string
     .maybeSingle();
 
   const gVal = (globalSettings?.value as any) || {};
+  const geminiKey = gVal.gemini_api_key || process.env.GEMINI_API_KEY;
+
+  if (geminiKey) {
+    try {
+      const b64 = toBase64(bytes);
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${geminiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: `Extrae de forma clara, detallada y organizada toda la información relevante de este documento PDF titulado "${name}" para ser usada como base de conocimiento de atención al cliente (productos, servicios, precios, preguntas frecuentes, políticas).`,
+                  },
+                  {
+                    inlineData: {
+                      mimeType: "application/pdf",
+                      data: b64,
+                    },
+                  },
+                ],
+              },
+            ],
+          }),
+        },
+      );
+      if (res.ok) {
+        const data: any = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+        if (text) return text.slice(0, 15000);
+      }
+    } catch (geminiErr) {
+      console.warn("[extractPdfWithAi] Error extrayendo PDF con Gemini:", geminiErr);
+    }
+  }
+
   const openAiKey = gVal.openai_api_key || process.env.OPENAI_API_KEY;
 
   if (openAiKey && !openAiKey.startsWith("dk-")) {

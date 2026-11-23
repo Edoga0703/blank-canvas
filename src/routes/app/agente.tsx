@@ -844,44 +844,62 @@ function AgentePage() {
   }
 
   async function saveTeach() {
-
     if (!companyId || !cfg) return;
     const txt = teachText.trim();
-    if (!txt) return toast.error("Escreva o que a IA deve aprender.");
+    if (!txt) return toast.error(language === "es" ? "Escribe lo que la IA debe aprender." : "Escreva o que a IA deve aprender.");
     setTeachSaving(true);
     try {
       const nextLivre = (livre?.trim() ? livre.trim() + "\n\n" : "") + txt;
       setLivre(nextLivre);
-      let teachQuery = supabase.from("agent_config").update({ sobre_empresa: nextLivre });
-      if (activeAgentId) teachQuery = teachQuery.eq("id", activeAgentId);
-      else teachQuery = teachQuery.eq("company_id", companyId).eq("tipo", tipo);
-      const { error } = await teachQuery;
-      if (error) throw error;
+
+      const payload = {
+        ...cfg,
+        sobre_empresa: nextLivre,
+      };
+      await persistAgent({ data: { id: activeAgentId, payload } });
+
       setCfg((prev: any) => ({ ...(prev || {}), sobre_empresa: nextLivre }));
       setPromptPreview(buildSystemPrompt({ ...(cfg || {}), sobre_empresa: nextLivre } as any, { responderEmPartes, produtos: [] }));
-      toast.success("Conhecimento adicionado — o agente já sabe disso.");
+
+      // Registrar en audit_log para trazabilidad en el Historial
+      try {
+        await supabase.from("audit_log").insert({
+          company_id: companyId,
+          user_id: ctx.user.id,
+          acao: "agent_teach_saved",
+          detalhes: {
+            descricao: `Entrenamiento rápido añadido: "${txt.slice(0, 120)}${txt.length > 120 ? '...' : ''}"`,
+            agent_id: activeAgentId,
+            agent_nome: cfg?.nome_agente,
+          }
+        });
+      } catch {}
+
+      toast.success(language === "es" ? "Conocimiento añadido — el agente ya lo sabe." : "Conhecimento adicionado — o agente já sabe disso.");
       setTeachOpen(false);
       setTeachText("");
     } catch (e: any) {
-      toast.error(e?.message || "Falha ao salvar conhecimento");
+      toast.error(e?.message || (language === "es" ? "Fallo al guardar conocimiento" : "Falha ao salvar conhecimento"));
     } finally {
       setTeachSaving(false);
     }
   }
 
   async function createNewAgent() {
-    if (!newAgentName.trim()) return toast.error("Digite o nome do agente");
+    if (!newAgentName.trim()) return toast.error(language === "es" ? "Escribe el nombre del agente" : "Digite o nome do agente");
     setSaving(true);
     try {
-      const data = await addAgent({ data: { nome: newAgentName, tipo: newAgentTipo } });
+      const data = await addAgent({ data: { nome: newAgentName, tipo: newAgentTipo, descricao: descricao.trim() } });
       
-      toast.success("Agente criado com sucesso");
+      toast.success(language === "es" ? "Agente creado con éxito" : "Agente criado com sucesso");
       setNewAgentOpen(false);
       setNewAgentName("");
+      setDescricao("");
       setActiveAgentId(data.id);
+      await loadAgents(data.id);
       await reload(data.id);
     } catch (e: any) {
-      toast.error(e.message || "Erro ao criar agente");
+      toast.error(e.message || (language === "es" ? "Error al crear agente" : "Erro ao criar agente"));
     } finally {
       setSaving(false);
     }
@@ -891,13 +909,15 @@ function AgentePage() {
     setSaving(true);
     try {
       await removeAgent({ data: { id } });
-      toast.success("Agente excluído");
+      toast.success(language === "es" ? "Agente eliminado" : "Agente excluído");
       if (activeAgentId === id) setActiveAgentId(null);
+      await loadAgents();
       await reload(null);
     } catch (e: any) {
-      toast.error("Erro ao excluir agente");
+      toast.error(language === "es" ? "Error al eliminar agente" : "Erro ao excluir agente");
     } finally {
       setSaving(false);
+      setDeletingId(null);
     }
   }
 
@@ -1545,16 +1565,16 @@ function AgentePage() {
 
                 <TabsContent value="visao" className="mt-0 space-y-6">
                   <div className="space-y-6">
-                    <Section title="Informações básicas">
+                    <Section title={language === "es" ? "Información básica" : "Informações básicas"}>
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label>Nome do Agente</Label>
-                          <Input value={cfg?.nome_agente || ""} onChange={(e) => setCfg({...cfg, nome_agente: e.target.value})} placeholder="Ex: Consultor de Vendas" />
+                          <Label>{language === "es" ? "Nombre del Agente" : "Nome do Agente"}</Label>
+                          <Input value={cfg?.nome_agente || ""} onChange={(e) => setCfg({...cfg, nome_agente: e.target.value})} placeholder={language === "es" ? "Ej: Consultor de Ventas" : "Ex: Consultor de Vendas"} />
                         </div>
                         <div className="space-y-2">
                           <Label className="flex items-center gap-1.5 font-medium text-xs">
                             <Globe className="size-3.5 text-primary" />
-                            Idioma de Atendimento da IA
+                            {language === "es" ? "Idioma de Atención de la IA" : "Idioma de Atendimento da IA"}
                           </Label>
                           <div className="grid grid-cols-3 gap-2">
                             {[
@@ -1578,27 +1598,27 @@ function AgentePage() {
                             ))}
                           </div>
                           <p className="text-[11px] text-muted-foreground">
-                            Define o idioma no qual a IA conversará com os clientes no WhatsApp e redes sociais.
+                            {language === "es" ? "Define el idioma en el cual la IA conversará con los clientes en WhatsApp y redes sociales." : "Define o idioma no qual a IA conversará com os clientes no WhatsApp e redes sociais."}
                           </p>
                         </div>
                         <div className="space-y-2">
-                          <Label>Papel e Objetivo</Label>
-                          <Textarea value={cfg?.papel_objetivo || ""} onChange={(e) => setCfg({...cfg, papel_objetivo: e.target.value})} placeholder="O que o agente deve fazer..." rows={4} />
+                          <Label>{language === "es" ? "Rol y Objetivo" : "Papel e Objetivo"}</Label>
+                          <Textarea value={cfg?.papel_objetivo || ""} onChange={(e) => setCfg({...cfg, papel_objetivo: e.target.value})} placeholder={language === "es" ? "¿Qué debe hacer el agente?..." : "O que o agente deve fazer..."} rows={4} />
                         </div>
                       </div>
                     </Section>
-                    <Section title="Estatísticas do Agente">
+                    <Section title={language === "es" ? "Estadísticas del Agente" : "Estatísticas do Agente"}>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-[var(--panel-2)]">
-                          <span className="text-xs text-muted-foreground">Exemplos treinados</span>
+                          <span className="text-xs text-muted-foreground">{language === "es" ? "Ejemplos entrenados" : "Exemplos treinados"}</span>
                           <span className="font-bold">{(cfg?.exemplos_few_shot?.length || 0)}</span>
                         </div>
                         <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-[var(--panel-2)]">
-                          <span className="text-xs text-muted-foreground">Fontes ativas</span>
+                          <span className="text-xs text-muted-foreground">{language === "es" ? "Fuentes activas" : "Fontes ativas"}</span>
                           <span className="font-bold text-green-600">{(Array.isArray(cfg?.knowledge_files) ? cfg.knowledge_files.length : 0) + (livre?.trim() ? 1 : 0)}</span>
                         </div>
                         <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-[var(--panel-2)]">
-                          <span className="text-xs text-muted-foreground">Buffer de resposta</span>
+                          <span className="text-xs text-muted-foreground">{language === "es" ? "Buffer de respuesta" : "Buffer de resposta"}</span>
                           <span className="font-bold">{segundosBuffer}s</span>
                         </div>
                       </div>
@@ -1608,49 +1628,49 @@ function AgentePage() {
 
                 <TabsContent value="comportamento" className="mt-0 space-y-6">
                   <div className="space-y-6">
-                    <Section title="Personalidade">
+                    <Section title={language === "es" ? "Personalidad" : "Personalidade"}>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label>Tom das respostas</Label>
+                          <Label>{language === "es" ? "Tono de las respuestas" : "Tom das respostas"}</Label>
                           <Select value={tamanhoResposta} onValueChange={(v) => setTamanhoResposta(v as any)}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="curtas">Curtas (estilo WhatsApp)</SelectItem>
-                              <SelectItem value="medias">Médias</SelectItem>
-                              <SelectItem value="longas">Longas (explicativas)</SelectItem>
+                              <SelectItem value="curtas">{language === "es" ? "Cortas (estilo WhatsApp)" : "Curtas (estilo WhatsApp)"}</SelectItem>
+                              <SelectItem value="medias">{language === "es" ? "Medias" : "Médias"}</SelectItem>
+                              <SelectItem value="longas">{language === "es" ? "Largas (explicativas)" : "Longas (explicativas)"}</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label>Estilo de Comunicação</Label>
+                          <Label>{language === "es" ? "Estilo de Comunicación" : "Estilo de Comunicação"}</Label>
                           <Input value={cfg?.estilo_comunicacao || "Humano e prestativo"} onChange={(e) => setCfg({...cfg, estilo_comunicacao: e.target.value})} />
                         </div>
                       </div>
                     </Section>
 
-                    <Section title="Configurações Avançadas">
+                    <Section title={language === "es" ? "Configuraciones Avanzadas" : "Configurações Avançadas"}>
                       <div className="space-y-5">
                         <div className="grid grid-cols-2 gap-6">
                           <div className="space-y-4">
                             <div className="flex items-center justify-between">
                               <div className="space-y-0.5">
-                                <Label>Responder em partes</Label>
-                                <p className="text-[10px] text-muted-foreground">Simula comportamento humano no WhatsApp</p>
+                                <Label>{language === "es" ? "Responder en partes" : "Responder em partes"}</Label>
+                                <p className="text-[10px] text-muted-foreground">{language === "es" ? "Simula comportamiento humano en WhatsApp" : "Simula comportamento humano no WhatsApp"}</p>
                               </div>
                               <Switch checked={responderEmPartes} onCheckedChange={setResponderEmPartes} />
                             </div>
                             <div className="space-y-2">
-                              <Label>Telefone para transferência</Label>
-                              <Input value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="Ex: 5511999999999" />
+                              <Label>{language === "es" ? "Teléfono para transferencia" : "Telefone para transferência"}</Label>
+                              <Input value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="Ex: +58 412 1234567 ou 5511999999999" />
                             </div>
                           </div>
                           <div className="space-y-4">
                             <div className="space-y-2">
-                              <Label>Palavra para pausar IA</Label>
+                              <Label>{language === "es" ? "Comando para pausar IA" : "Palavra para pausar IA"}</Label>
                               <Input value={palavraPausar} onChange={(e) => setPalavraPausar(e.target.value)} />
                             </div>
                             <div className="space-y-2">
-                              <Label>Palavra para despausar IA</Label>
+                              <Label>{language === "es" ? "Comando para despausar IA" : "Palavra para despausar IA"}</Label>
                               <Input value={palavraDespausar} onChange={(e) => setPalavraDespausar(e.target.value)} />
                             </div>
                           </div>
@@ -1661,11 +1681,11 @@ function AgentePage() {
                           <div className="flex items-center justify-between">
                             <div className="space-y-0.5">
                               <div className="flex items-center gap-2">
-                                <Label className="text-sm font-medium">Buffer de Mensagens (Espera antes de responder)</Label>
+                                <Label className="text-sm font-medium">{language === "es" ? "Buffer de Mensajes (Espera antes de responder)" : "Buffer de Mensagens (Espera antes de responder)"}</Label>
                                 <Badge variant="secondary" className="font-mono text-xs">{segundosBuffer}s</Badge>
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                Agrupa mensagens seguidas do cliente (ex: &ldquo;Hola&rdquo;, &ldquo;¿Tienen Netflix?&rdquo;, &ldquo;¿A cómo?&rdquo;) enviadas dentro deste intervalo em uma única resposta completa e coerente. 0 = imediato.
+                                {language === "es" ? "Agrupa mensajes seguidos del cliente (ej: \"Hola\", \"¿Tienen Netflix?\", \"¿A cómo?\") enviados dentro de este intervalo en una única respuesta completa y coherente. 0 = inmediato." : "Agrupa mensagens seguidas do cliente (ex: \"Hola\", \"¿Tienen Netflix?\", \"¿A cómo?\") enviadas dentro deste intervalo em uma única resposta completa e coerente. 0 = imediato."}
                               </p>
                             </div>
                           </div>
@@ -1678,9 +1698,9 @@ function AgentePage() {
                               onValueChange={([val]) => setSegundosBuffer(val)}
                             />
                             <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
-                              <button type="button" onClick={() => setSegundosBuffer(0)} className="hover:text-foreground">0s (imediato)</button>
+                              <button type="button" onClick={() => setSegundosBuffer(0)} className="hover:text-foreground">0s ({language === "es" ? "inmediato" : "imediato"})</button>
                               <button type="button" onClick={() => setSegundosBuffer(3)} className="hover:text-foreground">3s</button>
-                              <button type="button" onClick={() => setSegundosBuffer(5)} className="hover:text-foreground font-semibold text-brand">5s (recomendado)</button>
+                              <button type="button" onClick={() => setSegundosBuffer(5)} className="hover:text-foreground font-semibold text-brand">5s ({language === "es" ? "recomendado" : "recomendado"})</button>
                               <button type="button" onClick={() => setSegundosBuffer(10)} className="hover:text-foreground">10s</button>
                               <button type="button" onClick={() => setSegundosBuffer(15)} className="hover:text-foreground">15s</button>
                               <button type="button" onClick={() => setSegundosBuffer(30)} className="hover:text-foreground">30s</button>
@@ -1725,7 +1745,7 @@ function AgentePage() {
                       </Button>
                     </div>
                   </div>
-                  <Section title="Mensagem inicial (abertura padrão)">
+                  <Section title={language === "es" ? "Mensaje inicial (apertura estándar)" : "Mensagem inicial (abertura padrão)"}>
                     <div className="space-y-2">
                       <Textarea
                         value={cfg?.apresentacao || ""}
@@ -1734,12 +1754,12 @@ function AgentePage() {
                         rows={3}
                       />
                       <p className="text-[11px] text-muted-foreground">
-                        É exatamente assim que o agente vai abrir a conversa (1ª mensagem). Escreva a frase pronta.
+                        {language === "es" ? "Es exactamente así como el agente iniciará la conversación (1er mensaje). Escribe la frase lista." : "É exatamente assim que o agente vai abrir a conversa (1ª mensagem). Escreva a frase pronta."}
                       </p>
                     </div>
                   </Section>
 
-                  <Section title={tipo === "posvenda" ? "Roteiro de pós-venda (passo a passo)" : tipo === "followup" ? "Roteiro de follow-up (passo a passo)" : "Roteiro de qualificação/venda (passo a passo)"}>
+                  <Section title={tipo === "posvenda" ? (language === "es" ? "Guión de postventa (paso a paso)" : "Roteiro de pós-venda (passo a passo)") : tipo === "followup" ? (language === "es" ? "Guión de follow-up (paso a paso)" : "Roteiro de follow-up (passo a passo)") : (language === "es" ? "Guión de calificación/venta (paso a paso)" : "Roteiro de qualificação/venda (passo a passo)")}>
                     <div className="space-y-2">
                       <Textarea
                         value={cfg?.como_vender || ""}
@@ -1748,13 +1768,13 @@ function AgentePage() {
                         rows={9}
                       />
                       <p className="text-[11px] text-muted-foreground">
-                        O agente segue essas etapas na ordem, uma pergunta por vez.
+                        {language === "es" ? "El agente sigue estas etapas en orden, una pregunta a la vez." : "O agente segue essas etapas na ordem, uma pergunta por vez."}
                       </p>
                     </div>
                   </Section>
 
                   <div className="grid grid-cols-2 gap-6">
-                    <Section title="Objeções e respostas">
+                    <Section title={language === "es" ? "Objeciones y respuestas" : "Objeções e respostas"}>
                       <Textarea
                         value={cfg?.objecoes || ""}
                         onChange={(e) => setCfg({ ...cfg, objecoes: e.target.value })}
@@ -1762,7 +1782,7 @@ function AgentePage() {
                         rows={7}
                       />
                     </Section>
-                    <Section title="Perguntas frequentes (FAQ)">
+                    <Section title={language === "es" ? "Preguntas frecuentes (FAQ)" : "Perguntas frequentes (FAQ)"}>
                       <Textarea
                         value={cfg?.faq || ""}
                         onChange={(e) => setCfg({ ...cfg, faq: e.target.value })}
@@ -1773,7 +1793,7 @@ function AgentePage() {
                   </div>
 
                   {tipo === "posvenda" && (
-                    <Section title="Mensagem padrão de pós-venda">
+                    <Section title={language === "es" ? "Mensaje estándar de postventa" : "Mensagem padrão de pós-venda"}>
                       <Textarea
                         value={cfg?.posvenda_msg || ""}
                         onChange={(e) => setCfg({ ...cfg, posvenda_msg: e.target.value })}
@@ -1966,22 +1986,22 @@ function AgentePage() {
                     </div>
                   )}
 
-                  <Section title="Regras rígidas (o agente nunca quebra)">
+                  <Section title={language === "es" ? "Reglas rígidas (el agente nunca las rompe)" : "Regras rígidas (o agente nunca quebra)"}>
                     <Textarea
                       value={regrasRigidas}
                       onChange={(e) => setRegrasRigidas(e.target.value)}
-                      placeholder="Ex: 1. Nunca dê desconto sem aprovação. 2. Sempre peça o e-mail. 3. Nunca fale de concorrentes."
+                      placeholder={language === "es" ? "Ej: 1. Nunca des descuento sin aprobación. 2. Siempre pide el correo y teléfono. 3. Nunca hables mal de la competencia." : "Ex: 1. Nunca dê desconto sem aprovação. 2. Sempre peça o e-mail. 3. Nunca fale de concorrentes."}
                       rows={8}
                     />
                   </Section>
 
-                  <Section title="Exemplos de conversa (treino)">
+                  <Section title={language === "es" ? "Ejemplos de conversación (entrenamiento few-shot)" : "Exemplos de conversa (treino)"}>
                     <div className="space-y-3">
                       {(Array.isArray(cfg?.exemplos_few_shot) ? cfg.exemplos_few_shot : []).map((ex: any, i: number) => (
                         <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-start">
                           <Textarea
                             rows={2}
-                            placeholder="Cliente disse..."
+                            placeholder={language === "es" ? "El cliente dijo..." : "Cliente disse..."}
                             value={ex?.cliente || ""}
                             onChange={(e) => {
                               const list = [...(cfg.exemplos_few_shot || [])];
@@ -1991,7 +2011,7 @@ function AgentePage() {
                           />
                           <Textarea
                             rows={2}
-                            placeholder="Agente deve responder..."
+                            placeholder={language === "es" ? "El agente debe responder..." : "Agente deve responder..."}
                             value={ex?.agente || ""}
                             onChange={(e) => {
                               const list = [...(cfg.exemplos_few_shot || [])];
@@ -2008,7 +2028,7 @@ function AgentePage() {
                               setCfg({ ...cfg, exemplos_few_shot: list });
                             }}
                           >
-                            Remover
+                            {language === "es" ? "Eliminar" : "Remover"}
                           </Button>
                         </div>
                       ))}
@@ -2022,16 +2042,16 @@ function AgentePage() {
                           })
                         }
                       >
-                        Adicionar exemplo
+                        {language === "es" ? "+ Añadir ejemplo" : "Adicionar exemplo"}
                       </Button>
                       <p className="text-[11px] text-muted-foreground">
-                        O agente imita o estilo destes exemplos. Use o Playground ao lado para testar e a opção “Corrigir” para transformar uma resposta ruim em exemplo bom.
+                        {language === "es" ? "El agente imita el estilo y tono de estos ejemplos. Usa el simulador al lado para probar y la opción 'Corregir' para convertir una respuesta mala en un ejemplo de entrenamiento ideal." : "O agente imita o estilo destes exemplos. Use o Playground ao lado para testar e a opção “Corrigir” para transformar uma resposta ruim em exemplo bom."}
                       </p>
                     </div>
                   </Section>
                 </TabsContent>
                 <TabsContent value="canais" className="mt-0 space-y-6">
-                  <Section title="Conectar Canais de Atendimento">
+                  <Section title={language === "es" ? "Conectar Canales de Atención" : "Conectar Canais de Atendimento"}>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="p-4 rounded-xl border border-[var(--border)] bg-white space-y-4">
                         <div className="flex items-center justify-between">
@@ -2041,12 +2061,12 @@ function AgentePage() {
                             </div>
                             <div>
                               <h4 className="text-sm font-bold">WhatsApp</h4>
-                              <p className="text-[10px] text-muted-foreground">D-API QR Code & API Oficial Meta</p>
+                              <p className="text-[10px] text-muted-foreground">{language === "es" ? "D-API QR Code & API Oficial Meta" : "D-API QR Code & API Oficial Meta"}</p>
                             </div>
                           </div>
                           <Switch checked={channelStatus.whatsapp} onCheckedChange={(val) => setChannelStatus(prev => ({ ...prev, whatsapp: val }))} />
                         </div>
-                        <Button variant="outline" size="sm" className="w-full text-xs" asChild><Link to="/app/conexao">Gerenciar conexões</Link></Button>
+                        <Button variant="outline" size="sm" className="w-full text-xs" asChild><Link to="/app/conexao">{language === "es" ? "Gestionar conexiones" : "Gerenciar conexões"}</Link></Button>
                       </div>
                       <div className="p-4 rounded-xl border border-[var(--border)] bg-white space-y-4">
                         <div className="flex items-center justify-between">
@@ -2056,12 +2076,12 @@ function AgentePage() {
                             </div>
                             <div>
                               <h4 className="text-sm font-bold">Instagram Direct</h4>
-                              <p className="text-[10px] text-muted-foreground">Mensagens diretas oficiais</p>
+                              <p className="text-[10px] text-muted-foreground">{language === "es" ? "Mensajes directos oficiales" : "Mensagens diretas oficiais"}</p>
                             </div>
                           </div>
                           <Switch checked={channelStatus.instagram} onCheckedChange={(val) => setChannelStatus(prev => ({ ...prev, instagram: val }))} />
                         </div>
-                        <Button variant="outline" size="sm" className="w-full text-xs" asChild><Link to="/app/conexao" search={{ tab: "instagram" }}>Configurar canal</Link></Button>
+                        <Button variant="outline" size="sm" className="w-full text-xs" asChild><Link to="/app/conexao" search={{ tab: "instagram" }}>{language === "es" ? "Configurar canal" : "Configurar canal"}</Link></Button>
                       </div>
                       <div className="p-4 rounded-xl border border-[var(--border)] bg-white space-y-4">
                         <div className="flex items-center justify-between">
@@ -2071,12 +2091,12 @@ function AgentePage() {
                             </div>
                             <div>
                               <h4 className="text-sm font-bold">Telegram</h4>
-                              <p className="text-[10px] text-muted-foreground">Bot API e chats diretos</p>
+                              <p className="text-[10px] text-muted-foreground">{language === "es" ? "Bot API y chats directos" : "Bot API e chats diretos"}</p>
                             </div>
                           </div>
                           <Switch checked={channelStatus.telegram} onCheckedChange={(val) => setChannelStatus(prev => ({ ...prev, telegram: val }))} />
                         </div>
-                        <Button variant="outline" size="sm" className="w-full text-xs" asChild><Link to="/app/conexao" search={{ tab: "telegram" }}>Configurar bot</Link></Button>
+                        <Button variant="outline" size="sm" className="w-full text-xs" asChild><Link to="/app/conexao" search={{ tab: "telegram" }}>{language === "es" ? "Configurar bot" : "Configurar bot"}</Link></Button>
                       </div>
                     </div>
                   </Section>
@@ -2260,11 +2280,11 @@ function AgentePage() {
                   </Section>
 
                   {/* 3. Menu Automático por Setores */}
-                  <Section title="Menu Automático por Setores / Departamentos" icon={<Sliders className="size-4 text-emerald-600" />}>
+                  <Section title={language === "es" ? "Menú Automático por Sectores / Departamentos" : "Menu Automático por Setores / Departamentos"} icon={<Sliders className="size-4 text-emerald-600" />}>
                     <div className="flex items-center justify-between pb-3 border-b">
                       <div>
-                        <h4 className="text-sm font-semibold">Menu Interativo de Auto-atendimento</h4>
-                        <p className="text-xs text-muted-foreground">Apresenta opções numeradas (1, 2, 3...) para direcionar o cliente ao setor correto.</p>
+                        <h4 className="text-sm font-semibold">{language === "es" ? "Menú Interactivo de Auto-atención" : "Menu Interativo de Auto-atendimento"}</h4>
+                        <p className="text-xs text-muted-foreground">{language === "es" ? "Presenta opciones numeradas (1, 2, 3...) para dirigir al cliente al sector correspondiente." : "Apresenta opções numeradas (1, 2, 3...) para direcionar o cliente ao setor correto."}</p>
                       </div>
                       <Switch checked={menuSetoresAtivo} onCheckedChange={setMenuSetoresAtivo} />
                     </div>
@@ -2272,11 +2292,11 @@ function AgentePage() {
                     {menuSetoresAtivo && (
                       <div className="space-y-4 pt-2">
                         <div className="space-y-1.5">
-                          <Label className="text-xs">Mensagem inicial do menu</Label>
+                          <Label className="text-xs">{language === "es" ? "Mensaje inicial del menú" : "Mensagem inicial do menu"}</Label>
                           <Textarea
                             value={menuSetoresTexto}
                             onChange={(e) => setMenuSetoresTexto(e.target.value)}
-                            placeholder="Olá! Seja bem-vindo à nossa empresa. Para agilizar o seu atendimento, digite o número da opção desejada:"
+                            placeholder={language === "es" ? "¡Hola! Bienvenido a nuestra empresa. Para agilizar tu atención, responde con el número de la opción deseada:" : "Olá! Seja bem-vindo à nossa empresa. Para agilizar o seu atendimento, digite o número da opção desejada:"}
                             rows={3}
                             className="bg-white text-xs"
                           />
@@ -2284,7 +2304,7 @@ function AgentePage() {
 
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs font-semibold">Opções numéricas de encaminhamento</Label>
+                            <Label className="text-xs font-semibold">{language === "es" ? "Opciones numéricas de enrutamiento" : "Opções numéricas de encaminhamento"}</Label>
                             <Button
                               type="button"
                               variant="outline"
@@ -2293,17 +2313,17 @@ function AgentePage() {
                               onClick={() => {
                                 const nextNum = String(menuSetoresOpcoes.length + 1);
                                 const availableDep = departments.find(d => !menuSetoresOpcoes.some(o => o.department_id === d.id)) || departments[0];
-                                if (!availableDep) return toast.error("Cadastre departamentos em Configurações > Departamentos para vincular.");
+                                if (!availableDep) return toast.error(language === "es" ? "Crea departamentos en Configuración > Departamentos para vincular." : "Cadastre departamentos em Configurações > Departamentos para vincular.");
                                 setMenuSetoresOpcoes([...menuSetoresOpcoes, { numero: nextNum, department_id: availableDep.id, label: availableDep.nome }]);
                               }}
                             >
-                              <Plus className="size-3" /> Adicionar opção
+                              <Plus className="size-3" /> {language === "es" ? "Añadir opción" : "Adicionar opção"}
                             </Button>
                           </div>
 
                           {menuSetoresOpcoes.length === 0 ? (
                             <div className="p-4 rounded-xl border border-dashed text-center text-xs text-muted-foreground">
-                              Nenhuma opção cadastrada. Clique em "Adicionar opção" para criar opções como 1 - Vendas, 2 - Suporte.
+                              {language === "es" ? "Ninguna opción configurada. Haz clic en 'Añadir opción' para crear opciones como 1 - Ventas, 2 - Soporte." : "Nenhuma opção cadastrada. Clique em \"Adicionar opção\" para criar opções como 1 - Vendas, 2 - Suporte."}
                             </div>
                           ) : (
                             <div className="space-y-2">
@@ -2319,7 +2339,7 @@ function AgentePage() {
                                       updated[idx] = { ...updated[idx], label: e.target.value };
                                       setMenuSetoresOpcoes(updated);
                                     }}
-                                    placeholder="Rótulo (ex: Falar com Vendas)"
+                                    placeholder={language === "es" ? "Etiqueta (ej: Hablar con Ventas)" : "Rótulo (ex: Falar com Vendas)"}
                                     className="h-8 text-xs flex-1"
                                   />
                                   <Select
@@ -2331,7 +2351,7 @@ function AgentePage() {
                                       setMenuSetoresOpcoes(updated);
                                     }}
                                   >
-                                    <SelectTrigger className="h-8 text-xs w-48 bg-white"><SelectValue placeholder="Setor destino" /></SelectTrigger>
+                                    <SelectTrigger className="h-8 text-xs w-48 bg-white"><SelectValue placeholder={language === "es" ? "Sector destino" : "Setor destino"} /></SelectTrigger>
                                     <SelectContent>
                                       {departments.map(d => (
                                         <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
@@ -2359,47 +2379,47 @@ function AgentePage() {
                   </Section>
 
                   {/* 4. Segurança e Transbordo */}
-                  <Section title="Segurança Operacional e Comandos de Pausa" icon={<ShieldAlert className="size-4 text-orange-600" />}>
+                  <Section title={language === "es" ? "Seguridad Operativa y Comandos de Pausa" : "Segurança Operacional e Comandos de Pausa"} icon={<ShieldAlert className="size-4 text-orange-600" />}>
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Comando para pausar a IA na conversa</Label>
+                        <Label className="text-xs">{language === "es" ? "Comando para pausar la IA en la conversación" : "Comando para pausar a IA na conversa"}</Label>
                         <Input
                           value={palavraPausar}
                           onChange={(e) => setPalavraPausar(e.target.value)}
                           placeholder="/pausar"
                           className="bg-white text-xs font-mono"
                         />
-                        <p className="text-[11px] text-muted-foreground">O atendente pode digitar esse comando no chat para calar o robô.</p>
+                        <p className="text-[11px] text-muted-foreground">{language === "es" ? "El asesor puede escribir este comando en el chat para silenciar al bot." : "O atendente pode digitar esse comando no chat para calar o robô."}</p>
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Comando para despausar a IA</Label>
+                        <Label className="text-xs">{language === "es" ? "Comando para reactivar la IA" : "Comando para despausar a IA"}</Label>
                         <Input
                           value={palavraDespausar}
                           onChange={(e) => setPalavraDespausar(e.target.value)}
                           placeholder="/despausar"
                           className="bg-white text-xs font-mono"
                         />
-                        <p className="text-[11px] text-muted-foreground">Restaura as respostas automáticas da IA imediatamente.</p>
+                        <p className="text-[11px] text-muted-foreground">{language === "es" ? "Restaura las respuestas automáticas de la IA inmediatamente." : "Restaura as respostas automáticas da IA imediatamente."}</p>
                       </div>
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-4 pt-2 border-t">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Telefone para transbordo humano</Label>
+                        <Label className="text-xs">{language === "es" ? "Teléfono para transferencia humana" : "Telefone para transbordo humano"}</Label>
                         <Input
                           value={telefone}
                           onChange={(e) => setTelefone(e.target.value)}
                           placeholder="Ex: +58 412 1234567 ou 5511999999999"
                           className="bg-white text-xs"
                         />
-                        <p className="text-[11px] text-muted-foreground">Quando a IA não souber responder ou o cliente pedir atendente, encaminha para este número.</p>
+                        <p className="text-[11px] text-muted-foreground">{language === "es" ? "Cuando la IA no sepa responder o el cliente pida un asesor, transfiere a este número." : "Quando a IA não souber responder ou o cliente pedir atendente, encaminha para este número."}</p>
                       </div>
 
                       <div className="flex items-center justify-between p-3 rounded-xl border bg-white">
                         <div>
-                          <Label className="text-xs font-semibold">Dividir mensagens em partes</Label>
-                          <p className="text-[11px] text-muted-foreground">Envia parágrafos separados com pequenas pausas naturais.</p>
+                          <Label className="text-xs font-semibold">{language === "es" ? "Dividir mensajes en partes" : "Dividir mensagens em partes"}</Label>
+                          <p className="text-[11px] text-muted-foreground">{language === "es" ? "Envía párrafos separados con pequeñas pausas naturales (estilo humano)." : "Envia parágrafos separados com pequenas pausas naturais."}</p>
                         </div>
                         <Switch checked={responderEmPartes} onCheckedChange={setResponderEmPartes} />
                       </div>
@@ -2408,11 +2428,11 @@ function AgentePage() {
                 </TabsContent>
 
                 <TabsContent value="analises" className="mt-0 space-y-6">
-                  <Section title="Desempenho da IA">
+                  <Section title={language === "es" ? "Rendimiento de la IA" : "Desempenho da IA"}>
                     <div className="h-[300px] flex items-center justify-center border-2 border-dashed border-[var(--border)] rounded-xl bg-[var(--panel)]/30">
                       <div className="text-center space-y-2">
                         <BarChart3 className="size-8 text-muted-foreground/30 mx-auto" />
-                        <p className="text-xs text-muted-foreground">Dados de análise serão exibidos após as primeiras interações.</p>
+                        <p className="text-xs text-muted-foreground">{language === "es" ? "Los datos de análisis y métricas se mostrarán después de las primeras interacciones con clientes." : "Dados de análise serão exibidos após as primeiras interações."}</p>
                       </div>
                     </div>
                   </Section>
@@ -2561,7 +2581,7 @@ function AgentePage() {
                       onClick={async () => {
                         const lastAssistantIdx = chat.map(m => m.role).lastIndexOf("assistant");
                         if (lastAssistantIdx === -1) {
-                          toast.error("Nenhuma resposta da IA para marcar como correta.");
+                          toast.error(language === "es" ? "Ninguna respuesta de la IA para marcar como correcta." : "Nenhuma resposta da IA para marcar como correta.");
                           return;
                         }
                         const userMsg = chat.slice(0, lastAssistantIdx).reverse().find(m => m.role === "user");
@@ -2571,9 +2591,9 @@ function AgentePage() {
                         setCfg((prev: any) => ({ ...prev, exemplos_few_shot: nextExamples }));
                         try {
                           await saveExample({ data: { tipo, cliente: clientText, agente: agentText, agentId: activeAgentId || undefined } });
-                          toast.success("Resposta salva como exemplo de treinamento da IA!");
+                          toast.success(language === "es" ? "¡Respuesta guardada como ejemplo de entrenamiento de la IA!" : "Resposta salva como exemplo de treinamento da IA!");
                         } catch (err: any) {
-                          toast.success("Resposta marcada como correta nos exemplos!");
+                          toast.success(language === "es" ? "¡Respuesta marcada como correcta en los ejemplos!" : "Resposta marcada como correta nos exemplos!");
                         }
                       }}
                       className="text-[10px] h-8 gap-1.5 border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800 cursor-pointer"
@@ -2586,7 +2606,7 @@ function AgentePage() {
                       onClick={() => {
                         const lastAssistantIdx = chat.map(m => m.role).lastIndexOf("assistant");
                         if (lastAssistantIdx === -1) {
-                          toast.error("Nenhuma resposta da IA para corrigir ainda.");
+                          toast.error(language === "es" ? "Ninguna respuesta de la IA para corregir aún." : "Nenhuma resposta da IA para corrigir ainda.");
                           return;
                         }
                         openCorrect(lastAssistantIdx);
@@ -2684,20 +2704,20 @@ function AgentePage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>O que você quer ensinar?</Label>
+              <Label>{language === "es" ? "¿Qué quieres enseñar a la IA?" : "O que você quer ensinar?"}</Label>
               <Textarea 
                 value={teachText} 
                 onChange={(e) => setTeachText(e.target.value)}
-                placeholder="Ex: A partir de hoje aceitamos Pix com 5% de desconto."
+                placeholder={language === "es" ? "Ej: A partir de hoy aceptamos pagos por Zelle, Binance Pay y transferencias en moneda local con 5% de descuento." : "Ex: A partir de hoje aceitamos Pix com 5% de desconto."}
                 rows={6}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setTeachOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setTeachOpen(false)}>{language === "es" ? "Cancelar" : "Cancelar"}</Button>
             <Button onClick={saveTeach} disabled={teachSaving}>
               {teachSaving ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Plus className="size-4 mr-2" />}
-              Salvar Conhecimento
+              {language === "es" ? "Guardar Conocimiento" : "Salvar Conhecimento"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2706,27 +2726,27 @@ function AgentePage() {
       <Dialog open={correctOpen} onOpenChange={setCorrectOpen}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Corrigir resposta do agente</DialogTitle>
+            <DialogTitle>{language === "es" ? "Corregir respuesta del agente" : "Corrigir resposta do agente"}</DialogTitle>
             <DialogDescription>
-              Escreva como o agente deveria ter respondido para que ele aprenda com este exemplo.
+              {language === "es" ? "Escribe cómo debería haber respondido el agente para que aprenda con este ejemplo." : "Escreva como o agente deveria ter respondido para que ele aprenda com este exemplo."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Resposta ideal</Label>
+              <Label>{language === "es" ? "Respuesta ideal" : "Resposta ideal"}</Label>
               <Textarea 
                 value={correctIdeal} 
                 onChange={(e) => setCorrectIdeal(e.target.value)}
-                placeholder="Digite a resposta perfeita..."
+                placeholder={language === "es" ? "Escribe la respuesta ideal..." : "Digite a resposta perfeita..."}
                 rows={6}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCorrectOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setCorrectOpen(false)}>{language === "es" ? "Cancelar" : "Cancelar"}</Button>
             <Button onClick={submitCorrection} disabled={correctSaving}>
               {correctSaving ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Save className="size-4 mr-2" />}
-              Salvar Correção
+              {language === "es" ? "Guardar Corrección" : "Salvar Correção"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2735,18 +2755,18 @@ function AgentePage() {
       <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir agente?</AlertDialogTitle>
+            <AlertDialogTitle>{language === "es" ? "¿Eliminar agente?" : "Excluir agente?"}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. O agente e todo o seu treinamento serão removidos.
+              {language === "es" ? "Esta acción no se puede deshacer. El agente y todo su entrenamiento serán eliminados." : "Esta ação não pode ser desfeita. O agente e todo o seu treinamento serão removidos."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{language === "es" ? "Cancelar" : "Cancelar"}</AlertDialogCancel>
             <AlertDialogAction 
               onClick={() => deletingId && handleDeleteAgent(deletingId)}
               className="bg-red-600 hover:bg-red-700"
             >
-              Excluir
+              {language === "es" ? "Eliminar" : "Excluir"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -2755,36 +2775,36 @@ function AgentePage() {
       <Dialog open={newAgentOpen} onOpenChange={setNewAgentOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Configurar novo agente</DialogTitle>
+            <DialogTitle>{language === "es" ? "Configurar nuevo agente" : "Configurar novo agente"}</DialogTitle>
             <DialogDescription>
-              Siga os passos abaixo para criar um agente personalizado para seu negócio.
+              {language === "es" ? "Sigue los pasos a continuación para crear un agente personalizado para tu negocio." : "Siga os passos abaixo para criar um agente personalizado para seu negócio."}
             </DialogDescription>
           </DialogHeader>
           
           <Tabs defaultValue="base" className="w-full mt-4">
             <TabsList className="grid grid-cols-3 w-full">
-              <TabsTrigger value="base">Identidade</TabsTrigger>
-              <TabsTrigger value="objetivo">Objetivo</TabsTrigger>
-              <TabsTrigger value="avatar">Avatar</TabsTrigger>
+              <TabsTrigger value="base">{language === "es" ? "Identidad" : "Identidade"}</TabsTrigger>
+              <TabsTrigger value="objetivo">{language === "es" ? "Objetivo" : "Objetivo"}</TabsTrigger>
+              <TabsTrigger value="avatar">{language === "es" ? "Avatar" : "Avatar"}</TabsTrigger>
             </TabsList>
             
             <TabsContent value="base" className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Nome do Agente</Label>
+                <Label>{language === "es" ? "Nombre del Agente" : "Nome do Agente"}</Label>
                 <Input 
                   value={newAgentName} 
                   onChange={(e) => setNewAgentName(e.target.value)}
-                  placeholder="Ex: Lia, Max, Bia..."
+                  placeholder={language === "es" ? "Ej: Lia, Max, Sofía..." : "Ex: Lia, Max, Bia..."}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Tipo de Agente</Label>
+                <Label>{language === "es" ? "Tipo de Agente" : "Tipo de Agente"}</Label>
                 <Select value={newAgentTipo} onValueChange={(v) => setNewAgentTipo(v as AgentTipo)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="qualificacao">Qualificação / Vendas</SelectItem>
-                    <SelectItem value="followup">Follow-up / Reengajamento</SelectItem>
-                    <SelectItem value="posvenda">Pós-venda / Suporte</SelectItem>
+                    <SelectItem value="qualificacao">{language === "es" ? "Calificación / Ventas" : "Qualificação / Vendas"}</SelectItem>
+                    <SelectItem value="followup">{language === "es" ? "Follow-up / Reenganche" : "Follow-up / Reengajamento"}</SelectItem>
+                    <SelectItem value="posvenda">{language === "es" ? "Postventa / Soporte" : "Pós-venda / Suporte"}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -2792,11 +2812,11 @@ function AgentePage() {
 
             <TabsContent value="objetivo" className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Descrição do Negócio</Label>
+                <Label>{language === "es" ? "Descripción del Negocio" : "Descrição do Negócio"}</Label>
                 <Textarea 
                   value={descricao}
                   onChange={(e) => setDescricao(e.target.value)}
-                  placeholder="Conte um pouco sobre o que sua empresa faz e o que este agente deve fazer..."
+                  placeholder={language === "es" ? "Cuéntanos un poco sobre lo que hace tu empresa y lo que este agente debe hacer..." : "Conte um pouco sobre o que sua empresa faz e o que este agente deve fazer..."}
                   rows={6}
                 />
               </div>
@@ -2806,17 +2826,17 @@ function AgentePage() {
               <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl bg-slate-50">
                 <Bot className="size-12 text-slate-300 mb-4" />
                 <p className="text-sm text-slate-500 text-center">
-                  Após criar o agente, você poderá usar o Gerador de Avatares Pixar para dar uma identidade visual única a ele.
+                  {language === "es" ? "Después de crear el agente, podrás usar el generador de avatares para darle una identidad visual única." : "Após criar o agente, você poderá usar o Gerador de Avatares Pixar para dar uma identidade visual única a ele."}
                 </p>
               </div>
             </TabsContent>
           </Tabs>
 
           <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={() => setNewAgentOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setNewAgentOpen(false)}>{language === "es" ? "Cancelar" : "Cancelar"}</Button>
             <Button onClick={createNewAgent} disabled={saving || !newAgentName.trim()}>
               {saving ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Plus className="size-4 mr-2" />}
-              Criar Agente
+              {language === "es" ? "Crear Agente" : "Criar Agente"}
             </Button>
           </DialogFooter>
         </DialogContent>
