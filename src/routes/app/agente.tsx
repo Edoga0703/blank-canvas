@@ -300,7 +300,8 @@ function AgentePage() {
       setPromptPreview(buildSystemPrompt(data as any, { responderEmPartes: data.responder_em_partes ?? true, produtos: [] }));
       setLivre(composeKnowledge(data));
       setAiProvider(data.ai_provider || "gemini");
-      setAiModel(!data.ai_model || data.ai_model === "google/gemini-2.0-flash-exp" ? "google/gemini-2.5-flash" : data.ai_model);
+      const normalizedModel = !data.ai_model || data.ai_model.includes("2.0") || data.ai_model.includes("1.5") || data.ai_model.includes("2.5") ? "gemini-3.5-flash-lite" : data.ai_model.replace(/^google\//, "");
+      setAiModel(normalizedModel);
       setTemperatura(typeof data.temperatura === "number" ? data.temperatura : 0.5);
       setAgendamentoAtivo(Boolean(data.agendamento_ativo));
       setServicosAgendaveis(data.servicos_agendaveis || "");
@@ -314,7 +315,8 @@ function AgentePage() {
       loadSuggestions(data.id);
     } else if (data) {
       setAiProvider(data.ai_provider || "gemini");
-      setAiModel(!data.ai_model || data.ai_model === "google/gemini-2.0-flash-exp" ? "google/gemini-2.5-flash" : data.ai_model);
+      const normalizedModel = !data.ai_model || data.ai_model.includes("2.0") || data.ai_model.includes("1.5") || data.ai_model.includes("2.5") ? "gemini-3.5-flash-lite" : data.ai_model.replace(/^google\//, "");
+      setAiModel(normalizedModel);
       setTemperatura(typeof data.temperatura === "number" ? data.temperatura : 0.5);
       setAgendamentoAtivo(Boolean(data.agendamento_ativo));
       setServicosAgendaveis(data.servicos_agendaveis || "");
@@ -2082,44 +2084,46 @@ function AgentePage() {
 
                 <TabsContent value="avancado" className="mt-0 space-y-6">
                   {/* 1. Provedor e Modelo da IA */}
-                  <Section title="Cérebro da IA (Provedor, Modelo e Raciocínio)" icon={<Cpu className="size-4 text-purple-600" />}>
+                  <Section title={language === "es" ? "Cerebro de la IA (Proveedor, Modelo y Razonamiento)" : "Cérebro da IA (Provedor, Modelo e Raciocínio)"} icon={<Cpu className="size-4 text-purple-600" />}>
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <Label>Provedor de Inteligência</Label>
+                        <Label>{language === "es" ? "Proveedor de Inteligencia" : "Provedor de Inteligência"}</Label>
                         <Select value={aiProvider} onValueChange={(val) => {
                           setAiProvider(val);
                           if (val === "drael") setAiModel("drael-v1");
                           else if (val === "openai") setAiModel("gpt-4o-mini");
                           else if (val === "anthropic") setAiModel("claude-3-5-sonnet-latest");
-                          else setAiModel("google/gemini-2.5-flash");
+                          else setAiModel("gemini-3.5-flash-lite");
                         }}>
                           <SelectTrigger className="bg-white">
-                            <SelectValue placeholder="Selecione o provedor" />
+                            <SelectValue placeholder={language === "es" ? "Selecciona el proveedor" : "Selecione o provedor"} />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="gemini">Google Gemini (Directo — Recomendado)</SelectItem>
                             <SelectItem value="drael">Drael AI (drael.sh / drael-v1 — Base Recomendada)</SelectItem>
                             <SelectItem value="openai">OpenAI (ChatGPT / GPT-4o mini)</SelectItem>
-                            <SelectItem value="gemini">Google Gemini (Directo)</SelectItem>
                             <SelectItem value="anthropic">Anthropic (Claude 3.5)</SelectItem>
                           </SelectContent>
                         </Select>
-                        <p className="text-[11px] text-muted-foreground">Provedor centralizado com alta velocidade de inferência e redundância ativa.</p>
+                        <p className="text-[11px] text-muted-foreground">{language === "es" ? "Proveedor centralizado con alta velocidad de inferencia y redundancia activa." : "Provedor centralizado com alta velocidade de inferência e redundância ativa."}</p>
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label>Modelo de Linguagem (LLM)</Label>
+                        <Label>{language === "es" ? "Modelo de Lenguaje (LLM)" : "Modelo de Linguagem (LLM)"}</Label>
                         <Select value={aiModel} onValueChange={setAiModel}>
                           <SelectTrigger className="bg-white">
-                            <SelectValue placeholder="Selecione o modelo" />
+                            <SelectValue placeholder={language === "es" ? "Selecciona el modelo" : "Selecione o modelo"} />
                           </SelectTrigger>
                           <SelectContent>
                             {aiProvider === "gemini" && (
                               <>
-                                <SelectItem value="google/gemini-2.5-flash">Gemini 2.5 Flash (Recomendado — Inteligente y Rápido)</SelectItem>
-                                <SelectItem value="google/gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite (Ultrarrápido y Económico)</SelectItem>
-
-                                <SelectItem value="google/gemini-1.5-flash">Gemini 1.5 Flash</SelectItem>
-                                <SelectItem value="google/gemini-1.5-pro">Gemini 1.5 Pro (Razonamiento Profundo)</SelectItem>
+                                <SelectItem value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (Recomendado — Ultrarrápido y Actual)</SelectItem>
+                                <SelectItem value="gemini-3.8-flash">Gemini 3.8 Flash (Nueva Generación — Alta Capacidad)</SelectItem>
+                                <SelectItem value="gemini-3.5-flash">Gemini 3.5 Flash (Equilibrado y Potente)</SelectItem>
+                                <SelectItem value="gemini-flash-latest">Gemini Flash Latest (Siempre Última Versión Estable)</SelectItem>
+                                <SelectItem value="gemini-flash-lite-latest">Gemini Flash Lite Latest (Siempre Última Versión Ligera)</SelectItem>
+                                <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
+                                <SelectItem value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</SelectItem>
                               </>
                             )}
                             {aiProvider === "drael" && (
@@ -2137,21 +2141,21 @@ function AgentePage() {
                             )}
                             {aiProvider === "anthropic" && (
                               <>
-                                <SelectItem value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet (Excelente escrita humana)</SelectItem>
+                                <SelectItem value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet (Excelente escritura humana)</SelectItem>
                                 <SelectItem value="claude-3-5-haiku-latest">Claude 3.5 Haiku (Rápido e conciso)</SelectItem>
                               </>
                             )}
                           </SelectContent>
                         </Select>
-                        <p className="text-[11px] text-muted-foreground">O modelo selecionado é usado tanto no atendimento ao vivo quanto no simulador.</p>
+                        <p className="text-[11px] text-muted-foreground">{language === "es" ? "El modelo seleccionado se utiliza tanto en la atención en vivo como en el simulador." : "O modelo selecionado é usado tanto no atendimento ao vivo quanto no simulador."}</p>
                       </div>
                     </div>
 
                     <div className="pt-2 space-y-2 border-t">
                       <div className="flex items-center justify-between">
-                        <Label className="text-xs">Nível de Criatividade / Temperatura: {temperatura}</Label>
+                        <Label className="text-xs">{language === "es" ? "Nivel de Creatividad / Temperatura" : "Nível de Criatividade / Temperatura"}: {temperatura}</Label>
                         <Badge variant="outline" className="text-[10px]">
-                          {temperatura <= 0.3 ? "Conservador / Factual" : temperatura <= 0.6 ? "Equilibrado (Vendas)" : "Criativo / Extrovertido"}
+                          {temperatura <= 0.3 ? (language === "es" ? "Conservador / Factual" : "Conservador / Factual") : temperatura <= 0.6 ? (language === "es" ? "Equilibrado (Ventas)" : "Equilibrado (Vendas)") : (language === "es" ? "Creativo / Extrovertido" : "Criativo / Extrovertido")}
                         </Badge>
                       </div>
                       <Slider
@@ -2163,19 +2167,19 @@ function AgentePage() {
                         className="w-full"
                       />
                       <div className="flex justify-between text-[10px] text-muted-foreground">
-                        <span>0.0 Factual (Seguir regras ao pé da letra)</span>
-                        <span>0.5 Padrão</span>
-                        <span>1.0 Criativo (Mais expansivo)</span>
+                        <span>{language === "es" ? "0.0 Factual (Seguir reglas al pie de la letra)" : "0.0 Factual (Seguir regras ao pé da letra)"}</span>
+                        <span>{language === "es" ? "0.5 Estándar" : "0.5 Padrão"}</span>
+                        <span>{language === "es" ? "1.0 Creativo (Más expansivo)" : "1.0 Criativo (Mais expansivo)"}</span>
                       </div>
                     </div>
                   </Section>
 
                   {/* 2. Agendamento Automático */}
-                  <Section title="Agendamento Inteligente (Google Calendar & Reuniões)" icon={<Calendar className="size-4 text-blue-600" />}>
+                  <Section title={language === "es" ? "Agendamiento Inteligente (Google Calendar y Reuniones)" : "Agendamento Inteligente (Google Calendar & Reuniões)"} icon={<Calendar className="size-4 text-blue-600" />}>
                     <div className="flex items-center justify-between pb-3 border-b">
                       <div>
-                        <h4 className="text-sm font-semibold">Ativar Agendamento Automático pela IA</h4>
-                        <p className="text-xs text-muted-foreground">A IA detecta pedidos de reunião, consulta horários e agenda direto na sua agenda.</p>
+                        <h4 className="text-sm font-semibold">{language === "es" ? "Activar Agendamiento Automático por IA" : "Ativar Agendamento Automático pela IA"}</h4>
+                        <p className="text-xs text-muted-foreground">{language === "es" ? "La IA detecta solicitudes de reunión, consulta horarios y agenda directamente en tu calendario." : "A IA detecta pedidos de reunião, consulta horários e agenda direto na sua agenda."}</p>
                       </div>
                       <Switch checked={agendamentoAtivo} onCheckedChange={setAgendamentoAtivo} />
                     </div>
@@ -2184,7 +2188,7 @@ function AgentePage() {
                       <div className="space-y-4 pt-2">
                         <div className="grid md:grid-cols-2 gap-4">
                           <div className="space-y-1.5">
-                            <Label className="text-xs">Serviços ou tipos de reunião agendáveis</Label>
+                            <Label className="text-xs">{language === "es" ? "Servicios o tipos de reunión agendables" : "Serviços ou tipos de reunião agendáveis"}</Label>
                             <Input
                               value={servicosAgendaveis}
                               onChange={(e) => setServicosAgendaveis(e.target.value)}
@@ -2193,14 +2197,14 @@ function AgentePage() {
                             />
                           </div>
                           <div className="space-y-1.5">
-                            <Label className="text-xs">Duração padrão da reunião</Label>
+                            <Label className="text-xs">{language === "es" ? "Duración estándar de la reunión" : "Duração padrão da reunião"}</Label>
                             <Select value={duracaoPadrao} onValueChange={setDuracaoPadrao}>
                               <SelectTrigger className="bg-white text-xs"><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="15 min">15 minutos</SelectItem>
-                                <SelectItem value="30 min">30 minutos (Recomendado)</SelectItem>
-                                <SelectItem value="45 min">45 minutos</SelectItem>
-                                <SelectItem value="1 hora">1 hora</SelectItem>
+                                <SelectItem value="15 min">15 {language === "es" ? "minutos" : "minutos"}</SelectItem>
+                                <SelectItem value="30 min">30 {language === "es" ? "minutos (Recomendado)" : "minutos (Recomendado)"}</SelectItem>
+                                <SelectItem value="45 min">45 {language === "es" ? "minutos" : "minutos"}</SelectItem>
+                                <SelectItem value="1 hora">1 {language === "es" ? "hora" : "hora"}</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -2208,7 +2212,7 @@ function AgentePage() {
 
                         <div className="grid md:grid-cols-2 gap-4">
                           <div className="space-y-1.5">
-                            <Label className="text-xs">Horários disponíveis para a IA oferecer</Label>
+                            <Label className="text-xs">{language === "es" ? "Horarios disponibles para ofrecer por la IA" : "Horários disponíveis para a IA oferecer"}</Label>
                             <Input
                               value={horariosDisponiveis}
                               onChange={(e) => setHorariosDisponiveis(e.target.value)}
@@ -2217,7 +2221,7 @@ function AgentePage() {
                             />
                           </div>
                           <div className="space-y-1.5">
-                            <Label className="text-xs">Antecedência mínima para agendar</Label>
+                            <Label className="text-xs">{language === "es" ? "Anticipación mínima para agendar" : "Antecedência mínima para agendar"}</Label>
                             <Input
                               value={antecedenciaMin}
                               onChange={(e) => setAntecedenciaMin(e.target.value)}
