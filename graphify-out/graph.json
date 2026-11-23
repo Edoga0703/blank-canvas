@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-23T01:41:28.180286+00:00",
+  "generated_at": "2026-11-23T02:17:28.363228+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -787,7 +787,7 @@
     },
     {
       "path": "src/lib/whatsapp.functions.ts",
-      "bytes": 50482
+      "bytes": 51205
     },
     {
       "path": "src/lib/meta-oauth.functions.ts",
@@ -1199,7 +1199,7 @@
     },
     {
       "path": "src/lib/chat-media.functions.ts",
-      "bytes": 8466
+      "bytes": 9186
     },
     {
       "path": "src/lib/prospeccao.functions.ts",
@@ -2687,7 +2687,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 263416
+      "bytes": 263619
     },
     {
       "path": "src/routes/app/publicacoes.tsx",
@@ -2747,7 +2747,7 @@
     },
     {
       "path": "src/routes/api/public/chat-media.ts",
-      "bytes": 17107
+      "bytes": 17910
     },
     {
       "path": "src/routes/api/public/google-marketing-callback.ts",
