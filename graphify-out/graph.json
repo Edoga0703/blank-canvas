@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-23T18:09:31.513633+00:00",
+  "generated_at": "2026-11-23T18:40:56.030772+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -107,7 +107,7 @@
     },
     {
       "path": "src/router.tsx",
-      "bytes": 861
+      "bytes": 868
     },
     {
       "path": "src/styles.css",
@@ -595,7 +595,7 @@
     },
     {
       "path": "src/hooks/use-unread-conversations.ts",
-      "bytes": 4609
+      "bytes": 5291
     },
     {
       "path": "src/hooks/use-standalone.tsx",
@@ -843,7 +843,7 @@
     },
     {
       "path": "src/lib/comercial-export.ts",
-      "bytes": 7812
+      "bytes": 7824
     },
     {
       "path": "src/lib/plan-features.ts",
@@ -2643,7 +2643,7 @@
     },
     {
       "path": "src/routes/app/campanhas.tsx",
-      "bytes": 38612
+      "bytes": 38633
     },
     {
       "path": "src/routes/app/usuarios.tsx",
@@ -2691,7 +2691,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 265995
+      "bytes": 266871
     },
     {
       "path": "src/routes/app/publicacoes.tsx",
@@ -2703,7 +2703,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 165161
+      "bytes": 165437
     },
     {
       "path": "src/routes/app/prospeccao.tsx",
@@ -2711,7 +2711,7 @@
     },
     {
       "path": "src/routes/app/relatorios.tsx",
-      "bytes": 24440
+      "bytes": 24537
     },
     {
       "path": "src/routes/app/conteudo.tsx",
@@ -5597,15 +5597,15 @@
     },
     {
       "source": "src/lib/comercial-export.ts",
-      "target": "jspdf"
-    },
-    {
-      "source": "src/lib/comercial-export.ts",
       "target": "@/config/brand"
     },
     {
       "source": "src/lib/comercial-export.ts",
       "target": "@/assets/metrix-receipt-white.png.asset.json"
+    },
+    {
+      "source": "src/lib/comercial-export.ts",
+      "target": "jspdf"
     },
     {
       "source": "src/lib/meta-message-media.server.ts",
@@ -17829,14 +17829,6 @@
     },
     {
       "source": "src/routes/app/relatorios.tsx",
-      "target": "jspdf"
-    },
-    {
-      "source": "src/routes/app/relatorios.tsx",
-      "target": "xlsx"
-    },
-    {
-      "source": "src/routes/app/relatorios.tsx",
       "target": "sonner"
     },
     {
@@ -17870,6 +17862,14 @@
     {
       "source": "src/routes/app/relatorios.tsx",
       "target": "@/config/brand"
+    },
+    {
+      "source": "src/routes/app/relatorios.tsx",
+      "target": "xlsx"
+    },
+    {
+      "source": "src/routes/app/relatorios.tsx",
+      "target": "jspdf"
     },
     {
       "source": "src/routes/app/conteudo.tsx",
