@@ -698,7 +698,10 @@ Este marcador é estritamente interno e NUNCA aparece para o cliente.`
   );
 
 
-  blocos.push(`═══════════════════════════════════════════════════════
+  // El protocolo JSON estructurado se reserva para Drael o cuando se requiera explícitamente,
+  // para no confundir a Gemini / OpenAI / Claude con salidas en JSON en lugar de texto natural.
+  if ((c.ai_provider || "").toLowerCase() === "drael") {
+    blocos.push(`═══════════════════════════════════════════════════════
 PROTOCOLO DE RESPUESTA ESTRUCTURADO (DRAEL SPECIFICATION):
 Puedes responder en formato JSON estructurado canónico con el siguiente esquema:
 {
@@ -735,6 +738,7 @@ Puedes responder en formato JSON estructurado canónico con el siguiente esquema
   }
 }
 ═══════════════════════════════════════════════════════`);
+  }
 
   return blocos.filter(Boolean).join("\n\n");
 }
@@ -792,17 +796,20 @@ function extraiPedido(text: string): { pedido: PedidoBrief | null; rest: string 
 
 /**
  * Extrae JSON estructurado si la respuesta del modelo es un objeto o está envuelta en markdown.
+ * Es ultra-resiliente contra respuestas cortadas a mitad de JSON (ej: truncadas en "tono": ").
  */
 function extractStructuredJson(raw: string): any | null {
   if (!raw || typeof raw !== "string") return null;
   const trimmed = raw.trim();
 
+  // 1. JSON estándar cerrado
   if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
     try {
       return JSON.parse(trimmed);
     } catch {}
   }
 
+  // 2. Bloque markdown ```json ... ```
   const mdMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
   if (mdMatch) {
     try {
@@ -810,6 +817,7 @@ function extractStructuredJson(raw: string): any | null {
     } catch {}
   }
 
+  // 3. Substring entre la primera y última llave
   const firstBrace = raw.indexOf("{");
   const lastBrace = raw.lastIndexOf("}");
   if (firstBrace >= 0 && lastBrace > firstBrace) {
@@ -817,6 +825,58 @@ function extractStructuredJson(raw: string): any | null {
     try {
       return JSON.parse(candidate);
     } catch {}
+  }
+
+  // 4. Extracción resiliente para JSON truncado o incompleto (ej: cortado en "tono": ")
+  if (raw.includes('"respuesta_cliente"') || raw.includes('"mensajes"')) {
+    const extracted: any = { respuesta_cliente: { mensajes: [] } };
+
+    // Intenta extraer el array de mensajes: "mensajes": [ "..." ]
+    const msgArrayMatch = raw.match(/"mensajes"\s*:\s*\[([\s\S]*?)\]/i);
+    if (msgArrayMatch) {
+      const stringMatches = Array.from(msgArrayMatch[1].matchAll(/"((?:\\.|[^"\\])*)"/g));
+      if (stringMatches.length > 0) {
+        extracted.respuesta_cliente.mensajes = stringMatches.map((m) => {
+          try { return JSON.parse(`"${m[1]}"`); } catch { return m[1]; }
+        });
+      }
+    } else {
+      // Si el array quedó sin cerrar: "mensajes": [ "mensaje..."
+      const unclosedMsgMatch = raw.match(/"mensajes"\s*:\s*\[\s*"((?:\\.|[^"\\])*)"/i);
+      if (unclosedMsgMatch) {
+        try {
+          extracted.respuesta_cliente.mensajes = [JSON.parse(`"${unclosedMsgMatch[1]}"`)];
+        } catch {
+          extracted.respuesta_cliente.mensajes = [unclosedMsgMatch[1]];
+        }
+      } else {
+        // Clave directa: "respuesta_cliente": "mensaje..."
+        const singleMsgMatch = raw.match(/"respuesta_cliente"\s*:\s*"((?:\\.|[^"\\])*)"/i);
+        if (singleMsgMatch) {
+          try {
+            extracted.respuesta_cliente.mensajes = [JSON.parse(`"${singleMsgMatch[1]}"`)];
+          } catch {
+            extracted.respuesta_cliente.mensajes = [singleMsgMatch[1]];
+          }
+        }
+      }
+    }
+
+    // Extraer etapa si existe
+    const stageMatch = raw.match(/"cambiar_etapa"\s*:\s*"([^"]+)"/i);
+    if (stageMatch && stageMatch[1] !== "null") {
+      extracted.acciones_crm = { cambiar_etapa: stageMatch[1] };
+    }
+
+    // Extraer intención si existe
+    const intentMatch = raw.match(/"(?:categoria|sentimiento|intent)"\s*:\s*"([^"]+)"/i);
+    if (intentMatch) {
+      extracted.intencion = { categoria: intentMatch[1], sentimiento: intentMatch[1] };
+    }
+
+    if (Array.isArray(extracted.respuesta_cliente?.mensajes) && extracted.respuesta_cliente.mensajes.length > 0) {
+      return extracted;
+    }
   }
 
   return null;
@@ -1016,7 +1076,20 @@ export function parseAiOutput(
     .map((p) => p.trim())
     .filter((p) => p.length > 0)
     .slice(0, 3);
-  return { parts: parts.length ? parts : [text.trim()].filter(Boolean), stage, agendar, intent, handoff, qualified, pedido, sugestao, produtosSku };
+  const rawParts = parts.length ? parts : [text.trim()].filter(Boolean);
+  // Limpieza de seguridad final: Si algún fragmento contiene JSON crudo ({ "respuesta_cliente"...), extraer solo el mensaje
+  const sanitized = rawParts.map((part) => {
+    let p = part.trim();
+    if (p.startsWith("{") && (p.includes('"respuesta_cliente"') || p.includes('"mensajes"'))) {
+      const match = p.match(/"(?:mensajes|respuesta_cliente)"\s*:\s*(?:\[\s*)?"((?:\\.|[^"\\])*)"/i);
+      if (match) {
+        try { return JSON.parse(`"${match[1]}"`).trim(); } catch { return match[1].trim(); }
+      }
+    }
+    return p;
+  }).filter(Boolean);
+
+  return { parts: sanitized, stage, agendar, intent, handoff, qualified, pedido, sugestao, produtosSku };
 
 }
 
