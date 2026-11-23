@@ -11,6 +11,7 @@ import { Loader2 } from "lucide-react";
 import { registerSale, updateSale } from "@/lib/comercial.functions";
 import { listProdutos, type Produto } from "@/lib/produtos.functions";
 import { CANAIS_MANUAIS, CANAL_LABEL } from "@/lib/tracking-utils";
+import { useLanguage } from "@/lib/i18n/context";
 
 export type VendaRow = {
   id?: string;
@@ -51,6 +52,7 @@ export function VendaDialog({
   const create = useServerFn(registerSale);
   const update = useServerFn(updateSale);
   const listItems = useServerFn(listProdutos);
+  const { t, currencySymbol, formatCurrency } = useLanguage();
 
   const isEdit = !!venda?.id;
   const [produtos, setProdutos] = useState<Produto[]>([]);
@@ -144,13 +146,13 @@ export function VendaDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Editar venda" : "Registrar venda"}</DialogTitle>
+          <DialogTitle>{isEdit ? t("sales.edit_sale", undefined, "Editar venda") : t("sales.register_sale", undefined, "Registrar venda")}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Cliente *</Label>
+              <Label>{t("sales.client", undefined, "Cliente")} *</Label>
               <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do cliente" />
             </div>
             <div>
@@ -160,14 +162,14 @@ export function VendaDialog({
           </div>
 
           <div>
-            <Label>Item do catálogo</Label>
+            <Label>{t("sales.catalog_item", undefined, "Item do catálogo")}</Label>
             <Select value={itemId || "none"} onValueChange={(v) => pickItem(v === "none" ? "" : v)}>
-              <SelectTrigger><SelectValue placeholder="Selecione um produto ou serviço" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t("sales.select_item", undefined, "Selecione um produto ou serviço")} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Sem item vinculado</SelectItem>
+                <SelectItem value="none">{t("sales.no_linked_item", undefined, "Sem item vinculado")}</SelectItem>
                 {produtos.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    {p.nome} — {Number(p.preco || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    {p.nome} — {formatCurrency(Number(p.preco || 0))}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -176,28 +178,28 @@ export function VendaDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Valor (R$) *</Label>
-              <Input value={valor} onChange={(e) => setValor(e.target.value)} placeholder="1.500,00" inputMode="decimal" />
+              <Label>{t("sales.value", undefined, "Valor")} ({currencySymbol}) *</Label>
+              <Input value={valor} onChange={(e) => setValor(e.target.value)} placeholder="1500.00" inputMode="decimal" />
             </div>
             <div>
-              <Label>Data da venda</Label>
+              <Label>{t("sales.sale_date", undefined, "Data da venda")}</Label>
               <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Vendedor</Label>
+              <Label>{t("sales.seller", undefined, "Vendedor")}</Label>
               <Select value={ownerId || "none"} onValueChange={(v) => setOwnerId(v === "none" ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t("common.select", undefined, "Selecione")} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Não atribuído</SelectItem>
+                  <SelectItem value="none">{t("sales.not_assigned", undefined, "Não atribuído")}</SelectItem>
                   {members.map((m) => <SelectItem key={m.user_id} value={m.user_id}>{m.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Pagamento</Label>
+              <Label>{t("sales.payment", undefined, "Pagamento")}</Label>
               <Select value={pagamento} onValueChange={setPagamento}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -208,11 +210,11 @@ export function VendaDialog({
           </div>
 
           <div>
-            <Label>Canal (origem da venda)</Label>
+            <Label>{t("sales.channel", undefined, "Canal (origem da venda)")}</Label>
             <Select value={canal} onValueChange={setCanal}>
-              <SelectTrigger><SelectValue placeholder="Selecione a origem" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t("sales.select_origin", undefined, "Selecione a origem")} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="manual">Cadastro manual</SelectItem>
+                <SelectItem value="manual">{t("sales.manual_registration", undefined, "Cadastro manual")}</SelectItem>
                 {CANAIS_MANUAIS.map((c) => (
                   <SelectItem key={c} value={c}>{CANAL_LABEL[c]}</SelectItem>
                 ))}
@@ -221,16 +223,16 @@ export function VendaDialog({
           </div>
 
           <div>
-            <Label>Observações</Label>
+            <Label>{t("sales.notes", undefined, "Observações")}</Label>
             <Textarea rows={3} value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Detalhes da negociação..." />
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel", undefined, "Cancelar")}</Button>
           <Button onClick={submit} disabled={saving}>
             {saving && <Loader2 className="size-4 animate-spin mr-2" />}
-            {isEdit ? "Salvar alterações" : "Registrar venda"}
+            {isEdit ? t("common.save_changes", undefined, "Salvar alterações") : t("sales.register_sale", undefined, "Registrar venda")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/context";
 
 export type MetaTarget = {
   userId: string | null; // null = meta geral da empresa
@@ -39,6 +40,7 @@ export function MetaDialog({
   const [valor, setValor] = useState("");
   const [yearMonth, setYearMonth] = useState(currentYearMonth());
   const [saving, setSaving] = useState(false);
+  const { t, currencySymbol } = useLanguage();
 
   useEffect(() => {
     if (!open) return;
@@ -76,34 +78,34 @@ export function MetaDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{target?.valorCents ? "Editar meta" : "Nova meta"}</DialogTitle>
+          <DialogTitle>{target?.valorCents ? t("sales.edit_goal", undefined, "Editar meta") : t("sales.new_goal", undefined, "Nova meta")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label>Responsável</Label>
+            <Label>{t("sales.responsible", undefined, "Responsável")}</Label>
             <Select value={userId} onValueChange={setUserId} disabled={!!target?.userId}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="geral">Meta geral da empresa</SelectItem>
+                <SelectItem value="geral">{t("sales.general_company_goal", undefined, "Meta geral da empresa")}</SelectItem>
                 {members.map((m) => <SelectItem key={m.user_id} value={m.user_id}>{m.nome}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Mês de referência</Label>
+              <Label>{t("sales.reference_month", undefined, "Mês de referência")}</Label>
               <Input type="month" value={yearMonth} onChange={(e) => setYearMonth(e.target.value)} />
             </div>
             <div>
-              <Label>Valor da meta (R$)</Label>
-              <Input value={valor} onChange={(e) => setValor(e.target.value)} placeholder="50.000,00" inputMode="decimal" />
+              <Label>{t("sales.goal_value", undefined, "Valor da meta")} ({currencySymbol})</Label>
+              <Input value={valor} onChange={(e) => setValor(e.target.value)} placeholder="50000.00" inputMode="decimal" />
             </div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel", undefined, "Cancelar")}</Button>
           <Button onClick={submit} disabled={saving}>
-            {saving && <Loader2 className="size-4 animate-spin mr-2" />} Salvar meta
+            {saving && <Loader2 className="size-4 animate-spin mr-2" />} {t("sales.save_goal", undefined, "Salvar meta")}
           </Button>
         </DialogFooter>
       </DialogContent>

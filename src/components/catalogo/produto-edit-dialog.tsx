@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { toast } from "sonner";
 import { Upload, Loader2, ImageIcon, X, Star, Plus } from "lucide-react";
 import type { Produto } from "@/lib/produtos.functions";
+import { useLanguage } from "@/lib/i18n/context";
 
 export function ProdutoEditDialog({
   initial,
@@ -23,6 +24,7 @@ export function ProdutoEditDialog({
   onSaved: () => void;
   onSave: (args: { data: any }) => Promise<any>;
 }) {
+  const { t, currencySymbol, language } = useLanguage();
   const [nome, setNome] = useState(initial.nome || "");
   const [preco, setPreco] = useState<string>(initial.preco != null ? String(initial.preco) : "");
   const [descricao, setDescricao] = useState(initial.descricao || "");
@@ -143,17 +145,17 @@ export function ProdutoEditDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{initial.id ? "Editar item" : tipo === "servico" ? "Novo serviço" : "Novo produto"}</DialogTitle>
+          <DialogTitle>{initial.id ? t("catalog.edit_item", undefined, "Editar item") : tipo === "servico" ? t("catalog.new_service", undefined, "Novo serviço") : t("catalog.new_product", undefined, "Novo produto")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <Label>Tipo</Label>
+            <Label>{t("catalog.type", undefined, "Tipo")}</Label>
             <div className="mt-1 inline-flex rounded-xl border border-[color:var(--hairline)] p-1">
-              {([["produto", "Produto"], ["servico", "Serviço"]] as const).map(([v, label]) => (
+              {[["produto", t("catalog.type_product", undefined, "Produto")], ["servico", t("catalog.type_service", undefined, "Serviço")]] .map(([v, label]) => (
                 <button
                   key={v}
                   type="button"
-                  onClick={() => setTipo(v)}
+                  onClick={() => setTipo(v as any)}
                   className={`px-4 py-1.5 text-xs font-bold rounded-lg transition ${tipo === v ? "bg-[#0B22FE] text-white" : "text-muted-foreground hover:bg-muted"}`}
                 >
                   {label}
@@ -164,7 +166,7 @@ export function ProdutoEditDialog({
 
           <div>
             <div className="flex items-center justify-between">
-              <Label>Fotos do item {fotos.length > 0 && `(${fotos.length})`}</Label>
+              <Label>{t("catalog.item_photos", undefined, "Fotos do item")} {fotos.length > 0 && `(${fotos.length})`}</Label>
               <Button
                 type="button"
                 variant="ghost"
@@ -174,7 +176,7 @@ export function ProdutoEditDialog({
                 className="h-7 text-xs gap-1 text-[color:var(--brand)] hover:text-[color:var(--brand)]"
               >
                 {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
-                Adicionar fotos
+                {t("catalog.add_photos", undefined, "Adicionar fotos")}
               </Button>
             </div>
 
@@ -259,57 +261,57 @@ export function ProdutoEditDialog({
           </div>
 
           <div>
-            <Label>Nome *</Label>
+            <Label>{t("catalog.name", undefined, "Nome")} *</Label>
             <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Pneu Aro 15 175/65" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Preço (R$)</Label>
-              <Input value={preco} onChange={(e) => setPreco(e.target.value)} placeholder="299,90" inputMode="decimal" />
+              <Label>{t("catalog.price", undefined, "Preço")} ({currencySymbol})</Label>
+              <Input value={preco} onChange={(e) => setPreco(e.target.value)} placeholder="299.90" inputMode="decimal" />
             </div>
             <div>
-              <Label>Categoria</Label>
+              <Label>{t("catalog.category", undefined, "Categoria")}</Label>
               <Input value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Ex: Pneus" />
             </div>
           </div>
 
           <div>
-            <Label>SKU / Código (opcional)</Label>
+            <Label>{t("catalog.sku", undefined, "SKU / Código (opcional)")}</Label>
             <Input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="PN-175-65-15" />
           </div>
 
           {tipo === "servico" && (
             <div className="grid grid-cols-2 gap-3 items-end">
               <div>
-                <Label>Duração (minutos)</Label>
+                <Label>{t("catalog.duration", undefined, "Duração (minutos)")}</Label>
                 <Input value={duracaoMin} onChange={(e) => setDuracaoMin(e.target.value)} inputMode="numeric" placeholder="30" />
               </div>
               <label className="flex items-center gap-2 h-10 text-sm font-medium cursor-pointer">
                 <input type="checkbox" checked={agendavel} onChange={(e) => setAgendavel(e.target.checked)} className="size-4 accent-[#0B22FE]" />
-                Permitir agendamento
+                {t("catalog.allow_scheduling", undefined, "Permitir agendamento")}
               </label>
             </div>
           )}
 
           <div>
-            <Label>Descrição</Label>
+            <Label>{t("catalog.description", undefined, "Descrição")}</Label>
             <Textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={3} placeholder="Detalhes do produto, medidas, marca, garantia..." />
           </div>
 
           <div className="flex items-center justify-between rounded-lg border border-[color:var(--hairline)] px-3 py-2">
             <div>
-              <div className="text-sm font-medium">Item ativo</div>
-              <div className="text-[12px] text-muted-foreground">Itens inativos ficam ocultos das listagens.</div>
+              <div className="text-sm font-medium">{t("catalog.active_item", undefined, "Item ativo")}</div>
+              <div className="text-[12px] text-muted-foreground">{t("catalog.inactive_desc", undefined, "Itens inativos ficam ocultos das listagens.")}</div>
             </div>
             <Switch checked={ativo} onCheckedChange={setAtivo} />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button variant="outline" onClick={onClose}>{t("common.cancel", undefined, "Cancelar")}</Button>
           <Button onClick={submit} disabled={saving || uploading}>
             {saving && <Loader2 className="size-4 animate-spin mr-2" />}
-            Salvar
+            {t("common.save", undefined, "Salvar")}
           </Button>
         </DialogFooter>
       </DialogContent>

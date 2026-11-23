@@ -1,5 +1,6 @@
 // src/lib/crm-lead-context.server.ts
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getCurrencyMeta } from "./i18n/currencies";
 
 export interface ComprehensiveLeadData {
   card: any;
@@ -356,11 +357,25 @@ export async function gatherLeadComprehensiveContext(
 export function formatComprehensiveContextForPrompt(
   ctx: ComprehensiveLeadData,
   locale: string = "es-ES",
+  moedaOverride?: string | null,
 ): string {
   const { card } = ctx;
   const parts: string[] = [];
-  const currencyCode = locale.startsWith("es") || locale.startsWith("en") ? "USD" : "BRL";
-  const zeroCur = currencyCode === "BRL" ? "R$ 0,00" : "$0.00";
+  const currencyCode = moedaOverride || (ctx as any).moeda || (locale.startsWith("es") || locale.startsWith("en") ? "USD" : "BRL");
+  const meta = getCurrencyMeta(currencyCode);
+  const fmt = (v: number) => {
+    try {
+      return v.toLocaleString(meta.localeDefault || locale, {
+        style: "currency",
+        currency: meta.code,
+        minimumFractionDigits: meta.decimals,
+        maximumFractionDigits: meta.decimals,
+      });
+    } catch {
+      return `${meta.symbol} ${v.toFixed(meta.decimals)}`;
+    }
+  };
+  const zeroCur = fmt(0);
 
   // 1. Ficha del Lead
   const tagsStr = Array.isArray(card.tags) && card.tags.length > 0 ? card.tags.join(", ") : "Ninguna";
@@ -376,7 +391,8 @@ export function formatComprehensiveContextForPrompt(
 - Estado de Atención: ${pauseAlert}
 - Etiquetas (Tags): [${tagsStr}]
 - Observaciones internas del lead: ${card.observacao ? `"${card.observacao}"` : "Ninguna"}
-- Valor actual en el CRM: ${card.valor ? `${Number(card.valor).toLocaleString(locale, { style: "currency", currency: currencyCode })}` : zeroCur}
+- Valor actual en el CRM: ${card.valor ? `${fmt(Number(card.valor))}` : zeroCur}
+- Moneda comercial activa: ${meta.code} (${meta.symbol})
 - Tiempo en la etapa actual: ${ctx.diasNaEtapaAtual !== null ? `${ctx.diasNaEtapaAtual} día(s)` : "Reciente"} ${ctx.diasNaEtapaAtual && ctx.diasNaEtapaAtual > 7 ? "(⚠️ Alerta de estancamiento / SLA superado)" : ""}`;
 
   if (card.origem || card.canal_entrada) {
@@ -390,15 +406,15 @@ export function formatComprehensiveContextForPrompt(
   // 2. Catálogo Comercial
   let catBlock = `CATÁLOGO DE PRODUCTOS Y SERVICIOS DE LA EMPRESA:`;
   if (ctx.matchedItem) {
-    catBlock += `\n- Item de interés seleccionado en la tarjeta: "${ctx.matchedItem.nome}" (Tipo: ${ctx.matchedItem.tipo}, Precio: ${ctx.matchedItem.preco !== null ? ctx.matchedItem.preco.toLocaleString(locale, { style: "currency", currency: currencyCode }) : "A consultar"}${ctx.matchedItem.agendavel ? ", Requiere Agendamiento: SÍ" : ""})`;
+    catBlock += `\n- Item de interés seleccionado en la tarjeta: "${ctx.matchedItem.nome}" (Tipo: ${ctx.matchedItem.tipo}, Precio: ${ctx.matchedItem.preco !== null ? fmt(ctx.matchedItem.preco) : "A consultar"}${ctx.matchedItem.agendavel ? ", Requiere Agendamiento: SÍ" : ""})`;
   }
   const prodsList = (ctx.produtos || []).slice(0, 10).map((p) => {
     const ag = p.agendavel ? " [Requiere Cita Previa]" : "";
     const cat = p.categoria ? ` (${p.categoria})` : "";
-    return `  * "${p.nome}"${cat}: ${Number(p.preco || 0).toLocaleString(locale, { style: "currency", currency: currencyCode })}${ag}`;
+    return `  * "${p.nome}"${cat}: ${fmt(Number(p.preco || 0))}${ag}`;
   });
   const servsList = (ctx.servicos || []).slice(0, 5).map((s) => {
-    return `  * Serv. "${s.nome}": ${(Number(s.valor_cents || 0) / 100).toLocaleString(locale, { style: "currency", currency: currencyCode })} (${s.duracao_min} min)`;
+    return `  * Serv. "${s.nome}": ${fmt(Number(s.valor_cents || 0) / 100)} (${s.duracao_min} min)`;
   });
   const allItems = [...prodsList, ...servsList];
   if (allItems.length > 0) {
@@ -418,9 +434,9 @@ export function formatComprehensiveContextForPrompt(
 
   // 4. Historial Comercial / Ventas Previas
   if (ctx.vendasPrevias && ctx.vendasPrevias.length > 0) {
-    const totalBrl = (ctx.totalVendidoAnteriorCents / 100).toLocaleString(locale, { style: "currency", currency: currencyCode });
+    const totalBrl = fmt(ctx.totalVendidoAnteriorCents / 100);
     const vendList = ctx.vendasPrevias
-      .map((v) => `  * ${v.vendido_em ? new Date(v.vendido_em).toLocaleDateString(locale) : ""}: "${v.item_nome || "Venta"}" por ${(Number(v.valor_cents) / 100).toLocaleString(locale, { style: "currency", currency: currencyCode })} (${v.metodo_pagamento || "Pago"})`)
+      .map((v) => `  * ${v.vendido_em ? new Date(v.vendido_em).toLocaleDateString(locale) : ""}: "${v.item_nome || "Venta"}" por ${fmt(Number(v.valor_cents) / 100)} (${v.metodo_pagamento || "Pago"})`)
       .join("\n");
     parts.push(`HISTORIAL COMERCIAL PREVIO (CLIENTE RECURRENTE):\n- Total histórico comprado: ${totalBrl}\n- Ventas anteriores:\n${vendList}`);
   }

@@ -122,7 +122,7 @@ export function LeadDetailsPanel({
   companyId: string; onChanged: () => void; hideConversation?: boolean;
   onDeleted?: () => void; operationalMode?: boolean;
 }) {
-  const { t, formatDate, formatTime, formatCurrency, translateDefaultStageName, translateDefaultPipelineName, localeCode, language } = useLanguage();
+  const { t, formatDate, formatTime, formatCurrency, currencySymbol, translateDefaultStageName, translateDefaultPipelineName, localeCode, language } = useLanguage();
   const [local, setLocal] = useState<LeadCard & { pipeline_id?: string | null }>(card as any);
   const [encaminharOpen, setEncaminharOpen] = useState(false);
   const chatActionFn = useServerFn(handleChatAction);
@@ -420,7 +420,7 @@ export function LeadDetailsPanel({
               <div className="min-w-0 flex-1">
                 <div className="text-[10px] leading-tight text-muted-foreground uppercase tracking-wide font-medium">Valor de la oportunidad</div>
                 <div className="flex items-center gap-1 mt-0.5">
-                  <span className="text-xs font-bold text-muted-foreground">{language === "pt" ? "R$" : "$"}</span>
+                  <span className="text-xs font-bold text-muted-foreground">{currencySymbol}</span>
                   <input
                     type="text"
                     inputMode="decimal"

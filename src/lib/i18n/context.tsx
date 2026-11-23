@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { translations, SUPPORTED_LANGUAGES, type SupportedLanguage, type LanguageOption } from "./translations";
+import { LATAM_CURRENCIES, getCurrencyMeta, getDefaultCurrencyForLanguage, type CurrencyOption } from "./currencies";
 
 export interface LanguageContextType {
   language: SupportedLanguage;
@@ -7,6 +8,10 @@ export interface LanguageContextType {
   setLanguage: (lang: SupportedLanguage) => Promise<void>;
   t: (key: string, params?: Record<string, any> | string, fallbackText?: string) => string;
   languages: LanguageOption[];
+  currency: string;
+  currencySymbol: string;
+  currencies: CurrencyOption[];
+  setCurrency: (currency: string) => Promise<void>;
   formatDate: (date: Date | string | number | null | undefined, options?: Intl.DateTimeFormatOptions) => string;
   formatTime: (date: Date | string | number | null | undefined, options?: Intl.DateTimeFormatOptions) => string;
   formatNumber: (value: number | null | undefined, options?: Intl.NumberFormatOptions) => string;
@@ -16,6 +21,18 @@ export interface LanguageContextType {
 }
 
 const STORAGE_KEY = "capiversa_locale";
+const CURRENCY_STORAGE_KEY = "capiversa_currency";
+
+export function getSavedCurrency(): string {
+  if (typeof window === "undefined") return "USD";
+  try {
+    const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
+    if (saved && LATAM_CURRENCIES.some((c) => c.code === saved.toUpperCase())) {
+      return saved.toUpperCase();
+    }
+  } catch {}
+  return getDefaultCurrencyForLanguage(getSavedLanguage());
+}
 
 export function getLocaleCode(lang: SupportedLanguage): string {
   if (lang === "en") return "en-US";
@@ -169,11 +186,21 @@ export function formatTime(date: Date | string | number | null | undefined, opti
 export function formatCurrency(value: number | null | undefined, currency?: string): string {
   if (value == null || isNaN(value)) return "0";
   const lang = getSavedLanguage();
-  const cur = currency || (lang === "pt" ? "BRL" : "USD");
+  const curCode = currency || getSavedCurrency();
+  const meta = getCurrencyMeta(curCode);
+  const locale = meta.localeDefault || getLocaleCode(lang);
   try {
-    return value.toLocaleString(getLocaleCode(lang), { style: "currency", currency: cur });
+    return value.toLocaleString(locale, {
+      style: "currency",
+      currency: meta.code,
+      minimumFractionDigits: meta.decimals,
+      maximumFractionDigits: meta.decimals,
+    });
   } catch {
-    return value.toLocaleString(getLocaleCode(lang), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return `${meta.symbol} ${value.toLocaleString(locale, {
+      minimumFractionDigits: meta.decimals,
+      maximumFractionDigits: meta.decimals,
+    })}`;
   }
 }
 
@@ -184,6 +211,17 @@ export function formatNumber(value: number | null | undefined, options?: Intl.Nu
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+
+function detectInitialCurrency(): string {
+  if (typeof window === "undefined") return "USD";
+  try {
+    const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
+    if (saved && LATAM_CURRENCIES.some((c) => c.code === saved.toUpperCase())) {
+      return saved.toUpperCase();
+    }
+  } catch {}
+  return getDefaultCurrencyForLanguage(detectInitialLanguage());
+}
 
 function detectInitialLanguage(): SupportedLanguage {
   if (typeof window === "undefined") return "es";
@@ -200,6 +238,7 @@ function detectInitialLanguage(): SupportedLanguage {
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<SupportedLanguage>(detectInitialLanguage);
+  const [currency, setCurrencyState] = useState<string>(detectInitialCurrency);
 
   useEffect(() => {
     // Sincronizar atributos html
@@ -216,6 +255,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         if (val === "es" || val === "en" || val === "pt") {
           setLanguageState(val);
         }
+      } else if (e.key === CURRENCY_STORAGE_KEY && e.newValue) {
+        setCurrencyState(e.newValue);
       }
     }
     function handleCustom(e: Event) {
@@ -224,16 +265,24 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         setLanguageState(detail.language);
       }
     }
+    function handleCustomCurrency(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.currency) {
+        setCurrencyState(detail.currency);
+      }
+    }
     window.addEventListener("storage", handleStorage);
     window.addEventListener("capiversa-language-changed", handleCustom);
+    window.addEventListener("capiversa-currency-changed", handleCustomCurrency);
     return () => {
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener("capiversa-language-changed", handleCustom);
+      window.removeEventListener("capiversa-currency-changed", handleCustomCurrency);
     };
   }, []);
 
   useEffect(() => {
-    // Hidratar idioma guardado en base de datos si localStorage no fue inicializado aún
+    // Hidratar idioma y moneda guardados en base de datos si localStorage no fue inicializado aún
     let active = true;
     async function hydrateFromDB() {
       try {
@@ -249,7 +298,6 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
             setLanguageState(userPref as SupportedLanguage);
             localStorage.setItem(STORAGE_KEY, userPref);
           }
-          return;
         }
 
         // 2. Revisar configuración de agente de la empresa
@@ -260,9 +308,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
           .limit(1)
           .maybeSingle();
         if (cu?.company_id) {
-          const { data: cfg } = await supabase
+          const { data: cfg } = await (supabase as any)
             .from("agent_config")
-            .select("idioma")
+            .select("idioma, moeda")
             .eq("company_id", cu.company_id)
             .limit(1)
             .maybeSingle();
@@ -273,6 +321,13 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
               localStorage.setItem(STORAGE_KEY, cfg.idioma);
             }
           }
+          if ((cfg as any)?.moeda) {
+            const savedCur = localStorage.getItem(CURRENCY_STORAGE_KEY);
+            if (!savedCur && active) {
+              setCurrencyState((cfg as any).moeda);
+              localStorage.setItem(CURRENCY_STORAGE_KEY, (cfg as any).moeda);
+            }
+          }
         }
       } catch {
         // ignore
@@ -280,6 +335,36 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
     void hydrateFromDB();
     return () => { active = false; };
+  }, []);
+
+  const setCurrency = useCallback(async (newCur: string) => {
+    const valid = LATAM_CURRENCIES.find((c) => c.code.toUpperCase() === newCur?.trim().toUpperCase())?.code || "USD";
+    setCurrencyState(valid);
+    try {
+      localStorage.setItem(CURRENCY_STORAGE_KEY, valid);
+      window.dispatchEvent(new CustomEvent("capiversa-currency-changed", { detail: { currency: valid } }));
+    } catch {}
+
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: session } = await supabase.auth.getSession();
+      if (session?.session?.user) {
+        const { data: cu } = await supabase
+          .from("company_user")
+          .select("company_id")
+          .eq("user_id", session.session.user.id)
+          .limit(1)
+          .maybeSingle();
+        if (cu?.company_id) {
+          await supabase
+            .from("agent_config")
+            .update({ moeda: valid } as any)
+            .eq("company_id", cu.company_id);
+        }
+      }
+    } catch {
+      // Silent catch: offline or unauthenticated
+    }
   }, []);
 
   const setLanguage = useCallback(async (newLang: SupportedLanguage) => {
@@ -398,15 +483,27 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     return value.toLocaleString(localeCode, options);
   }, [localeCode]);
 
-  const formatCurrency = useCallback((value: number | null | undefined, currency?: string) => {
+  const currencySymbol = useMemo(() => getCurrencyMeta(currency).symbol, [currency]);
+
+  const formatCurrency = useCallback((value: number | null | undefined, currencyOverride?: string) => {
     if (value == null || isNaN(value)) return "0";
-    const cur = currency || (language === "pt" ? "BRL" : "USD");
+    const curCode = currencyOverride || currency;
+    const meta = getCurrencyMeta(curCode);
+    const locale = meta.localeDefault || localeCode;
     try {
-      return value.toLocaleString(localeCode, { style: "currency", currency: cur });
+      return value.toLocaleString(locale, {
+        style: "currency",
+        currency: meta.code,
+        minimumFractionDigits: meta.decimals,
+        maximumFractionDigits: meta.decimals,
+      });
     } catch {
-      return value.toLocaleString(localeCode, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return `${meta.symbol} ${value.toLocaleString(locale, {
+        minimumFractionDigits: meta.decimals,
+        maximumFractionDigits: meta.decimals,
+      })}`;
     }
-  }, [language, localeCode]);
+  }, [currency, localeCode]);
 
   const translateDefaultStageName = useCallback((name: string): string => {
     if (!name) return "";
@@ -429,6 +526,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       setLanguage,
       t,
       languages: SUPPORTED_LANGUAGES,
+      currency,
+      currencySymbol,
+      currencies: LATAM_CURRENCIES,
+      setCurrency,
       formatDate,
       formatTime,
       formatNumber,
@@ -478,16 +579,22 @@ export function useLanguage(): LanguageContextType {
       }
       return res;
     };
+    const curCode = getSavedCurrency();
+    const curMeta = getCurrencyMeta(curCode);
     return {
       language: lang,
       localeCode: loc,
       setLanguage: async () => {},
       t: fallbackT,
       languages: SUPPORTED_LANGUAGES,
+      currency: curCode,
+      currencySymbol: curMeta.symbol,
+      currencies: LATAM_CURRENCIES,
+      setCurrency: async () => {},
       formatDate: (d, opt) => (d ? new Date(d).toLocaleDateString(loc, opt) : ""),
       formatTime: (d, opt) => (d ? new Date(d).toLocaleTimeString(loc, opt) : ""),
       formatNumber: (v, opt) => (v != null ? Number(v).toLocaleString(loc, opt) : "0"),
-      formatCurrency: (v) => (v != null ? `$ ${Number(v).toFixed(2)}` : "$ 0.00"),
+      formatCurrency: (v, c) => formatCurrency(v, c),
       translateDefaultStageName: (n) => n,
       translateDefaultPipelineName: (n) => n,
     };

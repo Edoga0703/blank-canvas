@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, Save, CreditCard, Sparkles, AlertTriangle, Download, Shield, Wallet, Lock, User, Palette, Users, Clock, Star, ChevronDown, Search, MapPin, KeyRound, Upload, Webhook, Lightbulb, Send, Link2, ImageIcon, X, Tag, Building2, FileText, ListOrdered, Infinity, HardDrive } from "lucide-react";
+import { Loader2, Save, CreditCard, Sparkles, AlertTriangle, Download, Shield, Wallet, Lock, User, Palette, Users, Clock, Star, ChevronDown, Search, MapPin, KeyRound, Upload, Webhook, Lightbulb, Send, Link2, ImageIcon, X, Tag, Building2, FileText, ListOrdered, Infinity, HardDrive, Coins } from "lucide-react";
 import { submitFeedback } from "@/lib/admin-broadcast.functions";
 import { brand } from "@/config/brand";
 import { trialDaysLeft } from "@/lib/tenant";
@@ -76,7 +76,7 @@ function formatCpfCnpj(value: string): string {
 
 function ConfigPage() {
   const ctx = Route.useRouteContext();
-  const { language, setLanguage, t, formatDate, formatCurrency } = useLanguage();
+  const { language, setLanguage, t, formatDate, formatCurrency, currency, setCurrency, currencies } = useLanguage();
   const [selectedIdioma, setSelectedIdioma] = useState<string>(language);
   useEffect(() => { setSelectedIdioma(language); }, [language]);
   const companyId = ctx.company?.id;
@@ -695,6 +695,60 @@ function ConfigPage() {
                 {t("config.select_language_prompt", undefined, "Selecione o idioma principal:")}
               </h4>
               <LanguageSwitcher variant="cards" />
+            </div>
+
+            <div className="space-y-3 pt-4 border-t border-border">
+              <div className="space-y-1">
+                <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1.5">
+                  <Coins className="size-4 text-primary" />
+                  {language === "es" ? "Moneda de Operación (Productos, Ventas y Cotizaciones):" : language === "en" ? "Operating Currency (Products, Sales & Quotes):" : "Moeda de Operação (Produtos, Vendas e Cotações):"}
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  {language === "es"
+                    ? "Moneda activa para tus precios en el catálogo, cotizaciones por WhatsApp, métricas comerciales y metas."
+                    : language === "en"
+                    ? "Active currency for catalog prices, WhatsApp quotes, sales metrics, and goals."
+                    : "Moeda ativa para preços do catálogo, orçamentos no WhatsApp, métricas comerciais e metas."}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
+                {currencies.map((c) => {
+                  const isSelected = currency === c.code;
+                  return (
+                    <button
+                      key={c.code}
+                      type="button"
+                      onClick={async () => {
+                        await setCurrency(c.code);
+                        toast.success(
+                          language === "es"
+                            ? `Moneda cambiada a ${c.code} (${c.symbol})`
+                            : language === "en"
+                            ? `Currency changed to ${c.code} (${c.symbol})`
+                            : `Moeda alterada para ${c.code} (${c.symbol})`
+                        );
+                      }}
+                      className={`flex flex-col items-start p-2.5 rounded-lg border text-left transition-all ${
+                        isSelected
+                          ? "border-primary bg-primary/10 ring-2 ring-primary/20 shadow-sm"
+                          : "border-border/70 hover:border-border hover:bg-muted/50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-base">{c.flag}</span>
+                        <Badge variant={isSelected ? "default" : "outline"} className="text-[10px] px-1 py-0 h-4">
+                          {c.symbol}
+                        </Badge>
+                      </div>
+                      <span className="font-bold text-xs mt-1 text-foreground">{c.code}</span>
+                      <span className="text-[10px] text-muted-foreground truncate w-full" title={c.name}>
+                        {c.country}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="rounded-xl border border-border/80 bg-muted/40 p-4 space-y-3">

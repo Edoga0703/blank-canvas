@@ -3989,6 +3989,7 @@ function Composer({
       (i.status === "connected" || i.status === "open")
   );
   const activeMeta = activeSendInstance ? getInstanceVisualMeta(activeSendInstance.id, activeSendInstance.provider, instances || []) : null;
+  const { t: tr, formatCurrency: fmtCurr } = useLanguage();
 
 
   const sendMediaFn = useServerFn(sendWhatsappMedia);
@@ -4250,11 +4251,11 @@ function Composer({
       setStagedProduto(null);
       setText("");
 
-      const precoFmt = Number(prod.preco || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+      const precoFmt = fmtCurr(Number(prod.preco || 0));
       const parts = [
         `🛍️ *${prod.nome}*`,
-        prod.preco ? `💰 Preço: ${precoFmt}` : null,
-        prod.categoria ? `📂 Categoria: ${prod.categoria}` : null,
+        prod.preco ? `💰 ${tr("catalog.price", undefined, "Preço")}: ${precoFmt}` : null,
+        prod.categoria ? `📂 ${tr("catalog.category", undefined, "Categoria")}: ${prod.categoria}` : null,
         prod.descricao ? `\n${prod.descricao}` : null,
         t ? `\n💬 ${t}` : null,
       ].filter(Boolean).join("\n");

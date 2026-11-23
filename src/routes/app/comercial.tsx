@@ -27,7 +27,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { useLanguage } from "@/lib/i18n/context";
+import { useLanguage, formatCurrency, formatDate } from "@/lib/i18n/context";
 
 export const Route = createFileRoute("/app/comercial")({
   head: () => ({
@@ -43,8 +43,8 @@ export const Route = createFileRoute("/app/comercial")({
   component: ComercialPage,
 });
 
-const fmtBRL = (cents: number) => ((cents || 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const fmtDate = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "2-digit" }) : "—");
+const fmtBRL = (cents: number) => formatCurrency((cents || 0) / 100);
+const fmtDate = (iso?: string | null) => (iso ? formatDate(iso, { day: "2-digit", month: "short", year: "2-digit" }) : "—");
 
 const REPORTS = [
   { key: "resumo-vendas", label: "Resumo de vendas", icon: BarChart3 },

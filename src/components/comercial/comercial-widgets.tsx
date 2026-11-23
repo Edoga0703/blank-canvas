@@ -115,16 +115,18 @@ export function MetaCard({
 export function MetaConfigCard({
   onEdit,
   periodoLabel,
-  metricaLabel = "Receita ($)",
-  visibilidadeLabel = "Toda a unidade"
+  metricaLabel,
+  visibilidadeLabel
 }: {
   onEdit?: () => void;
   periodoLabel?: string;
   metricaLabel?: string;
   visibilidadeLabel?: string;
 } = {}) {
-  const { t, formatDate } = useLanguage();
+  const { t, currencySymbol, formatDate } = useLanguage();
   const currentPeriod = periodoLabel || formatDate(new Date(), { month: "long", year: "numeric" });
+  const effectiveMetrica = metricaLabel || `${t("sales.revenue", undefined, "Receita")} (${currencySymbol})`;
+  const effectiveVisibilidade = visibilidadeLabel || t("sales.entire_unit", undefined, "Toda a unidade");
 
   return (
     <div className="rounded-2xl border border-[color:var(--hairline)] bg-white p-8 space-y-8 shadow-sm">
@@ -150,7 +152,7 @@ export function MetaConfigCard({
           </div>
           <div>
             <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">{t("sales.main_metric", undefined, "Métrica principal")}</p>
-            <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">{metricaLabel}</p>
+            <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">{effectiveMetrica}</p>
           </div>
         </div>
 
@@ -160,7 +162,7 @@ export function MetaConfigCard({
           </div>
           <div>
             <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">{t("sales.visibility", undefined, "Visibilidade")}</p>
-            <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">{visibilidadeLabel}</p>
+            <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">{effectiveVisibilidade}</p>
           </div>
         </div>
       </div>
