@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-23T05:38:58.072106+00:00",
+  "generated_at": "2026-11-23T06:56:20.866532+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -763,7 +763,7 @@
     },
     {
       "path": "src/lib/crm-lead-context.server.ts",
-      "bytes": 17274
+      "bytes": 17415
     },
     {
       "path": "src/lib/credits.server.ts",
@@ -1683,7 +1683,7 @@
     },
     {
       "path": "src/components/catalogo/produto-edit-dialog.tsx",
-      "bytes": 13742
+      "bytes": 14577
     },
     {
       "path": "src/components/dashboard-v2/ops-data.tsx",
@@ -2047,15 +2047,15 @@
     },
     {
       "path": "src/components/comercial/comercial-widgets.tsx",
-      "bytes": 7654
+      "bytes": 7859
     },
     {
       "path": "src/components/comercial/venda-dialog.tsx",
-      "bytes": 9410
+      "bytes": 10186
     },
     {
       "path": "src/components/comercial/meta-dialog.tsx",
-      "bytes": 3993
+      "bytes": 4408
     },
     {
       "path": "src/components/comercial/period-filter.tsx",
@@ -2451,11 +2451,15 @@
     },
     {
       "path": "src/lib/i18n/context.tsx",
-      "bytes": 18099
+      "bytes": 21919
     },
     {
       "path": "src/lib/i18n/translations.ts",
       "bytes": 138740
+    },
+    {
+      "path": "src/lib/i18n/currencies.ts",
+      "bytes": 2650
     },
     {
       "path": "src/lib/mcp/index.ts",
@@ -2679,7 +2683,7 @@
     },
     {
       "path": "src/routes/app/configuracoes.tsx",
-      "bytes": 75839
+      "bytes": 78906
     },
     {
       "path": "src/routes/app/parceiro.tsx",
@@ -2687,7 +2691,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 264531
+      "bytes": 264613
     },
     {
       "path": "src/routes/app/publicacoes.tsx",
@@ -2695,7 +2699,7 @@
     },
     {
       "path": "src/routes/app/comercial.tsx",
-      "bytes": 52177
+      "bytes": 52129
     },
     {
       "path": "src/routes/app/agente.tsx",
@@ -4918,6 +4922,10 @@
     {
       "source": "src/lib/crm-lead-context.server.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/crm-lead-context.server.ts",
+      "target": "./i18n/currencies"
     },
     {
       "source": "src/lib/crm-lead-analyzer.server.ts",
@@ -10192,6 +10200,10 @@
       "target": "@/lib/produtos.functions"
     },
     {
+      "source": "src/components/catalogo/produto-edit-dialog.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
       "source": "src/components/dashboard-v2/ops-data.tsx",
       "target": "react"
     },
@@ -12348,6 +12360,10 @@
       "target": "@/lib/tracking-utils"
     },
     {
+      "source": "src/components/comercial/venda-dialog.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
       "source": "src/components/comercial/meta-dialog.tsx",
       "target": "react"
     },
@@ -12382,6 +12398,10 @@
     {
       "source": "src/components/comercial/meta-dialog.tsx",
       "target": "lucide-react"
+    },
+    {
+      "source": "src/components/comercial/meta-dialog.tsx",
+      "target": "@/lib/i18n/context"
     },
     {
       "source": "src/components/comercial/period-filter.tsx",
@@ -14890,6 +14910,14 @@
     {
       "source": "src/lib/i18n/context.tsx",
       "target": "./translations"
+    },
+    {
+      "source": "src/lib/i18n/context.tsx",
+      "target": "./currencies"
+    },
+    {
+      "source": "src/lib/i18n/context.tsx",
+      "target": "@/integrations/supabase/client"
     },
     {
       "source": "src/lib/i18n/context.tsx",
