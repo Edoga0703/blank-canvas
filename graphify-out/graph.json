@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-23T18:40:56.030772+00:00",
+  "generated_at": "2026-11-23T20:14:02.677285+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -1339,7 +1339,7 @@
     },
     {
       "path": "src/lib/meta.server.ts",
-      "bytes": 32043
+      "bytes": 34176
     },
     {
       "path": "src/lib/meta-sync.server.ts",
@@ -1667,7 +1667,7 @@
     },
     {
       "path": "src/components/conexao/meta-connect-dialog.tsx",
-      "bytes": 6442
+      "bytes": 7456
     },
     {
       "path": "src/components/conexao/meta-oauth-handler.tsx",
