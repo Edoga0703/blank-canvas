@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Upload, Loader2, ImageIcon } from "lucide-react";
+import { Upload, Loader2, ImageIcon, X, Star, Plus } from "lucide-react";
 import type { Produto } from "@/lib/produtos.functions";
 
 export function ProdutoEditDialog({
@@ -28,6 +28,12 @@ export function ProdutoEditDialog({
   const [descricao, setDescricao] = useState(initial.descricao || "");
   const [categoria, setCategoria] = useState(initial.categoria || "");
   const [sku, setSku] = useState(initial.sku || "");
+  const [fotos, setFotos] = useState<string[]>(() => {
+    if (Array.isArray((initial as any).fotos) && (initial as any).fotos.length > 0) {
+      return (initial as any).fotos.filter(Boolean);
+    }
+    return initial.foto_url ? [initial.foto_url] : [];
+  });
   const [fotoUrl, setFotoUrl] = useState(initial.foto_url || "");
   const [ativo, setAtivo] = useState(initial.ativo ?? true);
   const [tipo, setTipo] = useState<"produto" | "servico">((initial.tipo as any) === "servico" ? "servico" : "produto");
@@ -38,21 +44,68 @@ export function ProdutoEditDialog({
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  async function handleUpload(f: File) {
+  async function handleUpload(filesInput: FileList | File[]) {
     if (!companyId) { toast.error("Empresa não identificada"); return; }
+    const list = Array.from(filesInput);
+    if (!list.length) return;
     setUploading(true);
     try {
-      const ext = f.name.split(".").pop() || "jpg";
-      const path = `${companyId}/produtos/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error } = await supabase.storage.from("chat-media").upload(path, f, { contentType: f.type || "image/jpeg" });
-      if (error) throw error;
-      const { data } = await supabase.storage.from("chat-media").createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
-      setFotoUrl(data?.signedUrl ?? "");
-      toast.success("Foto carregada");
+      const uploadedUrls: string[] = [];
+      for (const f of list) {
+        const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
+        const safeName = f.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
+        const path = `${companyId}/produtos/${Date.now()}-${Math.random().toString(36).slice(2, 7)}_${safeName}`;
+        
+        // Try uploading to 'produtos' bucket first, fallback to 'chat-media'
+        let uploadErr: any = null;
+        let bucketUsed = "produtos";
+        const res = await supabase.storage.from("produtos").upload(path, f, { contentType: f.type || "image/jpeg", upsert: true });
+        if (res.error) {
+          uploadErr = res.error;
+          const fb = await supabase.storage.from("chat-media").upload(path, f, { contentType: f.type || "image/jpeg", upsert: true });
+          if (!fb.error) {
+            uploadErr = null;
+            bucketUsed = "chat-media";
+          }
+        }
+        if (uploadErr) throw uploadErr;
+
+        const { data: pubData } = supabase.storage.from(bucketUsed).getPublicUrl(path);
+        if (pubData?.publicUrl) {
+          uploadedUrls.push(pubData.publicUrl);
+        }
+      }
+
+      setFotos((prev) => {
+        const next = [...prev, ...uploadedUrls];
+        if (!fotoUrl && next.length > 0) setFotoUrl(next[0]!);
+        return next;
+      });
+
+      if (!fotoUrl && uploadedUrls.length > 0) {
+        setFotoUrl(uploadedUrls[0]!);
+      }
+
+      toast.success(list.length > 1 ? `${list.length} fotos carregadas com sucesso` : "Foto carregada com sucesso");
     } catch (e: any) {
       toast.error(e?.message ?? "Falha no upload");
     } finally {
       setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  function handleSetPrincipal(url: string) {
+    setFotoUrl(url);
+    setFotos((prev) => [url, ...prev.filter((u) => u !== url)]);
+    toast.success("Foto principal atualizada");
+  }
+
+  function handleRemoveFoto(url: string) {
+    const next = fotos.filter((u) => u !== url);
+    setFotos(next);
+    if (fotoUrl === url) {
+      setFotoUrl(next[0] || "");
     }
   }
 
@@ -60,12 +113,16 @@ export function ProdutoEditDialog({
     if (!nome.trim()) { toast.error("Informe o nome do item"); return; }
     setSaving(true);
     try {
+      const cover = fotoUrl || fotos[0] || null;
       await onSave({ data: {
         id: initial.id,
-        nome,
+        nome: nome.trim(),
         preco: Number(String(preco).replace(",", ".")) || 0,
-        descricao, categoria, sku,
-        foto_url: fotoUrl || null,
+        descricao: descricao.trim() || null,
+        categoria: categoria.trim() || null,
+        sku: sku.trim() || null,
+        foto_url: cover,
+        fotos: fotos.length > 0 ? fotos : (cover ? [cover] : []),
         ativo,
         tipo,
         duracao_min: tipo === "servico" ? Number(duracaoMin) || null : null,
@@ -80,13 +137,15 @@ export function ProdutoEditDialog({
     }
   }
 
+  const activePrincipal = fotoUrl || fotos[0] || "";
+
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{initial.id ? "Editar item" : tipo === "servico" ? "Novo serviço" : "Novo produto"}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div>
             <Label>Tipo</Label>
             <div className="mt-1 inline-flex rounded-xl border border-[color:var(--hairline)] p-1">
@@ -104,17 +163,99 @@ export function ProdutoEditDialog({
           </div>
 
           <div>
-            <Label>Foto</Label>
-            <input ref={fileRef} type="file" hidden accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleUpload(f); }} />
-            <div className="mt-1 flex items-center gap-3">
-              <div className="size-24 rounded-lg bg-muted overflow-hidden shrink-0 grid place-items-center">
-                {fotoUrl ? <img src={fotoUrl} className="w-full h-full object-cover" /> : <ImageIcon className="size-8 text-muted-foreground" />}
-              </div>
-              <Button type="button" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading} className="gap-2">
-                {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-                {fotoUrl ? "Trocar foto" : "Enviar foto"}
+            <div className="flex items-center justify-between">
+              <Label>Fotos do item {fotos.length > 0 && `(${fotos.length})`}</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="h-7 text-xs gap-1 text-[color:var(--brand)] hover:text-[color:var(--brand)]"
+              >
+                {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
+                Adicionar fotos
               </Button>
             </div>
+
+            <input
+              ref={fileRef}
+              type="file"
+              hidden
+              accept="image/*"
+              multiple
+              onChange={(e) => {
+                if (e.target.files) void handleUpload(e.target.files);
+              }}
+            />
+
+            {fotos.length === 0 ? (
+              <div
+                onClick={() => fileRef.current?.click()}
+                className="mt-2 border-2 border-dashed border-border hover:border-primary/50 rounded-xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition bg-muted/20 hover:bg-muted/40"
+              >
+                <div className="size-12 rounded-full bg-muted grid place-items-center text-muted-foreground">
+                  {uploading ? <Loader2 className="size-6 animate-spin text-primary" /> : <ImageIcon className="size-6" />}
+                </div>
+                <div className="text-center">
+                  <span className="text-xs font-medium text-foreground">Clique para enviar uma ou mais fotos</span>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">PNG, JPG ou WEBP (múltiplas permitidas)</p>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-2 grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                {fotos.map((url, idx) => {
+                  const isPrimary = url === activePrincipal || (idx === 0 && !fotoUrl);
+                  return (
+                    <div
+                      key={url + idx}
+                      className={`group relative aspect-square rounded-lg overflow-hidden border bg-muted transition ${
+                        isPrimary ? "ring-2 ring-primary border-primary" : "border-border"
+                      }`}
+                    >
+                      <img src={url} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
+                      
+                      {isPrimary && (
+                        <span className="absolute top-1 left-1 bg-primary text-primary-foreground text-[9px] font-bold px-1.5 py-0.5 rounded shadow flex items-center gap-0.5">
+                          <Star className="size-2.5 fill-current" /> Capa
+                        </span>
+                      )}
+
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1.5 p-1">
+                        {!isPrimary && (
+                          <button
+                            type="button"
+                            onClick={() => handleSetPrincipal(url)}
+                            title="Tornar foto de capa"
+                            className="size-7 rounded-full bg-background/90 text-foreground hover:bg-primary hover:text-white grid place-items-center transition"
+                          >
+                            <Star className="size-3.5" />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFoto(url)}
+                          title="Remover foto"
+                          className="size-7 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 grid place-items-center transition"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  className="aspect-square rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary transition bg-muted/10 hover:bg-muted/30"
+                >
+                  {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+                  <span className="text-[10px] font-medium">+ Foto</span>
+                </button>
+              </div>
+            )}
           </div>
 
           <div>

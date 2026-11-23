@@ -4011,6 +4011,8 @@ function Composer({
   const audioCtxRef = useRef<AudioContext | null>(null);
   const rafRef = useRef<number | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
+  const [stagedProduto, setStagedProduto] = useState<Produto | null>(null);
   const [showProdutos, setShowProdutos] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
 
@@ -4018,6 +4020,29 @@ function Composer({
   const [produtosLoaded, setProdutosLoaded] = useState(false);
   const [prodSearch, setProdSearch] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const stagedUrls = useMemo(() => {
+    return stagedFiles.map((f) => {
+      const isImg = f.type.startsWith("image/");
+      const isVid = f.type.startsWith("video/");
+      return {
+        file: f,
+        url: URL.createObjectURL(f),
+        isImg,
+        isVid,
+      };
+    });
+  }, [stagedFiles]);
+
+  useEffect(() => {
+    return () => {
+      stagedUrls.forEach((u) => URL.revokeObjectURL(u.url));
+    };
+  }, [stagedUrls]);
+
+  function removeStagedFile(idx: number) {
+    setStagedFiles((prev) => prev.filter((_, i) => i !== idx));
+  }
 
   // Campo no estilo WhatsApp: altura cresce conforme digita (com limite) e acompanha
   // qualquer mudança de texto — inclusive quando a IA preenche ou ao enviar mensagem.
@@ -4049,24 +4074,10 @@ function Composer({
     }
   }
 
-  async function sendProduto(p: Produto) {
-    if (!p.foto_url) { toast.error("Produto sem foto — cadastre uma imagem primeiro."); return; }
-    setBusy(true);
+  function selectProdutoToStage(p: Produto) {
+    setStagedProduto(p);
     setShowProdutos(false);
-    try {
-      const preco = p.preco != null ? `\n💰 ${Number(p.preco).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}` : "";
-      const desc = p.descricao ? `\n\n${p.descricao}` : "";
-      const caption = `*${p.nome}*${preco}${desc}`;
-      await sendMediaFn({ data: {
-        numero: active, contatoNome: activeName,
-        mediatype: "image", media: p.foto_url,
-        mimetype: "image/jpeg", caption, midiaUrl: p.foto_url,
-      } });
-    } catch (e: any) {
-      toast.error(e?.message ?? "Falha ao enviar produto");
-    } finally {
-      setBusy(false);
-    }
+    setTimeout(() => inputRef.current?.focus(), 50);
   }
 
   useEffect(() => {
@@ -4223,12 +4234,99 @@ function Composer({
     setShowTpl(v.startsWith("/"));
   }
 
-  function submit() {
+  async function submit() {
+    if (busy) return;
     const t = text.trim();
-    if (!t) return;
-    onSendText(t);
-    setText("");
+    const hasFiles = stagedFiles.length > 0;
+    const hasProd = !!stagedProduto;
+
+    if (!t && !hasFiles && !hasProd) return;
+
     setShowTpl(false);
+
+    // 1. Envio de produto de catálogo anexado
+    if (stagedProduto) {
+      const prod = stagedProduto;
+      setStagedProduto(null);
+      setText("");
+
+      const precoFmt = Number(prod.preco || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+      const parts = [
+        `🛍️ *${prod.nome}*`,
+        prod.preco ? `💰 Preço: ${precoFmt}` : null,
+        prod.categoria ? `📂 Categoria: ${prod.categoria}` : null,
+        prod.descricao ? `\n${prod.descricao}` : null,
+        t ? `\n💬 ${t}` : null,
+      ].filter(Boolean).join("\n");
+
+      const fotoPrincipal = prod.foto_url || (prod.fotos && prod.fotos[0]) || null;
+      if (fotoPrincipal) {
+        setBusy(true);
+        try {
+          await sendMediaFn({
+            data: {
+              numero: active,
+              contatoNome: activeName,
+              mediatype: "image",
+              media: fotoPrincipal,
+              mimetype: "image/jpeg",
+              fileName: `${prod.nome.replace(/[^a-zA-Z0-9_\u00C0-\u017F]/g, "_")}.jpg`,
+              caption: parts,
+              midiaUrl: fotoPrincipal,
+              instanceId: activeSendInstance?.id ?? undefined,
+            },
+          });
+
+          // Se tiver fotos adicionais no catálogo, envia sequencialmente
+          if (prod.fotos && prod.fotos.length > 1) {
+            for (let i = 1; i < prod.fotos.length; i++) {
+              const extraFoto = prod.fotos[i];
+              if (!extraFoto) continue;
+              try {
+                await sendMediaFn({
+                  data: {
+                    numero: active,
+                    contatoNome: activeName,
+                    mediatype: "image",
+                    media: extraFoto,
+                    mimetype: "image/jpeg",
+                    fileName: `${prod.nome.replace(/[^a-zA-Z0-9_\u00C0-\u017F]/g, "_")}_${i + 1}.jpg`,
+                    midiaUrl: extraFoto,
+                    instanceId: activeSendInstance?.id ?? undefined,
+                  },
+                });
+              } catch (extraErr) {
+                console.warn("[submit] Falha ao enviar foto adicional do produto:", extraErr);
+              }
+            }
+          }
+        } catch (e: any) {
+          toast.error(e?.message ?? "Falha ao enviar produto");
+        } finally {
+          setBusy(false);
+        }
+      } else {
+        // Enviar como mensagem de texto formatada
+        onSendText(parts);
+      }
+    }
+
+    // 2. Envio de arquivos/mídias anexados
+    if (stagedFiles.length > 0) {
+      const filesToSend = [...stagedFiles];
+      setStagedFiles([]);
+      setText("");
+      for (let i = 0; i < filesToSend.length; i++) {
+        const file = filesToSend[i]!;
+        const captionToSend = (!stagedProduto && i === 0) ? t : "";
+        await handleFile(file, captionToSend);
+      }
+    } else if (!stagedProduto && t) {
+      // 3. Apenas texto comum
+      onSendText(t);
+      setText("");
+    }
+
     // Mantém o foco no campo, como no WhatsApp: digita → Enter → digita de novo.
     inputRef.current?.focus();
     requestAnimationFrame(() => inputRef.current?.focus());
@@ -4770,138 +4868,210 @@ function Composer({
         </div>
       ) : (
         <form
-          onSubmit={(e) => { e.preventDefault(); submit(); }}
-          className="px-2.5 sm:px-4 py-2 sm:py-3 flex gap-1.5 sm:gap-2 items-end"
+          onSubmit={(e) => { e.preventDefault(); void submit(); }}
+          className="px-2.5 sm:px-4 py-2 sm:py-3 flex flex-col gap-1.5"
         >
-          <input
-            ref={fileRef}
-            type="file"
-            hidden
-            multiple
-            onChange={(e) => {
-              const list = Array.from(e.target.files ?? []);
-              if (list.length) setPendingFiles(list);
-              if (fileRef.current) fileRef.current.value = "";
-            }}
-          />
-          {pendingFiles.length > 0 && (
-            <MediaPreviewDialog
-              files={pendingFiles}
-              busy={busy}
-              onRemove={(i) => setPendingFiles((p) => p.filter((_, idx) => idx !== i))}
-              onCancel={() => setPendingFiles([])}
-              onSend={async (caption) => {
-                const list = pendingFiles;
-                setPendingFiles([]);
-                for (let i = 0; i < list.length; i++) {
-                  await handleFile(list[i]!, i === 0 ? caption : "");
+          {/* Dock de anexos e mídias / produto do catálogo em espera (estilo WhatsApp / Telegram) */}
+          {(stagedFiles.length > 0 || stagedProduto) && (
+            <div className="flex items-center gap-2 overflow-x-auto py-1 px-0.5 mb-1 max-w-full no-scrollbar animate-in fade-in duration-150">
+              {/* Produto do catálogo em espera */}
+              {stagedProduto && (
+                <div className="relative flex items-center gap-2.5 p-1.5 pr-3 rounded-xl bg-card border border-[color:var(--brand)]/40 shadow-sm shrink-0 max-w-[280px]">
+                  <div className="size-11 rounded-lg overflow-hidden bg-muted flex items-center justify-center shrink-0 border border-border">
+                    {(stagedProduto.foto_url || (stagedProduto.fotos && stagedProduto.fotos[0])) ? (
+                      <img
+                        src={stagedProduto.foto_url || stagedProduto.fotos![0]}
+                        alt={stagedProduto.nome}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Package className="size-5 text-[color:var(--brand)]" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] font-semibold text-[color:var(--brand)] uppercase tracking-wider flex items-center gap-1">
+                      <Package className="size-3" /> Catálogo
+                    </div>
+                    <div className="text-xs font-semibold truncate text-foreground">{stagedProduto.nome}</div>
+                    <div className="text-[11px] font-bold text-foreground/80">
+                      {Number(stagedProduto.preco || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setStagedProduto(null)}
+                    className="size-5 rounded-full bg-muted hover:bg-destructive hover:text-destructive-foreground flex items-center justify-center text-muted-foreground transition shrink-0 ml-1"
+                    title="Remover produto"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </div>
+              )}
+
+              {/* Arquivos / Imagens coladas ou anexadas */}
+              {stagedUrls.map((item, idx) => (
+                <div
+                  key={`${item.file.name}-${idx}`}
+                  className="relative group flex items-center gap-2 p-1.5 pr-2.5 rounded-xl bg-card border border-border shadow-sm shrink-0 max-w-[220px]"
+                >
+                  <div className="size-11 rounded-lg overflow-hidden bg-muted flex items-center justify-center shrink-0 border border-border">
+                    {item.isImg ? (
+                      <img
+                        src={item.url}
+                        alt={item.file.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : item.isVid ? (
+                      <VideoIcon className="size-5 text-[color:var(--brand)]" />
+                    ) : (
+                      <FileText className="size-5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium truncate text-foreground" title={item.file.name}>
+                      {item.file.name}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {(item.file.size / 1024).toFixed(0)} KB
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeStagedFile(idx)}
+                    className="size-5 rounded-full bg-muted hover:bg-destructive hover:text-destructive-foreground flex items-center justify-center text-muted-foreground transition shrink-0"
+                    title="Remover anexo"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-1.5 sm:gap-2 items-end w-full">
+            <input
+              ref={fileRef}
+              type="file"
+              hidden
+              multiple
+              onChange={(e) => {
+                const list = Array.from(e.target.files ?? []);
+                if (list.length) {
+                  setStagedFiles((prev) => [...prev, ...list]);
                 }
+                if (fileRef.current) fileRef.current.value = "";
               }}
             />
-          )}
-          <ComposerPlusMenu
-            disabled={disabled}
-            onAttach={() => fileRef.current?.click()}
-            onContact={() => setContactOpen(true)}
-            onCatalog={() => void openProdutos()}
+            {pendingFiles.length > 0 && (
+              <MediaPreviewDialog
+                files={pendingFiles}
+                busy={busy}
+                onRemove={(i) => setPendingFiles((p) => p.filter((_, idx) => idx !== i))}
+                onCancel={() => setPendingFiles([])}
+                onSend={async (caption) => {
+                  const list = pendingFiles;
+                  setPendingFiles([]);
+                  for (let i = 0; i < list.length; i++) {
+                    await handleFile(list[i]!, i === 0 ? caption : "");
+                  }
+                }}
+              />
+            )}
+            <ComposerPlusMenu
+              disabled={disabled}
+              onAttach={() => fileRef.current?.click()}
+              onContact={() => setContactOpen(true)}
+              onCatalog={() => void openProdutos()}
 
-            onEmoji={(e) => {
-              setText((t) => t + e);
-              inputRef.current?.focus();
-            }}
-          />
-          <SendContactDialog
-            open={contactOpen}
-            onOpenChange={setContactOpen}
-            numero={active}
-            contatoNome={activeName}
-          />
+              onEmoji={(e) => {
+                setText((t) => t + e);
+                inputRef.current?.focus();
+              }}
+            />
+            <SendContactDialog
+              open={contactOpen}
+              onOpenChange={setContactOpen}
+              numero={active}
+              contatoNome={activeName}
+            />
 
+            <AiAssistButton
+              numero={active}
+              rascunho={text}
+              disabled={disabled}
+              onTexto={(t) => {
+                setText(t);
+                setTimeout(() => inputRef.current?.focus(), 0);
+              }}
+            />
 
-
-          <AiAssistButton
-            numero={active}
-            rascunho={text}
-            disabled={disabled}
-            onTexto={(t) => {
-              setText(t);
-              setTimeout(() => inputRef.current?.focus(), 0);
-            }}
-          />
-
-          <button
-            type="button"
-            onClick={() => setAgendarOpen(true)}
-            title="Agendar"
-            aria-label="Agendar"
-            className="size-10 shrink-0 rounded-full grid place-items-center text-muted-foreground hover:bg-[color:var(--panel-2)] hover:text-[color:var(--brand)] transition"
-          >
-            <CalendarPlus className="size-5" />
-          </button>
-
-
-
-          <textarea
-            ref={inputRef}
-            value={text}
-            onChange={(e) => handleTextChange(e.target.value)}
-            onPaste={(e) => {
-              const items = Array.from(e.clipboardData?.items ?? []);
-              const files = items
-                .filter((it) => it.kind === "file")
-                .map((it) => it.getAsFile())
-                .filter((f): f is File => !!f);
-              if (!files.length) return;
-              e.preventDefault();
-              (async () => {
-                for (let i = 0; i < files.length; i++) {
-                  const f = files[i]!;
-                  const named = f.name && f.name !== "image.png"
-                    ? f
-                    : new File([f], `print-${Date.now()}.${(f.type.split("/")[1] || "png")}`, { type: f.type });
-                  await handleFile(named, i === 0 ? text.trim() : "");
-                }
-                setText("");
-              })();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setShowTpl(false);
-              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
-            }}
-
-            placeholder={isMobileWidth ? "Mensagem…  (/ atalhos)" : "Escreva uma mensagem…   (/ para respostas rápidas)"}
-            disabled={busy}
-            rows={1}
-            wrap="soft"
-             className="chat-composer-textarea no-scrollbar flex-1 min-w-0 resize-none overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words max-h-[150px] min-h-[46px] lg:min-h-[52px] bg-muted border border-border rounded-[20px] px-3.5 sm:px-4 py-3 text-[13.5px] leading-snug outline-none focus:border-primary/60"
-          />
-
-          {text.trim() ? (
-            <button
-            type="submit"
-            disabled={disabled}
-            onMouseDown={(e) => e.preventDefault()}
-              className="size-10 sm:size-11 shrink-0 rounded-full grid place-items-center text-primary-foreground bg-[color:var(--brand)] hover:brightness-110 transition disabled:opacity-50 shadow-sm"
-              aria-label="Enviar"
-            >
-              <Send className="size-4" />
-            </button>
-          ) : (
             <button
               type="button"
-              onPointerDown={onMicPointerDown}
-              onClick={(e) => { if (e.detail === 0 || (e.nativeEvent as PointerEvent).pointerType === "mouse") void startRecording(); }}
-              onContextMenu={(e) => e.preventDefault()}
-              disabled={disabled}
-              style={{ touchAction: "none" }}
-              className="size-10 sm:size-11 shrink-0 rounded-full grid place-items-center text-primary-foreground bg-[color:var(--brand)] hover:brightness-110 transition disabled:opacity-50 shadow-sm select-none"
-              aria-label="Gravar áudio"
-              title="Gravar áudio (segure e arraste pra cima para travar)"
+              onClick={() => setAgendarOpen(true)}
+              title="Agendar"
+              aria-label="Agendar"
+              className="size-10 shrink-0 rounded-full grid place-items-center text-muted-foreground hover:bg-[color:var(--panel-2)] hover:text-[color:var(--brand)] transition"
             >
-              <Mic className="size-4" />
+              <CalendarPlus className="size-5" />
             </button>
-          )}
 
+            <textarea
+              ref={inputRef}
+              value={text}
+              onChange={(e) => handleTextChange(e.target.value)}
+              onPaste={(e) => {
+                const items = Array.from(e.clipboardData?.items ?? []);
+                const files = items
+                  .filter((it) => it.kind === "file")
+                  .map((it) => it.getAsFile())
+                  .filter((f): f is File => !!f);
+                if (!files.length) return;
+                e.preventDefault();
+                const namedFiles = files.map((f, i) => {
+                  if (f.name && f.name !== "image.png") return f;
+                  const ext = (f.type.split("/")[1] || "png").replace("jpeg", "jpg");
+                  return new File([f], `captura-${Date.now()}-${i + 1}.${ext}`, { type: f.type });
+                });
+                setStagedFiles((prev) => [...prev, ...namedFiles]);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setShowTpl(false);
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void submit(); }
+              }}
+
+              placeholder={isMobileWidth ? "Mensagem…  (/ atalhos)" : "Escreva uma mensagem…   (/ para respostas rápidas)"}
+              disabled={busy}
+              rows={1}
+              wrap="soft"
+              className="chat-composer-textarea no-scrollbar flex-1 min-w-0 resize-none overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words max-h-[150px] min-h-[46px] lg:min-h-[52px] bg-muted border border-border rounded-[20px] px-3.5 sm:px-4 py-3 text-[13.5px] leading-snug outline-none focus:border-primary/60"
+            />
+
+            {(text.trim() || stagedFiles.length > 0 || stagedProduto) ? (
+              <button
+                type="submit"
+                disabled={disabled || busy}
+                onMouseDown={(e) => e.preventDefault()}
+                className="size-10 sm:size-11 shrink-0 rounded-full grid place-items-center text-primary-foreground bg-[color:var(--brand)] hover:brightness-110 transition disabled:opacity-50 shadow-sm"
+                aria-label="Enviar"
+              >
+                {busy ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onPointerDown={onMicPointerDown}
+                onClick={(e) => { if (e.detail === 0 || (e.nativeEvent as PointerEvent).pointerType === "mouse") void startRecording(); }}
+                onContextMenu={(e) => e.preventDefault()}
+                disabled={disabled}
+                style={{ touchAction: "none" }}
+                className="size-10 sm:size-11 shrink-0 rounded-full grid place-items-center text-primary-foreground bg-[color:var(--brand)] hover:brightness-110 transition disabled:opacity-50 shadow-sm select-none"
+                aria-label="Gravar áudio"
+                title="Gravar áudio (segure e arraste pra cima para travar)"
+              >
+                <Mic className="size-4" />
+              </button>
+            )}
+          </div>
         </form>
       )}
 
@@ -4935,16 +5105,29 @@ function Composer({
                     <button
                       key={p.id}
                       type="button"
-                      onClick={() => void sendProduto(p)}
-                      disabled={!p.foto_url}
-                      className="text-left rounded-lg border border-[color:var(--hairline)] overflow-hidden hover:border-[color:var(--brand)] transition disabled:opacity-50"
-                      title={!p.foto_url ? "Produto sem foto" : "Enviar produto"}
+                      onClick={() => selectProdutoToStage(p)}
+                      className="text-left rounded-lg border border-[color:var(--hairline)] overflow-hidden hover:border-[color:var(--brand)] hover:shadow-sm transition group"
+                      title="Selecionar produto para enviar"
                     >
-                      <div className="aspect-square bg-muted">
-                        {p.foto_url && <img src={p.foto_url} className="w-full h-full object-cover" loading="lazy" />}
+                      <div className="aspect-square bg-muted flex items-center justify-center relative overflow-hidden">
+                        {(p.foto_url || (p.fotos && p.fotos[0])) ? (
+                          <img
+                            src={p.foto_url || p.fotos![0]}
+                            alt={p.nome}
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <Package className="size-8 text-muted-foreground/60" />
+                        )}
+                        {p.fotos && p.fotos.length > 1 && (
+                          <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-black/60 text-white backdrop-blur-sm">
+                            +{p.fotos.length}
+                          </span>
+                        )}
                       </div>
                       <div className="p-2">
-                        <div className="text-[12.5px] font-semibold truncate">{p.nome}</div>
+                        <div className="text-[12.5px] font-semibold truncate group-hover:text-[color:var(--brand)] transition-colors">{p.nome}</div>
                         <div className="text-[12px] font-bold text-[color:var(--brand)]">
                           {Number(p.preco || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                         </div>

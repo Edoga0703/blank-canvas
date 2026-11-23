@@ -11,6 +11,7 @@ export type Produto = {
   preco: number;
   descricao: string | null;
   foto_url: string | null;
+  fotos?: string[] | null;
   sku: string | null;
   categoria: string | null;
   ativo: boolean;
@@ -51,6 +52,7 @@ export const saveProduto = createServerFn({ method: "POST" })
     preco: number;
     descricao?: string | null;
     foto_url?: string | null;
+    fotos?: string[] | null;
     sku?: string | null;
     categoria?: string | null;
     ativo?: boolean;
@@ -63,12 +65,18 @@ export const saveProduto = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
     const tipo: CatalogoTipo = data.tipo === "servico" ? "servico" : "produto";
+    const fotosClean = Array.isArray(data.fotos)
+      ? data.fotos.map((u) => String(u || "").trim()).filter(Boolean)
+      : (data.foto_url ? [data.foto_url.trim()] : []);
+    const fotoPrincipal = fotosClean[0] || data.foto_url?.trim() || null;
+
     const payload: any = {
       company_id: companyId,
       nome: data.nome.trim(),
       preco: Math.max(0, Number(data.preco) || 0),
       descricao: data.descricao?.trim() || null,
-      foto_url: data.foto_url || null,
+      foto_url: fotoPrincipal,
+      fotos: fotosClean,
       sku: data.sku?.trim() || null,
       categoria: data.categoria?.trim() || null,
       ativo: data.ativo ?? true,

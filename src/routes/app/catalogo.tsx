@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Search, Loader2, ImageIcon } from "lucide-react";
+import { Plus, Trash2, Pencil, Search, Loader2, ImageIcon, Images } from "lucide-react";
 import { HelpTip } from "@/components/help-tip";
 import { ProdutoEditDialog } from "@/components/catalogo/produto-edit-dialog";
 import { brand } from "@/config/brand";
@@ -131,6 +131,11 @@ function Page() {
                         <div className="w-full h-full grid place-items-center text-muted-foreground">
                           <ImageIcon className="size-10" />
                         </div>
+                      )}
+                      {Array.isArray((p as any).fotos) && (p as any).fotos.length > 1 && (
+                        <span className="absolute bottom-2 left-2 text-[10px] font-bold bg-black/75 text-white px-1.5 py-0.5 rounded flex items-center gap-1 shadow backdrop-blur-xs">
+                          <Images className="size-3" /> {(p as any).fotos.length}
+                        </span>
                       )}
                       {!p.ativo && (
                         <span className="absolute top-2 left-2 text-[10px] font-bold uppercase bg-black/70 text-white px-2 py-0.5 rounded">Inativo</span>
