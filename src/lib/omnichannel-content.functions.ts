@@ -442,9 +442,10 @@ export const getOmnichannelIntelligence = createServerFn({ method: "POST" })
     // 3. Consulta publicações com métricas reais
     const { data: posts } = await admin
       .from("meta_content_posts")
-      .select("id,published_at,format,metrics_latest")
+      .select("id,published_at,format,metrics_latest,caption,permalink,thumbnail_url,media_url,network")
       .eq("company_id", companyId)
       .not("published_at", "is", null)
+      .order("published_at", { ascending: false })
       .limit(200);
 
     const hasRealSnapshots = Array.isArray(snapshots) && snapshots.length > 0;
@@ -458,8 +459,21 @@ export const getOmnichannelIntelligence = createServerFn({ method: "POST" })
         kpis: null,
         heatmapBestHours: [],
         accounts: accounts ?? [],
+        posts: [],
       };
     }
+
+    // Mapeamento enriquecido de contas com seus snapshots mais recentes
+    const accountsWithSnapshots = (accounts ?? []).map((acc: any) => {
+      const snap = (snapshots ?? []).find((s: any) => s.social_account_id === acc.id);
+      return {
+        ...acc,
+        followers: snap ? Number(snap.followers) || 0 : 0,
+        reach: snap ? Number(snap.reach) || 0 : 0,
+        impressions: snap ? Number(snap.impressions) || 0 : 0,
+        media_count: snap ? Number(snap.media_count) || 0 : 0,
+      };
+    });
 
     // Agregação estritamente baseada nos dados existentes
     const latestAccountSnapshots = (snapshots ?? []).slice(0, (accounts ?? []).length);
@@ -525,7 +539,8 @@ export const getOmnichannelIntelligence = createServerFn({ method: "POST" })
         postsWithInteractions,
       },
       heatmapBestHours,
-      accounts: accounts ?? [],
+      accounts: accountsWithSnapshots,
+      posts: posts ?? [],
     };
   });
 
