@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-23T17:27:27.391207+00:00",
+  "generated_at": "2026-11-23T17:47:36.426408+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -1195,7 +1195,7 @@
     },
     {
       "path": "src/lib/ai-prompt.ts",
-      "bytes": 52597
+      "bytes": 55806
     },
     {
       "path": "src/lib/chat-media.functions.ts",
