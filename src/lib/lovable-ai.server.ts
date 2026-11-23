@@ -39,16 +39,20 @@ async function fetchJson(url: string, init: RequestInit, timeoutMs = 30_000) {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function sanitizeGatewayGeminiModel(model?: string): string {
-  if (!model) return "gemini-1.5-flash";
+  if (!model) return "gemini-3.5-flash-lite";
   const m = model.trim().replace(/^google\//, "");
+  // Si se solicita un modelo obsoleto de Gemini (1.5, 2.0, 2.5), migrar al actual de alta velocidad
   if (
-    m === "gemini-2.5-flash" ||
+    m === "gemini-1.5-flash" ||
+    m === "gemini-1.5-pro" ||
+    m === "gemini-2.0-flash" ||
     m === "gemini-2.0-flash-exp" ||
+    m === "gemini-2.5-flash" ||
     m === "gemini-exp-1206"
   ) {
-    return "gemini-1.5-flash";
+    return "gemini-3.5-flash-lite";
   }
-  return m || "gemini-1.5-flash";
+  return m || "gemini-3.5-flash-lite";
 }
 
 export async function lovableAiChat(
@@ -144,7 +148,7 @@ export async function lovableAiChat(
   if (provider === "gemini") {
     const directGeminiKey = cfg.geminiKey?.trim() || globalGeminiKey?.trim();
     if (directGeminiKey) {
-      const rawModel = cfg.model || globalModel || "gemini-1.5-flash";
+      const rawModel = cfg.model || globalModel || "gemini-3.5-flash-lite";
       const model = sanitizeGatewayGeminiModel(rawModel);
       return directGeminiChat(directGeminiKey, model, msgs);
     }
@@ -219,10 +223,10 @@ async function directGeminiChat(
         25_000,
       );
 
-      // Auto-fallback para gemini-1.5-flash caso o modelo experimental retorne 404 Not Found
-      if (res.status === 404 && cleanModel !== "gemini-1.5-flash") {
-        console.warn(`[Gemini Direct] Modelo '${cleanModel}' retornou 404 no Google AI Studio. Fazendo fallback automático para 'gemini-1.5-flash'...`);
-        cleanModel = "gemini-1.5-flash";
+      // Auto-fallback para gemini-3.5-flash-lite caso o modelo experimental retorne 404 Not Found ou 503
+      if ((res.status === 404 || res.status === 503) && cleanModel !== "gemini-3.5-flash-lite") {
+        console.warn(`[Gemini Direct] Modelo '${cleanModel}' retornou ${res.status} no Google AI Studio. Fazendo fallback automático para 'gemini-3.5-flash-lite'...`);
+        cleanModel = "gemini-3.5-flash-lite";
         res = await fetchJson(
           getUrl(cleanModel),
           {

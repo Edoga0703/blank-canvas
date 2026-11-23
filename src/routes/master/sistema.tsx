@@ -400,14 +400,14 @@ function SistemaPage() {
               <Select
                 value={globalAi.ai_provider}
                 onValueChange={(v) => {
-                  const defaultModel = v === "drael" ? "drael-v1" : v === "openai" ? "gpt-4o-mini" : v === "gemini" ? "gemini-1.5-flash" : "claude-3-5-sonnet-latest";
+                  const defaultModel = v === "drael" ? "drael-v1" : v === "openai" ? "gpt-4o-mini" : v === "gemini" ? "gemini-3.5-flash-lite" : "claude-3-5-sonnet-latest";
                   setGlobalAi({ ...globalAi, ai_provider: v, ai_model: defaultModel });
                 }}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="drael">Drael AI (drael.sh / drael-v1 — Base Independente Recomendada)</SelectItem>
-                  <SelectItem value="gemini">Google Gemini Direto (generativelanguage.googleapis.com — Gemini 1.5 Flash)</SelectItem>
+                  <SelectItem value="gemini">Google Gemini Direto (generativelanguage.googleapis.com — Gemini 3.5 Flash Lite)</SelectItem>
                   <SelectItem value="openai">OpenAI Direto (api.openai.com / GPT-4o mini)</SelectItem>
                   <SelectItem value="anthropic">Anthropic Direto (api.anthropic.com / Claude)</SelectItem>
                 </SelectContent>
@@ -418,13 +418,13 @@ function SistemaPage() {
               <Input
                 value={globalAi.ai_model}
                 onChange={e => setGlobalAi({ ...globalAi, ai_model: e.target.value })}
-                placeholder="ex: gemini-1.5-flash, drael-v1 ou gpt-4o-mini"
+                placeholder="ex: gemini-3.5-flash-lite, gemini-3.8-flash ou drael-v1"
                 list="ai-models"
               />
               <datalist id="ai-models">
-                <option value="gemini-1.5-flash" />
-                <option value="gemini-2.0-flash" />
-                <option value="gemini-1.5-pro" />
+                <option value="gemini-3.5-flash-lite" />
+                <option value="gemini-3.8-flash" />
+                <option value="gemini-3.5-flash" />
                 <option value="drael-v1" />
                 <option value="drael-fast" />
                 <option value="gpt-4o-mini" />
