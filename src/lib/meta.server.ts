@@ -437,24 +437,53 @@ export async function metaUpdateCampaignStatus(token: string, campaignId: string
   return graph(`/${encodeURIComponent(campaignId)}`, token, { method: "POST", body: JSON.stringify({ status }) });
 }
 
-/** Envia texto para um PSID (Messenger) ou IGSID (Instagram Direct). */
+/** Envia texto para um PSID (Messenger) ou IGSID (Instagram Direct) com fallback para tag HUMAN_AGENT. */
 export async function metaSendText(token: string, recipientId: string, text: string) {
   console.log("[meta] enviando texto para:", recipientId);
-  const json = await graph("/me/messages", token, {
-    method: "POST",
-    body: JSON.stringify({
-      recipient: { id: recipientId },
-      messaging_type: "RESPONSE",
-      message: { text },
-    }),
-  });
-  console.log("[meta] resposta de envio:", JSON.stringify(json));
-  // O MID precisa ser preservado sem sufixos: delivery/read webhooks usam
-  // exatamente este valor para conciliar o estado da mensagem.
-  return { key: { id: json?.message_id ?? null, remoteJid: recipientId, fromMe: true } };
+  try {
+    const json = await graph("/me/messages", token, {
+      method: "POST",
+      body: JSON.stringify({
+        recipient: { id: recipientId },
+        messaging_type: "RESPONSE",
+        message: { text },
+      }),
+    });
+    console.log("[meta] resposta de envio:", JSON.stringify(json));
+    // O MID precisa ser preservado sem sufixos: delivery/read webhooks usam
+    // exatamente este valor para conciliar o estado da mensagem.
+    return { key: { id: json?.message_id ?? null, remoteJid: recipientId, fromMe: true } };
+  } catch (err: any) {
+    const msg = String(err?.message || "").toLowerCase();
+    const code = String(err?.code || "");
+    const subcode = String(err?.subcode || err?.error_subcode || "");
+    const isWindowExpired =
+      code === "10" ||
+      subcode === "2018028" ||
+      msg.includes("24 hour") ||
+      msg.includes("window") ||
+      msg.includes("outside the allowed window") ||
+      msg.includes("human_agent");
+
+    if (isWindowExpired) {
+      console.log("[meta] janela padrão de 24h expirada, enviando com tag oficial HUMAN_AGENT (janela de 7 dias)...");
+      const json = await graph("/me/messages", token, {
+        method: "POST",
+        body: JSON.stringify({
+          recipient: { id: recipientId },
+          messaging_type: "MESSAGE_TAG",
+          tag: "HUMAN_AGENT",
+          message: { text },
+        }),
+      });
+      console.log("[meta] resposta de envio com HUMAN_AGENT:", JSON.stringify(json));
+      return { key: { id: json?.message_id ?? null, remoteJid: recipientId, fromMe: true } };
+    }
+    throw err;
+  }
 }
 
-/** Envia mídia por URL pública. */
+/** Envia mídia por URL pública com suporte à janela estendida HUMAN_AGENT. */
 export async function metaSendMedia(
   token: string,
   recipientId: string,
@@ -487,14 +516,44 @@ export async function metaSendMedia(
     params.mediatype === "audio" ? "audio" :
     params.mediatype === "video" ? "video" : "image";
 
-  const json = await graph("/me/messages", token, {
-    method: "POST",
-    body: JSON.stringify({
-      recipient: { id: recipientId },
-      messaging_type: "RESPONSE",
-      message: { attachment: { type, payload: { url: mediaUrl, is_reusable: true } } },
-    }),
-  });
+  let json: any;
+  try {
+    json = await graph("/me/messages", token, {
+      method: "POST",
+      body: JSON.stringify({
+        recipient: { id: recipientId },
+        messaging_type: "RESPONSE",
+        message: { attachment: { type, payload: { url: mediaUrl, is_reusable: true } } },
+      }),
+    });
+  } catch (err: any) {
+    const msg = String(err?.message || "").toLowerCase();
+    const code = String(err?.code || "");
+    const subcode = String(err?.subcode || err?.error_subcode || "");
+    const isWindowExpired =
+      code === "10" ||
+      subcode === "2018028" ||
+      msg.includes("24 hour") ||
+      msg.includes("window") ||
+      msg.includes("outside the allowed window") ||
+      msg.includes("human_agent");
+
+    if (isWindowExpired) {
+      console.log("[meta] janela padrão de 24h expirada para mídia, enviando com tag HUMAN_AGENT...");
+      json = await graph("/me/messages", token, {
+        method: "POST",
+        body: JSON.stringify({
+          recipient: { id: recipientId },
+          messaging_type: "MESSAGE_TAG",
+          tag: "HUMAN_AGENT",
+          message: { attachment: { type, payload: { url: mediaUrl, is_reusable: true } } },
+        }),
+      });
+    } else {
+      throw err;
+    }
+  }
+
   if (params.caption) {
     try { await metaSendText(token, recipientId, params.caption); } catch { /* best-effort */ }
   }

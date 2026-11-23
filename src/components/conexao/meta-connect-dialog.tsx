@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Facebook, Instagram, Loader2, AlertTriangle, Plug } from "lucide-react";
+import { Facebook, Instagram, Loader2, AlertTriangle, Plug, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { startMetaOAuth } from "@/lib/meta-oauth.functions";
 
@@ -101,15 +101,26 @@ export function MetaConnectDialog({
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle className="text-primary">Passo a passo de integração</DialogTitle>
-              <DialogDescription>Siga os passos abaixo para que a integração de {title} funcione corretamente:</DialogDescription>
+              <DialogTitle className="text-primary">Passo a passo de integração ({title})</DialogTitle>
+              <DialogDescription>Siga os passos abaixo para que a recepção de mensagens funcione sem bloqueios da Meta:</DialogDescription>
             </DialogHeader>
+
+            {mode === "instagram" && (
+              <div className="flex items-start gap-2.5 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-900 dark:text-rose-200">
+                <Smartphone className="size-4 mt-0.5 shrink-0 text-rose-600" />
+                <div className="space-y-1">
+                  <span className="font-semibold block">Configuração obrigatória no App do Instagram:</span>
+                  <span>No celular, abra o Instagram &gt; <em>Configurações e privacidade</em> &gt; <em>Mensagens e respostas a stories</em> &gt; <em>Controles de mensagens</em> &gt; Ative <strong>"Permitir acesso às mensagens"</strong>. Sem isso, a Meta bloqueia a entrega de webhooks.</span>
+                </div>
+              </div>
+            )}
 
             <ol className="rounded-xl bg-primary/5 p-4 space-y-3 text-sm">
               {[
-                <>Acesse o Facebook com a conta que gerencia a página que você deseja integrar.</>,
-                <>Na janela que será exibida, clique em <strong>“Editar configurações anteriores”</strong>.</>,
-                <>Em todas as telas de permissão, selecione a opção <strong>“Aceitar em todas as páginas atuais e futuras”</strong>.</>,
+                <>(Opcional/Recomendado) Verifique se a conta do Instagram é <strong>Profissional (Comercial ou Criador)</strong> e está vinculada à sua Página do Facebook.</>,
+                <>Acesse o Facebook com a conta que gerencia a Página que você deseja integrar.</>,
+                <>Na janela que será exibida pela Meta, clique em <strong>“Editar configurações anteriores”</strong>.</>,
+                <>Em todas as telas de permissão, marque a opção <strong>“Aceitar em todas as páginas e contas atuais e futuras”</strong>.</>,
               ].map((txt, i) => (
                 <li key={i} className="flex gap-3">
                   <span className="size-6 rounded-full bg-primary text-primary-foreground text-xs font-semibold flex items-center justify-center shrink-0">{i + 1}</span>
