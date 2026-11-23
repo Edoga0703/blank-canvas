@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-23T02:17:28.363228+00:00",
+  "generated_at": "2026-11-23T02:32:57.496474+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -2399,7 +2399,7 @@
     },
     {
       "path": "src/lib/messaging/ingest.server.ts",
-      "bytes": 29556
+      "bytes": 29622
     },
     {
       "path": "src/lib/messaging/lovable-whatsapp.generated.server.ts",
@@ -2475,7 +2475,7 @@
     },
     {
       "path": "src/lib/messaging/providers/dapi.server.ts",
-      "bytes": 12754
+      "bytes": 13201
     },
     {
       "path": "src/lib/messaging/providers/lovable-whatsapp.server.ts",
