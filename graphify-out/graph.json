@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-23T22:24:05.071334+00:00",
+  "generated_at": "2026-11-23T23:53:04.537914+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -1587,7 +1587,7 @@
     },
     {
       "path": "src/components/content/omnichannel-analytics.tsx",
-      "bytes": 46221
+      "bytes": 46494
     },
     {
       "path": "src/components/plugins/plugin-banners.tsx",
