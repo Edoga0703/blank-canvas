@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-23T20:14:02.677285+00:00",
+  "generated_at": "2026-11-23T22:24:05.071334+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -839,7 +839,7 @@
     },
     {
       "path": "src/lib/omnichannel-content.functions.ts",
-      "bytes": 28678
+      "bytes": 29347
     },
     {
       "path": "src/lib/comercial-export.ts",
@@ -1587,7 +1587,7 @@
     },
     {
       "path": "src/components/content/omnichannel-analytics.tsx",
-      "bytes": 45027
+      "bytes": 46221
     },
     {
       "path": "src/components/plugins/plugin-banners.tsx",
@@ -9490,6 +9490,10 @@
     {
       "source": "src/components/content/omnichannel-analytics.tsx",
       "target": "@/lib/omnichannel-content.functions"
+    },
+    {
+      "source": "src/components/content/omnichannel-analytics.tsx",
+      "target": "@/lib/meta-history.functions"
     },
     {
       "source": "src/components/content/omnichannel-analytics.tsx",
