@@ -6,8 +6,6 @@ import {
   AlertCircle, Bot, CheckCircle2, CircleDot, Clock3, FileSpreadsheet, FileText,
   Headphones, Loader2, RefreshCw, Search, Send, UsersRound, X,
 } from "lucide-react";
-import { jsPDF } from "jspdf";
-import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -142,7 +140,8 @@ function RelatoriosPage() {
     await load();
   }
 
-  function excel() {
+  async function excel() {
+    const XLSX = await import("xlsx");
     const sheet = XLSX.utils.json_to_sheet(rows.map((r) => ({
       "Última interação": r.ultima_em ? new Date(r.ultima_em).toLocaleString() : "—",
       Cliente: r.cliente, Solicitação: r.solicitacao, "Andamento / solução": r.andamento,
@@ -153,7 +152,8 @@ function RelatoriosPage() {
     XLSX.writeFile(book, `relatorio-atendimentos-${de}-${ate}.xlsx`);
   }
 
-  function makePdf() {
+  async function makePdf() {
+    const { jsPDF } = await import("jspdf");
     const doc = new jsPDF({ unit: "pt", format: "a4", orientation: "landscape" });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -216,8 +216,9 @@ function RelatoriosPage() {
     return doc;
   }
 
-  function pdf() {
-    makePdf().save(`relatorio-atendimentos-${de}-${ate}.pdf`);
+  async function pdf() {
+    const doc = await makePdf();
+    doc.save(`relatorio-atendimentos-${de}-${ate}.pdf`);
   }
 
   async function openSend() {
@@ -234,7 +235,8 @@ function RelatoriosPage() {
     setSending(true);
     try {
       const filename = `relatorio-atendimentos-${de}-${ate}.pdf`;
-      const media = makePdf().output("datauristring");
+      const doc = await makePdf();
+      const media = doc.output("datauristring");
       const result: any = await enviarMidiaFn({ data: {
         numero: recipient.numero, contatoNome: recipient.nome, mediatype: "document",
         media, mimetype: "application/pdf", fileName: filename,

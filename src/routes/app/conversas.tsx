@@ -544,6 +544,7 @@ function ConversasPage() {
   useEffect(() => { if (numeroParam) setActive(numeroParam); }, [numeroParam]);
   const activeRef = useRef<string | null>(active);
   useEffect(() => { activeRef.current = active; }, [active]);
+  const checkedProfilePicsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (companyId) setReadMap(getConvReadMap(companyId));
@@ -857,11 +858,11 @@ function ConversasPage() {
       .subscribe();
 
 
-    // Polling de fallback (caso realtime falhe / esteja atrasado)
+    // Polling de fallback (caso realtime falhe / esteja atrasado) - intervalo otimizado para evitar saturação de CPU/rede
     const poll = setInterval(() => {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       void refreshRecent(companyId);
-    }, 4000);
+    }, 25000);
 
     return () => { supabase.removeChannel(ch); clearInterval(poll); };
   }, [companyId]);
@@ -895,8 +896,9 @@ function ConversasPage() {
         m.addEventListener("loadedmetadata", onLoad, { once: true });
       });
     }
-    // Busca foto de perfil do WhatsApp se ainda não temos
-    if (active && !cards[active]?.foto_url) {
+    // Busca foto de perfil do WhatsApp se ainda não temos (evita repetição se o contato não tiver foto)
+    if (active && !cards[active]?.foto_url && !checkedProfilePicsRef.current.has(active)) {
+      checkedProfilePicsRef.current.add(active);
       void (async () => {
         try {
           const { ensureSession } = await import("@/lib/ensure-session");
@@ -1184,10 +1186,18 @@ function ConversasPage() {
       supabase.from("crm_cards").select(CARD_COLS).eq("company_id", cid).order("ultima_em", { ascending: false, nullsFirst: false }).limit(400),
     ]);
 
-    if (cds) {
-      // MERGE (nunca substitui): substituir o mapa fazia as tags "piscarem"
-      // e trocarem de valor nas conversas fora deste recorte.
+    if (cds && cds.length > 0) {
+      // MERGE inteligente: só altera o estado se houver alguma modificação real nos dados
       setCards((prev) => {
+        let changed = false;
+        for (const r of cds as any[]) {
+          const old = prev[r.numero];
+          if (!old || old.ultima_em !== r.ultima_em || old.stage_id !== r.stage_id || old.nome !== r.nome) {
+            changed = true;
+            break;
+          }
+        }
+        if (!changed) return prev;
         const map: Record<string, LeadCard> = { ...prev };
         (cds as any[]).forEach((r: any) => { map[r.numero] = r; });
         return map;
@@ -1195,6 +1205,11 @@ function ConversasPage() {
     }
     if (!data) return;
     setMsgs((prev) => {
+      const prevIds = new Set(prev.map((m) => m.id));
+      const hasNew = (data as unknown as Msg[]).some((m) => !prevIds.has(m.id));
+      const hasTmp = prev.some((m) => m.id.startsWith("tmp-"));
+      if (!hasNew && !hasTmp) return prev; // Sem novas mensagens: preserva a referência original e pula re-renders
+
       const byId = new Map<string, Msg>();
       // mantém otimistas (tmp-)
       for (const m of prev) if (m.id.startsWith("tmp-")) byId.set(m.id, m);

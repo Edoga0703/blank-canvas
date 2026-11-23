@@ -1,5 +1,4 @@
 // Exportações do módulo Comercial (client-side).
-import { jsPDF } from "jspdf";
 import { brand } from "@/config/brand";
 import logoAsset from "@/assets/metrix-receipt-white.png.asset.json";
 
@@ -81,6 +80,7 @@ function isNumericColumn(header: string) {
 }
 
 export async function createComercialPdf({ titulo, subtitulo, headers, rows, resumo = [] }: ReportInput) {
+  const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4", compress: true });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();

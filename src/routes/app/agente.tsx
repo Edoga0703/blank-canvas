@@ -233,6 +233,7 @@ function AgentePage() {
   const [searchDraft, setSearchDraft] = useState("");
   const searchTerm = useDebounce(searchDraft, 300);
   const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
+  const lastLoadedAgentIdRef = useRef<string | null>(null);
   const [newAgentOpen, setNewAgentOpen] = useState(false);
   const [newAgentName, setNewAgentName] = useState("");
   const [newAgentTipo, setNewAgentTipo] = useState<AgentTipo>("qualificacao");
@@ -381,8 +382,10 @@ function AgentePage() {
           : (data.find(a => a.is_default) || data[0]);
         
         if (def) {
+          lastLoadedAgentIdRef.current = def.id;
           setActiveAgentId(def.id);
           setTipo(def.tipo as AgentTipo);
+          void reload(def.id);
         }
       }
 
@@ -461,7 +464,10 @@ function AgentePage() {
     if (searchAgentId) {
       void loadAgents(searchAgentId);
     } else if (activeAgentId) {
-      void reload(); 
+      if (lastLoadedAgentIdRef.current !== activeAgentId) {
+        lastLoadedAgentIdRef.current = activeAgentId;
+        void reload(activeAgentId);
+      }
     } else if (companyId) {
       void loadAgents();
     }

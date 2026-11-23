@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import { brand } from "@/config/brand";
 import { useLanguage } from "@/lib/i18n/context";
-import * as XLSX from "xlsx";
 
 export const Route = createFileRoute("/app/campanhas")({
   head: () => ({ meta: [{ title: `${brand.name} — Campanhas` }] }),
@@ -209,8 +208,9 @@ function CampanhasPage() {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onerror = () => reject(reader.error);
-      reader.onload = () => {
+      reader.onload = async () => {
         try {
+          const XLSX = await import("xlsx");
           const data = reader.result as ArrayBuffer;
           const wb = XLSX.read(data, { type: "array" });
           const sh = wb.Sheets[wb.SheetNames[0]];

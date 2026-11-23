@@ -28,6 +28,8 @@ export function markConvUnread(companyId: string, numero: string) {
   try { window.dispatchEvent(new CustomEvent("conv-read-changed", { detail: { companyId, numero } })); } catch {}
 }
 
+let unreadCache: { cid: string; onlyOwnerId: string | null; count: number; at: number } | null = null;
+
 /**
  * Conta conversas cuja última mensagem é de entrada E ainda não foi "lida"
  * (aberta) pelo usuário atual neste navegador.
@@ -36,9 +38,14 @@ export function useUnreadConversations(
   companyId?: string | null,
   opts?: { onlyOwnerId?: string | null },
 ) {
-  const [count, setCount] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onlyOwnerId = opts?.onlyOwnerId ?? null;
+  const [count, setCount] = useState(() => {
+    if (companyId && unreadCache && unreadCache.cid === companyId && unreadCache.onlyOwnerId === onlyOwnerId) {
+      return unreadCache.count;
+    }
+    return 0;
+  });
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!companyId) { setCount(0); return; }
@@ -46,12 +53,18 @@ export function useUnreadConversations(
     let cancelled = false;
 
     async function load() {
+      // Se foi consultado há menos de 10s e não foi por evento novo, usa cache
+      if (unreadCache && unreadCache.cid === cid && unreadCache.onlyOwnerId === onlyOwnerId && Date.now() - unreadCache.at < 10000) {
+        setCount(unreadCache.count);
+        return;
+      }
+
       const { data } = await supabase
         .from("mensagens")
         .select("numero,direcao,created_at")
         .eq("company_id", cid)
         .order("created_at", { ascending: false })
-        .limit(1000);
+        .limit(250);
       if (cancelled || !data) return;
       const latest = new Map<string, { direcao: string; created_at: string }>();
       for (const m of data as any[]) {
@@ -84,12 +97,16 @@ export function useUnreadConversations(
         const readAt = readMap[numero];
         if (!readAt || new Date(readAt).getTime() < new Date(info.created_at).getTime()) c++;
       }
+      unreadCache = { cid, onlyOwnerId, count: c, at: Date.now() };
       setCount(c);
     }
 
     function scheduleReload() {
       if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => { void load(); }, 1500);
+      timerRef.current = setTimeout(() => {
+        if (unreadCache) unreadCache.at = 0;
+        void load();
+      }, 1500);
     }
 
     void load();
