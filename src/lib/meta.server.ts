@@ -437,8 +437,13 @@ export async function metaUpdateCampaignStatus(token: string, campaignId: string
   return graph(`/${encodeURIComponent(campaignId)}`, token, { method: "POST", body: JSON.stringify({ status }) });
 }
 
-/** Envia texto para um PSID (Messenger) ou IGSID (Instagram Direct) com fallback para tag HUMAN_AGENT. */
-export async function metaSendText(token: string, recipientId: string, text: string) {
+/** Envia texto para um PSID (Messenger) ou IGSID (Instagram Direct) com fallback para tag HUMAN_AGENT quando autorizado. */
+export async function metaSendText(
+  token: string,
+  recipientId: string,
+  text: string,
+  options?: { allowHumanAgentTag?: boolean },
+) {
   console.log("[meta] enviando texto para:", recipientId);
   try {
     const json = await graph("/me/messages", token, {
@@ -460,12 +465,13 @@ export async function metaSendText(token: string, recipientId: string, text: str
     const isWindowExpired =
       code === "10" ||
       subcode === "2018028" ||
+      subcode === "2018278" ||
       msg.includes("24 hour") ||
       msg.includes("window") ||
       msg.includes("outside the allowed window") ||
       msg.includes("human_agent");
 
-    if (isWindowExpired) {
+    if (isWindowExpired && options?.allowHumanAgentTag) {
       console.log("[meta] janela padrão de 24h expirada, enviando com tag oficial HUMAN_AGENT (janela de 7 dias)...");
       const json = await graph("/me/messages", token, {
         method: "POST",
@@ -483,11 +489,12 @@ export async function metaSendText(token: string, recipientId: string, text: str
   }
 }
 
-/** Envia mídia por URL pública com suporte à janela estendida HUMAN_AGENT. */
+/** Envia mídia por URL pública com suporte à janela estendida HUMAN_AGENT quando autorizada. */
 export async function metaSendMedia(
   token: string,
   recipientId: string,
   params: { mediatype: "image" | "video" | "document" | "audio"; media: string; caption?: string },
+  options?: { allowHumanAgentTag?: boolean },
 ) {
   let mediaUrl = params.media;
   if (mediaUrl.startsWith("data:")) {
@@ -533,12 +540,13 @@ export async function metaSendMedia(
     const isWindowExpired =
       code === "10" ||
       subcode === "2018028" ||
+      subcode === "2018278" ||
       msg.includes("24 hour") ||
       msg.includes("window") ||
       msg.includes("outside the allowed window") ||
       msg.includes("human_agent");
 
-    if (isWindowExpired) {
+    if (isWindowExpired && options?.allowHumanAgentTag) {
       console.log("[meta] janela padrão de 24h expirada para mídia, enviando com tag HUMAN_AGENT...");
       json = await graph("/me/messages", token, {
         method: "POST",
@@ -555,7 +563,7 @@ export async function metaSendMedia(
   }
 
   if (params.caption) {
-    try { await metaSendText(token, recipientId, params.caption); } catch { /* best-effort */ }
+    try { await metaSendText(token, recipientId, params.caption, options); } catch { /* best-effort */ }
   }
   return { key: { id: json?.message_id ?? null, remoteJid: recipientId, fromMe: true } };
 }

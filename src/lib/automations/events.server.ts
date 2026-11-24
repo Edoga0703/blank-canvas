@@ -1,3 +1,4 @@
+export { drainImmediateAutomationJobs } from "./queue.server";
 // src/lib/automations/events.server.ts
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { DomainEvent } from "./types";
@@ -137,7 +138,7 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
   ) {
     let query = (supabaseAdmin as any)
       .from("automation_executions")
-      .select("id, workflow_version_id, current_node_id, context, source_instance_id")
+      .select("id, workflow_id, workflow_version_id, current_node_id, context, source_instance_id, card_id")
       .eq("company_id", companyId)
       .eq("external_conversation_id", payload.externalConversationId)
       .eq("status", "waiting")
@@ -228,13 +229,30 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
                 });
               if (wakeErr) throw wakeErr;
               if (woke) wokeCount++;
+            } else {
+              // Si matched es válido pero no existe outEdge?.target, cerrar como succeeded y liberar control
+              await (supabaseAdmin as any)
+                .from("automation_executions")
+                .update({ status: "succeeded", finished_at: new Date().toISOString() })
+                .eq("id", exec.id);
+              try {
+                const { releaseWorkflowControl } = await import("./conversation-control.server");
+                await releaseWorkflowControl({
+                  companyId,
+                  externalConversationId: payload.externalConversationId,
+                  executionId: exec.id,
+                  instanceId: exec.source_instance_id,
+                });
+              } catch {}
+              wokeCount++;
             }
           } else {
             // Opción inválida: evaluar reintentos o fallback
             const retries = Number(exec.context?._retries?.[exec.current_node_id] || 0);
-            const maxRetries = Number(cfg.maxInvalidRetries ?? 1);
+            const maxRetries = Number(cfg.maxInvalidRetries ?? cfg.maxRetries ?? 1);
+            const invalidReplyText = cfg.invalidReplyText || cfg.repromptText || "";
 
-            if (retries < maxRetries && cfg.invalidReplyText) {
+            if (retries < maxRetries && invalidReplyText) {
               try {
                 const { resolveMessagingTarget } = await import("./registry.server");
                 const target = await resolveMessagingTarget({
@@ -248,7 +266,7 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
                   externalConversationId: payload.externalConversationId,
                 });
                 const { waSendText } = await import("@/lib/wa-dispatch.server");
-                await waSendText(target.instanceRow, target.destination, cfg.invalidReplyText);
+                await waSendText(target.instanceRow, target.destination, invalidReplyText);
               } catch (e: any) {
                 console.warn("[dispatchDomainEvent] Error enviando reprompt de menú interactivo:", e?.message);
               }
@@ -287,13 +305,15 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
                   .from("automation_executions")
                   .update({ status: "succeeded", finished_at: new Date().toISOString() })
                   .eq("id", exec.id);
-                const { releaseWorkflowControl } = await import("./conversation-control.server");
-                await releaseWorkflowControl({
-                  companyId,
-                  externalConversationId: payload.externalConversationId,
-                  executionId: exec.id,
-                  instanceId: exec.source_instance_id,
-                }).catch(() => null);
+                try {
+                  const { releaseWorkflowControl } = await import("./conversation-control.server");
+                  await releaseWorkflowControl({
+                    companyId,
+                    externalConversationId: payload.externalConversationId,
+                    executionId: exec.id,
+                    instanceId: exec.source_instance_id,
+                  });
+                } catch {}
                 wokeCount++;
               }
             }
@@ -325,14 +345,15 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
                     .update({ valor: Number(parsed.value) || 0, updated_at: new Date().toISOString() })
                     .eq("id", cardId)
                     .eq("company_id", companyId);
-                } else if (cfg.targetField === "custom" && cfg.customFieldKey) {
+                } else if (cfg.targetField === "telefone" || (cfg.targetField === "custom" && cfg.customFieldKey)) {
+                  const extraKey = cfg.targetField === "telefone" ? "telefone" : cfg.customFieldKey;
                   const { data: curCard } = await (supabaseAdmin as any)
                     .from("crm_cards")
                     .select("campos_extras")
                     .eq("id", cardId)
                     .eq("company_id", companyId)
                     .maybeSingle();
-                  const mergedExtras = { ...(curCard?.campos_extras || {}), [cfg.customFieldKey]: parsed.value };
+                  const mergedExtras = { ...(curCard?.campos_extras || {}), [extraKey]: parsed.value };
                   await (supabaseAdmin as any)
                     .from("crm_cards")
                     .update({ campos_extras: mergedExtras, updated_at: new Date().toISOString() })
@@ -363,6 +384,22 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
                 });
               if (wakeErr) throw wakeErr;
               if (woke) wokeCount++;
+            } else {
+              // Si parsed.valid es true pero no existe validEdge?.target, cerrar como succeeded y liberar control
+              await (supabaseAdmin as any)
+                .from("automation_executions")
+                .update({ status: "succeeded", finished_at: new Date().toISOString() })
+                .eq("id", exec.id);
+              try {
+                const { releaseWorkflowControl } = await import("./conversation-control.server");
+                await releaseWorkflowControl({
+                  companyId,
+                  externalConversationId: payload.externalConversationId,
+                  executionId: exec.id,
+                  instanceId: exec.source_instance_id,
+                });
+              } catch {}
+              wokeCount++;
             }
           } else {
             // Formato inválido: reintentos o rama invalid
@@ -421,13 +458,15 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
                   .from("automation_executions")
                   .update({ status: "succeeded", finished_at: new Date().toISOString() })
                   .eq("id", exec.id);
-                const { releaseWorkflowControl } = await import("./conversation-control.server");
-                await releaseWorkflowControl({
-                  companyId,
-                  externalConversationId: payload.externalConversationId,
-                  executionId: exec.id,
-                  instanceId: exec.source_instance_id,
-                }).catch(() => null);
+                try {
+                  const { releaseWorkflowControl } = await import("./conversation-control.server");
+                  await releaseWorkflowControl({
+                    companyId,
+                    externalConversationId: payload.externalConversationId,
+                    executionId: exec.id,
+                    instanceId: exec.source_instance_id,
+                  });
+                } catch {}
                 wokeCount++;
               }
             }
@@ -436,6 +475,15 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
       }
       if (wokeCount > 0) {
         triggeredCount += wokeCount;
+        if (validEventId) {
+          try {
+            await (supabaseAdmin as any)
+              .from("automation_events")
+              .update({ processing_state: "processed" })
+              .eq("id", validEventId);
+          } catch {}
+        }
+        return { triggered: triggeredCount };
       }
     }
   }
@@ -626,6 +674,22 @@ export async function dispatchDomainEvent(event: DomainEvent): Promise<{ trigger
         const tagsAfter = Array.isArray(payload.tagsAfter) ? payload.tagsAfter : [];
         const tagOk = !targetTag || tagsAfter.some((t: string) => String(t).toLowerCase() === targetTag);
         matches = Boolean(tagOk);
+      } else if (name === "webhook.inbound_received.v1" && triggerNode.type === "webhook.inbound") {
+        matches = Boolean(triggerNode.id === payload.nodeId && wf.id === payload.workflowId);
+      } else if (name === "form.submitted.v1" && triggerNode.type === "form.submitted") {
+        const cfg = (triggerNode.config || {}) as any;
+        matches = Boolean(!cfg.formId || cfg.formId === payload.formId);
+      } else if (name === "meta.lead_ad_received.v1" && triggerNode.type === "meta.lead_ad_received") {
+        const cfg = (triggerNode.config || {}) as any;
+        const formOk = !cfg.formId || cfg.formId === payload.formId;
+        const pageOk = !cfg.pageId || cfg.pageId === payload.pageId;
+        matches = Boolean(formOk && pageOk);
+      } else if (name === "appointment.created.v1" && triggerNode.type === "appointment.created") {
+        const cfg = (triggerNode.config || {}) as any;
+        matches = Boolean(!cfg.serviceFilter || cfg.serviceFilter === payload.service);
+      } else if (name === "appointment.status_changed.v1" && triggerNode.type === "appointment.status_changed") {
+        const cfg = (triggerNode.config || {}) as any;
+        matches = Boolean(!cfg.toStatus || cfg.toStatus === payload.status);
       }
 
       if (matches) {

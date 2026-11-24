@@ -88,6 +88,22 @@ export function isWithinBusinessHours(h: BusinessHours | null | undefined, now: 
   return parts.minutes >= open || parts.minutes < close;
 }
 
+export function getNextBusinessHoursOpen(h: BusinessHours, now: Date = new Date()): Date {
+  let t = new Date(now.getTime() + 60_000);
+  const maxLimit = now.getTime() + 8 * 24 * 3600 * 1000;
+  while (t.getTime() <= maxLimit) {
+    if (isWithinBusinessHours(h, t)) {
+      let exact = t;
+      while (exact.getTime() > now.getTime() && isWithinBusinessHours(h, new Date(exact.getTime() - 60_000))) {
+        exact = new Date(exact.getTime() - 60_000);
+      }
+      return exact;
+    }
+    t = new Date(t.getTime() + 15 * 60_000);
+  }
+  return new Date(now.getTime() + 24 * 3600 * 1000);
+}
+
 export const DIA_LABEL: Record<string, string> = {
   "0": "Domingo",
   "1": "Segunda",

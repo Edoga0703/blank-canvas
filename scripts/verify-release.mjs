@@ -41,6 +41,7 @@ const migrationPairs = [
   "20261115000000_telegram_audit_remediation.sql",
   "20261121100000_automation_quick_rules_and_ui_mode.sql",
   "20261122160000_automation_sprint1_core_fixes.sql",
+  "20261124100000_automation_sprint3_inbound_webhooks.sql",
 ];
 
 let migrationsOk = true;

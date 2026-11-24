@@ -59,6 +59,22 @@ export interface ValidationError {
   message: string;
 }
 
+export function isTriggerNodeType(type: string): boolean {
+  return (
+    type.startsWith("messaging.inbound") ||
+    type.startsWith("crm.card") ||
+    type === "telegram.business_message_received" ||
+    type === "telegram.channel_post_published" ||
+    type === "telegram.channel_comment_received" ||
+    type === "meta.comment_received" ||
+    type === "webhook.inbound" ||
+    type === "form.submitted" ||
+    type === "meta.lead_ad_received" ||
+    type === "appointment.created" ||
+    type === "appointment.status_changed"
+  );
+}
+
 export function validateWorkflowGraphStructure(graph: WorkflowGraph): { valid: boolean; errors: ValidationError[] } {
   const errors: ValidationError[] = [];
 
@@ -75,14 +91,7 @@ export function validateWorkflowGraphStructure(graph: WorkflowGraph): { valid: b
     inDegree.set(node.id, 0);
     adjList.set(node.id, []);
 
-    if (
-      node.type.startsWith("messaging.inbound") ||
-      node.type.startsWith("crm.card") ||
-      node.type === "telegram.business_message_received" ||
-      node.type === "telegram.channel_post_published" ||
-      node.type === "telegram.channel_comment_received" ||
-      node.type === "meta.comment_received"
-    ) {
+    if (isTriggerNodeType(node.type)) {
       triggers.push(node);
     }
   }

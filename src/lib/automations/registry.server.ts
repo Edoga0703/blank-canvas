@@ -12,6 +12,7 @@ import {
   handoffToHuman,
   handoffToAi,
 } from "./conversation-control.server";
+import { isWithinBusinessHours, getNextBusinessHoursOpen, type BusinessHours } from "@/lib/business-hours";
 
 const registry = new Map<string, AutomationNodeDefinition>();
 
@@ -66,15 +67,27 @@ export function interpolateVariables(template: string, ctx: Record<string, any>)
     ctx.card?.numero ||
     "";
 
+  const lastReplyText = ctx.lastReply?.text || ctx.last_reply?.text || "";
   const aliases: Record<string, string> = {
     lead_name: leadName,
     "lead.name": leadName,
     leadname: leadName,
     nome: leadName,
     "contact.name": leadName,
+    "contact.nome": leadName,
     "contact.phone": senderId,
+    "contact.telefone": senderId,
+    "contact.email": ctx.card?.email || "",
+    "card.titulo": leadName,
+    "card.nome": leadName,
+    "card.numero": ctx.card?.numero || senderId,
+    "card.email": ctx.card?.email || "",
+    "card.valor": ctx.card?.valor != null ? String(ctx.card.valor) : "",
     "trigger.text": ctx.trigger?.text || "",
-    author: author,
+    "trigger.sender_id": senderId,
+    "last_reply.text": lastReplyText,
+    "lastreply.text": lastReplyText,
+    author,
     autor: author,
     post_id: postId,
     postid: postId,
@@ -532,7 +545,7 @@ export function matchInteractiveOption(
  */
 export function validateAndParseCollectedInput(
   rawText: string,
-  type: "text" | "email" | "phone" | "number" | "date",
+  type: "text" | "email" | "phone" | "number" | "currency" | "date",
 ): { valid: boolean; value?: string | number } {
   const text = String(rawText || "").trim();
   if (!text) return { valid: false };
@@ -558,7 +571,7 @@ export function validateAndParseCollectedInput(
     return { valid: false };
   }
 
-  if (type === "number") {
+  if (type === "number" || type === "currency") {
     // Manejar formato "R$ 1.500,50" o "1500.50"
     const cleaned = text
       .replace(/[R$\s]/gi, "")
@@ -710,7 +723,9 @@ registerNode({
     options: z.array(InteractiveOptionSchema).min(1, "Adicione ao menos 1 opção").max(5, "Máximo 5 opções"),
     timeoutMinutes: z.number().positive().default(60),
     maxInvalidRetries: z.number().int().min(0).max(3).default(1),
+    maxRetries: z.number().int().min(0).max(5).optional(),
     invalidReplyText: z.string().optional().default("Não entendi sua resposta. Responda com o número ou texto de uma das opções acima."),
+    repromptText: z.string().optional(),
     connectionPolicy: z.enum(["same_as_trigger", "specific"]).default("same_as_trigger"),
     specificInstanceId: z.string().optional().nullable(),
   }),
@@ -774,8 +789,8 @@ registerNode({
   outputPorts: ["valid", "invalid", "timeout"],
   configSchema: z.object({
     promptText: z.string().min(1, "Escreva a pergunta a enviar"),
-    validationType: z.enum(["text", "email", "phone", "number", "date"]).default("text"),
-    targetField: z.enum(["nome", "email", "valor", "custom"]).default("custom"),
+    validationType: z.enum(["text", "email", "phone", "number", "currency", "date"]).default("text"),
+    targetField: z.enum(["nome", "email", "telefone", "valor", "custom"]).default("custom"),
     customFieldKey: z.string().optional().default(""),
     invalidMessage: z.string().optional().default("Formato inválido. Por favor, informe novamente."),
     maxRetries: z.number().int().min(0).max(5).default(2),
@@ -811,6 +826,7 @@ registerNode({
     templateName: z.string().trim().min(1, "Informe o nome do template aprovado"),
     languageCode: z.string().trim().min(2).default("pt_BR"),
     bodyParams: z.array(z.string()).default([]),
+    bodyParameters: z.array(z.string()).optional(),
     headerMediaUrl: z.string().optional().nullable(),
     connectionPolicy: z.enum(["same_as_trigger", "specific"]).default("same_as_trigger"),
     specificInstanceId: z.string().optional().nullable(),
@@ -821,7 +837,8 @@ registerNode({
       throw new Error("Templates oficiais da Meta (HSM) só podem ser enviados através de conexões de WhatsApp.");
     }
 
-    const interpolatedParams = (config.bodyParams || []).map((p: string) => interpolateVariables(p, ctx.context));
+    const rawParams = (config.bodyParams?.length ? config.bodyParams : (config as any).bodyParameters) || [];
+    const interpolatedParams = rawParams.map((p: string) => interpolateVariables(p, ctx.context));
     const components: any[] = [];
 
     if (config.headerMediaUrl) {
@@ -1882,4 +1899,1009 @@ registerNode({
   },
 });
 
+// ============================================================================
+// SPRINT 3: GHL CORE NODES (Triggers, Control/Lógica y Acciones)
+// ============================================================================
+
+// 1. Webhook Inbound Trigger
+registerNode({
+  type: "webhook.inbound",
+  version: 1,
+  category: "trigger",
+  name: "Webhook de Entrada",
+  description: "Dispara o fluxo quando uma requisição POST é recebida no endpoint seguro deste nó.",
+  icon: "Webhook",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    description: z.string().optional().default(""),
+    requireSecret: z.boolean().default(false),
+    secretHeader: z.string().default("x-webhook-secret"),
+    phoneFieldPath: z.string().default("phone"),
+    nameFieldPath: z.string().default("name"),
+    emailFieldPath: z.string().default("email"),
+  }),
+  async execute(ctx) {
+    return { kind: "next", port: "next", output: ctx.context.trigger || {} };
+  },
+});
+
+// 2. Form Submitted Trigger
+registerNode({
+  type: "form.submitted",
+  version: 1,
+  category: "trigger",
+  name: "Formulário Enviado",
+  description: "Dispara quando um lead preenche e envia um formulário público de captura.",
+  icon: "FileText",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    formId: z.string().optional().nullable(),
+  }),
+  async execute(ctx) {
+    return { kind: "next", port: "next", output: ctx.context.trigger || {} };
+  },
+});
+
+// 3. Meta Lead Ad Received Trigger
+registerNode({
+  type: "meta.lead_ad_received",
+  version: 1,
+  category: "trigger",
+  name: "Lead Ad do Facebook/Instagram",
+  description: "Dispara instantaneamente quando um lead preenche um anúncio de formulário nativo da Meta.",
+  icon: "Target",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    formId: z.string().optional().nullable(),
+    pageId: z.string().optional().nullable(),
+  }),
+  async execute(ctx) {
+    return { kind: "next", port: "next", output: ctx.context.trigger || {} };
+  },
+});
+
+// 4. Appointment Created Trigger
+registerNode({
+  type: "appointment.created",
+  version: 1,
+  category: "trigger",
+  name: "Agendamento Criado",
+  description: "Dispara quando um novo compromisso ou consulta é agendado no calendário.",
+  icon: "Calendar",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    serviceFilter: z.string().optional().nullable(),
+  }),
+  async execute(ctx) {
+    return { kind: "next", port: "next", output: ctx.context.trigger || {} };
+  },
+});
+
+// 5. Appointment Status Changed Trigger
+registerNode({
+  type: "appointment.status_changed",
+  version: 1,
+  category: "trigger",
+  name: "Status do Agendamento Alterado",
+  description: "Dispara quando o status de um agendamento muda (confirmado, cancelado, compareceu, etc).",
+  icon: "CalendarCheck",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    toStatus: z.string().optional().nullable(),
+  }),
+  async execute(ctx) {
+    return { kind: "next", port: "next", output: ctx.context.trigger || {} };
+  },
+});
+
+// 6. Router Multi-Rama (AND / OR)
+const RouterRuleSchema = z.object({
+  field: z.string().min(1),
+  operator: z.enum([
+    "contains", "not_contains", "equals", "not_equals",
+    "gt", "gte", "lt", "lte",
+    "is_empty", "is_not_empty", "has_tag", "not_has_tag",
+  ]).default("contains"),
+  value: z.string().default(""),
+});
+
+const RouterBranchSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().trim().min(1).max(60),
+  logic: z.enum(["AND", "OR"]).default("AND"),
+  rules: z.array(RouterRuleSchema).min(1),
+});
+
+registerNode({
+  type: "condition.router",
+  version: 1,
+  category: "condition",
+  name: "Roteador Multi-Ramo (AND / OR)",
+  description: "Avalia múltiplas condições combinadas (E/OU) e envia o lead para o primeiro ramo correspondente ou Senão (Else).",
+  icon: "GitFork",
+  outputPorts: ["branch_1", "branch_2", "branch_3", "branch_4", "branch_5", "else"],
+  resolveOutputPorts(config: any) {
+    const ids = Array.isArray(config?.branches) ? config.branches.map((b: any) => String(b.id)) : [];
+    return [...ids, "else"];
+  },
+  configSchema: z.object({
+    branches: z.array(RouterBranchSchema).min(1, "Adicione ao menos 1 ramo").max(5, "Máximo 5 ramos"),
+  }),
+  async execute(ctx, config) {
+    const branches = config.branches || [];
+
+    const resolveValue = (fieldPath: string): any => {
+      const parts = fieldPath.trim().split(".");
+      let cur: any = ctx.context;
+      for (const p of parts) {
+        if (cur == null) return undefined;
+        cur = cur[p];
+      }
+      return cur;
+    };
+
+    const evalRule = (rule: z.infer<typeof RouterRuleSchema>): boolean => {
+      const actualRaw = resolveValue(rule.field);
+      const targetVal = rule.value.trim().toLowerCase();
+
+      if (rule.operator === "has_tag" || rule.operator === "not_has_tag") {
+        const tags = Array.isArray(ctx.context.card?.tags)
+          ? ctx.context.card.tags.map((t: any) => String(t).trim().toLowerCase())
+          : [];
+        const has = tags.includes(targetVal);
+        return rule.operator === "has_tag" ? has : !has;
+      }
+
+      if (rule.operator === "is_empty") {
+        return actualRaw == null || String(actualRaw).trim() === "";
+      }
+      if (rule.operator === "is_not_empty") {
+        return actualRaw != null && String(actualRaw).trim() !== "";
+      }
+
+      if (["gt", "gte", "lt", "lte"].includes(rule.operator)) {
+        const numActual = Number(String(actualRaw ?? "").replace(/[R$\s]/gi, "").replace(",", "."));
+        const numTarget = Number(rule.value.replace(/[R$\s]/gi, "").replace(",", "."));
+        if (!Number.isFinite(numActual) || !Number.isFinite(numTarget)) return false;
+        if (rule.operator === "gt") return numActual > numTarget;
+        if (rule.operator === "gte") return numActual >= numTarget;
+        if (rule.operator === "lt") return numActual < numTarget;
+        if (rule.operator === "lte") return numActual <= numTarget;
+      }
+
+      const strActual = String(actualRaw ?? "").toLowerCase();
+      if (rule.operator === "contains") return strActual.includes(targetVal);
+      if (rule.operator === "not_contains") return !strActual.includes(targetVal);
+      if (rule.operator === "equals") return strActual.trim() === targetVal;
+      if (rule.operator === "not_equals") return strActual.trim() !== targetVal;
+
+      return false;
+    };
+
+    for (const branch of branches) {
+      const pass =
+        branch.logic === "OR"
+          ? branch.rules.some(evalRule)
+          : branch.rules.every(evalRule);
+      if (pass) {
+        return {
+          kind: "next",
+          port: branch.id,
+          output: { matchedBranch: branch.id, label: branch.label },
+        };
+      }
+    }
+
+    return {
+      kind: "next",
+      port: "else",
+      output: { matchedBranch: "else", label: "Senão (Else)" },
+    };
+  },
+});
+
+// 7. Horário Comercial
+registerNode({
+  type: "control.business_hours",
+  version: 1,
+  category: "control",
+  name: "Horário Comercial",
+  description: "Verifica se está dentro do horário de atendimento para bifurcar o fluxo ou pausar até a próxima abertura.",
+  icon: "Clock",
+  outputPorts: ["open", "closed", "next"],
+  resolveOutputPorts(config: any) {
+    return config?.mode === "wait_until_open" ? ["next"] : ["open", "closed"];
+  },
+  configSchema: z.object({
+    mode: z.enum(["branch", "wait_until_open"]).default("branch"),
+    useCompanyHours: z.boolean().default(true),
+    timezone: z.string().default("America/Sao_Paulo"),
+    days: z.array(z.number().int().min(0).max(6)).default([1, 2, 3, 4, 5]),
+    startHour: z.string().regex(/^\d{2}:\d{2}$/).default("09:00"),
+    endHour: z.string().regex(/^\d{2}:\d{2}$/).default("18:00"),
+  }),
+  async execute(ctx, config) {
+    let bizHours: BusinessHours | null = null;
+
+    if (config.useCompanyHours) {
+      try {
+        const { data: agentRow } = await (supabaseAdmin as any)
+          .from("agent_config")
+          .select("horarios_atendimento")
+          .eq("company_id", ctx.companyId)
+          .order("is_default", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (agentRow?.horarios_atendimento?.enabled) {
+          bizHours = agentRow.horarios_atendimento;
+        }
+      } catch (err) {
+        console.warn("[control.business_hours] Error al consultar agent_config:", err);
+      }
+    }
+
+    if (!bizHours) {
+      const dias: Record<string, any> = { "0": null, "1": null, "2": null, "3": null, "4": null, "5": null, "6": null };
+      for (const d of config.days) {
+        dias[String(d)] = { abre: config.startHour, fecha: config.endHour };
+      }
+      bizHours = { enabled: true, timezone: config.timezone, dias };
+    }
+
+    const isOpen = isWithinBusinessHours(bizHours);
+
+    if (config.mode === "branch") {
+      return {
+        kind: "next",
+        port: isOpen ? "open" : "closed",
+        output: { isOpen },
+      };
+    }
+
+    // mode === "wait_until_open"
+    if (isOpen) {
+      return {
+        kind: "next",
+        port: "next",
+        output: { waited: false, isOpen: true },
+      };
+    }
+
+    const nextOpen = getNextBusinessHoursOpen(bizHours);
+    return {
+      kind: "wait",
+      resumeAt: nextOpen.toISOString(),
+      waitKey: `biz_hours_${ctx.nodeId}`,
+      output: { waited: true, resumeAt: nextOpen.toISOString() },
+    };
+  },
+});
+
+// 8. Teste A/B (Split)
+registerNode({
+  type: "control.split_ab",
+  version: 1,
+  category: "condition",
+  name: "Teste A/B (Split)",
+  description: "Divide os leads aleatoriamente entre variantes para testar scripts e ofertas.",
+  icon: "Shuffle",
+  outputPorts: ["variant_a", "variant_b", "variant_c"],
+  resolveOutputPorts(config: any) {
+    return Array.isArray(config?.variants) ? config.variants.map((v: any) => String(v.id)) : ["variant_a", "variant_b"];
+  },
+  configSchema: z.object({
+    variants: z.array(z.object({
+      id: z.string().min(1),
+      label: z.string().min(1),
+      weight: z.number().int().min(1).max(100),
+    })).min(2).max(3).default([
+      { id: "variant_a", label: "Variante A", weight: 50 },
+      { id: "variant_b", label: "Variante B", weight: 50 },
+    ]),
+  }),
+  async execute(ctx, config) {
+    const roll = Math.random() * 100;
+    let acc = 0;
+    let chosen = config.variants[config.variants.length - 1];
+    for (const v of config.variants) {
+      acc += v.weight;
+      if (roll <= acc) { chosen = v; break; }
+    }
+    return { kind: "next", port: chosen.id, output: { chosenVariant: chosen.id, label: chosen.label } };
+  },
+});
+
+// 9. Atualizar Campo do Lead
+registerNode({
+  type: "crm.update_field",
+  version: 1,
+  category: "action",
+  name: "Atualizar Campo do Lead",
+  description: "Atualiza dados do contato ou card no CRM (nome, e-mail, valor ou campos personalizados).",
+  icon: "Edit",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    field: z.enum(["nome", "email", "valor", "origem", "custom"]).default("custom"),
+    customKey: z.string().optional().default(""),
+    value: z.string().default(""),
+  }),
+  async execute(ctx, config) {
+    const val = interpolateVariables(config.value, ctx.context);
+    const cardId = resolveValidCardId(ctx);
+
+    if (cardId) {
+      const updates: Record<string, any> = { updated_at: new Date().toISOString() };
+      if (!ctx.context.card) ctx.context.card = {};
+
+      if (config.field === "nome") {
+        updates.nome = val;
+        ctx.context.card.nome = val;
+      } else if (config.field === "email") {
+        updates.email = val;
+        ctx.context.card.email = val;
+      } else if (config.field === "valor") {
+        const cleaned = val.replace(/[R$\s]/gi, "").replace(",", ".");
+        const num = Number(cleaned);
+        if (Number.isFinite(num)) {
+          updates.valor = num;
+          ctx.context.card.valor = num;
+        }
+      } else if (config.field === "origem") {
+        updates.origem = val;
+        ctx.context.card.origem = val;
+      } else if (config.field === "custom") {
+        const key = (config.customKey || "custom").trim();
+        const curExtras = (ctx.context.card.campos_extras && typeof ctx.context.card.campos_extras === "object")
+          ? { ...ctx.context.card.campos_extras }
+          : {};
+        curExtras[key] = val;
+        updates.campos_extras = curExtras;
+        ctx.context.card.campos_extras = curExtras;
+      }
+
+      try {
+        await (supabaseAdmin as any)
+          .from("crm_cards")
+          .update(updates)
+          .eq("id", cardId)
+          .eq("company_id", ctx.companyId);
+      } catch (err) {
+        console.warn("[crm.update_field] Erro ao atualizar card:", err);
+      }
+    }
+
+    return {
+      kind: "next",
+      port: "next",
+      output: { field: config.field, value: val, cardId },
+    };
+  },
+});
+
+// 10. Distribuir Lead (Round Robin)
+registerNode({
+  type: "crm.round_robin_assign",
+  version: 1,
+  category: "action",
+  name: "Distribuir Lead (Round Robin)",
+  description: "Atribui o lead automaticamente a um atendente ou departamento via fila de distribuição.",
+  icon: "UserCheck",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    departmentId: z.string().optional().nullable(),
+    stageId: z.string().optional().nullable(),
+    onlyIfUnassigned: z.boolean().default(true),
+  }),
+  async execute(ctx, config) {
+    const cardId = resolveValidCardId(ctx);
+    if (!cardId) {
+      return { kind: "next", port: "next", output: { skipped: true, reason: "no_card" } };
+    }
+
+    if (config.onlyIfUnassigned && ctx.context.card?.owner_id) {
+      return {
+        kind: "next",
+        port: "next",
+        output: { skipped: true, reason: "already_assigned", ownerId: ctx.context.card.owner_id },
+      };
+    }
+
+    let targetOwnerId: string | null = null;
+
+    if (config.departmentId) {
+      try {
+        const { data: deptMembers } = await (supabaseAdmin as any)
+          .from("department_member")
+          .select("user_id")
+          .eq("department_id", config.departmentId);
+
+        const memberIds = (deptMembers || []).map((m: any) => m.user_id);
+        if (memberIds.length > 0) {
+          const { data: activeUsers } = await (supabaseAdmin as any)
+            .from("company_user")
+            .select("user_id")
+            .eq("company_id", ctx.companyId)
+            .eq("ativo", true)
+            .in("user_id", memberIds);
+
+          const activeIds = (activeUsers || []).map((u: any) => u.user_id);
+          if (activeIds.length > 0) {
+            targetOwnerId = activeIds[Math.floor(Math.random() * activeIds.length)];
+          }
+        }
+      } catch (deptErr) {
+        console.warn("[crm.round_robin_assign] Erro ao consultar departamento:", deptErr);
+      }
+    }
+
+    if (!targetOwnerId) {
+      try {
+        const { pickLeadOwner } = await import("@/lib/crm-engine.server");
+        targetOwnerId = await pickLeadOwner(
+          supabaseAdmin,
+          ctx.companyId,
+          config.stageId || ctx.context.card?.stage_id || undefined
+        );
+      } catch (err) {
+        console.warn("[crm.round_robin_assign] Erro em pickLeadOwner:", err);
+      }
+    }
+
+    if (targetOwnerId) {
+      const updates: Record<string, any> = {
+        owner_id: targetOwnerId,
+        updated_at: new Date().toISOString(),
+      };
+      if (config.departmentId) {
+        updates.department_id = config.departmentId;
+      }
+
+      try {
+        await (supabaseAdmin as any)
+          .from("crm_cards")
+          .update(updates)
+          .eq("id", cardId)
+          .eq("company_id", ctx.companyId);
+
+        if (!ctx.context.card) ctx.context.card = {};
+        ctx.context.card.owner_id = targetOwnerId;
+
+        await (supabaseAdmin as any).from("lead_evento").insert({
+          card_id: cardId,
+          company_id: ctx.companyId,
+          tipo: "atribuicao_automacao",
+          descricao: "Lead atribuído via automação (Round Robin)",
+          created_at: new Date().toISOString(),
+        });
+      } catch (upErr) {
+        console.warn("[crm.round_robin_assign] Erro ao persistir dono do lead:", upErr);
+      }
+    }
+
+    return {
+      kind: "next",
+      port: "next",
+      output: { assigned: Boolean(targetOwnerId), ownerId: targetOwnerId },
+    };
+  },
+});
+
+// 11. Notificação Interna
+registerNode({
+  type: "internal.notify",
+  version: 1,
+  category: "action",
+  name: "Notificação Interna",
+  description: "Registra uma nota interna no card, gera alerta no sininho do CRM e opcionalmente notifica via WhatsApp.",
+  icon: "Bell",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    addLeadNote: z.boolean().default(true),
+    pushBellNotification: z.boolean().default(true),
+    title: z.string().default("Alerta de Automação"),
+    message: z.string().min(1, "Escreva o conteúdo da notificação"),
+    whatsappNotifyPhone: z.string().optional().default(""),
+  }),
+  async execute(ctx, config) {
+    const title = interpolateVariables(config.title, ctx.context);
+    const message = interpolateVariables(config.message, ctx.context);
+    const cardId = resolveValidCardId(ctx);
+
+    if (config.addLeadNote && cardId) {
+      try {
+        await (supabaseAdmin as any).from("lead_evento").insert({
+          card_id: cardId,
+          company_id: ctx.companyId,
+          tipo: "nota_automacao",
+          descricao: message,
+          created_at: new Date().toISOString(),
+        });
+      } catch (noteErr) {
+        console.warn("[internal.notify] Erro ao criar nota de lead:", noteErr);
+      }
+    }
+
+    if (config.pushBellNotification) {
+      try {
+        await (supabaseAdmin as any).rpc("push_notificacao", {
+          _company_id: ctx.companyId,
+          _tipo: "automacao_alerta",
+          _titulo: title,
+          _descricao: message,
+          _link: "/app/conversas",
+          _ref_id: `auto_notify:${ctx.executionId}:${ctx.nodeId}`,
+        });
+      } catch (bellErr) {
+        try {
+          await (supabaseAdmin as any).from("notificacoes").insert({
+            company_id: ctx.companyId,
+            tipo: "automacao_alerta",
+            titulo: title,
+            mensagem: message,
+            link: "/app/conversas",
+            lida: false,
+            created_at: new Date().toISOString(),
+          });
+        } catch {}
+      }
+    }
+
+    if (config.whatsappNotifyPhone) {
+      const cleanPhone = config.whatsappNotifyPhone.replace(/\D/g, "");
+      if (cleanPhone.length >= 8) {
+        try {
+          const { getActiveInstance, waSendText } = await import("@/lib/wa-dispatch.server");
+          const inst = await getActiveInstance(ctx.companyId);
+          if (inst) {
+            await waSendText(inst, cleanPhone, `🔔 *${title}*\n\n${message}`);
+          }
+        } catch (waErr) {
+          console.warn("[internal.notify] Falha no envio WhatsApp:", waErr);
+        }
+      }
+    }
+
+    return {
+      kind: "next",
+      port: "next",
+      output: { notified: true, title, message },
+    };
+  },
+});
+
+// 12. Webhook HTTP Saliente
+registerNode({
+  type: "http.webhook",
+  version: 1,
+  category: "action",
+  name: "Webhook HTTP (Saída)",
+  description: "Dispara uma requisição HTTP/HTTPS para um serviço externo seguro com proteção anti-SSRF.",
+  icon: "Globe",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    url: z.string().url("Informe uma URL HTTPS válida"),
+    method: z.enum(["POST", "PUT", "PATCH", "GET"]).default("POST"),
+    headers: z.array(z.object({ key: z.string(), value: z.string() })).default([]),
+    bodyTemplate: z.string().optional().default('{"lead_name":"{{lead_name}}","phone":"{{card.numero}}","email":"{{card.email}}","text":"{{trigger.text}}"}'),
+    timeoutMs: z.number().int().min(1000).max(5000).default(4500),
+    continueOnError: z.boolean().default(false),
+  }),
+  async execute(ctx, config) {
+    const interpolatedUrl = interpolateVariables(config.url, ctx.context);
+    const { assertSafeWebhookUrl, redactHeadersForLog } = await import("./http-security.server");
+    const safeUrl = assertSafeWebhookUrl(interpolatedUrl);
+
+    const headersObj: Record<string, string> = { "Content-Type": "application/json" };
+    for (const h of config.headers || []) {
+      if (h.key?.trim()) {
+        headersObj[h.key.trim()] = interpolateVariables(h.value || "", ctx.context);
+      }
+    }
+
+    let bodyData: any = undefined;
+    if (config.method !== "GET") {
+      const rawBody = interpolateVariables(config.bodyTemplate || "{}", ctx.context);
+      bodyData = rawBody;
+    }
+
+    let res: Response;
+    try {
+      res = await fetch(safeUrl.toString(), {
+        method: config.method,
+        headers: headersObj,
+        body: bodyData,
+        signal: AbortSignal.timeout(config.timeoutMs || 4500),
+      });
+    } catch (fetchErr: any) {
+      if (!config.continueOnError) {
+        throw new Error(`Erro na chamada do webhook HTTP: ${fetchErr?.message || fetchErr}`);
+      }
+      return {
+        kind: "next",
+        port: "next",
+        output: {
+          ok: false,
+          error: fetchErr?.message,
+          headersSent: redactHeadersForLog(headersObj),
+        },
+      };
+    }
+
+    let parsedBody: any = null;
+    const textSlice = await res.text().catch(() => "");
+    try {
+      parsedBody = JSON.parse(textSlice);
+    } catch {
+      parsedBody = textSlice.slice(0, 1000);
+    }
+
+    if (!res.ok && !config.continueOnError) {
+      throw new Error(`Webhook HTTP retornou status ${res.status}: ${textSlice.slice(0, 200)}`);
+    }
+
+    return {
+      kind: "next",
+      port: "next",
+      output: {
+        status: res.status,
+        ok: res.ok,
+        response: parsedBody,
+        headersSent: redactHeadersForLog(headersObj),
+      },
+    };
+  },
+});
+
+// ==========================================
+// SPRINT 4: NODOS INTELIGENTES E CAPI
+// ==========================================
+
+const AiIntentBranchSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().trim().min(1).max(40),
+  description: z.string().trim().min(1).max(200),
+});
+
+registerNode({
+  type: "ai.classify_and_route",
+  version: 1,
+  category: "condition",
+  name: "IA: Classificar Intenção e Rotear",
+  description: "Analisa a mensagem ou histórico com IA e direciona o fluxo para o ramo da intenção detectada.",
+  icon: "Sparkles",
+  outputPorts: ["intent_1", "intent_2", "intent_3", "intent_4", "intent_5", "fallback"],
+  resolveOutputPorts(config: any) {
+    const ids = Array.isArray(config?.intents) ? config.intents.map((i: any) => String(i.id)) : [];
+    return [...ids, "fallback"];
+  },
+  configSchema: z.object({
+    sourceText: z.string().default("{{trigger.text}}"),
+    includeRecentHistory: z.boolean().default(true),
+    intents: z.array(AiIntentBranchSchema).min(1, "Adicione ao menos 1 intenção").max(5, "Máximo 5 intenções"),
+    minConfidence: z.number().min(0.1).max(1).default(0.6),
+  }),
+  async execute(ctx, config) {
+    const rawSource = config.sourceText || "{{trigger.text}}";
+    const evaluatedText = interpolateVariables(rawSource, ctx.context);
+
+    let historyText = "";
+    if (config.includeRecentHistory) {
+      const targetPhone = ctx.externalConversationId || ctx.context?.trigger?.senderId || ctx.context?.card?.numero;
+      if (targetPhone) {
+        try {
+          const { data: recentMsgs } = await (supabaseAdmin as any)
+            .from("mensagens")
+            .select("direcao, autor, texto, created_at")
+            .eq("company_id", ctx.companyId)
+            .eq("numero", targetPhone)
+            .order("created_at", { ascending: false })
+            .limit(6);
+          if (recentMsgs && recentMsgs.length > 0) {
+            const chronological = [...recentMsgs].reverse();
+            historyText = chronological
+              .map((m: any) => `${m.direcao === "entrada" ? "Cliente" : "Atendente"}: ${m.texto || ""}`)
+              .filter(Boolean)
+              .join("\n");
+          }
+        } catch (e: any) {
+          console.warn("[ai.classify_and_route] Aviso lendo histórico de mensagens:", e?.message);
+        }
+      }
+    }
+
+    const combinedText = historyText
+      ? `Histórico recente da conversa:\n${historyText}\n\nMensagem atual do cliente:\n${evaluatedText}`
+      : evaluatedText;
+
+    const intentsList = (config.intents || [])
+      .map((i: any) => `- ID: "${i.id}" | Rótulo: "${i.label}" | Descrição: ${i.description}`)
+      .join("\n");
+
+    try {
+      const { lovableAiChat } = await import("@/lib/lovable-ai.server");
+      const rawAiResponse = await lovableAiChat(
+        [
+          {
+            role: "system",
+            content: `Você é um classificador estrito de intenções de clientes para automações de CRM.
+Classifique a mensagem do cliente escolhendo uma das seguintes intenções disponíveis:
+${intentsList}
+- ID: "fallback" | Rótulo: "Outro / Desconhecido" | Descrição: Quando a mensagem não se enquadrar claramente em nenhuma das opções acima.
+
+Responda ESTRITAMENTE em formato JSON com o seguinte formato:
+{
+  "intentId": "<id da intenção correspondente ou 'fallback'>",
+  "confidence": <número decimal entre 0.0 e 1.0>,
+  "reason": "<breve explicação em até 10 palavras>"
+}`,
+          },
+          {
+            role: "user",
+            content: combinedText || "Olá",
+          },
+        ],
+        {
+          temperature: 0.15,
+          jsonMode: true,
+          maxTokens: 300,
+        }
+      );
+
+      let parsed: any = null;
+      try {
+        const cleanJson = rawAiResponse.replace(/```json\s*|\s*```/gi, "").trim();
+        parsed = JSON.parse(cleanJson);
+      } catch {
+        parsed = null;
+      }
+
+      const detectedId = parsed?.intentId ? String(parsed.intentId).trim() : "fallback";
+      const confidence = typeof parsed?.confidence === "number" ? parsed.confidence : 0.8;
+      const reason = parsed?.reason || "Classificação automática por IA";
+
+      const matchedIntent = config.intents.find((i: any) => i.id === detectedId);
+      if (matchedIntent && confidence >= config.minConfidence) {
+        return {
+          kind: "next",
+          port: matchedIntent.id,
+          output: {
+            intentId: matchedIntent.id,
+            label: matchedIntent.label,
+            confidence,
+            reason,
+          },
+        };
+      }
+
+      return {
+        kind: "next",
+        port: "fallback",
+        output: {
+          intentId: "fallback",
+          confidence,
+          reason: confidence < config.minConfidence ? `Confiança ${confidence} abaixo do mínimo requerido (${config.minConfidence})` : reason,
+        },
+      };
+    } catch (err: any) {
+      console.warn("[ai.classify_and_route] Erro na inferência do classificador:", err?.message);
+      return {
+        kind: "next",
+        port: "fallback",
+        output: {
+          intentId: "fallback",
+          confidence: 0,
+          reason: err?.message || "Falha na chamada ao provedor de IA",
+        },
+      };
+    }
+  },
+});
+
+const AiExtractFieldDefSchema = z.object({
+  key: z.string().trim().min(1),
+  target: z.enum(["nome", "email", "valor", "custom"]).default("custom"),
+  description: z.string().trim().min(1).max(160),
+});
+
+registerNode({
+  type: "ai.extract_fields",
+  version: 1,
+  category: "action",
+  name: "IA: Extrair Dados para o CRM",
+  description: "Extrai informações estruturadas da conversa com IA e salva automaticamente no cartão do lead.",
+  icon: "BrainCircuit",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    sourceText: z.string().default("{{trigger.text}}"),
+    includeRecentHistory: z.boolean().default(true),
+    fields: z.array(AiExtractFieldDefSchema).min(1, "Adicione ao menos 1 campo").max(8),
+  }),
+  async execute(ctx, config) {
+    const rawSource = config.sourceText || "{{trigger.text}}";
+    const evaluatedText = interpolateVariables(rawSource, ctx.context);
+
+    let historyText = "";
+    if (config.includeRecentHistory) {
+      const targetPhone = ctx.externalConversationId || ctx.context?.trigger?.senderId || ctx.context?.card?.numero;
+      if (targetPhone) {
+        try {
+          const { data: recentMsgs } = await (supabaseAdmin as any)
+            .from("mensagens")
+            .select("direcao, autor, texto, created_at")
+            .eq("company_id", ctx.companyId)
+            .eq("numero", targetPhone)
+            .order("created_at", { ascending: false })
+            .limit(6);
+          if (recentMsgs && recentMsgs.length > 0) {
+            const chronological = [...recentMsgs].reverse();
+            historyText = chronological
+              .map((m: any) => `${m.direcao === "entrada" ? "Cliente" : "Atendente"}: ${m.texto || ""}`)
+              .filter(Boolean)
+              .join("\n");
+          }
+        } catch (e: any) {
+          console.warn("[ai.extract_fields] Aviso lendo histórico de mensagens:", e?.message);
+        }
+      }
+    }
+
+    const combinedText = historyText
+      ? `Histórico recente da conversa:\n${historyText}\n\nMensagem atual:\n${evaluatedText}`
+      : evaluatedText;
+
+    const fieldsSpec = config.fields
+      .map((f: any) => `- "${f.key}" (${f.target}): ${f.description}`)
+      .join("\n");
+
+    let extracted: Record<string, any> = {};
+
+    try {
+      const { lovableAiChat } = await import("@/lib/lovable-ai.server");
+      const rawAiResponse = await lovableAiChat(
+        [
+          {
+            role: "system",
+            content: `Você é um extrator de dados estruturados a partir de conversas com clientes.
+Analise a conversa e extraia os campos solicitados abaixo.
+Campos a extrair:
+${fieldsSpec}
+
+Responda ESTRITAMENTE em formato JSON com um objeto onde cada chave seja o nome exato do campo solicitado. Se um campo não foi mencionado ou for desconhecido, retorne null para ele.
+Exemplo: { "nome": "Maria Silva", "email": "maria@gmail.com", "orcamento": 5000 }`,
+          },
+          {
+            role: "user",
+            content: combinedText || "Sem conteúdo",
+          },
+        ],
+        {
+          temperature: 0.1,
+          jsonMode: true,
+          maxTokens: 500,
+        }
+      );
+
+      try {
+        const cleanJson = rawAiResponse.replace(/```json\s*|\s*```/gi, "").trim();
+        extracted = JSON.parse(cleanJson);
+      } catch {
+        extracted = {};
+      }
+    } catch (err: any) {
+      console.warn("[ai.extract_fields] Erro chamando LLM para extração:", err?.message);
+    }
+
+    // Persistir campos no cartão do CRM
+    const cardId = resolveValidCardId(ctx);
+    if (cardId && extracted && typeof extracted === "object" && Object.keys(extracted).length > 0) {
+      try {
+        const { data: currentCard } = await (supabaseAdmin as any)
+          .from("crm_cards")
+          .select("id, nome, email, valor, campos_extras")
+          .eq("id", cardId)
+          .eq("company_id", ctx.companyId)
+          .maybeSingle();
+
+        if (currentCard) {
+          const updatePayload: Record<string, any> = {};
+          const currentExtras = (currentCard.campos_extras as Record<string, any>) || {};
+          let extrasModified = false;
+
+          for (const f of config.fields) {
+            const val = extracted[f.key];
+            if (val === null || val === undefined || val === "") continue;
+
+            if (f.target === "nome" && typeof val === "string") {
+              updatePayload.nome = val.trim();
+            } else if (f.target === "email" && typeof val === "string") {
+              updatePayload.email = val.trim();
+            } else if (f.target === "valor") {
+              const num = Number(String(val).replace(/[^\d.,-]/g, "").replace(",", "."));
+              if (Number.isFinite(num)) updatePayload.valor = num;
+            } else {
+              currentExtras[f.key] = val;
+              extrasModified = true;
+            }
+          }
+
+          if (extrasModified) {
+            updatePayload.campos_extras = currentExtras;
+          }
+
+          if (Object.keys(updatePayload).length > 0) {
+            await (supabaseAdmin as any)
+              .from("crm_cards")
+              .update(updatePayload)
+              .eq("id", cardId)
+              .eq("company_id", ctx.companyId);
+
+            // Refletir no contexto
+            if (!ctx.context.card) ctx.context.card = {};
+            Object.assign(ctx.context.card, updatePayload);
+            if (updatePayload.nome) {
+              ctx.context.card.nome = updatePayload.nome;
+              (ctx.context as any).lead_name = updatePayload.nome;
+            }
+          }
+        }
+      } catch (e: any) {
+        console.warn("[ai.extract_fields] Erro persistindo campos extraídos em crm_cards:", e?.message);
+      }
+    }
+
+    if (!ctx.context.extracted) ctx.context.extracted = {};
+    Object.assign(ctx.context.extracted, extracted);
+
+    return {
+      kind: "next",
+      port: "next",
+      output: { extracted },
+    };
+  },
+});
+
+registerNode({
+  type: "meta.capi_event",
+  version: 1,
+  category: "action",
+  name: "Meta CAPI: Enviar Conversão",
+  description: "Envia evento oficial de conversão (Lead, QualifiedLead, Schedule, Purchase) para o Pixel/Dataset da Meta.",
+  icon: "TrendingUp",
+  outputPorts: ["next"],
+  configSchema: z.object({
+    eventName: z
+      .enum(["Lead", "QualifiedLead", "Schedule", "Purchase", "InitiateCheckout", "CompleteRegistration"])
+      .default("QualifiedLead"),
+    valueTemplate: z.string().optional().default("{{card.valor}}"),
+    currency: z.string().default("BRL"),
+  }),
+  async execute(ctx, config) {
+    const cardId = resolveValidCardId(ctx);
+    if (!cardId) {
+      return { kind: "next", port: "next", output: { skipped: true, reason: "no_card_id" } };
+    }
+    const rawVal = config.valueTemplate ? interpolateVariables(config.valueTemplate, ctx.context) : "";
+    const parsedVal = Number(String(rawVal).replace(/[^\d.,-]/g, "").replace(",", "."));
+    const value = Number.isFinite(parsedVal) && parsedVal > 0 ? parsedVal : undefined;
+
+    const { sendMetaConversionForLead } = await import("@/lib/meta-capi.server");
+    const res = await sendMetaConversionForLead({
+      companyId: ctx.companyId,
+      cardId,
+      eventName: config.eventName,
+      dedupKey: `auto_${ctx.executionId}_${ctx.nodeId}_${config.eventName}`,
+      ...(value !== undefined ? { value, currency: config.currency || "BRL" } : {}),
+    } as any);
+
+    return {
+      kind: "next",
+      port: "next",
+      output: {
+        eventName: config.eventName,
+        result: res ?? { ok: true },
+      },
+    };
+  },
+});
 

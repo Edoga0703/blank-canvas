@@ -34,6 +34,12 @@ async function assertCanManageTeam(supabase: any, memberInfo: { companyId: strin
   throw new Error("Apenas administradores, supervisores ou usuários com permissão de gerenciamento podem gerenciar sub-agentes e atendentes.");
 }
 
+function assertAdmin(role: string) {
+  if (role !== "owner" && role !== "admin") {
+    throw new Error("Apenas administradores podem executar esta ação.");
+  }
+}
+
 export const listTeam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -315,7 +321,7 @@ export const inviteMember = createServerFn({ method: "POST" })
       .from("company_user")
       .upsert(
         {
-          company_id: companyId, user_id: targetUserId, role: data.role,
+          company_id: companyId, user_id: targetUserId, role: data.role as any,
           ativo: true, forcar_troca_senha: false,
           max_chats: data.max_chats, custom_role_id: data.custom_role_id,
         },
@@ -354,7 +360,7 @@ export const setMemberRole = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { role } = await getOwnedCompanyId(supabase, userId);
     if (role !== "owner" && role !== "admin") throw new Error("Apenas administradores podem alterar papéis.");
-    const { error } = await supabase.from("company_user").update({ role: data.role }).eq("id", data.memberId);
+    const { error } = await supabase.from("company_user").update({ role: data.role as any }).eq("id", data.memberId);
     if (error) throw error;
     return { ok: true };
   });

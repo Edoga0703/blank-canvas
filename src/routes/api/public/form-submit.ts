@@ -113,6 +113,35 @@ export const Route = createFileRoute("/api/public/form-submit")({
             ip_hash: ip.slice(0, 24),
           });
 
+          // Disparar automação de formulário de forma não bloqueante
+          try {
+            const { dispatchDomainEvent, drainImmediateAutomationJobs } = await import(
+              "@/lib/automations/events.server"
+            );
+            await dispatchDomainEvent({
+              name: "form.submitted.v1",
+              companyId: form.company_id,
+              entity: { type: "lead_form", id: form.id },
+              source: "form_submit",
+              payload: {
+                formId: form.id,
+                formSlug: form.slug,
+                cardId: result.cardId,
+                phone: result.numero || numeroRaw,
+                name,
+                email,
+                answers: clean,
+              },
+            });
+            await drainImmediateAutomationJobs({
+              workerId: "hot_form",
+              maxJobs: 8,
+              maxTimeMs: 3000,
+            });
+          } catch (autoErr) {
+            console.warn("[form-submit.automation]", autoErr);
+          }
+
           await (supabaseAdmin as any)
             .from("lead_form")
             .update({ submits: (form.submits ?? 0) + 1 })

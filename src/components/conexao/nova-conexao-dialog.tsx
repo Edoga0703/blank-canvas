@@ -34,6 +34,7 @@ type Props = {
     phoneNumberId?: string;
     accessToken?: string;
     phoneNumber?: string;
+    coexistence?: boolean;
   }) => Promise<void>;
   creating: boolean;
   initialProvider?: ProviderKey | null;
@@ -150,6 +151,7 @@ export function NovaConexaoDialog({
         accessToken: result.accessToken,
         wabaId: result.wabaId,
         phoneNumberId: result.phoneNumberId,
+        coexistence: signupMode === "coexistence",
       });
 
       close();

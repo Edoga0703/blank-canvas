@@ -130,6 +130,7 @@ import { Route as ApiPublicV1SplatRouteImport } from './routes/api/public/v1/$'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
+import { Route as ApiPublicAutomationsWebhookTokenRouteImport } from './routes/api/public/automations/webhook/$token'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -763,6 +764,12 @@ const LovableEmailQueueProcessRoute =
     path: '/lovable/email/queue/process',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicAutomationsWebhookTokenRoute =
+  ApiPublicAutomationsWebhookTokenRouteImport.update({
+    id: '/api/public/automations/webhook/$token',
+    path: '/api/public/automations/webhook/$token',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -886,6 +893,7 @@ export interface FileRoutesByFullPath {
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/api/public/automations/webhook/$token': typeof ApiPublicAutomationsWebhookTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -1006,6 +1014,7 @@ export interface FileRoutesByTo {
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/api/public/automations/webhook/$token': typeof ApiPublicAutomationsWebhookTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -1130,6 +1139,7 @@ export interface FileRoutesById {
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/api/public/automations/webhook/$token': typeof ApiPublicAutomationsWebhookTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -1255,6 +1265,7 @@ export interface FileRouteTypes {
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
+    | '/api/public/automations/webhook/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1375,6 +1386,7 @@ export interface FileRouteTypes {
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
+    | '/api/public/automations/webhook/$token'
   id:
     | '__root__'
     | '/'
@@ -1498,6 +1510,7 @@ export interface FileRouteTypes {
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
+    | '/api/public/automations/webhook/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1567,6 +1580,7 @@ export interface RootRouteChildren {
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
+  ApiPublicAutomationsWebhookTokenRoute: typeof ApiPublicAutomationsWebhookTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -2418,6 +2432,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/automations/webhook/$token': {
+      id: '/api/public/automations/webhook/$token'
+      path: '/api/public/automations/webhook/$token'
+      fullPath: '/api/public/automations/webhook/$token'
+      preLoaderRoute: typeof ApiPublicAutomationsWebhookTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -2644,6 +2665,7 @@ const rootRouteChildren: RootRouteChildren = {
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
+  ApiPublicAutomationsWebhookTokenRoute: ApiPublicAutomationsWebhookTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

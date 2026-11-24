@@ -200,6 +200,7 @@ export async function checkSynchronousWorkflowMatch(
           n.type === "messaging.route_to_human" ||
           n.type === "messaging.wait_for_reply" ||
           n.type === "messaging.send_template" ||
+          n.type === "ai.classify_and_route" ||
           n.type === "meta.send_private_reply"
       );
 

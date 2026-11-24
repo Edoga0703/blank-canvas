@@ -30,6 +30,11 @@ import {
   getAvailableChannelsAndConnectionsFn,
   listMetaPostsForInstanceFn,
   uploadAutomationMediaFn,
+  getWorkflowWebhookEndpointsFn,
+  getWorkflowNodeStatsFn,
+  retryExecutionFn,
+  cancelExecutionFn,
+  simulateWorkflowDryRunFn,
 } from "@/lib/automations/functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,6 +81,27 @@ import {
   Upload,
   Copy,
   Settings,
+  GitFork,
+  Shuffle,
+  Webhook,
+  FileText,
+  Target,
+  Calendar,
+  CalendarCheck,
+  Bell,
+  Globe,
+  Edit,
+  AlertTriangle,
+  BrainCircuit,
+  TrendingUp,
+  FlaskConical,
+  Play,
+  RotateCcw,
+  XCircle,
+  Undo2,
+  Redo2,
+  LayoutGrid,
+  RefreshCw,
 } from "lucide-react";
 
 export const Route = createFileRoute("/app/automacoes/$workflowId")({
@@ -85,6 +111,29 @@ export const Route = createFileRoute("/app/automacoes/$workflowId")({
 // ============================================================================
 // COMPONENTES DE NODOS PERSONALIZADOS COM PORTAS LEGÍVEIS E BOTÃO '+' (A02)
 // ============================================================================
+
+function NodeStatsBadge({ stats }: { stats?: { succeeded: number; waiting: number; failed: number } | null }) {
+  if (!stats || (stats.succeeded === 0 && stats.waiting === 0 && stats.failed === 0)) return null;
+  return (
+    <div className="absolute -top-3 right-3 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-background border shadow-sm text-[10px] font-mono z-10 pointer-events-none">
+      {stats.succeeded > 0 && (
+        <span className="text-emerald-600 font-semibold flex items-center gap-0.5">
+          ✓ {stats.succeeded}
+        </span>
+      )}
+      {stats.waiting > 0 && (
+        <span className="text-sky-600 font-semibold flex items-center gap-0.5">
+          ⏳ {stats.waiting}
+        </span>
+      )}
+      {stats.failed > 0 && (
+        <span className="text-rose-600 font-semibold flex items-center gap-0.5">
+          ✕ {stats.failed}
+        </span>
+      )}
+    </div>
+  );
+}
 
 function TriggerNodeCard({ data, id }: NodeProps) {
   const isMsg = data.type === "messaging.inbound_received";
@@ -96,11 +145,17 @@ function TriggerNodeCard({ data, id }: NodeProps) {
   const isTgPost = data.type === "telegram.channel_post_published";
   const isTgComment = data.type === "telegram.channel_comment_received";
   const isMetaComment = data.type === "meta.comment_received";
+  const isWebhookInbound = data.type === "webhook.inbound";
+  const isFormSubmitted = data.type === "form.submitted";
+  const isMetaLeadAd = data.type === "meta.lead_ad_received";
+  const isAppointmentCreated = data.type === "appointment.created";
+  const isAppointmentStatus = data.type === "appointment.status_changed";
 
   const onAddNext = (data as any)?.onAddNext;
 
   return (
     <div className="border-2 border-indigo-500/70 bg-card rounded-2xl p-4 shadow-md w-72 text-xs space-y-2 relative group hover:border-indigo-500 transition-colors">
+      <NodeStatsBadge stats={(data as any)?.stats} />
       <div className="flex items-center justify-between text-indigo-600 font-semibold">
         <div className="flex items-center gap-2">
           {isMsg && <MessageSquare className="size-4" />}
@@ -112,6 +167,11 @@ function TriggerNodeCard({ data, id }: NodeProps) {
           {isTgPost && <Radio className="size-4 text-sky-500" />}
           {isTgComment && <MessageCircle className="size-4 text-sky-500" />}
           {isMetaComment && <MessageSquareQuote className="size-4 text-fuchsia-600" />}
+          {isWebhookInbound && <Webhook className="size-4 text-purple-600" />}
+          {isFormSubmitted && <FileText className="size-4 text-emerald-600" />}
+          {isMetaLeadAd && <Target className="size-4 text-blue-600" />}
+          {isAppointmentCreated && <Calendar className="size-4 text-indigo-600" />}
+          {isAppointmentStatus && <CalendarCheck className="size-4 text-teal-600" />}
           <span className="truncate">{String(data.name || "Gatilho")}</span>
         </div>
         <Badge variant="outline" className="text-[9px] bg-indigo-500/10 text-indigo-700 border-indigo-200">
@@ -138,7 +198,17 @@ function TriggerNodeCard({ data, id }: NodeProps) {
                         ? "Dispara com novo comentário em post do Telegram"
                         : isMetaComment
                           ? `Comentário no Instagram/FB (${((data.config as any)?.keywords || []).length > 0 ? ((data.config as any)?.keywords || []).join(", ") : "qualquer post"})`
-                          : "Gatilho de automação"}
+                          : isWebhookInbound
+                            ? "Dispara ao receber POST em webhook seguro"
+                            : isFormSubmitted
+                              ? "Dispara ao enviar formulário público"
+                              : isMetaLeadAd
+                                ? "Dispara com anúncio de lead da Meta"
+                                : isAppointmentCreated
+                                  ? "Dispara ao agendar compromisso na agenda"
+                                  : isAppointmentStatus
+                                    ? `Dispara ao alterar status de agendamento (${(data.config as any)?.toStatus || "qualquer status"})`
+                                    : "Gatilho de automação"}
       </p>
 
       {/* Porta de saída ampliada para 20px com etiqueta e botão + rápido */}
@@ -184,12 +254,21 @@ function ActionNodeCard({ data, id }: NodeProps) {
   const isMetaReplyComment = data.type === "meta.reply_comment";
   const isSendMedia = data.type === "messaging.send_media";
   const isSendTemplate = data.type === "messaging.send_template";
+  const isRemoveTag = data.type === "crm.remove_tag";
+  const isAssignCard = data.type === "crm.assign_card";
+  const isCrmUpdateField = data.type === "crm.update_field";
+  const isCrmRoundRobin = data.type === "crm.round_robin_assign";
+  const isInternalNotify = data.type === "internal.notify";
+  const isHttpWebhook = data.type === "http.webhook";
+  const isAiExtract = data.type === "ai.extract_fields";
+  const isMetaCapi = data.type === "meta.capi_event";
   const isTerminal = isHuman || isTgHuman; // Ambos derivar a humano são terminais
 
   const onAddNext = (data as any)?.onAddNext;
 
   return (
     <div className="border-2 border-emerald-500/70 bg-card rounded-2xl p-4 shadow-md w-72 text-xs space-y-2 relative group hover:border-emerald-500 transition-colors">
+      <NodeStatsBadge stats={(data as any)?.stats} />
       {/* Porta de entrada */}
       <Handle
         type="target"
@@ -213,6 +292,14 @@ function ActionNodeCard({ data, id }: NodeProps) {
           {isMetaReplyComment && <MessageSquareQuote className="size-4 text-pink-600" />}
           {isSendMedia && <Image className="size-4 text-emerald-600" />}
           {isSendTemplate && <FileCheck2 className="size-4 text-emerald-600" />}
+          {isRemoveTag && <Tag className="size-4 text-rose-500" />}
+          {isAssignCard && <UserCheck className="size-4 text-teal-600" />}
+          {isCrmUpdateField && <Edit className="size-4 text-indigo-600" />}
+          {isCrmRoundRobin && <UserCheck className="size-4 text-teal-600" />}
+          {isInternalNotify && <Bell className="size-4 text-amber-600" />}
+          {isHttpWebhook && <Globe className="size-4 text-cyan-600" />}
+          {isAiExtract && <BrainCircuit className="size-4 text-purple-600" />}
+          {isMetaCapi && <TrendingUp className="size-4 text-emerald-600" />}
           <span className="truncate">{String(data.name || "Ação")}</span>
         </div>
         {isTerminal ? (
@@ -253,7 +340,23 @@ function ActionNodeCard({ data, id }: NodeProps) {
                                 ? `Enviar Mídia: ${(data.config as any)?.mediaType || "arquivo"} (${(data.config as any)?.caption?.slice(0, 24) || (data.config as any)?.mediaUrl?.slice(0, 24) || "anexo"})`
                                 : isSendTemplate
                                   ? `Modelo HSM: ${(data.config as any)?.templateName || "Template WhatsApp"}`
-                                  : "Ação configurada"}
+                                  : isRemoveTag
+                                    ? `Remover tag: "${(data.config as any)?.tag || "..."}"`
+                                    : isAssignCard
+                                      ? `Atribuir Responsável: ${(data.config as any)?.ownerId ? "Definido" : "Não selecionado"}`
+                                      : isCrmUpdateField
+                                        ? `Atualizar campo: ${(data.config as any)?.field || "custom"}`
+                                        : isCrmRoundRobin
+                                          ? "Distribuir lead por Round Robin"
+                                          : isInternalNotify
+                                            ? `Notificação: ${(data.config as any)?.title || "Alerta"}`
+                                            : isHttpWebhook
+                                              ? `${(data.config as any)?.method || "POST"} ${(data.config as any)?.url || "https://..."}`
+                                              : isAiExtract
+                                                ? `IA: Extrair ${((data.config as any)?.fields || []).length || 1} campo(s) p/ CRM`
+                                                : isMetaCapi
+                                                  ? `Meta CAPI: ${(data.config as any)?.eventName || "Lead"} (${(data.config as any)?.currency || "BRL"} ${(data.config as any)?.valueTemplate ?? 0})`
+                                                  : "Ação configurada"}
       </p>
 
       {/* Se for terminal (A11), não desenha porta de saída 'next' enganosa */}
@@ -296,6 +399,7 @@ function ConditionNodeCard({ data, id }: NodeProps) {
 
   return (
     <div className="border-2 border-amber-500/70 bg-card rounded-2xl p-4 shadow-md w-72 text-xs space-y-2 relative group hover:border-amber-500 transition-colors">
+      <NodeStatsBadge stats={(data as any)?.stats} />
       <Handle
         type="target"
         position={Position.Top}
@@ -377,6 +481,7 @@ function WaitNodeCard({ data, id }: NodeProps) {
 
   return (
     <div className="border-2 border-sky-500/70 bg-card rounded-2xl p-4 shadow-md w-72 text-xs space-y-2 relative group hover:border-sky-500 transition-colors">
+      <NodeStatsBadge stats={(data as any)?.stats} />
       <Handle
         type="target"
         position={Position.Top}
@@ -489,6 +594,7 @@ function InteractiveNodeCard({ data, id }: NodeProps) {
 
   return (
     <div className="border-2 border-indigo-500/70 bg-card rounded-2xl p-4 shadow-md w-80 text-xs space-y-3 relative hover:border-indigo-500 transition-colors">
+      <NodeStatsBadge stats={(data as any)?.stats} />
       <Handle
         type="target"
         position={Position.Top}
@@ -614,6 +720,7 @@ function CollectInputNodeCard({ data, id }: NodeProps) {
 
   return (
     <div className="border-2 border-teal-500/70 bg-card rounded-2xl p-4 shadow-md w-80 text-xs space-y-3 relative hover:border-teal-500 transition-colors">
+      <NodeStatsBadge stats={(data as any)?.stats} />
       <Handle
         type="target"
         position={Position.Top}
@@ -729,6 +836,385 @@ function CollectInputNodeCard({ data, id }: NodeProps) {
   );
 }
 
+function RouterNodeCard({ data, id }: NodeProps) {
+  const onAddNext = (data as any)?.onAddNext;
+  const cfg = (data.config as any) || {};
+  const branches = Array.isArray(cfg.branches) && cfg.branches.length > 0
+    ? cfg.branches
+    : [{ id: "branch_1", label: "Ramo 1", logic: "AND", rules: [{ field: "trigger.text", operator: "contains", value: "" }] }];
+
+  return (
+    <div className="border-2 border-purple-500/70 bg-card rounded-2xl p-4 shadow-md w-80 text-xs space-y-3 relative hover:border-purple-500 transition-colors">
+      <NodeStatsBadge stats={(data as any)?.stats} />
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="input"
+        className="!w-5 !h-5 !bg-purple-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+      />
+
+      <div className="flex items-center justify-between text-purple-600 font-semibold">
+        <div className="flex items-center gap-2">
+          <GitFork className="size-4" />
+          <span className="truncate">{String(data.name || "Roteador (AND / OR)")}</span>
+        </div>
+        <Badge variant="outline" className="text-[9px] bg-purple-500/10 text-purple-700 border-purple-200">
+          Roteador
+        </Badge>
+      </div>
+
+      <p className="text-muted-foreground text-[11px]">
+        {branches.length} {branches.length === 1 ? "ramo condicional" : "ramos condicionais"} + Senão (Else)
+      </p>
+
+      {/* Lista de Ramos */}
+      <div className="space-y-2 pt-1 border-t border-border/50">
+        {branches.map((b: any, idx: number) => (
+          <div
+            key={b.id}
+            className="flex items-center justify-between p-2 rounded-lg bg-purple-500/5 border border-purple-200/50 dark:border-purple-900/50 relative"
+          >
+            <div className="flex items-center gap-1.5 truncate max-w-[190px]">
+              <span className="size-4 rounded-full bg-purple-500 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                {idx + 1}
+              </span>
+              <span className="font-medium truncate">{b.label || `Ramo ${idx + 1}`}</span>
+              <span className="text-[9px] text-muted-foreground font-mono">({b.logic || "AND"})</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={b.id}
+                className="!w-4 !h-4 !bg-purple-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+              />
+              {onAddNext && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddNext(id, b.id);
+                  }}
+                  title={`Adicionar passo ao ${b.label}`}
+                  className="size-4 bg-purple-600 text-white rounded-full flex items-center justify-center hover:bg-purple-700 transition-all ml-1 shadow-sm"
+                >
+                  <Plus className="size-2.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {/* Ramo Senão (Else) */}
+        <div className="flex items-center justify-between p-2 rounded-lg bg-muted/40 border border-border/60 relative">
+          <span className="font-semibold text-muted-foreground">Senão (Else)</span>
+          <div className="flex items-center gap-1">
+            <Handle
+              type="source"
+              position={Position.Right}
+              id="else"
+              className="!w-4 !h-4 !bg-zinc-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+            />
+            {onAddNext && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddNext(id, "else");
+                }}
+                title="Adicionar passo ao Senão (Else)"
+                className="size-4 bg-zinc-600 text-white rounded-full flex items-center justify-center hover:bg-zinc-700 transition-all ml-1 shadow-sm"
+              >
+                <Plus className="size-2.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SplitAbNodeCard({ data, id }: NodeProps) {
+  const onAddNext = (data as any)?.onAddNext;
+  const cfg = (data.config as any) || {};
+  const variants = Array.isArray(cfg.variants) && cfg.variants.length > 0
+    ? cfg.variants
+    : [
+        { id: "variant_a", label: "Variante A", weight: 50 },
+        { id: "variant_b", label: "Variante B", weight: 50 },
+      ];
+
+  const totalWeight = variants.reduce((sum: number, v: any) => sum + (Number(v.weight) || 0), 0);
+
+  return (
+    <div className="border-2 border-teal-500/70 bg-card rounded-2xl p-4 shadow-md w-72 text-xs space-y-3 relative hover:border-teal-500 transition-colors">
+      <NodeStatsBadge stats={(data as any)?.stats} />
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="input"
+        className="!w-5 !h-5 !bg-teal-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+      />
+
+      <div className="flex items-center justify-between text-teal-600 font-semibold">
+        <div className="flex items-center gap-2">
+          <Shuffle className="size-4" />
+          <span className="truncate">{String(data.name || "Teste A/B (Split)")}</span>
+        </div>
+        <Badge variant="outline" className={`text-[9px] ${totalWeight === 100 ? "bg-teal-500/10 text-teal-700 border-teal-200" : "bg-amber-500/10 text-amber-700 border-amber-300"}`}>
+          {totalWeight === 100 ? "Divisão A/B" : `Soma: ${totalWeight}%`}
+        </Badge>
+      </div>
+
+      <div className="space-y-2 pt-1 border-t border-border/50">
+        {variants.map((v: any) => (
+          <div
+            key={v.id}
+            className="flex items-center justify-between p-2 rounded-lg bg-teal-500/5 border border-teal-200/50 dark:border-teal-900/50 relative"
+          >
+            <span className="font-medium truncate">{v.label} ({v.weight}%)</span>
+            <div className="flex items-center gap-1">
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={v.id}
+                className="!w-4 !h-4 !bg-teal-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+              />
+              {onAddNext && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddNext(id, v.id);
+                  }}
+                  title={`Adicionar passo para ${v.label}`}
+                  className="size-4 bg-teal-600 text-white rounded-full flex items-center justify-center hover:bg-teal-700 transition-all ml-1 shadow-sm"
+                >
+                  <Plus className="size-2.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BusinessHoursNodeCard({ data, id }: NodeProps) {
+  const onAddNext = (data as any)?.onAddNext;
+  const cfg = (data.config as any) || {};
+  const isBranch = cfg.mode !== "wait_until_open";
+
+  return (
+    <div className="border-2 border-blue-500/70 bg-card rounded-2xl p-4 shadow-md w-72 text-xs space-y-3 relative hover:border-blue-500 transition-colors">
+      <NodeStatsBadge stats={(data as any)?.stats} />
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="input"
+        className="!w-5 !h-5 !bg-blue-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+      />
+
+      <div className="flex items-center justify-between text-blue-600 font-semibold">
+        <div className="flex items-center gap-2">
+          <Clock className="size-4" />
+          <span className="truncate">{String(data.name || "Horário Comercial")}</span>
+        </div>
+        <Badge variant="outline" className="text-[9px] bg-blue-500/10 text-blue-700 border-blue-200">
+          {isBranch ? "Ramificar" : "Aguardar"}
+        </Badge>
+      </div>
+
+      <p className="text-muted-foreground line-clamp-2">
+        {cfg.useCompanyHours
+          ? "Horário de atendimento configurado da empresa"
+          : `${cfg.startHour || "09:00"} às ${cfg.endHour || "18:00"}`}
+      </p>
+
+      {isBranch ? (
+        <div className="pt-3 pb-2 flex justify-between items-center text-[11px] font-bold">
+          <div className="flex flex-col items-center relative pl-4">
+            <span className="text-emerald-600 mb-1">Aberto</span>
+            <Handle
+              type="source"
+              position={Position.Bottom}
+              id="open"
+              style={{ left: "28%" }}
+              className="!w-5 !h-5 !bg-emerald-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+            />
+            {onAddNext && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddNext(id, "open");
+                }}
+                title="Adicionar ação para Aberto"
+                className="absolute -bottom-6 left-[20%] size-5 bg-emerald-600 text-white rounded-full flex items-center justify-center shadow-md hover:bg-emerald-700 hover:scale-110 transition-all z-10"
+              >
+                <Plus className="size-3" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-col items-center relative pr-4">
+            <span className="text-rose-600 mb-1">Fechado</span>
+            <Handle
+              type="source"
+              position={Position.Bottom}
+              id="closed"
+              style={{ left: "72%" }}
+              className="!w-5 !h-5 !bg-rose-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+            />
+            {onAddNext && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddNext(id, "closed");
+                }}
+                title="Adicionar ação para Fechado"
+                className="absolute -bottom-6 right-[20%] size-5 bg-rose-600 text-white rounded-full flex items-center justify-center shadow-md hover:bg-rose-700 hover:scale-110 transition-all z-10"
+              >
+                <Plus className="size-3" />
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="pt-2 flex flex-col items-center relative">
+          <span className="text-[10px] font-semibold text-blue-600 tracking-wider uppercase mb-1">
+            Após abertura
+          </span>
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="next"
+            className="!w-5 !h-5 !bg-blue-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+          />
+          {onAddNext && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddNext(id, "next");
+              }}
+              title="Adicionar próximo passo após abertura"
+              className="absolute -bottom-6 size-5 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-md hover:bg-blue-700 hover:scale-110 transition-all z-10"
+            >
+              <Plus className="size-3" />
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AiClassifierNodeCard({ data, id }: NodeProps) {
+  const onAddNext = (data as any)?.onAddNext;
+  const cfg = (data.config as any) || {};
+  const intents: Array<{ id: string; label: string; description?: string }> =
+    Array.isArray(cfg.intents) && cfg.intents.length > 0
+      ? cfg.intents
+      : [{ id: "intent_1", label: "Interesse / Compra", description: "Cliente com intenção de compra ou dúvidas sobre produto" }];
+
+  return (
+    <div className="border-2 border-purple-500/70 bg-card rounded-2xl p-4 shadow-md w-80 text-xs space-y-3 relative hover:border-purple-500 transition-colors">
+      <NodeStatsBadge stats={(data as any)?.stats} />
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="input"
+        className="!w-5 !h-5 !bg-purple-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+      />
+
+      <div className="flex items-center justify-between text-purple-600 font-semibold">
+        <div className="flex items-center gap-2">
+          <Sparkles className="size-4" />
+          <span className="truncate">{String(data.name || "IA: Classificar Intenção")}</span>
+        </div>
+        <Badge variant="outline" className="text-[9px] bg-purple-500/10 text-purple-700 border-purple-200">
+          IA Roteador
+        </Badge>
+      </div>
+
+      <p className="text-muted-foreground text-[11px] line-clamp-2">
+        {cfg.sourceText || "{{trigger.text}}"} (Confiança mín: {((cfg.minConfidence ?? 0.6) * 100).toFixed(0)}%)
+      </p>
+
+      {/* Lista de Intenções com Handles à direita */}
+      <div className="space-y-2 pt-1 border-t border-border/50">
+        <span className="text-[10px] font-semibold text-muted-foreground tracking-wider uppercase">
+          Intenções ({intents.length})
+        </span>
+        {intents.map((intent, idx) => (
+          <div
+            key={intent.id}
+            className="flex items-center justify-between p-2 rounded-lg bg-purple-500/5 border border-purple-200/50 dark:border-purple-900/50 relative"
+          >
+            <div className="flex items-center gap-1.5 truncate max-w-[190px]">
+              <span className="size-4 rounded-full bg-purple-500 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                {idx + 1}
+              </span>
+              <span className="font-medium truncate">{intent.label || `Intenção ${idx + 1}`}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={intent.id}
+                className="!w-4 !h-4 !bg-purple-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+              />
+              {onAddNext && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddNext(id, intent.id);
+                  }}
+                  className="size-5 rounded-full bg-purple-100 hover:bg-purple-200 dark:bg-purple-950 dark:hover:bg-purple-900 text-purple-600 flex items-center justify-center transition-colors"
+                  title={`Conectar ramo para "${intent.label}"`}
+                >
+                  <Plus className="size-3" />
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {/* Fallback */}
+        <div className="flex items-center justify-between p-1.5 rounded-lg bg-slate-500/5 border border-slate-200/50 dark:border-slate-800 text-muted-foreground">
+          <span className="text-[11px] font-medium">Outra intenção / Dúvida (Fallback)</span>
+          <div className="flex items-center gap-1">
+            <Handle
+              type="source"
+              position={Position.Right}
+              id="fallback"
+              className="!w-3.5 !h-3.5 !bg-slate-500 !border-2 !border-white hover:scale-125 transition-transform cursor-crosshair rounded-full shadow-sm"
+            />
+            {onAddNext && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddNext(id, "fallback");
+                }}
+                className="size-4 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 flex items-center justify-center transition-colors"
+                title="Conectar ramo de fallback"
+              >
+                <Plus className="size-2.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EndNodeCard({ data }: NodeProps) {
   return (
     <div className="border-2 border-slate-500/70 bg-card rounded-2xl p-4 shadow-md w-56 text-xs space-y-2 relative text-center hover:border-slate-500 transition-colors">
@@ -751,6 +1237,10 @@ const nodeTypes = {
   triggerNode: TriggerNodeCard,
   actionNode: ActionNodeCard,
   conditionNode: ConditionNodeCard,
+  routerNode: RouterNodeCard,
+  splitNode: SplitAbNodeCard,
+  businessHoursNode: BusinessHoursNodeCard,
+  aiClassifierNode: AiClassifierNodeCard,
   waitNode: WaitNodeCard,
   delayNode: WaitNodeCard, // P1.B: Compatibilidade com nós de atraso
   interactiveNode: InteractiveNodeCard,
@@ -763,14 +1253,14 @@ interface VariableChipsProps {
 }
 
 const AVAILABLE_VARIABLES: Array<{ label: string; tag: string }> = [
-  { label: "Nome", tag: "{{contact.nome}}" },
-  { label: "Telefone", tag: "{{contact.telefone}}" },
-  { label: "E-mail", tag: "{{contact.email}}" },
-  { label: "Card CRM", tag: "{{card.titulo}}" },
-  { label: "Valor", tag: "{{card.valor}}" },
-  { label: "Texto Gatilho", tag: "{{trigger.text}}" },
-  { label: "ID Remetente", tag: "{{trigger.sender_id}}" },
-  { label: "Última Resposta", tag: "{{last_reply.text}}" },
+  { label: "Nome do Lead", tag: "{{lead_name}}" },
+  { label: "Telefone / ID", tag: "{{card.numero}}" },
+  { label: "E-mail", tag: "{{card.email}}" },
+  { label: "Valor CRM", tag: "{{card.valor}}" },
+  { label: "Msg Gatilho", tag: "{{trigger.text}}" },
+  { label: "Última Resposta", tag: "{{lastReply.text}}" },
+  { label: "Autor (Meta)", tag: "{{author}}" },
+  { label: "ID do Post", tag: "{{post_id}}" },
 ];
 
 function VariableChips({ onInsert }: VariableChipsProps) {
@@ -795,6 +1285,90 @@ function VariableChips({ onInsert }: VariableChipsProps) {
 // PÁGINA PRINCIPAL DO CANVAS COM INSPECTOR FIXO LATERAL (A01)
 // ============================================================================
 
+function computeAutoLayout(nodes: Node[], edges: Edge[]): Node[] {
+  if (nodes.length === 0) return nodes;
+
+  const inDegree: Record<string, number> = {};
+  const childrenMap: Record<string, string[]> = {};
+  nodes.forEach((n) => {
+    inDegree[n.id] = 0;
+    childrenMap[n.id] = [];
+  });
+
+  edges.forEach((e) => {
+    if (inDegree[e.target] !== undefined) {
+      inDegree[e.target] = (inDegree[e.target] || 0) + 1;
+    }
+    if (childrenMap[e.source]) {
+      childrenMap[e.source].push(e.target);
+    }
+  });
+
+  const levels: Record<string, number> = {};
+  const queue: Array<{ id: string; level: number }> = [];
+
+  nodes.forEach((n) => {
+    if (n.type === "triggerNode" || (inDegree[n.id] || 0) === 0) {
+      levels[n.id] = 0;
+      queue.push({ id: n.id, level: 0 });
+    }
+  });
+
+  if (queue.length === 0 && nodes.length > 0) {
+    levels[nodes[0].id] = 0;
+    queue.push({ id: nodes[0].id, level: 0 });
+  }
+
+  const visited = new Set<string>();
+  while (queue.length > 0) {
+    const { id, level } = queue.shift()!;
+    visited.add(id);
+
+    const children = childrenMap[id] || [];
+    for (const childId of children) {
+      const nextLevel = Math.max(levels[childId] || 0, level + 1);
+      levels[childId] = nextLevel;
+      if (!visited.has(childId)) {
+        queue.push({ id: childId, level: nextLevel });
+      }
+    }
+  }
+
+  nodes.forEach((n) => {
+    if (levels[n.id] === undefined) {
+      levels[n.id] = 0;
+    }
+  });
+
+  const levelGroups: Record<number, string[]> = {};
+  nodes.forEach((n) => {
+    const lvl = levels[n.id] || 0;
+    if (!levelGroups[lvl]) levelGroups[lvl] = [];
+    levelGroups[lvl].push(n.id);
+  });
+
+  const positionMap: Record<string, { x: number; y: number }> = {};
+  Object.keys(levelGroups).forEach((lvlStr) => {
+    const lvl = Number(lvlStr);
+    const nodeIds = levelGroups[lvl];
+    const count = nodeIds.length;
+    const startX = 320 - ((count - 1) * 340) / 2;
+    const y = 60 + lvl * 210;
+
+    nodeIds.forEach((id, idx) => {
+      positionMap[id] = {
+        x: Math.round(startX + idx * 340),
+        y,
+      };
+    });
+  });
+
+  return nodes.map((n) => ({
+    ...n,
+    position: positionMap[n.id] || n.position,
+  }));
+}
+
 function AutomacaoCanvasPage() {
   const { workflowId } = Route.useParams();
   const getWorkflow = useServerFn(getWorkflowFn);
@@ -806,7 +1380,30 @@ function AutomacaoCanvasPage() {
   const getAuxData = useServerFn(getAvailableChannelsAndConnectionsFn);
   const listMetaPosts = useServerFn(listMetaPostsForInstanceFn);
   const uploadMedia = useServerFn(uploadAutomationMediaFn);
+  const getNodeStats = useServerFn(getWorkflowNodeStatsFn);
+  const retryExec = useServerFn(retryExecutionFn);
+  const cancelExec = useServerFn(cancelExecutionFn);
+  const simulateDryRun = useServerFn(simulateWorkflowDryRunFn);
   const navigate = useNavigate();
+
+  const [nodeStats, setNodeStats] = useState<Record<string, { succeeded: number; waiting: number; failed: number }>>({});
+  const [loadingStats, setLoadingStats] = useState(false);
+  const [history, setHistory] = useState<Array<{ nodes: Node[]; edges: Edge[] }>>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
+  const [simOpen, setSimOpen] = useState(false);
+  const [simRunning, setSimRunning] = useState(false);
+  const [simSampleText, setSimSampleText] = useState("Olá! Gostaria de saber mais informações e valores dos planos.");
+  const [simSampleChannel, setSimSampleChannel] = useState("whatsapp");
+  const [simSampleCardId, setSimSampleCardId] = useState("");
+  const [simResult, setSimResult] = useState<{
+    ok: boolean;
+    visitedNodeIds: string[];
+    visitedEdgeIds: string[];
+    steps: Array<{ nodeId: string; nodeName: string; nodeType: string; portTaken: string | null; preview: string }>;
+  } | null>(null);
+  const [simVisitedNodes, setSimVisitedNodes] = useState<Set<string>>(new Set());
+  const [simVisitedEdges, setSimVisitedEdges] = useState<Set<string>>(new Set());
 
   const [workflow, setWorkflow] = useState<any>(null);
   const [versionNumber, setVersionNumber] = useState(1);
@@ -863,6 +1460,8 @@ function AutomacaoCanvasPage() {
   const [selectedExecDetail, setSelectedExecDetail] = useState<{ execution?: any; exec?: any; steps: any[] } | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [quickPicker, setQuickPicker] = useState<{ sourceId: string; sourcePort: string } | null>(null);
+  const getWebhookEndpoints = useServerFn(getWorkflowWebhookEndpointsFn);
+  const [webhookEndpoints, setWebhookEndpoints] = useState<any[]>([]);
 
   const selectedNode = useMemo(
     () => nodes.find((n) => n.id === selectedNodeId) || null,
@@ -889,6 +1488,161 @@ function AutomacaoCanvasPage() {
   }, [setNodes]);
 
   // P1.9: Conexão rápida com botão '+' abre o seletor modal de tipo de nó em vez de forçar mensagem de texto fixa
+  const pushSnapshot = useCallback((newNodes: Node[], newEdges: Edge[]) => {
+    setHistory((prev) => {
+      const next = prev.slice(0, historyIndex + 1);
+      next.push({ nodes: newNodes, edges: newEdges });
+      if (next.length > 25) next.shift();
+      return next;
+    });
+    setHistoryIndex((prev) => Math.min(prev + 1, 24));
+  }, [historyIndex]);
+
+  const handleUndo = useCallback(() => {
+    if (historyIndex > 0) {
+      const target = history[historyIndex - 1];
+      setNodes(target.nodes);
+      setEdges(target.edges);
+      setHistoryIndex(historyIndex - 1);
+      setIsDirty(true);
+      toast.info("Desfeito");
+    }
+  }, [history, historyIndex, setNodes, setEdges]);
+
+  const handleRedo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const target = history[historyIndex + 1];
+      setNodes(target.nodes);
+      setEdges(target.edges);
+      setHistoryIndex(historyIndex + 1);
+      setIsDirty(true);
+      toast.info("Refeito");
+    }
+  }, [history, historyIndex, setNodes, setEdges]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement)?.isContentEditable
+      ) {
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z")) {
+        if (e.shiftKey) {
+          e.preventDefault();
+          handleRedo();
+        } else {
+          e.preventDefault();
+          handleUndo();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === "y" || e.key === "Y")) {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleUndo, handleRedo]);
+
+  const handleAutoLayout = useCallback(() => {
+    const layouted = computeAutoLayout(nodes, edges);
+    setNodes(layouted);
+    setIsDirty(true);
+    pushSnapshot(layouted, edges);
+    toast.success("Nós organizados em ordem topológica!");
+  }, [nodes, edges, pushSnapshot, setNodes]);
+
+  const loadNodeStats = useCallback(async () => {
+    if (!workflowId) return;
+    setLoadingStats(true);
+    try {
+      const statsRes = await getNodeStats({ data: { workflowId, days: 30 } });
+      if (statsRes && (statsRes as any).nodeStats) {
+        setNodeStats((statsRes as any).nodeStats);
+      }
+    } catch {
+      // Ignora erro de estatísticas
+    } finally {
+      setLoadingStats(false);
+    }
+  }, [workflowId, getNodeStats]);
+
+  const handleRunSimulation = async () => {
+    setSimRunning(true);
+    try {
+      const currentGraph = {
+        nodes: nodes.map((n) => ({
+          id: n.id,
+          type: n.data.type,
+          name: n.data.name,
+          config: n.data.config || {},
+          position: n.position,
+        })),
+        edges: edges.map((e) => ({
+          id: e.id,
+          source: e.source,
+          sourcePort: e.sourceHandle || (e as any).sourcePort || "next",
+          target: e.target,
+          targetPort: e.targetHandle || (e as any).targetPort || "input",
+        })),
+        settings: (workflow as any)?.graph?.settings || {},
+      };
+
+      const res = await simulateDryRun({
+        data: {
+          graph: currentGraph,
+          sampleText: simSampleText,
+          sampleChannel: simSampleChannel,
+          sampleCardId: simSampleCardId ? simSampleCardId : undefined,
+        },
+      });
+
+      const simData = res as any;
+      setSimResult(simData);
+      setSimVisitedNodes(new Set(simData.visitedNodeIds || []));
+      setSimVisitedEdges(new Set(simData.visitedEdgeIds || []));
+      toast.success(`Simulação concluída! ${simData.steps?.length || 0} passos percorridos.`);
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao executar simulação");
+    } finally {
+      setSimRunning(false);
+    }
+  };
+
+  const handleClearSimulation = () => {
+    setSimResult(null);
+    setSimVisitedNodes(new Set());
+    setSimVisitedEdges(new Set());
+  };
+
+  const handleRetryExecution = async (executionId: string) => {
+    try {
+      await retryExec({ data: { executionId } });
+      toast.success("Execução reenfileirada para reprocessamento.");
+      await loadExecutions();
+      if (selectedExecDetail) {
+        viewExecutionTrace(executionId);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao reprocessar execução");
+    }
+  };
+
+  const handleCancelExecution = async (executionId: string) => {
+    try {
+      await cancelExec({ data: { executionId } });
+      toast.success("Execução cancelada com sucesso.");
+      await loadExecutions();
+      if (selectedExecDetail) {
+        viewExecutionTrace(executionId);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao cancelar execução");
+    }
+  };
+
   const handleAddNextNode = useCallback(
     (sourceId: string, sourcePort: string) => {
       const sourceNode = nodes.find((n) => n.id === sourceId);
@@ -1010,8 +1764,8 @@ function AutomacaoCanvasPage() {
             { id: "opt_1", label: "Falar com Vendas" },
             { id: "opt_2", label: "Tirar Dúvidas" },
           ],
-          repromptText: "Por favor, digite o número correspondente a uma das opções.",
-          maxRetries: 2,
+          invalidReplyText: "Por favor, digite o número correspondente a uma das opções.",
+          maxInvalidRetries: 2,
           timeoutMinutes: 60,
         };
       } else if (typeKey === "messaging.collect_input") {
@@ -1031,8 +1785,123 @@ function AutomacaoCanvasPage() {
         initialConfig = {
           templateName: "",
           languageCode: "pt_BR",
-          bodyParameters: [],
+          bodyParams: [],
           connectionPolicy: "same_as_trigger",
+        };
+      } else if (typeKey === "condition.router") {
+        nodeType = "routerNode";
+        nodeName = "Roteador (AND / OR)";
+        initialConfig = {
+          branches: [
+            { id: "branch_1", label: "Ramo 1", logic: "AND", rules: [{ field: "trigger.text", operator: "contains", value: "" }] },
+          ],
+        };
+      } else if (typeKey === "control.split_ab") {
+        nodeType = "splitNode";
+        nodeName = "Teste A/B (Split)";
+        initialConfig = {
+          variants: [
+            { id: "variant_a", label: "Variante A", weight: 50 },
+            { id: "variant_b", label: "Variante B", weight: 50 },
+          ],
+        };
+      } else if (typeKey === "control.business_hours") {
+        nodeType = "businessHoursNode";
+        nodeName = "Horário Comercial";
+        initialConfig = {
+          mode: "branch",
+          useCompanyHours: true,
+          timezone: "America/Sao_Paulo",
+          days: [1, 2, 3, 4, 5],
+          startHour: "09:00",
+          endHour: "18:00",
+        };
+      } else if (typeKey === "crm.update_field") {
+        nodeType = "actionNode";
+        nodeName = "Atualizar Campo do Lead";
+        initialConfig = { field: "nome", customKey: "", value: "{{lead_name}}" };
+      } else if (typeKey === "crm.round_robin_assign") {
+        nodeType = "actionNode";
+        nodeName = "Distribuir Lead (Round Robin)";
+        initialConfig = { departmentId: null, stageId: null, onlyIfUnassigned: true };
+      } else if (typeKey === "internal.notify") {
+        nodeType = "actionNode";
+        nodeName = "Notificação Interna";
+        initialConfig = {
+          addLeadNote: true,
+          pushBellNotification: true,
+          title: "Alerta de Automação",
+          message: "O lead {{lead_name}} acionou a automação.",
+          whatsappNotifyPhone: "",
+        };
+      } else if (typeKey === "http.webhook") {
+        nodeType = "actionNode";
+        nodeName = "Webhook HTTP (Saída)";
+        initialConfig = {
+          url: "https://",
+          method: "POST",
+          headers: [],
+          bodyTemplate: '{"lead_name":"{{lead_name}}","phone":"{{card.numero}}","email":"{{card.email}}","text":"{{trigger.text}}"}',
+          timeoutMs: 4500,
+          continueOnError: false,
+        };
+      } else if (typeKey === "webhook.inbound") {
+        nodeType = "triggerNode";
+        nodeName = "Webhook de Entrada";
+        initialConfig = {
+          description: "",
+          requireSecret: false,
+          secretHeader: "x-webhook-secret",
+          phoneFieldPath: "phone",
+          nameFieldPath: "name",
+          emailFieldPath: "email",
+        };
+      } else if (typeKey === "form.submitted") {
+        nodeType = "triggerNode";
+        nodeName = "Formulário Enviado";
+        initialConfig = { formId: null };
+      } else if (typeKey === "meta.lead_ad_received") {
+        nodeType = "triggerNode";
+        nodeName = "Lead Ad (Meta)";
+        initialConfig = { formId: null, pageId: null };
+      } else if (typeKey === "appointment.created") {
+        nodeType = "triggerNode";
+        nodeName = "Agendamento Criado";
+        initialConfig = { serviceFilter: null };
+      } else if (typeKey === "appointment.status_changed") {
+        nodeType = "triggerNode";
+        nodeName = "Status do Agendamento Alterado";
+        initialConfig = { toStatus: null };
+      } else if (typeKey === "ai.classify_and_route") {
+        nodeType = "aiClassifierNode";
+        nodeName = "IA: Classificar Intenção";
+        initialConfig = {
+          sourceText: "{{trigger.text}}",
+          includeRecentHistory: true,
+          intents: [
+            { id: "intent_1", label: "Interesse / Preço", description: "Cliente pergunta preços, planos ou quer comprar" },
+            { id: "intent_2", label: "Dúvida Técnica", description: "Cliente pergunta como funciona ou suporte" },
+          ],
+          minConfidence: 0.6,
+        };
+      } else if (typeKey === "ai.extract_fields") {
+        nodeType = "actionNode";
+        nodeName = "IA: Extrair Dados CRM";
+        initialConfig = {
+          sourceText: "{{trigger.text}}",
+          includeRecentHistory: true,
+          fields: [
+            { key: "nome", target: "nome", description: "Nome completo do lead" },
+            { key: "email", target: "email", description: "Endereço de e-mail do lead" },
+          ],
+        };
+      } else if (typeKey === "meta.capi_event") {
+        nodeType = "actionNode";
+        nodeName = "Meta CAPI: Evento de Conversão";
+        initialConfig = {
+          eventName: "Lead",
+          valueTemplate: "0",
+          currency: "BRL",
         };
       }
 
@@ -1073,13 +1942,19 @@ function AutomacaoCanvasPage() {
         const outHandle =
           nodeType === "conditionNode"
             ? "true"
-            : typeKey === "messaging.wait_for_reply"
-              ? "reply"
-              : typeKey === "messaging.send_interactive"
-                ? (initialConfig.options?.[0]?.id || "opt_1")
-                : typeKey === "messaging.collect_input"
-                  ? "valid"
-                  : "next";
+            : nodeType === "routerNode"
+              ? (initialConfig.branches?.[0]?.id || "branch_1")
+              : nodeType === "splitNode"
+                ? (initialConfig.variants?.[0]?.id || "variant_a")
+                : nodeType === "businessHoursNode"
+                  ? (initialConfig.mode === "wait_until_open" ? "next" : "open")
+                  : typeKey === "messaging.wait_for_reply"
+                    ? "reply"
+                    : typeKey === "messaging.send_interactive"
+                      ? (initialConfig.options?.[0]?.id || "opt_1")
+                      : typeKey === "messaging.collect_input"
+                        ? "valid"
+                        : "next";
 
         chainedEdge = {
           id: `edge_${newId}_${outHandle}_to_${existingEdge.target}`,
@@ -1119,25 +1994,38 @@ function AutomacaoCanvasPage() {
     [nodes, edges, setNodes, setEdges]
   );
 
-  // Injeta callback de adicionar próximo passo em cada nó
+  // Injeta callback de adicionar próximo passo, métricas em tempo real e destaque do simulador
   const decoratedNodes = useMemo(() => {
     return nodes.map((n) => ({
       ...n,
+      className: simVisitedNodes.has(n.id) ? "!ring-4 !ring-amber-500 !ring-offset-2 !rounded-2xl transition-all" : undefined,
       data: {
         ...n.data,
         onAddNext: handleAddNextNode,
+        stats: nodeStats[n.id] || null,
       },
     }));
-  }, [nodes, handleAddNextNode]);
+  }, [nodes, handleAddNextNode, nodeStats, simVisitedNodes]);
+
+  const decoratedEdges = useMemo(() => {
+    return edges.map((e) => ({
+      ...e,
+      animated: simVisitedEdges.has(e.id) ? true : e.animated,
+      style: simVisitedEdges.has(e.id)
+        ? { stroke: "#f59e0b", strokeWidth: 3.5 }
+        : e.style,
+    }));
+  }, [edges, simVisitedEdges]);
 
   // Carga inicial do fluxo
   async function loadData() {
     if (!workflowId) return;
     setLoading(true);
     try {
-      const [resWfRaw, resAux] = await Promise.all([
+      const [resWfRaw, resAux, resEndpoints] = await Promise.all([
         getWorkflow({ data: { workflowId } }),
         getAuxData(),
+        getWebhookEndpoints({ data: { workflowId } }).catch(() => []),
       ]);
 
       const resWf = resWfRaw as any;
@@ -1146,6 +2034,7 @@ function AutomacaoCanvasPage() {
       setActiveVersionNumber(resWf.activeVersionNumber || null);
       setHasUnpublishedChanges(resWf.hasUnpublishedChanges);
       setAuxData(resAux as any);
+      setWebhookEndpoints((resEndpoints as any[]) || []);
       setIsDirty(false);
 
       if (resWf.graph?.settings) {
@@ -1162,8 +2051,16 @@ function AutomacaoCanvasPage() {
           n.type.startsWith("crm.card") ||
           n.type.startsWith("telegram.business_message") ||
           n.type.startsWith("telegram.channel_") ||
-          n.type === "meta.comment_received"
+          n.type === "meta.comment_received" ||
+          n.type === "webhook.inbound" ||
+          n.type === "form.submitted" ||
+          n.type === "meta.lead_ad_received" ||
+          n.type.startsWith("appointment.")
         ) nType = "triggerNode";
+        else if (n.type === "condition.router") nType = "routerNode";
+        else if (n.type === "control.split_ab") nType = "splitNode";
+        else if (n.type === "control.business_hours") nType = "businessHoursNode";
+        else if (n.type === "ai.classify_and_route") nType = "aiClassifierNode";
         else if (n.type.startsWith("condition.")) nType = "conditionNode";
         else if (n.type === "messaging.send_interactive") nType = "interactiveNode";
         else if (n.type === "messaging.collect_input") nType = "collectNode";
@@ -1193,6 +2090,9 @@ function AutomacaoCanvasPage() {
 
       setNodes(flowNodes);
       setEdges(flowEdges);
+      setHistory([{ nodes: flowNodes, edges: flowEdges }]);
+      setHistoryIndex(0);
+      loadNodeStats();
     } catch (e: any) {
       toast.error(e?.message || "Erro ao carregar dados do canvas");
     } finally {
@@ -1288,8 +2188,16 @@ function AutomacaoCanvasPage() {
       type.startsWith("crm.card") ||
       type.startsWith("telegram.business_message") ||
       type.startsWith("telegram.channel_") ||
-      type === "meta.comment_received"
+      type === "meta.comment_received" ||
+      type === "webhook.inbound" ||
+      type === "form.submitted" ||
+      type === "meta.lead_ad_received" ||
+      type.startsWith("appointment.")
     ) nType = "triggerNode";
+    else if (type === "condition.router") nType = "routerNode";
+    else if (type === "control.split_ab") nType = "splitNode";
+    else if (type === "control.business_hours") nType = "businessHoursNode";
+    else if (type === "ai.classify_and_route") nType = "aiClassifierNode";
     else if (type.startsWith("condition.")) nType = "conditionNode";
     else if (type === "messaging.send_interactive") nType = "interactiveNode";
     else if (type === "messaging.collect_input") nType = "collectNode";
@@ -1322,6 +2230,10 @@ function AutomacaoCanvasPage() {
         caption: "",
         connectionPolicy: "same_as_trigger",
       };
+    } else if (type === "crm.remove_tag") {
+      initialConfig = { tag: "lead" };
+    } else if (type === "crm.assign_card") {
+      initialConfig = { ownerId: "" };
     } else if (type === "messaging.send_interactive") {
       initialConfig = {
         bodyText: "Como podemos te ajudar hoje?",
@@ -1330,8 +2242,8 @@ function AutomacaoCanvasPage() {
           { id: "opt_1", label: "Falar com Vendas" },
           { id: "opt_2", label: "Tirar Dúvidas" },
         ],
-        repromptText: "Por favor, digite o número correspondente a uma das opções.",
-        maxRetries: 2,
+        invalidReplyText: "Por favor, digite o número correspondente a uma das opções.",
+        maxInvalidRetries: 2,
         timeoutMinutes: 60,
       };
     } else if (type === "messaging.collect_input") {
@@ -1347,8 +2259,93 @@ function AutomacaoCanvasPage() {
       initialConfig = {
         templateName: "",
         languageCode: "pt_BR",
-        bodyParameters: [],
+        bodyParams: [],
         connectionPolicy: "same_as_trigger",
+      };
+    } else if (type === "condition.router") {
+      initialConfig = {
+        branches: [
+          { id: "branch_1", label: "Ramo 1", logic: "AND", rules: [{ field: "trigger.text", operator: "contains", value: "" }] },
+        ],
+      };
+    } else if (type === "control.split_ab") {
+      initialConfig = {
+        variants: [
+          { id: "variant_a", label: "Variante A", weight: 50 },
+          { id: "variant_b", label: "Variante B", weight: 50 },
+        ],
+      };
+    } else if (type === "control.business_hours") {
+      initialConfig = {
+        mode: "branch",
+        useCompanyHours: true,
+        timezone: "America/Sao_Paulo",
+        days: [1, 2, 3, 4, 5],
+        startHour: "09:00",
+        endHour: "18:00",
+      };
+    } else if (type === "crm.update_field") {
+      initialConfig = { field: "nome", customKey: "", value: "{{lead_name}}" };
+    } else if (type === "crm.round_robin_assign") {
+      initialConfig = { departmentId: null, stageId: null, onlyIfUnassigned: true };
+    } else if (type === "internal.notify") {
+      initialConfig = {
+        addLeadNote: true,
+        pushBellNotification: true,
+        title: "Alerta de Automação",
+        message: "O lead {{lead_name}} acionou a automação.",
+        whatsappNotifyPhone: "",
+      };
+    } else if (type === "http.webhook") {
+      initialConfig = {
+        url: "https://",
+        method: "POST",
+        headers: [],
+        bodyTemplate: '{"lead_name":"{{lead_name}}","phone":"{{card.numero}}","email":"{{card.email}}","text":"{{trigger.text}}"}',
+        timeoutMs: 4500,
+        continueOnError: false,
+      };
+    } else if (type === "webhook.inbound") {
+      initialConfig = {
+        description: "",
+        requireSecret: false,
+        secretHeader: "x-webhook-secret",
+        phoneFieldPath: "phone",
+        nameFieldPath: "name",
+        emailFieldPath: "email",
+      };
+    } else if (type === "form.submitted") {
+      initialConfig = { formId: null };
+    } else if (type === "meta.lead_ad_received") {
+      initialConfig = { formId: null, pageId: null };
+    } else if (type === "appointment.created") {
+      initialConfig = { serviceFilter: null };
+    } else if (type === "appointment.status_changed") {
+      initialConfig = { toStatus: null };
+    } else if (type === "ai.classify_and_route") {
+      initialConfig = {
+        sourceText: "{{trigger.text}}",
+        includeRecentHistory: true,
+        intents: [
+          { id: "intent_1", label: "Interesse / Preço", description: "Cliente pergunta preços, planos ou quer comprar" },
+          { id: "intent_2", label: "Dúvida Técnica", description: "Cliente pergunta como funciona ou suporte" },
+        ],
+        minConfidence: 0.6,
+      };
+    } else if (type === "ai.extract_fields") {
+      initialConfig = {
+        sourceText: "{{trigger.text}}",
+        includeRecentHistory: true,
+        fields: [
+          { key: "nome", target: "nome", description: "Nome completo do lead" },
+          { key: "email", target: "email", description: "Endereço de e-mail do lead" },
+        ],
+      };
+    } else if (type === "meta.capi_event") {
+      initialConfig = {
+        eventName: "Lead",
+        valueTemplate: "0",
+        currency: "BRL",
       };
     }
 
@@ -1369,9 +2366,11 @@ function AutomacaoCanvasPage() {
       },
     };
 
-    setNodes((nds) => [...nds, newNode]);
+    const nextNodes = [...nodes, newNode];
+    setNodes(nextNodes);
     setSelectedNodeId(newNode.id);
     setIsDirty(true);
+    pushSnapshot(nextNodes, edges);
     toast.success(`Nó "${label}" adicionado ao canvas`);
   }
 
@@ -1541,6 +2540,59 @@ function AutomacaoCanvasPage() {
 
         {/* Actions */}
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 border-r pr-2 mr-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleUndo}
+              disabled={historyIndex <= 0}
+              className="h-8 w-8 p-0"
+              title="Desfazer (Ctrl+Z)"
+            >
+              <Undo2 className="size-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRedo}
+              disabled={historyIndex >= history.length - 1}
+              className="h-8 w-8 p-0"
+              title="Refazer (Ctrl+Y)"
+            >
+              <Redo2 className="size-3.5" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAutoLayout}
+              className="gap-1 text-xs"
+              title="Auto-organizar nós topologicamente"
+            >
+              <LayoutGrid className="size-3.5" />
+              Organizar
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSimOpen(true)}
+              className="gap-1.5 text-xs text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+              title="Simulador de Fluxo (Dry-Run)"
+            >
+              <FlaskConical className="size-3.5" />
+              Testar Fluxo
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={loadNodeStats}
+              disabled={loadingStats}
+              className="h-8 w-8 p-0 text-muted-foreground"
+              title="Atualizar Métricas em Tempo Real"
+            >
+              <RefreshCw className={`size-3.5 ${loadingStats ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
+
           <Button
             variant="ghost"
             size="sm"
@@ -1757,6 +2809,22 @@ function AutomacaoCanvasPage() {
                 >
                   <Tag className="size-3.5" /> Adicionar Etiqueta
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addNodeFromPalette("crm.remove_tag", "Remover Etiqueta")}
+                  className="w-full justify-start text-xs gap-2 border-rose-500/30 text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950"
+                >
+                  <Tag className="size-3.5" /> Remover Etiqueta
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addNodeFromPalette("crm.assign_card", "Atribuir Responsável")}
+                  className="w-full justify-start text-xs gap-2 border-teal-500/30 text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-950"
+                >
+                  <UserCheck className="size-3.5" /> Atribuir Responsável
+                </Button>
               </div>
             </div>
 
@@ -1817,6 +2885,38 @@ function AutomacaoCanvasPage() {
             </div>
 
             <div>
+              <h4 className="font-semibold text-purple-600 dark:text-purple-400 uppercase text-[10px] tracking-wider mb-2 flex items-center gap-1.5">
+                <Sparkles className="size-3" /> IA & Conversões
+              </h4>
+              <div className="space-y-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addNodeFromPalette("ai.classify_and_route", "IA: Classificar Intenção")}
+                  className="w-full justify-start text-xs gap-2 border-purple-500/30 text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950 dark:text-purple-300"
+                >
+                  <Sparkles className="size-3.5 text-purple-600" /> IA: Classificar Intenção
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addNodeFromPalette("ai.extract_fields", "IA: Extrair Dados CRM")}
+                  className="w-full justify-start text-xs gap-2 border-purple-500/30 text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950 dark:text-purple-300"
+                >
+                  <BrainCircuit className="size-3.5 text-purple-600" /> IA: Extrair Dados CRM
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addNodeFromPalette("meta.capi_event", "Meta CAPI: Evento de Conversão")}
+                  className="w-full justify-start text-xs gap-2 border-emerald-500/30 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950 dark:text-emerald-300"
+                >
+                  <TrendingUp className="size-3.5 text-emerald-600" /> Meta CAPI (Conversão)
+                </Button>
+              </div>
+            </div>
+
+            <div>
               <h4 className="font-semibold text-muted-foreground uppercase text-[10px] tracking-wider mb-2">
                 Lógica & Espera
               </h4>
@@ -1866,10 +2966,12 @@ function AutomacaoCanvasPage() {
             ) : (
               <ReactFlow
                 nodes={decoratedNodes}
-                edges={edges}
+                edges={decoratedEdges}
                 nodeTypes={nodeTypes}
                 onNodesChange={(changes) => {
-                  setIsDirty(true);
+                  if (changes.some((c) => c.type === "remove" || c.type === "add" || (c.type === "position" && c.dragging === false))) {
+                    setIsDirty(true);
+                  }
                   onNodesChange(changes);
                 }}
                 onEdgesChange={(changes) => {
@@ -2259,6 +3361,40 @@ function AutomacaoCanvasPage() {
                       value={((selectedNode.data.config as any)?.tag as string) || ""}
                       onChange={(e) => updateNodeConfig(selectedNode.id, "tag", e.target.value)}
                     />
+                  </div>
+                )}
+
+                {/* crm.remove_tag (Action) */}
+                {selectedNode.data.type === "crm.remove_tag" && (
+                  <div className="space-y-1.5">
+                    <Label>Nome da Etiqueta a Remover *</Label>
+                    <Input
+                      placeholder="Ex: interessado, lead"
+                      value={((selectedNode.data.config as any)?.tag as string) || ""}
+                      onChange={(e) => updateNodeConfig(selectedNode.id, "tag", e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {/* crm.assign_card (Action) */}
+                {selectedNode.data.type === "crm.assign_card" && (
+                  <div className="space-y-1.5">
+                    <Label>Responsável no CRM *</Label>
+                    <Select
+                      value={((selectedNode.data.config as any)?.ownerId as string) || ""}
+                      onValueChange={(val) => updateNodeConfig(selectedNode.id, "ownerId", val)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o atendente..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(auxData.owners || []).map((u) => (
+                          <SelectItem key={u.id} value={u.id}>
+                            {u.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
 
@@ -3159,6 +4295,27 @@ function AutomacaoCanvasPage() {
                         </SelectContent>
                       </Select>
                     </div>
+
+                    {((selectedNode.data.config as any)?.connectionPolicy === "specific") && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Linha / Conexão Específica *</Label>
+                        <Select
+                          value={((selectedNode.data.config as any)?.specificInstanceId as string) || ""}
+                          onValueChange={(val) => updateNodeConfig(selectedNode.id, "specificInstanceId", val)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a linha..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {auxData.instances.map((inst) => (
+                              <SelectItem key={inst.id} value={inst.id}>
+                                {inst.display_name || inst.instance_name} ({inst.provider})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -3267,9 +4424,9 @@ function AutomacaoCanvasPage() {
                     <div className="space-y-1.5 pt-2 border-t">
                       <Label className="text-xs">Mensagem de Resposta Inválida (Reprompt)</Label>
                       <Input
-                        value={((selectedNode.data.config as any)?.repromptText as string) || ""}
+                        value={((selectedNode.data.config as any)?.invalidReplyText ?? (selectedNode.data.config as any)?.repromptText ?? "")}
                         placeholder="Por favor, selecione uma das opções válidas digitando o número."
-                        onChange={(e) => updateNodeConfig(selectedNode.id, "repromptText", e.target.value)}
+                        onChange={(e) => updateNodeConfig(selectedNode.id, "invalidReplyText", e.target.value)}
                       />
                     </div>
 
@@ -3280,8 +4437,8 @@ function AutomacaoCanvasPage() {
                           type="number"
                           min={1}
                           max={5}
-                          value={(selectedNode.data.config as any)?.maxRetries ?? 2}
-                          onChange={(e) => updateNodeConfig(selectedNode.id, "maxRetries", Number(e.target.value))}
+                          value={(selectedNode.data.config as any)?.maxInvalidRetries ?? (selectedNode.data.config as any)?.maxRetries ?? 2}
+                          onChange={(e) => updateNodeConfig(selectedNode.id, "maxInvalidRetries", Number(e.target.value))}
                         />
                       </div>
                       <div className="space-y-1">
@@ -3295,6 +4452,43 @@ function AutomacaoCanvasPage() {
                         />
                       </div>
                     </div>
+
+                    <div className="space-y-1.5 pt-2 border-t">
+                      <Label className="text-xs">Política de Conexão</Label>
+                      <Select
+                        value={((selectedNode.data.config as any)?.connectionPolicy as string) || "same_as_trigger"}
+                        onValueChange={(val) => updateNodeConfig(selectedNode.id, "connectionPolicy", val)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="same_as_trigger">Mesma linha/conexão do gatilho</SelectItem>
+                          <SelectItem value="specific">Linha específica</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {((selectedNode.data.config as any)?.connectionPolicy === "specific") && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Linha / Conexão Específica *</Label>
+                        <Select
+                          value={((selectedNode.data.config as any)?.specificInstanceId as string) || ""}
+                          onValueChange={(val) => updateNodeConfig(selectedNode.id, "specificInstanceId", val)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a linha..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {auxData.instances.map((inst) => (
+                              <SelectItem key={inst.id} value={inst.id}>
+                                {inst.display_name || inst.instance_name} ({inst.provider})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -3408,6 +4602,43 @@ function AutomacaoCanvasPage() {
                         />
                       </div>
                     </div>
+
+                    <div className="space-y-1.5 pt-2 border-t">
+                      <Label className="text-xs">Política de Conexão</Label>
+                      <Select
+                        value={((selectedNode.data.config as any)?.connectionPolicy as string) || "same_as_trigger"}
+                        onValueChange={(val) => updateNodeConfig(selectedNode.id, "connectionPolicy", val)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="same_as_trigger">Mesma linha/conexão do gatilho</SelectItem>
+                          <SelectItem value="specific">Linha específica</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {((selectedNode.data.config as any)?.connectionPolicy === "specific") && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Linha / Conexão Específica *</Label>
+                        <Select
+                          value={((selectedNode.data.config as any)?.specificInstanceId as string) || ""}
+                          onValueChange={(val) => updateNodeConfig(selectedNode.id, "specificInstanceId", val)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a linha..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {auxData.instances.map((inst) => (
+                              <SelectItem key={inst.id} value={inst.id}>
+                                {inst.display_name || inst.instance_name} ({inst.provider})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -3455,23 +4686,23 @@ function AutomacaoCanvasPage() {
                       <div className="flex items-center justify-between">
                         <Label className="text-xs font-semibold">Parâmetros do Corpo (Variáveis {`{{1}}`}, {`{{2}}`})</Label>
                         <span className="text-[10px] text-muted-foreground">
-                          {(((selectedNode.data.config as any)?.bodyParameters as string[]) || []).length} parâmetros
+                          {((((selectedNode.data.config as any)?.bodyParams || (selectedNode.data.config as any)?.bodyParameters) as string[]) || []).length} parâmetros
                         </span>
                       </div>
 
                       <div className="space-y-2">
-                        {((((selectedNode.data.config as any)?.bodyParameters as string[]) || []).map((param: string, pIdx: number) => (
+                        {(((((selectedNode.data.config as any)?.bodyParams || (selectedNode.data.config as any)?.bodyParameters) as string[]) || []).map((param: string, pIdx: number) => (
                           <div key={pIdx} className="flex items-center gap-2">
                             <span className="text-[10px] font-mono text-muted-foreground shrink-0 w-6">
                               {`{{${pIdx + 1}}}`}:
                             </span>
                             <Input
                               value={param}
-                              placeholder="Ex: {{contact.name}} ou valor fixo"
+                              placeholder="Ex: {{lead_name}} ou valor fixo"
                               onChange={(e) => {
-                                const params = [...(((selectedNode.data.config as any)?.bodyParameters as string[]) || [])];
+                                const params = [...((((selectedNode.data.config as any)?.bodyParams || (selectedNode.data.config as any)?.bodyParameters) as string[]) || [])];
                                 params[pIdx] = e.target.value;
-                                updateNodeConfig(selectedNode.id, "bodyParameters", params);
+                                updateNodeConfig(selectedNode.id, "bodyParams", params);
                               }}
                               className="text-xs h-8"
                             />
@@ -3480,10 +4711,10 @@ function AutomacaoCanvasPage() {
                               variant="ghost"
                               size="icon"
                               onClick={() => {
-                                const params = (((selectedNode.data.config as any)?.bodyParameters as string[]) || []).filter(
+                                const params = ((((selectedNode.data.config as any)?.bodyParams || (selectedNode.data.config as any)?.bodyParameters) as string[]) || []).filter(
                                   (_, i) => i !== pIdx
                                 );
-                                updateNodeConfig(selectedNode.id, "bodyParameters", params);
+                                updateNodeConfig(selectedNode.id, "bodyParams", params);
                               }}
                               className="size-8 text-muted-foreground hover:text-destructive shrink-0"
                             >
@@ -3499,14 +4730,25 @@ function AutomacaoCanvasPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            const cur = [...(((selectedNode.data.config as any)?.bodyParameters as string[]) || [])];
-                            cur.push("{{contact.name}}");
-                            updateNodeConfig(selectedNode.id, "bodyParameters", cur);
+                            const cur = [...((((selectedNode.data.config as any)?.bodyParams || (selectedNode.data.config as any)?.bodyParameters) as string[]) || [])];
+                            cur.push("{{lead_name}}");
+                            updateNodeConfig(selectedNode.id, "bodyParams", cur);
                           }}
                           className="text-xs gap-1"
                         >
                           <Plus className="size-3" /> Adicionar Parâmetro
                         </Button>
+                      </div>
+
+                      <div className="pt-1">
+                        <span className="text-[10px] text-muted-foreground block mb-1">Inserir variável:</span>
+                        <VariableChips
+                          onInsert={(v: string) => {
+                            const cur = [...((((selectedNode.data.config as any)?.bodyParams || (selectedNode.data.config as any)?.bodyParameters) as string[]) || [])];
+                            cur.push(v);
+                            updateNodeConfig(selectedNode.id, "bodyParams", cur);
+                          }}
+                        />
                       </div>
                     </div>
 
@@ -3525,8 +4767,333 @@ function AutomacaoCanvasPage() {
                         </SelectContent>
                       </Select>
                     </div>
+
+                    {((selectedNode.data.config as any)?.connectionPolicy === "specific") && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Linha / Conexão Específica *</Label>
+                        <Select
+                          value={((selectedNode.data.config as any)?.specificInstanceId as string) || ""}
+                          onValueChange={(val) => updateNodeConfig(selectedNode.id, "specificInstanceId", val)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a linha..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {auxData.instances.map((inst) => (
+                              <SelectItem key={inst.id} value={inst.id}>
+                                {inst.display_name || inst.instance_name} ({inst.provider})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 )}
+
+{/* IA: Classificar Intenção e Rotear */}
+                {selectedNode.data.type === "ai.classify_and_route" && (() => {
+                  const cfg = (selectedNode.data.config as any) || {};
+                  const intents: Array<{ id: string; label: string; description: string }> = Array.isArray(cfg.intents)
+                    ? cfg.intents
+                    : [{ id: "intent_1", label: "Interesse / Preço", description: "Cliente com dúvida de compra" }];
+
+                  const updateIntents = (newIntents: typeof intents) => {
+                    updateNodeConfig(selectedNode.id, "intents", newIntents);
+                  };
+
+                  return (
+                    <div className="space-y-4 pt-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Texto Base para Classificação</Label>
+                        <Textarea
+                          rows={2}
+                          value={cfg.sourceText ?? "{{trigger.text}}"}
+                          onChange={(e) => updateNodeConfig(selectedNode.id, "sourceText", e.target.value)}
+                          className="font-mono text-xs"
+                          placeholder="{{trigger.text}}"
+                        />
+                        <VariableChips onInsert={(v) => updateNodeConfig(selectedNode.id, "sourceText", (cfg.sourceText || "") + v)} />
+                      </div>
+
+                      <div className="flex items-center justify-between p-2.5 rounded-xl border bg-muted/30">
+                        <div className="space-y-0.5">
+                          <Label className="text-xs font-medium">Incluir Histórico Recente</Label>
+                          <p className="text-[10px] text-muted-foreground">Lê as últimas 6 mensagens do lead para contextualizar a IA.</p>
+                        </div>
+                        <Switch
+                          checked={cfg.includeRecentHistory ?? true}
+                          onCheckedChange={(checked) => updateNodeConfig(selectedNode.id, "includeRecentHistory", checked)}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-center text-xs">
+                          <Label className="text-xs">Confiança Mínima</Label>
+                          <span className="font-mono text-purple-600 font-semibold">{((cfg.minConfidence ?? 0.6) * 100).toFixed(0)}%</span>
+                        </div>
+                        <Input
+                          type="number"
+                          min="0.1"
+                          max="1.0"
+                          step="0.05"
+                          value={cfg.minConfidence ?? 0.6}
+                          onChange={(e) => updateNodeConfig(selectedNode.id, "minConfidence", parseFloat(e.target.value) || 0.6)}
+                          className="text-xs"
+                        />
+                        <p className="text-[10px] text-muted-foreground">Abaixo deste percentual, o fluxo toma o ramo "Fallback".</p>
+                      </div>
+
+                      <div className="space-y-2 pt-2 border-t">
+                        <div className="flex justify-between items-center">
+                          <Label className="text-xs font-semibold">Intenções Mapeadas ({intents.length}/5)</Label>
+                          {intents.length < 5 && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const nextId = `intent_${intents.length + 1}`;
+                                updateIntents([...intents, { id: nextId, label: `Intenção ${intents.length + 1}`, description: "Descrição do que o cliente busca..." }]);
+                              }}
+                              className="h-6 px-2 text-[10px] gap-1"
+                            >
+                              <Plus className="size-3" /> Adicionar
+                            </Button>
+                          )}
+                        </div>
+
+                        {intents.map((it, idx) => (
+                          <div key={it.id} className="p-2.5 border rounded-xl space-y-2 bg-card">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-xs text-purple-600 flex items-center gap-1">
+                                Ramo #{idx + 1} ({it.id})
+                              </span>
+                              {intents.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => updateIntents(intents.filter((_, i) => i !== idx))}
+                                  className="text-rose-500 hover:text-rose-700 text-xs"
+                                >
+                                  Remover
+                                </button>
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-[10px] text-muted-foreground">Etiqueta do Ramo</Label>
+                              <Input
+                                value={it.label}
+                                onChange={(e) => {
+                                  const updated = [...intents];
+                                  updated[idx] = { ...updated[idx], label: e.target.value };
+                                  updateIntents(updated);
+                                }}
+                                className="h-7 text-xs"
+                                placeholder="ex: Compra / Preço"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-[10px] text-muted-foreground">Descrição da Intenção para o Prompt</Label>
+                              <Textarea
+                                rows={2}
+                                value={it.description}
+                                onChange={(e) => {
+                                  const updated = [...intents];
+                                  updated[idx] = { ...updated[idx], description: e.target.value };
+                                  updateIntents(updated);
+                                }}
+                                className="text-xs"
+                                placeholder="ex: Cliente pergunta preços, pacotes ou quer contratar"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* IA: Extrair Dados para o CRM */}
+                {selectedNode.data.type === "ai.extract_fields" && (() => {
+                  const cfg = (selectedNode.data.config as any) || {};
+                  const fields: Array<{ key: string; target: string; description: string }> = Array.isArray(cfg.fields)
+                    ? cfg.fields
+                    : [{ key: "nome", target: "nome", description: "Nome completo do lead" }];
+
+                  const updateFields = (newFields: typeof fields) => {
+                    updateNodeConfig(selectedNode.id, "fields", newFields);
+                  };
+
+                  return (
+                    <div className="space-y-4 pt-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Texto Fonte para Extração</Label>
+                        <Textarea
+                          rows={2}
+                          value={cfg.sourceText ?? "{{trigger.text}}"}
+                          onChange={(e) => updateNodeConfig(selectedNode.id, "sourceText", e.target.value)}
+                          className="font-mono text-xs"
+                          placeholder="{{trigger.text}}"
+                        />
+                        <VariableChips onInsert={(v) => updateNodeConfig(selectedNode.id, "sourceText", (cfg.sourceText || "") + v)} />
+                      </div>
+
+                      <div className="flex items-center justify-between p-2.5 rounded-xl border bg-muted/30">
+                        <div className="space-y-0.5">
+                          <Label className="text-xs font-medium">Incluir Mensagens Anteriores</Label>
+                          <p className="text-[10px] text-muted-foreground">Lê as últimas 6 mensagens para encontrar dados dispersos na conversa.</p>
+                        </div>
+                        <Switch
+                          checked={cfg.includeRecentHistory ?? true}
+                          onCheckedChange={(checked) => updateNodeConfig(selectedNode.id, "includeRecentHistory", checked)}
+                        />
+                      </div>
+
+                      <div className="space-y-2 pt-2 border-t">
+                        <div className="flex justify-between items-center">
+                          <Label className="text-xs font-semibold">Campos a Extrair ({fields.length}/8)</Label>
+                          {fields.length < 8 && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                updateFields([...fields, { key: "campo_extra", target: "custom", description: "Descrição do dado..." }]);
+                              }}
+                              className="h-6 px-2 text-[10px] gap-1"
+                            >
+                              <Plus className="size-3" /> Adicionar
+                            </Button>
+                          )}
+                        </div>
+
+                        {fields.map((f, idx) => (
+                          <div key={idx} className="p-2.5 border rounded-xl space-y-2 bg-card">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-xs text-purple-600">Campo #{idx + 1}</span>
+                              {fields.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => updateFields(fields.filter((_, i) => i !== idx))}
+                                  className="text-rose-500 hover:text-rose-700 text-xs"
+                                >
+                                  Remover
+                                </button>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <Label className="text-[10px] text-muted-foreground">Chave / Nome</Label>
+                                <Input
+                                  value={f.key}
+                                  onChange={(e) => {
+                                    const updated = [...fields];
+                                    updated[idx] = { ...updated[idx], key: e.target.value };
+                                    updateFields(updated);
+                                  }}
+                                  className="h-7 text-xs font-mono"
+                                  placeholder="nome, email, valor..."
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[10px] text-muted-foreground">Destino no CRM</Label>
+                                <Select
+                                  value={f.target}
+                                  onValueChange={(val) => {
+                                    const updated = [...fields];
+                                    updated[idx] = { ...updated[idx], target: val };
+                                    updateFields(updated);
+                                  }}
+                                >
+                                  <SelectTrigger className="h-7 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="nome">Nome do Contato</SelectItem>
+                                    <SelectItem value="email">E-mail do Contato</SelectItem>
+                                    <SelectItem value="valor">Valor do Negócio</SelectItem>
+                                    <SelectItem value="custom">Campo Extra (JSONB)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-[10px] text-muted-foreground">Instrução para a IA</Label>
+                              <Input
+                                value={f.description}
+                                onChange={(e) => {
+                                  const updated = [...fields];
+                                  updated[idx] = { ...updated[idx], description: e.target.value };
+                                  updateFields(updated);
+                                }}
+                                className="h-7 text-xs"
+                                placeholder="ex: Nome próprio e sobrenome da pessoa"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Meta CAPI: Evento de Conversão */}
+                {selectedNode.data.type === "meta.capi_event" && (() => {
+                  const cfg = (selectedNode.data.config as any) || {};
+                  return (
+                    <div className="space-y-4 pt-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Nome do Evento Meta</Label>
+                        <Select
+                          value={cfg.eventName || "Lead"}
+                          onValueChange={(val) => updateNodeConfig(selectedNode.id, "eventName", val)}
+                        >
+                          <SelectTrigger className="text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Lead">Lead (Cadastro Realizado)</SelectItem>
+                            <SelectItem value="Purchase">Purchase (Compra / Fechamento)</SelectItem>
+                            <SelectItem value="CompleteRegistration">CompleteRegistration</SelectItem>
+                            <SelectItem value="Contact">Contact (Primeiro Contato)</SelectItem>
+                            <SelectItem value="Schedule">Schedule (Agendamento)</SelectItem>
+                            <SelectItem value="ViewContent">ViewContent</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Valor da Conversão (Opcional)</Label>
+                        <Input
+                          value={cfg.valueTemplate ?? "0"}
+                          onChange={(e) => updateNodeConfig(selectedNode.id, "valueTemplate", e.target.value)}
+                          className="font-mono text-xs"
+                          placeholder="{{card.valor}} ou 150.00"
+                        />
+                        <VariableChips onInsert={(v) => updateNodeConfig(selectedNode.id, "valueTemplate", (cfg.valueTemplate || "") + v)} />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Moeda</Label>
+                        <Input
+                          value={cfg.currency || "BRL"}
+                          onChange={(e) => updateNodeConfig(selectedNode.id, "currency", e.target.value.toUpperCase())}
+                          className="font-mono text-xs uppercase"
+                          placeholder="BRL, USD, EUR..."
+                        />
+                      </div>
+
+                      <div className="p-3 bg-emerald-500/10 border border-emerald-200 rounded-xl text-emerald-800 text-[11px] space-y-1">
+                        <span className="font-semibold block flex items-center gap-1">
+                          <TrendingUp className="size-3.5" /> Deduplicação e CAPI Nativa
+                        </span>
+                        <p className="text-[10px] leading-relaxed">
+                          O evento é enviado diretamente aos servidores da Meta associado ao telefone e e-mail do lead com chave de deduplicação idempotente.
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <div className="pt-4 border-t flex justify-between gap-2">
                   <Button
@@ -3597,29 +5164,66 @@ function AutomacaoCanvasPage() {
                       </td>
                       <td className="p-3 font-mono text-[11px]">{x.external_conversation_id || "N/A"}</td>
                       <td className="p-3">
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                            x.status === "succeeded"
-                              ? "bg-emerald-500/10 text-emerald-600"
-                              : x.status === "waiting"
-                                ? "bg-sky-500/10 text-sky-600"
-                                : x.status === "failed"
-                                  ? "bg-rose-500/10 text-rose-600"
-                                  : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {x.status}
-                        </span>
+                        {x.error_code === "GOAL_MET" ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-600">
+                            Meta atingida
+                          </span>
+                        ) : (
+                          <div className="space-y-0.5">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                                x.status === "succeeded"
+                                  ? "bg-emerald-500/10 text-emerald-600"
+                                  : x.status === "waiting"
+                                    ? "bg-sky-500/10 text-sky-600"
+                                    : x.status === "failed"
+                                      ? "bg-rose-500/10 text-rose-600"
+                                      : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {x.status}
+                            </span>
+                            {x.status === "failed" && x.error_summary && (
+                              <p className="text-[10px] text-rose-600 truncate max-w-[200px]" title={x.error_summary}>
+                                {x.error_summary}
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="p-3 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => viewExecutionTrace(x.id)}
-                          className="h-7 px-2 text-xs text-primary"
-                        >
-                          Ver Passos
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => viewExecutionTrace(x.id)}
+                            className="h-7 px-2 text-xs text-primary"
+                          >
+                            Ver Passos
+                          </Button>
+                          {(x.status === "failed" || x.status === "needs_review") && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRetryExecution(x.id)}
+                              className="h-7 px-2 text-xs text-amber-600 hover:text-amber-700"
+                              title="Reintentar execução"
+                            >
+                              <RotateCcw className="size-3 mr-1" /> Reintentar
+                            </Button>
+                          )}
+                          {(x.status === "running" || x.status === "waiting") && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCancelExecution(x.id)}
+                              className="h-7 px-2 text-xs text-rose-600 hover:text-rose-700"
+                              title="Cancelar execução"
+                            >
+                              <XCircle className="size-3 mr-1" /> Cancelar
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -3634,9 +5238,39 @@ function AutomacaoCanvasPage() {
               <DialogHeader>
                 <DialogTitle className="text-base flex items-center gap-2">
                   <span>Trilha da Execução</span>
-                  <Badge variant="outline" className="text-xs">
-                    {(selectedExecDetail?.execution || selectedExecDetail?.exec)?.status || "desconhecido"}
-                  </Badge>
+                  {(selectedExecDetail?.execution || selectedExecDetail?.exec)?.error_code === "GOAL_MET" ? (
+                    <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-300">
+                      Meta atingida
+                    </Badge>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant="outline" className="text-xs">
+                        {(selectedExecDetail?.execution || selectedExecDetail?.exec)?.status || "desconhecido"}
+                      </Badge>
+                      {((selectedExecDetail?.execution || selectedExecDetail?.exec)?.status === "failed" ||
+                        (selectedExecDetail?.execution || selectedExecDetail?.exec)?.status === "needs_review") && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRetryExecution((selectedExecDetail?.execution || selectedExecDetail?.exec).id)}
+                          className="h-6 px-2 text-[10px] text-amber-600 hover:text-amber-700 gap-1"
+                        >
+                          <RotateCcw className="size-2.5" /> Reintentar
+                        </Button>
+                      )}
+                      {((selectedExecDetail?.execution || selectedExecDetail?.exec)?.status === "running" ||
+                        (selectedExecDetail?.execution || selectedExecDetail?.exec)?.status === "waiting") && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCancelExecution((selectedExecDetail?.execution || selectedExecDetail?.exec).id)}
+                          className="h-6 px-2 text-[10px] text-rose-600 hover:text-rose-700 gap-1"
+                        >
+                          <XCircle className="size-2.5" /> Cancelar
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </DialogTitle>
               </DialogHeader>
 
@@ -3660,6 +5294,13 @@ function AutomacaoCanvasPage() {
                       </span>
                     </div>
                   </div>
+
+                  {(selectedExecDetail?.execution || selectedExecDetail?.exec)?.error_summary && (
+                    <div className="p-3 bg-rose-500/10 border border-rose-200 rounded-xl text-rose-700 text-xs">
+                      <span className="font-semibold block">Erro da Execução:</span>
+                      {(selectedExecDetail?.execution || selectedExecDetail?.exec)?.error_summary}
+                    </div>
+                  )}
 
                   <h4 className="font-semibold text-xs pt-2">Passos Executados (Steps):</h4>
                   <div className="space-y-2 border rounded-xl p-3 bg-card divide-y">
@@ -3705,8 +5346,10 @@ function AutomacaoCanvasPage() {
               )}
             </DialogContent>
           </Dialog>
+        </div>
+      )}
 
-          {/* Modal Seletor de Próximo Passo ao clicar no botão '+' (P1.9) */}
+      {/* Modal Seletor de Próximo Passo ao clicar no botão '+' (P1.9) */}
           <Dialog open={Boolean(quickPicker)} onOpenChange={(o) => !o && setQuickPicker(null)}>
             <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
               <DialogHeader>
@@ -3859,6 +5502,44 @@ function AutomacaoCanvasPage() {
                 </div>
 
                 <div>
+                  <h4 className="text-xs font-semibold text-purple-600 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="size-3.5" /> IA & Conversões
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "ai.classify_and_route")}
+                      className="p-3 text-left border rounded-xl hover:border-purple-500 hover:bg-purple-500/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <Sparkles className="size-3.5 text-purple-600" /> IA: Classificar Intenção
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Classifica a mensagem com IA e ramifica o fluxo.</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "ai.extract_fields")}
+                      className="p-3 text-left border rounded-xl hover:border-purple-500 hover:bg-purple-500/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <BrainCircuit className="size-3.5 text-purple-600" /> IA: Extrair Dados CRM
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Extrai dados estruturados e salva no cartão do lead.</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quickPicker && handleAddSpecificNode(quickPicker.sourceId, quickPicker.sourcePort, "meta.capi_event")}
+                      className="p-3 text-left border rounded-xl hover:border-emerald-500 hover:bg-emerald-500/5 transition-colors flex flex-col gap-1"
+                    >
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-foreground">
+                        <TrendingUp className="size-3.5 text-emerald-600" /> Meta CAPI (Conversão)
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Envia evento oficial de conversão à Meta CAPI.</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
                   <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Ações de CRM & Leads</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button
@@ -3949,6 +5630,125 @@ function AutomacaoCanvasPage() {
                     </button>
                   </div>
                 </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Modal Simulador de Fluxo Dry-Run */}
+          <Dialog open={simOpen} onOpenChange={setSimOpen}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-base flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-amber-600">
+                    <FlaskConical className="size-5" />
+                    Simulador de Fluxo (Dry-Run)
+                  </span>
+                  {simVisitedNodes.size > 0 && (
+                    <Button variant="ghost" size="sm" onClick={handleClearSimulation} className="text-xs text-muted-foreground">
+                      Limpar Destaque
+                    </Button>
+                  )}
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4 pt-2 text-xs">
+                <p className="text-muted-foreground">
+                  Simule a execução deste fluxo sem disparar mensagens reais nem alterar a base de dados do CRM.
+                </p>
+
+                <div className="space-y-3 p-3 bg-muted/40 rounded-xl border">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Mensagem Simulada do Contato</Label>
+                    <Textarea
+                      rows={2}
+                      value={simSampleText}
+                      onChange={(e) => setSimSampleText(e.target.value)}
+                      placeholder="Digite a mensagem simulada..."
+                      className="text-xs"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Canal Simulado</Label>
+                      <Select value={simSampleChannel} onValueChange={setSimSampleChannel}>
+                        <SelectTrigger className="text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                          <SelectItem value="instagram_dm">Instagram Direct</SelectItem>
+                          <SelectItem value="facebook_messenger">Facebook Messenger</SelectItem>
+                          <SelectItem value="telegram">Telegram</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">ID do Cartão / Lead CRM (Opcional)</Label>
+                      <Input
+                        value={simSampleCardId}
+                        onChange={(e) => setSimSampleCardId(e.target.value)}
+                        placeholder="Vazio usa Lead de Teste"
+                        className="text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <Button
+                      onClick={handleRunSimulation}
+                      disabled={simRunning}
+                      className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5 text-xs"
+                    >
+                      {simRunning ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
+                      Executar Simulação
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Resultado da Simulação */}
+                {simResult && (
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-500/10 border border-amber-300">
+                      <span className="font-semibold text-amber-800 flex items-center gap-1.5">
+                        <CheckCircle2 className="size-4 text-emerald-600" />
+                        Simulação Concluída ({simResult.steps.length} passos percorridos)
+                      </span>
+                      <span className="text-[11px] text-amber-700">
+                        {simResult.visitedNodeIds.length} nós iluminados no Canvas
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 border rounded-xl p-3 bg-card divide-y">
+                      {simResult.steps.length === 0 ? (
+                        <p className="text-muted-foreground text-center py-4">Nenhum nó foi acionado pela simulação.</p>
+                      ) : (
+                        simResult.steps.map((st, idx) => (
+                          <div key={idx} className="py-2.5 flex items-start justify-between gap-3 first:pt-0 last:pb-0">
+                            <div className="space-y-1">
+                              <div className="font-semibold flex items-center gap-1.5">
+                                <span className="size-4 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-bold">
+                                  {idx + 1}
+                                </span>
+                                <span>{st.nodeName}</span>
+                                <span className="text-[10px] text-muted-foreground font-mono">({st.nodeType})</span>
+                                {st.portTaken && (
+                                  <Badge variant="outline" className="text-[9px] bg-purple-50 text-purple-700 border-purple-200">
+                                    Ramo: {st.portTaken}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-foreground/80 pl-5.5 italic">
+                                {st.preview}
+                              </p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </DialogContent>
           </Dialog>
@@ -4077,8 +5877,6 @@ function AutomacaoCanvasPage() {
               </div>
             </DialogContent>
           </Dialog>
-        </div>
-      )}
     </div>
   );
 }

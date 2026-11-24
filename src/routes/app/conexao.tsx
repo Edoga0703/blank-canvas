@@ -13,7 +13,7 @@ import {
   Loader2, Power, QrCode, Trash2, Pause, Play,
   Activity, Smartphone,
   Plus, ChevronDown, ChevronRight, Search, WifiOff,
-  Plug,
+  Plug, History,
 } from "lucide-react";
 import { InstagramGlyph, MessengerGlyph, WhatsAppGlyph, TelegramGlyph } from "@/components/ui/channel-icons";
 import { brand } from "@/config/brand";
@@ -21,7 +21,7 @@ import { useLanguage } from "@/lib/i18n/context";
 import { betaConfig } from "@/config/beta";
 import {
   connectWhatsapp, connectDapiOfficial, checkWhatsappStatus, disconnectWhatsapp, deleteWhatsapp,
-  reconfigureWebhook, listWhatsappInstances,
+  reconfigureWebhook, listWhatsappInstances, syncDapiCoexistenceHistory,
   setWhatsappPaused,
 } from "@/lib/whatsapp.functions";
 import { usePlanFeatures } from "@/hooks/use-plan-features";
@@ -72,6 +72,7 @@ function ConexoesPage() {
   const disconnect = useServerFn(disconnectWhatsapp);
   const removeInstance = useServerFn(deleteWhatsapp);
   const reconfWebhook = useServerFn(reconfigureWebhook);
+  const syncCoexHistory = useServerFn(syncDapiCoexistenceHistory);
   const [telegramOpen, setTelegramOpen] = useState(false);
   const [metaDialog, setMetaDialog] = useState<"facebook" | "instagram" | null>(null);
   const setPaused = useServerFn(setWhatsappPaused);
@@ -264,6 +265,23 @@ function ConexoesPage() {
       toast.success("Webhook D-API sincronizado.");
     } catch (e: any) { toast.error(e?.message || "Falha ao sincronizar webhook"); }
     finally { setBusy(null); }
+  }
+
+  async function doSyncCoexHistory(inst: Instance) {
+    setBusy(inst.instance_name);
+    try {
+      const res: any = await syncCoexHistory({ data: { instanceName: inst.instance_name } });
+      await refresh(true);
+      if (res?.ok) {
+        toast.success(res.message || "Sincronização de 6 meses (Coexistência) solicitada com sucesso!");
+      } else {
+        toast.warning(res?.message || "Não foi possível solicitar a sincronização retroativa.");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao sincronizar histórico Coexistência");
+    } finally {
+      setBusy(null);
+    }
   }
 
   function pluginName(slug: string, fallback: string) {
@@ -494,9 +512,14 @@ function ConexoesPage() {
                             </button>
                             <div className="flex items-center gap-0.5 shrink-0">
                               {isOfficial ? (
-                                <IconAction tip={t("connection.sync_webhook", undefined, "Sincronizar Webhook Oficial")} onClick={() => doReconfWebhook(inst)} disabled={isBusy}>
-                                  <Plug className="size-4" />
-                                </IconAction>
+                                <>
+                                  <IconAction tip={t("connection.sync_coex_history", undefined, "Sincronizar Histórico Coexistência (6 meses)")} onClick={() => doSyncCoexHistory(inst)} disabled={isBusy || inst.status !== "connected"}>
+                                    <History className="size-4 text-blue-600" />
+                                  </IconAction>
+                                  <IconAction tip={t("connection.sync_webhook", undefined, "Sincronizar Webhook Oficial")} onClick={() => doReconfWebhook(inst)} disabled={isBusy}>
+                                    <Plug className="size-4" />
+                                  </IconAction>
+                                </>
                               ) : inst.provider === "dapi" ? (
                                 <IconAction tip={t("connection.reconnect_qr", undefined, "Reconectar / Gerar QR")} onClick={() => doReconnect(inst)} disabled={isBusy}>
                                   <QrCode className="size-4" />

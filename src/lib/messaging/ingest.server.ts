@@ -293,6 +293,11 @@ async function persistMessage(
     }
   }
 
+  const occurredMs = event.occurredAt ? new Date(event.occurredAt).getTime() : NaN;
+  const isHistorical =
+    Boolean(event.isHistorySync) ||
+    (!isNaN(occurredMs) && occurredMs > 0 && Date.now() - occurredMs > 15 * 60 * 1000);
+
   // F7 — Conexión con CRM / Kanban / IA para mensajes entrantes
   if (event.direction === "incoming") {
     try {
@@ -316,6 +321,7 @@ async function persistMessage(
         summaryText,
         stages,
         "whatsapp",
+        { occurredAt: event.occurredAt, isHistorySync: isHistorical },
       );
 
       // Captura y asociación de Anuncios Meta Ads (CTWA), UTMs y Sesiones de Clic
@@ -444,7 +450,7 @@ async function persistMessage(
               .catch(() => null);
           }
 
-          if (hasCtwa) {
+          if (hasCtwa && !isHistorical) {
             void import("@/lib/meta-capi.server")
               .then(({ sendMetaConversionForLead }) =>
                 sendMetaConversionForLead({
@@ -460,15 +466,17 @@ async function persistMessage(
           console.warn("[ingest.tracking] Error al extraer rastreo de anuncio:", trackErr?.message);
         }
 
-        // Latido orgánico: al recibir un mensaje, drena en segundo plano 1 o 2 leads que cumplieron 30m de silencio
-        void import("@/lib/crm-lead-analyzer.server")
-          .then(({ sweepOpportunisticInactiveLeads }) =>
-            sweepOpportunisticInactiveLeads(connection.company_id, 2),
-          )
-          .catch(() => null);
+        if (!isHistorical) {
+          // Latido orgánico: al recibir un mensaje, drena en segundo plano 1 o 2 leads que cumplieron 30m de silencio
+          void import("@/lib/crm-lead-analyzer.server")
+            .then(({ sweepOpportunisticInactiveLeads }) =>
+              sweepOpportunisticInactiveLeads(connection.company_id, 2),
+            )
+            .catch(() => null);
+        }
       }
 
-      if (currentCard && !currentCard.owner_id) {
+      if (!isHistorical && currentCard && !currentCard.owner_id) {
         const { data: stageConfig } = await (supabaseAdmin as any)
           .from("crm_stage")
           .select("modo_atendimento")
@@ -486,54 +494,72 @@ async function persistMessage(
         }
       }
 
-      const isUntranscribedAudio = isAudio && (!event.text || !event.text.trim() || summaryText === "[ÁUDIO]");
+      if (!isHistorical) {
+        const isUntranscribedAudio = isAudio && (!event.text || !event.text.trim() || summaryText === "[ÁUDIO]");
 
-      const { recordInboundAutomationEvent } = await import("@/lib/automations/inbound-events.server");
-      await recordInboundAutomationEvent({
-        companyId: connection.company_id,
-        messageId: message.id,
-        source: connection.provider || "dapi",
-        instanceId: connection.id,
-        occurredAt: event.occurredAt,
-        payload: {
-          cardId: currentCard?.id || null,
+        const { recordInboundAutomationEvent } = await import("@/lib/automations/inbound-events.server");
+        await recordInboundAutomationEvent({
+          companyId: connection.company_id,
           messageId: message.id,
-          phone: event.phone,
-          text: summaryText,
-          channel: connection.channel,
+          source: connection.provider || "dapi",
           instanceId: connection.id,
-          provider: connection.provider,
-          externalConversationId: event.phone,
-          author: "contact",
-          direction: "incoming",
-          kind: event.attachments?.[0]?.kind || "text",
-          isGroup: Boolean((event.raw as any)?.data?.is_group || event.phone.includes("@g.us")),
-          stageId: currentCard?.stage_id || null,
-          responderEmAudio: isAudio,
-          isAudioMessage: isUntranscribedAudio,
-        },
-      });
+          occurredAt: event.occurredAt,
+          payload: {
+            cardId: currentCard?.id || null,
+            messageId: message.id,
+            phone: event.phone,
+            text: summaryText,
+            channel: connection.channel,
+            instanceId: connection.id,
+            provider: connection.provider,
+            externalConversationId: event.phone,
+            author: "contact",
+            direction: "incoming",
+            kind: event.attachments?.[0]?.kind || "text",
+            isGroup: Boolean((event.raw as any)?.data?.is_group || event.phone.includes("@g.us")),
+            stageId: currentCard?.stage_id || null,
+            responderEmAudio: isAudio,
+            isAudioMessage: isUntranscribedAudio,
+          },
+        });
+      }
     } catch (automationError) {
       console.error("[ingest.automation] Error al registrar automatización:", automationError);
       throw automationError;
     }
   } else if (event.direction === "outgoing") {
     try {
-      await (supabaseAdmin as any)
-        .from("crm_cards")
-        .update({
-          ultima_mensagem: (event.text || "[Mensaje enviado]").slice(0, 240),
-          ultima_em: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("company_id", connection.company_id)
-        .eq("numero", event.phone);
+      if (isHistorical) {
+        const { upsertCard, getStagesBrief } = await import("@/lib/crm-engine.server");
+        const stages = await getStagesBrief(supabaseAdmin, connection.company_id);
+        await upsertCard(
+          supabaseAdmin,
+          connection.company_id,
+          connection.user_id,
+          event.phone,
+          event.contactName || null,
+          event.text || "[Mensaje enviado]",
+          stages,
+          "whatsapp",
+          { occurredAt: event.occurredAt, isHistorySync: true },
+        );
+      } else {
+        await (supabaseAdmin as any)
+          .from("crm_cards")
+          .update({
+            ultima_mensagem: (event.text || "[Mensaje enviado]").slice(0, 240),
+            ultima_em: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("company_id", connection.company_id)
+          .eq("numero", event.phone);
 
-      void import("@/lib/crm-lead-analyzer.server")
-        .then(({ sweepOpportunisticInactiveLeads }) =>
-          sweepOpportunisticInactiveLeads(connection.company_id, 2),
-        )
-        .catch(() => null);
+        void import("@/lib/crm-lead-analyzer.server")
+          .then(({ sweepOpportunisticInactiveLeads }) =>
+            sweepOpportunisticInactiveLeads(connection.company_id, 2),
+          )
+          .catch(() => null);
+      }
     } catch (outErr: any) {
       console.warn("[ingest.outgoing] Error actualizando card/análisis:", outErr?.message);
     }

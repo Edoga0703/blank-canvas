@@ -256,9 +256,20 @@ export const dapiProvider: MessagingProvider = {
         eventName === "message.sent" ||
         eventName === "messages.create" ||
         eventName === "message.create" ||
-        eventName === "messages";
+        eventName === "messages" ||
+        eventName === "history.message.upsert" ||
+        eventName === "history.message.received" ||
+        eventName === "history.messages.sent" ||
+        eventName === "coexistence.history" ||
+        eventName === "history";
       if (isMsgEv) {
-      const fromMe = Boolean(data.fromMe ?? data.key?.fromMe) || eventName === "messages.sent";
+      const fromMe =
+        Boolean(data.fromMe ?? data.from_me ?? data.key?.fromMe) ||
+        eventName === "messages.sent" ||
+        eventName === "message.sent" ||
+        eventName === "history.messages.sent" ||
+        data.coexistence === "echo" ||
+        data.origin?.type === "whatsapp_business_app";
       const senderPart = parseParticipant(data.from || data.sender || data.key?.remoteJid || data.remoteJid, data);
       const recipientPart = parseParticipant(data.to || data.recipient_id || data.recipient, data);
 
@@ -276,13 +287,15 @@ export const dapiProvider: MessagingProvider = {
       const phone = activePart.phone;
       if (!phone) return [];
 
-      const contactName = String(
-        data.from_name ||
-        data.pushName ||
-        senderPart.name ||
-        recipientPart.name ||
-        ""
-      ).trim() || null;
+      const contactName = fromMe
+        ? String(data.to_name || data.chatName || recipientPart.name || "").trim() || null
+        : String(
+            data.from_name ||
+            data.pushName ||
+            senderPart.name ||
+            recipientPart.name ||
+            ""
+          ).trim() || null;
 
       let kind: any = "text";
       const attachments: any[] = [];
@@ -300,13 +313,25 @@ export const dapiProvider: MessagingProvider = {
         });
       }
 
-      const text = extractText(data);
+      let text = extractText(data);
+      if (!text && (data.type === "media_placeholder" || data.media_placeholder)) {
+        text = "[Mídia do histórico]";
+      }
 
       const rawTs = data.messageTimestamp || data.timestamp || body.timestamp;
       const numTs = typeof rawTs === "number" ? rawTs : (typeof rawTs === "string" && /^\d+$/.test(rawTs.trim()) ? Number(rawTs.trim()) : NaN);
-      const safeOccurredAt = !isNaN(numTs) && numTs > 0
-        ? new Date(numTs < 10_000_000_000 ? numTs * 1000 : numTs).toISOString()
-        : (rawTs && !isNaN(new Date(rawTs).getTime()) ? new Date(rawTs).toISOString() : new Date().toISOString());
+      const occurredAtDate = !isNaN(numTs) && numTs > 0
+        ? new Date(numTs < 10_000_000_000 ? numTs * 1000 : numTs)
+        : (rawTs && !isNaN(new Date(rawTs).getTime()) ? new Date(rawTs) : new Date());
+      const safeOccurredAt = occurredAtDate.toISOString();
+
+      const isHistorySync =
+        Boolean(data.isHistorySync || data.isHistory || data.is_history || body.isHistorySync) ||
+        data.coexistence === "history" ||
+        body.coexistence === "history" ||
+        eventName.startsWith("history") ||
+        eventName === "coexistence.history" ||
+        Date.now() - occurredAtDate.getTime() > 15 * 60 * 1000;
 
       return [
         {
@@ -321,6 +346,7 @@ export const dapiProvider: MessagingProvider = {
           kind,
           text,
           occurredAt: safeOccurredAt,
+          isHistorySync,
           replyToExternalMessageId:
             data.quotedMessageId ||
             data.quoted_message_id ||

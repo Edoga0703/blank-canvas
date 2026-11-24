@@ -48,6 +48,7 @@ export type IncomingMessageEvent = {
   occurredAt: string;
   replyToExternalMessageId?: string | null;
   attachments: MessageAttachment[];
+  isHistorySync?: boolean;
   raw: unknown;
 };
 

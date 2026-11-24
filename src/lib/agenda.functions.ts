@@ -533,6 +533,32 @@ export const saveCompromisso = createServerFn({ method: "POST" })
       } as any);
     }
 
+    if (row && !data.id) {
+      try {
+        const { dispatchDomainEvent, drainImmediateAutomationJobs } = await import(
+          "@/lib/automations/events.server"
+        );
+        await dispatchDomainEvent({
+          name: "appointment.created.v1",
+          companyId: c.companyId,
+          entity: { type: "appointment", id: row.id },
+          source: "agenda",
+          payload: {
+            appointmentId: row.id,
+            cardId: cardId || null,
+            phone: base.numero || "",
+            name: data.nome_lead || row.nome_lead || "",
+            service: data.tipo_id || null,
+            startsAt: row.agendado_para,
+            status: row.status || "agendado",
+          },
+        });
+        await drainImmediateAutomationJobs({ workerId: "hot_agenda", maxJobs: 8, maxTimeMs: 3000 });
+      } catch (autoErr) {
+        console.warn("[agenda.automation.created]", autoErr);
+      }
+    }
+
     return { ok: true as const, row };
   });
 
@@ -600,6 +626,26 @@ export const setStatusCompromisso = createServerFn({ method: "POST" })
       .eq("company_id", c.companyId);
     if (error) throw error;
     await logHistorico(supabase, c, "compromisso", data.id, `status:${data.status}`, null, patch);
+
+    try {
+      const { dispatchDomainEvent, drainImmediateAutomationJobs } = await import(
+        "@/lib/automations/events.server"
+      );
+      await dispatchDomainEvent({
+        name: "appointment.status_changed.v1",
+        companyId: c.companyId,
+        entity: { type: "appointment", id: data.id },
+        source: "agenda",
+        payload: {
+          appointmentId: data.id,
+          status: data.status,
+        },
+      });
+      await drainImmediateAutomationJobs({ workerId: "hot_agenda_status", maxJobs: 8, maxTimeMs: 3000 });
+    } catch (autoErr) {
+      console.warn("[agenda.automation.status]", autoErr);
+    }
+
     return { ok: true };
   });
 

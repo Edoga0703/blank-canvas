@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
-  Loader2, UserPlus, Upload, Eye, EyeOff, Pencil, Trash2, ShieldCheck, User,
+  Loader2, UserPlus, Upload, Eye, EyeOff, Pencil, Trash2, ShieldCheck, Shield, User,
   Users as UsersIcon, ShieldAlert, ScrollText, Search, MessageSquare, Filter,
   KeyRound, Circle, ListOrdered, Target,
 } from "lucide-react";

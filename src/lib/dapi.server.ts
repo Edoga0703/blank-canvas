@@ -25,7 +25,7 @@ function getApiKey(customKey?: string | null): string {
     candidate.startsWith("IGAA") ||
     candidate.startsWith("IGQV");
   const validCustomKey = candidate && !isMetaGraphToken ? candidate : "";
-  const envKey = String(process.env.DAPI_API_KEY || "b35aa288-889a-4c5d-87e4-d447fe152fd9").trim();
+  const envKey = String(process.env.DAPI_API_KEY || "098aeda184429bc8201ba60d88116821906397caa5fd5b935b615318a245da03").trim();
   const key = validCustomKey || envKey;
   if (!key) {
     throw new Error("DAPI_API_KEY no está configurada en las variables de entorno del servidor.");
@@ -146,6 +146,7 @@ export interface DapiCreateSessionParams {
   webhookUrl?: string;
   phoneNumber?: string;
   pairPhone?: string;
+  historySync?: boolean;
 }
 
 export interface DapiSessionStatus {
@@ -209,6 +210,7 @@ export async function dapiCreateSession(params: DapiCreateSessionParams): Promis
     sessionId: params.sessionId,
     type: params.type || "unofficial",
     connectionMode: mode,
+    historySync: params.historySync ?? true,
   };
   if (params.webhookUrl) {
     body.webhookUrl = params.webhookUrl;
@@ -348,9 +350,21 @@ export async function dapiSetWebhookConfig(
       "message.read",
       "message.deleted",
       "message.edited",
+      "message.reaction",
+      "messages.reaction",
       "connection.status",
       "connection.qrcode",
       "connection.paircode",
+      "session.created",
+      "history_sync",
+      "history.messages.sent",
+      "chats.upsert",
+      "chats.update",
+      "contacts.upsert",
+      "contacts.update",
+      "history",
+      "smb_app_state_sync",
+      "smb_message_echoes",
     ];
 
     const eventsMap: Record<string, { enabled: boolean; webhookUrl: string }> = {};
@@ -1082,4 +1096,263 @@ export async function dapiSendButtons(
 
   const id = extractDapiResponseId(res);
   return { id, provider: "dapi", raw: res };
+}
+
+export interface DapiCloudConnectionDetails {
+  connectionId?: string;
+  wabaId?: string;
+  phoneNumberId?: string;
+  businessId?: string;
+  displayPhoneNumber?: string;
+  verifiedName?: string;
+  coexistenceEnabled?: boolean;
+  webhookUrl?: string | null;
+  webhookMode?: string | null;
+  status?: string;
+}
+
+export interface DapiCloudAccessTokenInfo {
+  accessToken: string;
+  wabaId?: string;
+  phoneNumberId?: string;
+  businessId?: string;
+  kind?: string;
+  label?: string;
+  isValid?: boolean;
+  type?: string;
+  scopes?: string[];
+  expiresAt?: string | null;
+}
+
+/**
+ * Consulta detalles de la conexión Cloud API Oficial en D-API (incluye wabaId, phoneNumberId y coexistenceEnabled).
+ * Acepta tanto el UUID connectionId como el sessionId ("cloud-...").
+ */
+export async function dapiGetCloudConnection(
+  connectionOrSessionId: string,
+): Promise<DapiCloudConnectionDetails | null> {
+  try {
+    const res = await dapiFetch<any>(`/connections/cloud-api/${encodeURIComponent(connectionOrSessionId)}`);
+    const d = res?.data || res;
+    if (!d || typeof d !== "object") return null;
+    return {
+      connectionId: d.connectionId || d.id || undefined,
+      wabaId: d.wabaId ? String(d.wabaId) : undefined,
+      phoneNumberId: d.phoneNumberId ? String(d.phoneNumberId) : undefined,
+      businessId: d.businessId ? String(d.businessId) : undefined,
+      displayPhoneNumber: d.displayPhoneNumber ? String(d.displayPhoneNumber) : undefined,
+      verifiedName: d.verifiedName ? String(d.verifiedName) : undefined,
+      coexistenceEnabled: Boolean(d.coexistenceEnabled),
+      webhookUrl: d.webhookUrl ?? null,
+      webhookMode: d.webhookMode ?? null,
+      status: d.status || undefined,
+    };
+  } catch (err: any) {
+    console.warn(`[dapiGetCloudConnection] Error consultando ${connectionOrSessionId}:`, err?.message);
+    return null;
+  }
+}
+
+/**
+ * Recupera el Access Token de Meta descriptografado almacenado en D-API junto con wabaId y phoneNumberId.
+ * Documentación oficial: GET /api/v1/connections/cloud-api/{id}/access-token
+ */
+export async function dapiGetCloudAccessToken(
+  connectionOrSessionId: string,
+): Promise<DapiCloudAccessTokenInfo | null> {
+  try {
+    const res = await dapiFetch<any>(`/connections/cloud-api/${encodeURIComponent(connectionOrSessionId)}/access-token`);
+    const d = res?.data || res;
+    if (!d?.accessToken) return null;
+    return {
+      accessToken: String(d.accessToken),
+      wabaId: d.wabaId ? String(d.wabaId) : undefined,
+      phoneNumberId: d.phoneNumberId ? String(d.phoneNumberId) : undefined,
+      businessId: d.businessId ? String(d.businessId) : undefined,
+      kind: d.kind,
+      label: d.label,
+      isValid: d.isValid,
+      type: d.type,
+      scopes: Array.isArray(d.scopes) ? d.scopes : undefined,
+      expiresAt: d.expiresAt ?? null,
+    };
+  } catch (err: any) {
+    console.warn(`[dapiGetCloudAccessToken] Error consultando ${connectionOrSessionId}:`, err?.message);
+    return null;
+  }
+}
+
+export type MetaCoexSyncType = "history" | "smb_app_state_sync";
+
+export interface MetaCoexSyncResultItem {
+  syncType: MetaCoexSyncType;
+  ok: boolean;
+  status: number;
+  requestId?: string | null;
+  error?: string | null;
+  errorCode?: number | null;
+  errorSubcode?: number | null;
+  raw?: any;
+}
+
+/**
+ * Dispara en Meta Graph API la sincronización retroactiva de Coexistencia:
+ * - POST https://graph.facebook.com/{apiVersion}/{phoneNumberId}/smb_app_data
+ *   - sync_type: "history" -> Jala hasta 6 meses (180 días) de historial de chats 1:1
+ *   - sync_type: "smb_app_state_sync" -> Jala contactos del WhatsApp Business App
+ * Nota: Cada tipo se puede pedir 1 vez dentro de las primeras 24h posteriores al onboarding;
+ * los datos llegan de forma asíncrona vía webhooks.
+ */
+export async function triggerMetaCoexistenceSync(params: {
+  phoneNumberId: string;
+  accessToken: string;
+  syncTypes?: MetaCoexSyncType[];
+  apiVersion?: string;
+}): Promise<{ ok: boolean; results: MetaCoexSyncResultItem[] }> {
+  const version = (params.apiVersion || "v22.0").replace(/^\/+|\/+$/g, "");
+  const phoneNumberId = String(params.phoneNumberId || "").trim();
+  const accessToken = String(params.accessToken || "").trim();
+  if (!phoneNumberId || !accessToken) {
+    throw new Error("Falta phoneNumberId o accessToken de Meta para sincronizar Coexistencia.");
+  }
+
+  const types: MetaCoexSyncType[] =
+    params.syncTypes && params.syncTypes.length > 0
+      ? params.syncTypes
+      : ["history", "smb_app_state_sync"];
+
+  const results: MetaCoexSyncResultItem[] = [];
+  const url = `https://graph.facebook.com/${version}/${encodeURIComponent(phoneNumberId)}/smb_app_data`;
+
+  for (const syncType of types) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          sync_type: syncType,
+        }),
+        signal: AbortSignal.timeout(20_000),
+      });
+
+      const text = await res.text();
+      let body: any = {};
+      try {
+        body = text ? JSON.parse(text) : {};
+      } catch {
+        body = { raw: text };
+      }
+
+      if (res.ok) {
+        results.push({
+          syncType,
+          ok: true,
+          status: res.status,
+          requestId: body?.request_id || body?.id || null,
+          raw: body,
+        });
+      } else {
+        const gErr = body?.error || {};
+        results.push({
+          syncType,
+          ok: false,
+          status: res.status,
+          error: gErr?.error_user_msg || gErr?.message || body?.message || `Meta HTTP ${res.status}`,
+          errorCode: gErr?.code ?? null,
+          errorSubcode: gErr?.error_subcode ?? null,
+          raw: body,
+        });
+      }
+    } catch (err: any) {
+      results.push({
+        syncType,
+        ok: false,
+        status: 0,
+        error: err?.message || "Error de red llamando a Meta Graph API /smb_app_data",
+      });
+    }
+  }
+
+  return {
+    ok: results.some((r) => r.ok),
+    results,
+  };
+}
+
+/**
+ * Busca mensajes almacenados en D-API mediante POST /api/v1/chats/messages/search.
+ */
+export async function dapiSearchMessages(params: {
+  sessionIds: string[];
+  phone?: string;
+  chatId?: string;
+  limit?: number;
+  page?: number;
+  sort_field?: "timestamp" | "id";
+  sort_order?: "asc" | "desc";
+  dateFrom?: string;
+  dateTo?: string;
+}): Promise<{ messages: any[]; total: number; page: number; totalPages: number }> {
+  const payload: Record<string, any> = {
+    sessionIds: params.sessionIds.filter(Boolean),
+    limit: Math.min(100, Math.max(1, params.limit ?? 100)),
+    page: Math.max(1, params.page ?? 1),
+    sort_field: params.sort_field || "timestamp",
+    sort_order: params.sort_order || "desc",
+  };
+  if (params.phone) payload.phone = params.phone;
+  if (params.chatId) payload.chatId = params.chatId;
+  if (params.dateFrom) payload.dateFrom = params.dateFrom;
+  if (params.dateTo) payload.dateTo = params.dateTo;
+
+  const res = await dapiFetch<any>("/chats/messages/search", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }, 25_000);
+
+  const messages = Array.isArray(res?.messages)
+    ? res.messages
+    : Array.isArray(res?.data)
+      ? res.data
+      : Array.isArray(res)
+        ? res
+        : [];
+  const total = Number(res?.total ?? res?.pagination?.total ?? messages.length) || messages.length;
+  const page = Number(res?.page ?? res?.pagination?.page ?? payload.page) || payload.page;
+  const totalPages = Number(res?.totalPages ?? res?.pagination?.totalPages ?? Math.ceil(total / payload.limit)) || 1;
+  return { messages, total, page, totalPages };
+}
+
+/**
+ * Lista chats almacenados en D-API para una sesión mediante GET /api/v1/chats/.
+ */
+export async function dapiListChats(params: {
+  sessionId: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{ chats: any[]; total: number }> {
+  const qs = new URLSearchParams({
+    sessionId: params.sessionId,
+    limit: String(Math.min(100, Math.max(1, params.limit ?? 50))),
+    page: String(Math.max(1, params.page ?? 1)),
+    sort_field: "last_message_timestamp",
+    sort_order: "desc",
+  });
+  if (params.search) qs.set("search", params.search);
+
+  const res = await dapiFetch<any>(`/chats/?${qs.toString()}`, { method: "GET" }, 20_000);
+  const chats = Array.isArray(res?.chats)
+    ? res.chats
+    : Array.isArray(res?.data)
+      ? res.data
+      : Array.isArray(res)
+        ? res
+        : [];
+  const total = Number(res?.total ?? res?.pagination?.total ?? chats.length) || chats.length;
+  return { chats, total };
 }

@@ -688,7 +688,7 @@ export const getContentAttributionSummary = createServerFn({ method: "POST" })
 
     let q = admin
       .from("content_attribution_events")
-      .select("id,event_type,evidence_type,confidence,occurred_at,crm_card_id,crm_cards(titulo,valor,estagio_id)")
+      .select("id,event_type,evidence_type,confidence,occurred_at,crm_card_id,crm_cards(nome,valor,stage_id)")
       .eq("company_id", companyId)
       .order("occurred_at", { ascending: false })
       .limit(100);

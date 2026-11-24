@@ -48,17 +48,22 @@ export type AutomationEventName =
   | "telegram.business_message_received.v1"
   | "telegram.channel_post_published.v1"
   | "telegram.channel_comment_received.v1"
-  | "meta.comment_received.v1";
+  | "meta.comment_received.v1"
+  | "webhook.inbound_received.v1"
+  | "form.submitted.v1"
+  | "meta.lead_ad_received.v1"
+  | "appointment.created.v1"
+  | "appointment.status_changed.v1";
 
 export interface DomainEvent<TPayload = any> {
-  id: string;
+  id?: string;
   companyId: string;
   name: AutomationEventName;
-  occurredAt: string;
+  occurredAt?: string;
   actorId?: string | null;
-  entity: { type: string; id: string };
-  source: string;
-  idempotencyKey: string;
+  entity?: { type: string; id: string };
+  source?: string;
+  idempotencyKey?: string;
   payload: TPayload;
 }
 

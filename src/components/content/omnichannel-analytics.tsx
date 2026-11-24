@@ -153,31 +153,31 @@ export function OmnichannelAnalytics({ accounts }: Props) {
     const igAcc = accountList.find((a: any) => a.network === "instagram");
     const fbAcc = accountList.find((a: any) => a.network === "facebook");
 
-    const igFollowers = Number(igAcc?.followers) || 1057;
-    const fbFollowers = Number(fbAcc?.followers) || 332;
+    const igFollowers = Number(igAcc?.followers) || 0;
+    const fbFollowers = Number(fbAcc?.followers) || 0;
     const totalCalc = igFollowers + fbFollowers;
 
     return [
       {
         platform: "instagram",
         name: "Instagram",
-        username: igAcc?.username ? `@${igAcc.username.replace(/^@/, "")}` : "@cuentastupanas",
+        username: igAcc?.username ? `@${igAcc.username.replace(/^@/, "")}` : (companyHandle || "@empresa"),
         followers: igFollowers,
-        views: isRealData ? (Number(realIntel?.kpis?.totalImpressions) || 47) : Math.round(68400 * multiplier),
-        interactions: isRealData ? (Number(realIntel?.kpis?.totalInteractions) || 43) : Math.round(5100 * multiplier),
+        views: isRealData ? (Number(realIntel?.kpis?.totalImpressions) || 0) : Math.round(68400 * multiplier),
+        interactions: isRealData ? (Number(realIntel?.kpis?.totalInteractions) || 0) : Math.round(5100 * multiplier),
         leads: Math.round(realAttribution?.summary?.totalLeads || 0),
         growth: isRealData ? "Ativo (Meta API)" : "+450 este mês",
         icon: InstagramGlyph,
         color: "text-[#E1306C]",
         badgeBg: "bg-[#E1306C]/10 border-[#E1306C]/20 text-[#E1306C]",
-        sharePercent: totalCalc > 0 ? Math.round((igFollowers / totalCalc) * 100) : 76,
+        sharePercent: totalCalc > 0 ? Math.round((igFollowers / totalCalc) * 100) : 0,
         role: "Construção de Marca & Fechamento Direto",
         conversionRate: "18.5%",
       },
       {
         platform: "facebook",
         name: "Facebook Page",
-        username: fbAcc?.display_name || "Cuentastupanas",
+        username: fbAcc?.display_name || companyHandle || "Facebook",
         followers: fbFollowers,
         views: isRealData ? (Number(fbAcc?.impressions) || 0) : Math.round(32000 * multiplier),
         interactions: 0,
@@ -186,7 +186,7 @@ export function OmnichannelAnalytics({ accounts }: Props) {
         icon: FacebookGlyph,
         color: "text-[#0084FF]",
         badgeBg: "bg-[#0084FF]/10 border-[#0084FF]/20 text-[#0084FF]",
-        sharePercent: totalCalc > 0 ? Math.round((fbFollowers / totalCalc) * 100) : 24,
+        sharePercent: totalCalc > 0 ? Math.round((fbFollowers / totalCalc) * 100) : 0,
         role: "Público Maduro & Messenger",
         conversionRate: "9.8%",
       },
@@ -299,6 +299,12 @@ export function OmnichannelAnalytics({ accounts }: Props) {
       });
     }
 
+    const accountList = realIntel?.accounts?.length ? realIntel.accounts : accounts;
+    const igAcc = accountList.find((a: any) => a.network === "instagram");
+    const igHandle = igAcc?.username ? `@${igAcc.username.replace(/^@/, "")}` : (companyHandle || "@empresa");
+    const totalViews = String(Number(realIntel?.kpis?.totalImpressions) || 0);
+    const totalInts = String(Number(realIntel?.kpis?.totalInteractions) || 0);
+
     return [
       {
         id: "post-1",
@@ -306,17 +312,17 @@ export function OmnichannelAnalytics({ accounts }: Props) {
         date: "Sincronizado via Meta Graph API",
         isCrmPublished: false,
         masterType: "image",
-        totalViews: "47",
-        totalInteractions: "43",
+        totalViews,
+        totalInteractions: totalInts,
         cpsScore: 89,
         topPlatform: "Instagram",
-        aiInsight: "Dados reais consolidados diretamente a partir da conta oficial @cuentastupanas.",
+        aiInsight: `Dados reais consolidados diretamente a partir da conta oficial ${igHandle}.`,
         breakdown: [
-          { platform: "instagram", name: "Instagram", views: "47", likes: "27", leads: 16, retention: "68%", sharePct: 100 },
+          { platform: "instagram", name: "Instagram", views: totalViews, likes: totalInts, leads: Math.round(realAttribution?.summary?.totalLeads || 0), retention: "68%", sharePct: 100 },
         ],
       },
     ];
-  }, [realIntel]);
+  }, [realIntel, accounts, companyHandle, realAttribution]);
 
   // Filtragem dos posts por origem
   const filteredPosts = useMemo(() => {
@@ -329,8 +335,11 @@ export function OmnichannelAnalytics({ accounts }: Props) {
 
   // Insights Estratégicos & Recomendações
   const strategicInsights = useMemo(() => {
-    const totalInt = isRealData ? (Number(realIntel?.kpis?.totalInteractions) || 43) : 43;
-    const totalFol = isRealData ? (Number(realIntel?.kpis?.totalFollowers) || 1389) : 1389;
+    const accountList = realIntel?.accounts?.length ? realIntel.accounts : accounts;
+    const igAcc = accountList.find((a: any) => a.network === "instagram");
+    const igHandle = igAcc?.username ? `@${igAcc.username.replace(/^@/, "")}` : (companyHandle || "@empresa");
+    const totalInt = isRealData ? (Number(realIntel?.kpis?.totalInteractions) || 0) : 0;
+    const totalFol = isRealData ? (Number(realIntel?.kpis?.totalFollowers) || 0) : 0;
 
     return [
       {
@@ -351,7 +360,7 @@ export function OmnichannelAnalytics({ accounts }: Props) {
         border: "border-emerald-500/30",
         bg: "bg-emerald-500/5",
         badge: "Insight de Performance",
-        text: `O Instagram (@cuentastupanas) concentra a maior intenção de compra da sua marca. Usuários que comentam nas publicações fecham negócios com maior rapidez quando convidados a continuar a conversa no Direct ou WhatsApp.`,
+        text: `O Instagram (${igHandle}) concentra a maior intenção de compra da sua marca. Usuários que comentam nas publicações fecham negócios com maior rapidez quando convidados a continuar a conversa no Direct ou WhatsApp.`,
       },
       {
         type: "warning",
@@ -374,7 +383,7 @@ export function OmnichannelAnalytics({ accounts }: Props) {
         text: `Suas contas de Instagram e Facebook estão totalmente conectadas e sincronizadas com a Meta Graph API, garantindo que métricas, comentários e mensagens sejam consolidados em tempo real.`,
       },
     ];
-  }, [isRealData, realIntel]);
+  }, [isRealData, realIntel, accounts, companyHandle]);
 
   // Benchmarking por Formato
   const formatBenchmarks = [

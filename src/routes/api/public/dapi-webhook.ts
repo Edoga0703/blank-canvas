@@ -220,6 +220,67 @@ function extractDapiText(data: any): string {
   return "";
 }
 
+async function syncHistoricalContactName(params: {
+  companyId: string;
+  userId: string | null;
+  phone: string;
+  name: string | null;
+}) {
+  const cleanPhone = String(params.phone || "").replace(/\D/g, "");
+  const cleanName = String(params.name || "").trim().slice(0, 120);
+  if (!cleanPhone || cleanPhone.length < 7 || !cleanName) return;
+  if (/^\d+$/.test(cleanName) || /^contato\s+\d+$/i.test(cleanName)) return;
+
+  try {
+    const { data: card } = await (supabaseAdmin as any)
+      .from("crm_cards")
+      .select("id, nome")
+      .eq("company_id", params.companyId)
+      .eq("numero", cleanPhone)
+      .maybeSingle();
+
+    if (card?.id) {
+      const curr = String(card.nome || "").trim();
+      const isGeneric = !curr || /^\d+$/.test(curr.replace(/\D/g, "")) && curr.replace(/\D/g, "").length >= 7 || /^contato\s+\d+$/i.test(curr);
+      if (isGeneric) {
+        await (supabaseAdmin as any)
+          .from("crm_cards")
+          .update({ nome: cleanName })
+          .eq("id", card.id);
+      }
+    }
+  } catch {
+    // best-effort contact name sync
+  }
+}
+
+function extractMetaRawMessageText(m: any): { type: string; text: string } {
+  const mType = String(m?.type || "text").toLowerCase();
+  if (mType === "text" && m?.text?.body) return { type: "text", text: String(m.text.body).trim() };
+  if (mType === "button" && m?.button?.text) return { type: "text", text: String(m.button.text).trim() };
+  if (mType === "interactive") {
+    const ir = m?.interactive?.button_reply || m?.interactive?.list_reply;
+    return { type: "text", text: String(ir?.title || ir?.id || "[Interativo]").trim() };
+  }
+  if (mType === "media_placeholder") {
+    return { type: "text", text: "[Mídia do histórico]" };
+  }
+  if (["image", "video", "audio", "document", "sticker"].includes(mType)) {
+    const mediaObj = m?.[mType] || {};
+    return { type: mType, text: String(mediaObj?.caption || "").trim() };
+  }
+  if (mType === "location" && m?.location) {
+    return { type: "text", text: `📍 Localização: ${m.location.latitude}, ${m.location.longitude}` };
+  }
+  if (mType === "contacts" && Array.isArray(m?.contacts) && m.contacts[0]) {
+    const c = m.contacts[0];
+    const cName = c?.name?.formatted_name || "Contato";
+    const cPhone = c?.phones?.[0]?.phone || c?.phones?.[0]?.wa_id || "";
+    return { type: "text", text: cPhone ? `👤 *${cName}*\n📞 ${cPhone}` : cName };
+  }
+  return { type: "text", text: String(m?.text?.body || m?.caption || "").trim() };
+}
+
 export const Route = createFileRoute("/api/public/dapi-webhook")({
   server: {
     handlers: {
@@ -236,17 +297,66 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
             return new Response("Invalid JSON payload", { status: 400 });
           }
 
-          const sessionId = String(body.sessionId || body.session || body.instance || body.instanceId || "").trim();
-          if (!sessionId) {
-            return new Response("Missing sessionId in webhook body", { status: 400 });
+          const isMetaRaw = body?.object === "whatsapp_business_account" && Array.isArray(body?.entry);
+          const sessionIdRaw = String(
+            body.sessionId || body.session || body.instance || body.instanceId || body.connectionId || body.data?.connectionId || "",
+          ).trim();
+
+          let inst: any = null;
+          let instErr: any = null;
+
+          const cols = "id, company_id, user_id, instance_name, provider, status, paused, webhook_token, numero, phone_number_id, external_connection_id";
+          if (sessionIdRaw) {
+            const q1 = await (supabaseAdmin as any)
+              .from("whatsapp_instances")
+              .select(cols)
+              .eq("instance_name", sessionIdRaw)
+              .limit(1)
+              .maybeSingle();
+            inst = q1.data;
+            instErr = q1.error;
+
+            if (!inst && !instErr) {
+              const q2 = await (supabaseAdmin as any)
+                .from("whatsapp_instances")
+                .select(cols)
+                .eq("external_connection_id", sessionIdRaw)
+                .limit(1)
+                .maybeSingle();
+              inst = q2.data;
+              instErr = q2.error;
+            }
           }
 
-          // Validación estricta de seguridad de la conexión y de su webhook_token
-          const { data: inst, error: instErr } = await supabaseAdmin
-            .from("whatsapp_instances")
-            .select("id, company_id, user_id, instance_name, provider, status, paused, webhook_token")
-            .eq("instance_name", sessionId)
-            .maybeSingle();
+          if (!inst && isMetaRaw) {
+            const firstMetaPhoneId = body.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id;
+            if (firstMetaPhoneId) {
+              const qPhone = await (supabaseAdmin as any)
+                .from("whatsapp_instances")
+                .select(cols)
+                .eq("phone_number_id", String(firstMetaPhoneId))
+                .limit(1)
+                .maybeSingle();
+              inst = qPhone.data;
+              instErr = qPhone.error;
+            }
+          }
+
+          if (!inst && token) {
+            const qTok = await (supabaseAdmin as any)
+              .from("whatsapp_instances")
+              .select(cols)
+              .eq("webhook_token", token)
+              .limit(1)
+              .maybeSingle();
+            inst = qTok.data;
+            instErr = qTok.error;
+          }
+
+          const sessionId = sessionIdRaw || inst?.instance_name || "";
+          if (!sessionId && !isMetaRaw) {
+            return new Response("Missing sessionId in webhook body", { status: 400 });
+          }
 
           if (instErr || !inst) {
             console.warn(`[dapi-webhook] Instancia no encontrada para sessionId=${sessionId}`);
@@ -269,6 +379,275 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
 
           const eventName = String(body.event || "");
           const data = body.data || {};
+
+          // 0. Manejo de payloads Meta Cloud API passthrough (Coexistencia: history, smb_app_state_sync, smb_message_echoes, messages)
+          if (isMetaRaw) {
+            let processedMetaCount = 0;
+            const ownPhoneDigits = String((inst as any).numero || "").replace(/\D/g, "");
+
+            for (const entry of body.entry || []) {
+              for (const change of entry?.changes || []) {
+                const field = String(change?.field || "");
+                const val = change?.value || {};
+                const metaDisplayPhone = String(val?.metadata?.display_phone_number || ownPhoneDigits).replace(/\D/g, "");
+
+                // 0a. Sync de contactos (smb_app_state_sync)
+                if (field === "smb_app_state_sync" && Array.isArray(val?.state_sync)) {
+                  for (const item of val.state_sync) {
+                    if (item?.type === "contact" && item?.contact) {
+                      const cPhone = String(item.contact.phone_number || "").replace(/\D/g, "");
+                      const cName = String(item.contact.full_name || item.contact.first_name || "").trim();
+                      if (cPhone && cName) {
+                        await syncHistoricalContactName({
+                          companyId: inst.company_id,
+                          userId: inst.user_id ?? null,
+                          phone: cPhone,
+                          name: cName,
+                        });
+                      }
+                    }
+                  }
+                  continue;
+                }
+
+                // 0b. Sync de historial de 6 meses (history)
+                if (field === "history" && Array.isArray(val?.history_sync?.threads)) {
+                  for (const thread of val.history_sync.threads) {
+                    const threadPhone = String(thread?.contact_phone_number || thread?.id || "").replace(/\D/g, "");
+                    for (const m of thread?.messages || []) {
+                      const fromDigits = String(m?.from || "").replace(/\D/g, "");
+                      const toDigits = String(m?.to || "").replace(/\D/g, "");
+                      const isFromMe =
+                        typeof m?.history_context?.from_me === "boolean"
+                          ? m.history_context.from_me
+                          : Boolean(
+                              (metaDisplayPhone && fromDigits === metaDisplayPhone) ||
+                                (threadPhone && fromDigits && fromDigits !== threadPhone),
+                            );
+                      const contactPhone = isFromMe ? (threadPhone || toDigits) : (fromDigits || threadPhone);
+                      if (!contactPhone) continue;
+
+                      const parsedMsg = extractMetaRawMessageText(m);
+                      const msgId = String(m?.id || `coex_hist_${Date.now()}_${processedMetaCount}`);
+                      await ingestMessagingEvent({
+                        provider: "dapi",
+                        externalConnectionId: sessionId || inst.instance_name,
+                        externalEventId: `dapi_coex_hist_${msgId}`,
+                        raw: {
+                          event: "coexistence.history",
+                          sessionId: sessionId || inst.instance_name,
+                          isHistorySync: true,
+                          timestamp: m?.timestamp,
+                          data: {
+                            id: msgId,
+                            fromMe: isFromMe,
+                            from: isFromMe ? metaDisplayPhone || ownPhoneDigits : contactPhone,
+                            to: isFromMe ? contactPhone : metaDisplayPhone || ownPhoneDigits,
+                            type: parsedMsg.type,
+                            text: parsedMsg.text,
+                            message: parsedMsg.text,
+                            timestamp: m?.timestamp,
+                            coexistence: "history",
+                            isHistorySync: true,
+                          },
+                        },
+                      });
+                      processedMetaCount++;
+                    }
+                  }
+                  continue;
+                }
+
+                // 0c. Mensajes enviados desde el WhatsApp Business App (smb_message_echoes)
+                if (field === "smb_message_echoes" && Array.isArray(val?.message_echoes)) {
+                  for (const m of val.message_echoes) {
+                    const toDigits = String(m?.to || "").replace(/\D/g, "");
+                    if (!toDigits) continue;
+                    const parsedMsg = extractMetaRawMessageText(m);
+                    const msgId = String(m?.id || `coex_echo_${Date.now()}_${processedMetaCount}`);
+                    await ingestMessagingEvent({
+                      provider: "dapi",
+                      externalConnectionId: sessionId || inst.instance_name,
+                      externalEventId: `dapi_coex_echo_${msgId}`,
+                      raw: {
+                        event: "messages.received",
+                        sessionId: sessionId || inst.instance_name,
+                        timestamp: m?.timestamp,
+                        data: {
+                          id: msgId,
+                          fromMe: true,
+                          coexistence: "echo",
+                          from: metaDisplayPhone || ownPhoneDigits,
+                          to: toDigits,
+                          type: parsedMsg.type,
+                          text: parsedMsg.text,
+                          message: parsedMsg.text,
+                          timestamp: m?.timestamp,
+                        },
+                      },
+                    });
+                    processedMetaCount++;
+                  }
+                  continue;
+                }
+
+                // 0d. Mensajes y estados estándar en meta_passthrough
+                if (field === "messages") {
+                  const contactsMap = new Map<string, string>();
+                  for (const c of val?.contacts || []) {
+                    const wa = String(c?.wa_id || "").replace(/\D/g, "");
+                    const nm = String(c?.profile?.name || "").trim();
+                    if (wa && nm) contactsMap.set(wa, nm);
+                  }
+                  for (const m of val?.messages || []) {
+                    const fromDigits = String(m?.from || "").replace(/\D/g, "");
+                    if (!fromDigits) continue;
+                    const parsedMsg = extractMetaRawMessageText(m);
+                    const msgId = String(m?.id || `meta_msg_${Date.now()}_${processedMetaCount}`);
+                    await ingestMessagingEvent({
+                      provider: "dapi",
+                      externalConnectionId: sessionId || inst.instance_name,
+                      externalEventId: `dapi_meta_msg_${msgId}`,
+                      raw: {
+                        event: "messages.received",
+                        sessionId: sessionId || inst.instance_name,
+                        timestamp: m?.timestamp,
+                        data: {
+                          id: msgId,
+                          fromMe: false,
+                          from: fromDigits,
+                          from_name: contactsMap.get(fromDigits) || undefined,
+                          to: metaDisplayPhone || ownPhoneDigits,
+                          type: parsedMsg.type,
+                          text: parsedMsg.text,
+                          message: parsedMsg.text,
+                          timestamp: m?.timestamp,
+                        },
+                      },
+                    });
+                    processedMetaCount++;
+                  }
+                  for (const st of val?.statuses || []) {
+                    const stMsgId = String(st?.id || "");
+                    if (!stMsgId) continue;
+                    await ingestMessagingEvent({
+                      provider: "dapi",
+                      externalConnectionId: sessionId || inst.instance_name,
+                      externalEventId: `dapi_meta_status_${stMsgId}_${st?.status || "sent"}`,
+                      raw: {
+                        event: "message.status",
+                        sessionId: sessionId || inst.instance_name,
+                        timestamp: st?.timestamp,
+                        data: {
+                          message_id: stMsgId,
+                          status: st?.status || "sent",
+                          to: st?.recipient_id,
+                        },
+                      },
+                    });
+                  }
+                }
+              }
+            }
+
+            return new Response(JSON.stringify({ ok: true, metaPassthroughProcessed: processedMetaCount }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+
+          // 0.5. session.created (D-API Hosted Connect — hidrata credenciales WABA/PhoneID/AccessToken automáticamente)
+          if (eventName === "session.created") {
+            const updates: Record<string, any> = {
+              status: String(data.status || "connected"),
+              updated_at: new Date().toISOString(),
+              last_state_at: new Date().toISOString(),
+            };
+            if (data.connectionId) updates.external_connection_id = String(data.connectionId);
+            if (data.wabaId) updates.waba_id = String(data.wabaId);
+            if (data.phoneNumberId) updates.phone_number_id = String(data.phoneNumberId);
+            if (data.accessToken) updates.instance_token = String(data.accessToken);
+            const cleanNum = String(data.phoneNumber || "").replace(/\D/g, "");
+            if (cleanNum) updates.numero = cleanNum;
+            await supabaseAdmin.from("whatsapp_instances").update(updates as any).eq("id", inst.id);
+            return new Response(JSON.stringify({ ok: true, event: "session.created" }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+
+          // 0.6. history_sync (Backfill agrupado de D-API)
+          if (eventName === "history_sync") {
+            let syncedMsgs = 0;
+            const contacts = Array.isArray(data.contacts) ? data.contacts : [];
+            for (const c of contacts) {
+              const cPhone = String(c?.jid || c?.phone || "").split("@")[0].split(":")[0].replace(/\D/g, "");
+              const cName = String(c?.full_name || c?.push_name || c?.name || "").trim();
+              if (cPhone && cName) {
+                await syncHistoricalContactName({
+                  companyId: inst.company_id,
+                  userId: inst.user_id ?? null,
+                  phone: cPhone,
+                  name: cName,
+                });
+              }
+            }
+            const histMsgs = Array.isArray(data.messages) ? data.messages : [];
+            for (const m of histMsgs) {
+              const mId = String(m?.id || m?.message_id || m?.key?.id || `hsync_${Date.now()}_${syncedMsgs}`);
+              try {
+                await ingestMessagingEvent({
+                  provider: "dapi",
+                  externalConnectionId: sessionId,
+                  externalEventId: `dapi_hsync_${mId}`,
+                  raw: {
+                    event: "history.message.upsert",
+                    sessionId,
+                    isHistorySync: true,
+                    timestamp: m?.timestamp || body.timestamp,
+                    data: { ...m, isHistorySync: true },
+                  },
+                });
+                syncedMsgs++;
+              } catch { /* continue batch */ }
+            }
+            return new Response(JSON.stringify({ ok: true, event: "history_sync", syncedMsgs }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+
+          // 0.7. contacts.upsert / contacts.update / chats.upsert / chats.update / smb_app_state_sync
+          if (
+            eventName === "contacts.upsert" ||
+            eventName === "contacts.update" ||
+            eventName === "smb_app_state_sync"
+          ) {
+            const list = Array.isArray(data) ? data : Array.isArray(data?.contacts) ? data.contacts : [data];
+            for (const c of list) {
+              const cPhone = String(c?.phone || c?.phone_number || c?.jid || "").split("@")[0].split(":")[0].replace(/\D/g, "");
+              const cName = String(c?.full_name || c?.first_name || c?.push_name || c?.name || "").trim();
+              if (cPhone && cName) {
+                await syncHistoricalContactName({
+                  companyId: inst.company_id,
+                  userId: inst.user_id ?? null,
+                  phone: cPhone,
+                  name: cName,
+                });
+              }
+            }
+            return new Response(JSON.stringify({ ok: true, event: eventName }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+
+          if (eventName === "chats.upsert" || eventName === "chats.update") {
+            return new Response(JSON.stringify({ ok: true, event: eventName }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
 
           // 1. Manejo de estados de conexión (connection.status, connection.qrcode, connection.paircode)
           if (eventName === "connection.status") {
@@ -480,7 +859,7 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
             });
           }
 
-          // 3. Manejo de mensajes (messages.received, messages.sent)
+          // 3. Manejo de mensajes (messages.received, messages.sent, history.message.*, coexistence.history)
           const isMsgEvent =
             eventName === "messages.received" ||
             eventName === "message.received" ||
@@ -490,9 +869,38 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
             eventName === "message.sent" ||
             eventName === "messages.create" ||
             eventName === "message.create" ||
-            eventName === "messages";
+            eventName === "messages" ||
+            eventName === "history.message.upsert" ||
+            eventName === "history.message.received" ||
+            eventName === "history.messages.sent" ||
+            eventName === "coexistence.history" ||
+            eventName === "history";
           if (isMsgEvent) {
-            const fromMe = Boolean(data.fromMe ?? data.key?.fromMe) || eventName === "messages.sent";
+            const rawMsgTs = data.messageTimestamp || data.timestamp || body.timestamp;
+            const parsedNumTs =
+              typeof rawMsgTs === "number"
+                ? rawMsgTs
+                : typeof rawMsgTs === "string" && /^\d+$/.test(rawMsgTs.trim())
+                  ? Number(rawMsgTs.trim())
+                  : NaN;
+            const resolvedMsgMs = !isNaN(parsedNumTs) && parsedNumTs > 0
+              ? (parsedNumTs < 10_000_000_000 ? parsedNumTs * 1000 : parsedNumTs)
+              : (rawMsgTs && !isNaN(new Date(rawMsgTs).getTime()) ? new Date(rawMsgTs).getTime() : 0);
+            const isHistoricalMsg =
+              Boolean(data.isHistorySync || data.isHistory || data.is_history || body.isHistorySync) ||
+              data.coexistence === "history" ||
+              body.coexistence === "history" ||
+              eventName.startsWith("history") ||
+              eventName === "coexistence.history" ||
+              (resolvedMsgMs > 0 && Date.now() - resolvedMsgMs > 15 * 60 * 1000);
+
+            const fromMe =
+              Boolean(data.fromMe ?? data.from_me ?? data.key?.fromMe) ||
+              eventName === "messages.sent" ||
+              eventName === "message.sent" ||
+              eventName === "history.messages.sent" ||
+              data.coexistence === "echo" ||
+              data.origin?.type === "whatsapp_business_app";
             const senderPart = parseDapiParticipant(data.from || data.sender || data.key?.remoteJid || data.remoteJid, data);
             const recipientPart = parseDapiParticipant(data.to || data.recipient_id || data.recipient, data);
 
@@ -627,6 +1035,7 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
 
               const enrichedBody = {
                 ...body,
+                isHistorySync: isHistoricalMsg,
                 data: {
                   ...data,
                   fromMe: true,
@@ -636,6 +1045,7 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
                   raw_message: data.message,
                   media_url: mediaUrl,
                   mimetype: mimeType,
+                  isHistorySync: isHistoricalMsg,
                 },
               };
 
@@ -646,21 +1056,23 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
                 raw: enrichedBody,
               });
 
-              // Pausar IA para este contacto (Helpdesk handoff)
-              const nowIso = new Date().toISOString();
-              try {
-                await (supabaseAdmin as any).from("contact_pause").upsert(
-                  {
-                    company_id: inst.company_id,
-                    user_id: (inst as any).user_id ?? null,
-                    numero: phone,
-                    pausado: true,
-                    pausado_por: "humano",
-                    pausado_em: nowIso,
-                  } as any,
-                  { onConflict: "company_id,numero" },
-                );
-              } catch { /* noop */ }
+              // Pausar IA para este contacto (Helpdesk handoff) únicamente en respuestas reales en vivo, nunca durante backfill histórico
+              if (!isHistoricalMsg) {
+                const nowIso = new Date().toISOString();
+                try {
+                  await (supabaseAdmin as any).from("contact_pause").upsert(
+                    {
+                      company_id: inst.company_id,
+                      user_id: (inst as any).user_id ?? null,
+                      numero: phone,
+                      pausado: true,
+                      pausado_por: "humano",
+                      pausado_em: nowIso,
+                    } as any,
+                    { onConflict: "company_id,numero" },
+                  );
+                } catch { /* noop */ }
+              }
 
               return new Response(JSON.stringify({ ok: true, processedOutgoing: true }), {
                 status: 200,
@@ -724,8 +1136,8 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
                 }
               }
 
-              // Entendimiento de audio por IA (Whisper)
-              if (dataType === "audio" && mediaUrl) {
+              // Entendimiento de audio por IA (Whisper) — solo para mensajes nuevos en vivo, nunca en backfill de historial
+              if (!isHistoricalMsg && dataType === "audio" && mediaUrl) {
                 const transcribed = await transcribeIncomingAudio(mediaUrl, mimeType);
                 if (transcribed) {
                   text = transcribed;
@@ -760,6 +1172,7 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
             // SIN destruir el objeto data.message original ni los metadatos de anuncio CTWA.
             const enrichedBody = {
               ...body,
+              isHistorySync: isHistoricalMsg,
               data: {
                 ...data,
                 id: messageId,
@@ -772,6 +1185,7 @@ export const Route = createFileRoute("/api/public/dapi-webhook")({
                 referral,
                 media_url: mediaUrl,
                 mimetype: mimeType,
+                isHistorySync: isHistoricalMsg,
               },
             };
 

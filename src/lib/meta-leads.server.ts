@@ -52,6 +52,36 @@ export async function processMetaLeadRecord(admin: Admin, input: { companyId: st
     const { processKanbanReguaForNumero } = await import("@/lib/kanban-engine.server");
     await processKanbanReguaForNumero(admin, input.companyId, cleanNumero);
   } catch (error) { console.warn("[meta-lead] régua falhou", error); }
+
+  try {
+    const { dispatchDomainEvent, drainImmediateAutomationJobs } = await import(
+      "@/lib/automations/events.server"
+    );
+    await dispatchDomainEvent({
+      name: "meta.lead_ad_received.v1",
+      companyId: input.companyId,
+      entity: { type: "crm_card", id: cardId },
+      source: "meta_lead_ads",
+      payload: {
+        leadgenId: input.leadId,
+        formId: input.formId || null,
+        pageId: input.leadData?.page_id || null,
+        cardId,
+        phone: cleanNumero,
+        name: nome || null,
+        email: email || null,
+        fields: fieldData,
+      },
+    });
+    await drainImmediateAutomationJobs({
+      workerId: "hot_meta_lead",
+      maxJobs: 8,
+      maxTimeMs: 3000,
+    });
+  } catch (autoErr) {
+    console.warn("[meta-lead.automation]", autoErr);
+  }
+
   return { ok: true, cardId, numero: cleanNumero, created: !existing?.id };
 }
 

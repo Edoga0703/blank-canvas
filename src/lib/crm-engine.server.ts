@@ -36,7 +36,8 @@ export async function upsertCard(
   pushName: string | null,
   text: string,
   stages: StageBrief[],
-  canal: "whatsapp" | "instagram" | "messenger" | "telegram" | "formulario" | "ads_meta" = "whatsapp"
+  canal: "whatsapp" | "instagram" | "messenger" | "telegram" | "formulario" | "ads_meta" = "whatsapp",
+  opts?: { occurredAt?: string | null; isHistorySync?: boolean },
 ): Promise<any> {
   console.log("[upsertCard] Start for", numero, "company:", companyId);
   const cleanNumero = numero.replace(/\D/g, "");
@@ -97,6 +98,8 @@ export async function upsertCard(
   if (pushName) pushName = pushName.trim().slice(0, 120);
 
   const now = new Date().toISOString();
+  const parsedEventMs = opts?.occurredAt ? new Date(opts.occurredAt).getTime() : NaN;
+  const eventTs = !isNaN(parsedEventMs) && parsedEventMs > 0 ? new Date(parsedEventMs).toISOString() : now;
   const firstStage = Array.isArray(stages) && stages.length > 0 ? stages[0] : null;
   console.log("[upsertCard] existing:", !!existing, "firstStage:", firstStage?.nome);
 
@@ -108,32 +111,34 @@ export async function upsertCard(
       ? (pushName || existing?.nome || `Contato ${cleanNumero.slice(-4)}`)
       : existing?.nome,
     ultima_mensagem: text.slice(0, 240),
-    ultima_em: now,
+    ultima_em: eventTs,
     canal_entrada: canal,
     canal_chat: canal,
   };
 
   if (!existing) {
-    payload.primeiro_contato_em = now;
+    payload.primeiro_contato_em = eventTs;
     if (firstStage) {
       payload.pipeline_id = firstStage.pipeline_id;
       payload.stage_id = firstStage.id;
       payload.status = firstStage.nome;
-      payload.entrou_stage_em = now;
+      payload.entrou_stage_em = eventTs;
     }
     payload.user_id = userId;
     
     // Se a etapa estiver em modo manual, atribuímos o dono imediatamente via rodízio.
-    // Caso contrário (IA ativa), deixamos sem dono para o motor de IA atuar.
-    const { data: stageCfg } = await admin
-      .from("crm_stage")
-      .select("modo_atendimento, distribution_queue_id")
-      .eq("id", payload.stage_id)
-      .maybeSingle();
-      
-    if (stageCfg?.modo_atendimento === 'manual') {
-      const ownerId = await pickLeadOwner(admin, companyId, payload.stage_id);
-      if (ownerId) payload.owner_id = ownerId;
+    // Caso contrário (IA ativa) ou em sincronização histórica, não acionamos rodízio em massa.
+    if (!opts?.isHistorySync) {
+      const { data: stageCfg } = await admin
+        .from("crm_stage")
+        .select("modo_atendimento, distribution_queue_id")
+        .eq("id", payload.stage_id)
+        .maybeSingle();
+        
+      if (stageCfg?.modo_atendimento === 'manual') {
+        const ownerId = await pickLeadOwner(admin, companyId, payload.stage_id);
+        if (ownerId) payload.owner_id = ownerId;
+      }
     }
 
 
@@ -165,28 +170,35 @@ export async function upsertCard(
 
     
     if (error) throw error;
-    try {
-      const { emitWebhook } = await import("./webhooks.server");
-      await emitWebhook(companyId, "lead.created", {
-        id: inserted?.id, nome: inserted?.nome, numero: cleanNumero, canal, ultima_mensagem: text.slice(0, 240),
-      });
-    } catch (e) { console.warn("[upsertCard] webhook lead.created", e); }
+    if (!opts?.isHistorySync) {
+      try {
+        const { emitWebhook } = await import("./webhooks.server");
+        await emitWebhook(companyId, "lead.created", {
+          id: inserted?.id, nome: inserted?.nome, numero: cleanNumero, canal, ultima_mensagem: text.slice(0, 240),
+        });
+      } catch (e) { console.warn("[upsertCard] webhook lead.created", e); }
+    }
     return inserted;
   } else {
     // Atualiza card existente
-    const updatePayload: any = {
-      ultima_mensagem: payload.ultima_mensagem,
-      ultima_em: payload.ultima_em,
-    };
+    const existingMs = existing.ultima_em ? new Date(existing.ultima_em).getTime() : 0;
+    const eventMs = new Date(eventTs).getTime();
+    const shouldUpdateLastMsg = !opts?.isHistorySync || !existing.ultima_em || isNaN(existingMs) || eventMs >= existingMs;
+
+    const updatePayload: any = {};
+    if (shouldUpdateLastMsg) {
+      updatePayload.ultima_mensagem = payload.ultima_mensagem;
+      updatePayload.ultima_em = payload.ultima_em;
+    }
 
     // Si el contacto estaba en la agenda sin conversación previa, ingresa a la primera etapa del embudo
     if ((!existing.stage_id || existing.tipo_contato === "interno") && firstStage) {
       updatePayload.pipeline_id = firstStage.pipeline_id;
       updatePayload.stage_id = firstStage.id;
       updatePayload.status = firstStage.nome;
-      updatePayload.entrou_stage_em = now;
+      updatePayload.entrou_stage_em = eventTs;
       updatePayload.tipo_contato = "lead";
-      updatePayload.primeiro_contato_em = existing.primeiro_contato_em || now;
+      updatePayload.primeiro_contato_em = existing.primeiro_contato_em || eventTs;
     }
 
     if (canal && (!existing.canal_chat || (existing.canal_chat === "whatsapp" && canal !== "whatsapp"))) {
@@ -200,7 +212,7 @@ export async function upsertCard(
 
     // PERSISTÊNCIA DE DONO: Se o card já tem dono, não sobrescreve.
     // Se o card NÃO tem dono, verificamos se a etapa atual é manual para atribuir via rodízio.
-    if (!existing.owner_id) {
+    if (!existing.owner_id && !opts?.isHistorySync) {
       const { data: currentStage } = await admin
         .from("crm_stage")
         .select("modo_atendimento")
@@ -211,6 +223,10 @@ export async function upsertCard(
         const ownerId = await pickLeadOwner(admin, companyId, existing.stage_id);
         if (ownerId) updatePayload.owner_id = ownerId;
       }
+    }
+
+    if (Object.keys(updatePayload).length === 0) {
+      return existing;
     }
 
     const { data: updated, error } = await admin

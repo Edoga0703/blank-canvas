@@ -205,6 +205,7 @@ export async function waSendText(
     replyToExternalMessageId?: string | null;
     quoted?: any;
     quotedText?: string | null;
+    allowHumanAgentTag?: boolean;
   },
 ) {
   numero = assertSendableNumber(numero, inst.provider);
@@ -212,7 +213,7 @@ export async function waSendText(
     if (!inst.instance_token) throw new Error(`Token da Meta ausente para conexão ${inst.instance_name}`);
     await assertMetaWindowForInstance(inst, numero);
     const { metaSendText } = await import("./meta.server");
-    return metaSendText(inst.instance_token, numero, texto);
+    return metaSendText(inst.instance_token, numero, texto, { allowHumanAgentTag: options?.allowHumanAgentTag });
   }
   if (inst.provider === "telegram") {
     const businessConnectionId = await getTelegramBusinessConnection(inst);
@@ -249,6 +250,7 @@ export async function waSendMedia(
   inst: WaInstance,
   numero: string,
   media: { url: string; type: "image" | "video" | "document" | "audio"; caption?: string; fileName?: string; mime?: string },
+  options?: { allowHumanAgentTag?: boolean },
 ) {
   numero = assertSendableNumber(numero, inst.provider);
   if (isMetaProvider(inst.provider)) {
@@ -259,7 +261,7 @@ export async function waSendMedia(
       mediatype: media.type,
       media: media.url,
       caption: media.caption,
-    });
+    }, { allowHumanAgentTag: options?.allowHumanAgentTag });
   }
   if (inst.provider === "telegram") {
     if (!inst.instance_token) throw new Error(`Token do Telegram ausente para conexão ${inst.instance_name}`);
@@ -290,7 +292,12 @@ export async function waSendMedia(
   return dapiSendMedia(inst.instance_name, numero, media, inst.instance_token);
 }
 
-export async function waSendAudio(inst: WaInstance, numero: string, audioBase64OrUrl: string) {
+export async function waSendAudio(
+  inst: WaInstance,
+  numero: string,
+  audioBase64OrUrl: string,
+  options?: { allowHumanAgentTag?: boolean },
+) {
   numero = assertSendableNumber(numero, inst.provider);
   if (isMetaProvider(inst.provider)) {
     if (!inst.instance_token) throw new Error(`Token da Meta ausente para conexão ${inst.instance_name}`);
@@ -299,7 +306,7 @@ export async function waSendAudio(inst: WaInstance, numero: string, audioBase64O
     return metaSendMedia(inst.instance_token, numero, {
       mediatype: "audio",
       media: audioBase64OrUrl,
-    });
+    }, { allowHumanAgentTag: options?.allowHumanAgentTag });
   }
   if (inst.provider === "telegram") {
     if (!inst.instance_token) throw new Error(`Token do Telegram ausente para conexão ${inst.instance_name}`);

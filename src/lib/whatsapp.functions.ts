@@ -305,8 +305,12 @@ export const reconfigureWebhook = createServerFn({ method: "POST" })
     }
     const webhookUrl = buildWebhookUrl(row.webhook_token, "dapi");
 
-    const { dapiSetWebhookConfig, dapiGetStatus, dapiRestartSession } = await import("./dapi.server");
-    await dapiSetWebhookConfig(row.instance_name, webhookUrl);
+    const { dapiSetWebhookConfig, dapiGetStatus, dapiRestartSession, dapiCreateOfficialConnection } = await import("./dapi.server");
+    if (row.provider === "dapi_official") {
+      await dapiCreateOfficialConnection({ sessionId: row.instance_name, webhookUrl });
+    } else {
+      await dapiSetWebhookConfig(row.instance_name, webhookUrl);
+    }
     if (row.provider === "dapi") {
       const st = await dapiGetStatus(row.instance_name);
       if (st.status === "disconnected") {
@@ -541,6 +545,7 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
           replyToExternalMessageId: quoted?.key?.id ?? null,
           quoted: quoted ? { quoted } : undefined,
           quotedText,
+          allowHumanAgentTag: true,
         },
       );
       waId = extractWhatsappMessageId(resp);
@@ -698,6 +703,7 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
           fileName: data.fileName,
           caption: data.caption,
         },
+        { allowHumanAgentTag: true },
       );
       waId = extractWhatsappMessageId(resp);
     } catch (e: any) {
@@ -886,7 +892,7 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
         status: inst.status,
         paused: false,
       };
-      const resp: any = await waSendAudio(waInst, data.numero, finalAudio);
+      const resp: any = await waSendAudio(waInst, data.numero, finalAudio, { allowHumanAgentTag: true });
       waId = extractWhatsappMessageId(resp);
     } catch (e: any) {
       sendError = e?.message ?? String(e);
@@ -1156,9 +1162,59 @@ export const handleChatAction = createServerFn({ method: "POST" })
 
 export const syncWhatsappHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { numero: string }) => d)
-  .handler(async () => {
-    return { ok: true, synced: 0 };
+  .inputValidator((d: { numero: string; instanceName?: string | null }) => d)
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const companyId = await resolveCompanyId(supabase, userId);
+    const { supabaseAdmin: sbAdminTok } = await import("@/integrations/supabase/client.server");
+
+    let inst: any = null;
+    try {
+      const q = (sbAdminTok as any)
+        .from("whatsapp_instances")
+        .select("id, instance_name, external_connection_id, numero, provider")
+        .eq("company_id", companyId)
+        .in("provider", ["dapi", "dapi_official"]);
+      const { data: rows } = await (data.instanceName
+        ? q.eq("instance_name", data.instanceName).limit(1)
+        : q.eq("status", "connected").order("updated_at", { ascending: false }));
+      inst = sortInstances(rows ?? [])[0] ?? null;
+    } catch {
+      inst = null;
+    }
+
+    if (!inst) {
+      return { ok: true, synced: 0 };
+    }
+
+    const { importDapiStoredMessagesToCrm } = await import("./dapi-history-backfill.server");
+    const res = await importDapiStoredMessagesToCrm({
+      companyId,
+      userId,
+      instance: inst,
+      phoneFilter: data.numero,
+      maxPages: 5,
+      daysBack: 180,
+    });
+
+    return { ok: true, synced: res.imported, found: res.found };
+  });
+
+export const syncDapiCoexistenceHistory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d?: { instanceName?: string | null }) => ({
+    instanceName: d?.instanceName?.trim() || null,
+  }))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const companyId = await resolveCompanyId(supabase, userId);
+    const { runOfficialCoexistenceSync } = await import("./dapi-history-backfill.server");
+    return await runOfficialCoexistenceSync({
+      companyId,
+      userId,
+      instanceName: data?.instanceName || null,
+      syncTypes: ["history", "smb_app_state_sync"],
+    });
   });
 
 export const connectDapiOfficial = createServerFn({ method: "POST" })
@@ -1171,11 +1227,12 @@ export const connectDapiOfficial = createServerFn({ method: "POST" })
     phoneNumberId?: string;
     accessToken?: string;
     phoneNumber?: string;
+    coexistence?: boolean;
   }) => d)
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
-    const { dapiCreateOfficialConnection } = await import("./dapi.server");
+    const { dapiCreateOfficialConnection, dapiGetCloudAccessToken, dapiGetCloudConnection } = await import("./dapi.server");
     const { supabaseAdmin: sbAdminTok } = await import("@/integrations/supabase/client.server");
 
     const instanceName =
@@ -1193,6 +1250,19 @@ export const connectDapiOfficial = createServerFn({ method: "POST" })
       webhookUrl,
     });
 
+    // Hidratar credenciales reales desde D-API si el popup no las envió en postMessage
+    const [connInfo, tokInfo] = await Promise.all([
+      dapiGetCloudConnection(instanceName).catch(() => null),
+      dapiGetCloudAccessToken(instanceName).catch(() => null),
+    ]);
+
+    const resolvedConnectionId = connInfo?.connectionId || null;
+    const resolvedWabaId = data.wabaId || tokInfo?.wabaId || connInfo?.wabaId || null;
+    const resolvedPhoneNumberId = data.phoneNumberId || tokInfo?.phoneNumberId || connInfo?.phoneNumberId || null;
+    const resolvedAccessToken = data.accessToken || tokInfo?.accessToken || null;
+    const resolvedPhone =
+      (data.phoneNumber || connInfo?.displayPhoneNumber || "").replace(/\D/g, "") || null;
+
     await (sbAdminTok as any).from("whatsapp_instances").upsert(
       {
         company_id: companyId,
@@ -1200,17 +1270,35 @@ export const connectDapiOfficial = createServerFn({ method: "POST" })
         instance_name: instanceName,
         display_name: data.displayName || "WhatsApp Oficial Meta",
         status: "connected",
-        numero: data.phoneNumber ? data.phoneNumber.replace(/\D/g, "") : null,
+        numero: resolvedPhone,
         webhook_token: webhookToken,
+        webhook_configured_at: new Date().toISOString(),
         provider: "dapi_official",
         provider_type: "dapi_official",
-        waba_id: data.wabaId || null,
-        phone_number_id: data.phoneNumberId || null,
-        instance_token: data.accessToken || null,
+        waba_id: resolvedWabaId,
+        phone_number_id: resolvedPhoneNumberId,
+        external_connection_id: resolvedConnectionId,
+        instance_token: resolvedAccessToken,
         last_state_at: new Date().toISOString(),
       },
       { onConflict: "instance_name" },
     );
 
-    return { success: true, instanceName };
+    // Si es Coexistencia, disparar la sincronización retroactiva de 6 meses y contactos en Meta (/smb_app_data)
+    let coexistenceSync: any = null;
+    if ((data.coexistence || connInfo?.coexistenceEnabled) && resolvedPhoneNumberId && resolvedAccessToken) {
+      try {
+        const { runOfficialCoexistenceSync } = await import("./dapi-history-backfill.server");
+        coexistenceSync = await runOfficialCoexistenceSync({
+          companyId,
+          userId,
+          instanceName,
+          syncTypes: ["history", "smb_app_state_sync"],
+        });
+      } catch (coexErr: any) {
+        console.warn("[connectDapiOfficial] Coexistence sync warning:", coexErr?.message);
+      }
+    }
+
+    return { success: true, instanceName, coexistenceSync };
   });

@@ -195,6 +195,32 @@ export const saveAgendamento = createServerFn({ method: "POST" })
       } as any);
     }
 
+    if (row && tipo === "compromisso" && !data.id) {
+      try {
+        const { dispatchDomainEvent, drainImmediateAutomationJobs } = await import(
+          "@/lib/automations/events.server"
+        );
+        await dispatchDomainEvent({
+          name: "appointment.created.v1",
+          companyId,
+          entity: { type: "appointment", id: row.id },
+          source: "agendamentos",
+          payload: {
+            appointmentId: row.id,
+            cardId: row.card_id || null,
+            phone: row.numero || "",
+            name: row.nome_lead || "",
+            service: row.servico_id || null,
+            startsAt: row.agendado_para,
+            status: row.status || "agendado",
+          },
+        });
+        await drainImmediateAutomationJobs({ workerId: "hot_agenda", maxJobs: 8, maxTimeMs: 3000 });
+      } catch (autoErr) {
+        console.warn("[agendamentos.automation.created]", autoErr);
+      }
+    }
+
     return row;
   });
 
@@ -404,5 +430,25 @@ export const setPresenca = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .eq("company_id", companyId);
     if (error) throw error;
+
+    try {
+      const { dispatchDomainEvent, drainImmediateAutomationJobs } = await import(
+        "@/lib/automations/events.server"
+      );
+      await dispatchDomainEvent({
+        name: "appointment.status_changed.v1",
+        companyId,
+        entity: { type: "appointment", id: data.id },
+        source: "agendamentos",
+        payload: {
+          appointmentId: data.id,
+          status: data.presenca || "alterado",
+        },
+      });
+      await drainImmediateAutomationJobs({ workerId: "hot_agenda_status", maxJobs: 8, maxTimeMs: 3000 });
+    } catch (autoErr) {
+      console.warn("[agendamentos.automation.status]", autoErr);
+    }
+
     return { ok: true };
   });

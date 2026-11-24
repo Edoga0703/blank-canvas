@@ -226,12 +226,59 @@ export function validateWorkflowNodes(parsedGraph: WorkflowGraph): string[] {
           `El nodo "${node.id}" (${def.name}) requiere conectar la salida "valid".`
         );
       }
+    } else if (node.type === "condition.router") {
+      const branches = Array.isArray((parsedCfg as any).branches) ? (parsedCfg as any).branches : [];
+      const hasConnectedBranch = branches.some((b: any) =>
+        outgoingEdges.some((e) => e.sourcePort === String(b.id))
+      );
+      if (branches.length > 0 && !hasConnectedBranch) {
+        nodeValidationErrors.push(
+          `El nodo "${node.id}" (${def.name}) requiere al menos 1 rama conectada.`
+        );
+      }
+    } else if (node.type === "control.business_hours") {
+      const mode = (parsedCfg as any).mode || "branch";
+      if (mode === "branch") {
+        const hasOpenOrClosed = outgoingEdges.some((e) => e.sourcePort === "open" || e.sourcePort === "closed");
+        if (!hasOpenOrClosed) {
+          nodeValidationErrors.push(
+            `El nodo "${node.id}" (${def.name}) en modo ramificación requiere al menos una salida ("open" o "closed") conectada.`
+          );
+        }
+      }
+    } else if (node.type === "control.split_ab") {
+      const variants = Array.isArray((parsedCfg as any).variants) ? (parsedCfg as any).variants : [];
+      if (variants.length < 2) {
+        nodeValidationErrors.push(`El nodo "${node.id}" (${def.name}) requiere al menos 2 variantes.`);
+      } else {
+        const totalWeight = variants.reduce((sum: number, v: any) => sum + (Number(v.weight) || 0), 0);
+        if (totalWeight !== 100) {
+          nodeValidationErrors.push(`El nodo "${node.id}" (${def.name}) requiere que la suma de pesos de las variantes sea exactamente 100% (actual: ${totalWeight}%).`);
+        }
+      }
+    } else if ((node.type as string) === "ai.classify_and_route") {
+      const intents = Array.isArray((parsedCfg as any).intents) ? (parsedCfg as any).intents : [];
+      const hasConnectedIntent = intents.some((i: any) =>
+        outgoingEdges.some((e) => (e.sourcePort as string) === String(i.id))
+      );
+      if (intents.length > 0 && !hasConnectedIntent) {
+        nodeValidationErrors.push(
+          `El nodo "${node.id}" (${def.name}) requiere al menos 1 intención conectada.`
+        );
+      }
     }
 
     const cfg = (node.config || {}) as Record<string, any>;
 
     // 4. Validaciones de negocio específicas adicionales
-    if (node.type === "messaging.send_text" && cfg.connectionPolicy === "specific" && !cfg.specificInstanceId) {
+    const messagingTypes = new Set([
+      "messaging.send_text",
+      "messaging.send_media",
+      "messaging.send_interactive",
+      "messaging.collect_input",
+      "messaging.send_template",
+    ]);
+    if (messagingTypes.has(node.type) && cfg.connectionPolicy === "specific" && !cfg.specificInstanceId) {
       nodeValidationErrors.push(`El nodo "${node.id}" (${def.name}) requiere una conexión específica seleccionada.`);
     }
   }
@@ -366,6 +413,13 @@ export const createWorkflowFn = createServerFn({ method: "POST" })
         .from("automation_workflows")
         .update({ active_version_id: ver.id })
         .eq("id", wf.id);
+
+      try {
+        const { syncWorkflowWebhookEndpoints } = await import("./webhook-endpoints.server");
+        await syncWorkflowWebhookEndpoints(supabaseAdmin, companyId, wf.id, graphToUse);
+      } catch (err) {
+        console.error("Error sincronizando webhook endpoints:", err);
+      }
     }
 
     return { id: wf.id };
@@ -566,12 +620,37 @@ export const publishWorkflowFn = createServerFn({ method: "POST" })
       throw new Error(`Error al activar la versión publicada: ${pubErr.message}`);
     }
 
+    try {
+      const { syncWorkflowWebhookEndpoints } = await import("./webhook-endpoints.server");
+      await syncWorkflowWebhookEndpoints(supabaseAdmin, companyId, data.workflowId, parsedGraph);
+    } catch (err) {
+      console.error("Error sincronizando webhook endpoints al publicar:", err);
+    }
+
     return {
       ok: true,
       versionNumber: publishedVer.version_number,
       versionId: publishedVer.id,
       hasUnpublishedChanges: false,
     };
+  });
+
+export const getWorkflowWebhookEndpointsFn = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { workflowId: string }) => {
+    if (!d?.workflowId) throw new Error("workflowId es requerido");
+    return d;
+  })
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
+    const { data: endpoints, error } = await (supabaseAdmin as any)
+      .from("automation_webhook_endpoints")
+      .select("id, node_id, token, active, last_called_at, created_at, updated_at")
+      .eq("company_id", companyId)
+      .eq("workflow_id", data.workflowId);
+
+    if (error) throw new Error(error.message);
+    return (endpoints || []) as any[];
   });
 
 export const toggleWorkflowStatusFn = createServerFn({ method: "POST" })
@@ -798,7 +877,7 @@ export const duplicateWorkflowFn = createServerFn({ method: "POST" })
 
 export const listMetaPostsForInstanceFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .validator((data: { instanceId: string; limit?: number }) => data)
+  .inputValidator((data: { instanceId: string; limit?: number }) => data)
   .handler(async ({ data, context }) => {
     const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
     if (!companyId) throw new Error("Empresa não identificada.");
@@ -829,19 +908,21 @@ export const listMetaPostsForInstanceFn = createServerFn({ method: "GET" })
     });
 
     const items = Array.isArray(rawPosts) ? rawPosts : (rawPosts as any)?.data || [];
-    return items.map((p: any) => ({
-      id: String(p.id || ""),
-      caption: String(p.caption || p.message || "").trim(),
-      thumbnailUrl: p.thumbnail_url || p.media_url || null,
-      permalink: p.permalink || null,
-      timestamp: p.timestamp || p.created_time || null,
-      mediaType: String(p.media_type || "IMAGE"),
-    }));
+    return {
+      posts: items.map((p: any) => ({
+        id: String(p.id || ""),
+        caption: String(p.caption || p.message || "").trim(),
+        thumbnailUrl: p.thumbnail_url || p.media_url || null,
+        permalink: p.permalink || null,
+        timestamp: p.timestamp || p.created_time || null,
+        mediaType: String(p.media_type || "IMAGE"),
+      })),
+    };
   });
 
 export const uploadAutomationMediaFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((data: { fileName: string; mimeType: string; base64: string }) => data)
+  .inputValidator((data: { fileName: string; mimeType: string; base64: string }) => data)
   .handler(async ({ data, context }) => {
     const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
     if (!companyId) throw new Error("Empresa não identificada.");
@@ -873,3 +954,463 @@ export const uploadAutomationMediaFn = createServerFn({ method: "POST" })
       mimeType: stored.mimeType,
     };
   });
+
+// ==========================================
+// SPRINT 4: OBSERVABILIDADE, CONTROLE E DRY-RUN
+// ==========================================
+
+export const getWorkflowNodeStatsFn = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { workflowId: string; days?: number }) => d)
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
+    const days = data.days && data.days > 0 ? data.days : 30;
+    const cutoffIso = new Date(Date.now() - days * 86_400_000).toISOString();
+
+    const { data: execs, error: execErr } = await (supabaseAdmin as any)
+      .from("automation_executions")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("workflow_id", data.workflowId)
+      .gte("created_at", cutoffIso)
+      .limit(1000);
+
+    if (execErr || !execs || execs.length === 0) {
+      return {};
+    }
+
+    const execIds = execs.map((e: any) => e.id);
+    const stats: Record<string, { succeeded: number; waiting: number; failed: number }> = {};
+
+    const chunkSize = 200;
+    for (let i = 0; i < execIds.length; i += chunkSize) {
+      const chunk = execIds.slice(i, i + chunkSize);
+      const { data: steps, error: stepErr } = await (supabaseAdmin as any)
+        .from("automation_step_runs")
+        .select("node_id, status")
+        .eq("company_id", companyId)
+        .in("execution_id", chunk);
+
+      if (stepErr || !steps) continue;
+
+      for (const s of steps) {
+        const nid = s.node_id;
+        if (!nid) continue;
+        if (!stats[nid]) stats[nid] = { succeeded: 0, waiting: 0, failed: 0 };
+        if (s.status === "succeeded") stats[nid].succeeded++;
+        else if (s.status === "waiting") stats[nid].waiting++;
+        else if (s.status === "failed") stats[nid].failed++;
+      }
+    }
+
+    return stats;
+  });
+
+export const retryExecutionFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { executionId: string }) => d)
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
+    await assertAutomationEditor(companyId, context.userId);
+
+    const { data: exec, error: execErr } = await (supabaseAdmin as any)
+      .from("automation_executions")
+      .select("id, company_id, status, current_node_id")
+      .eq("id", data.executionId)
+      .eq("company_id", companyId)
+      .maybeSingle();
+
+    if (execErr || !exec) {
+      throw new Error("Execução não encontrada.");
+    }
+
+    if (!["failed", "needs_review"].includes(exec.status) || !exec.current_node_id) {
+      throw new Error("Apenas execuções com falha ou revisão pendente e nó ativo podem ser reintentadas.");
+    }
+
+    await (supabaseAdmin as any)
+      .from("automation_executions")
+      .update({
+        status: "running",
+        error_code: null,
+        error_summary: null,
+        finished_at: null,
+      })
+      .eq("id", data.executionId)
+      .eq("company_id", companyId);
+
+    await (supabaseAdmin as any)
+      .from("automation_jobs")
+      .insert({
+        company_id: companyId,
+        execution_id: data.executionId,
+        node_id: exec.current_node_id,
+        status: "pending",
+        idempotency_key: `retry_${data.executionId}_${Date.now()}`,
+        run_after: new Date().toISOString(),
+        attempts: 0,
+      });
+
+    try {
+      const { drainImmediateAutomationJobs } = await import("@/lib/automations/queue.server");
+      await drainImmediateAutomationJobs({ workerId: "manual_retry", maxJobs: 8, maxTimeMs: 3000 });
+    } catch (drainErr: any) {
+      console.warn("[retryExecutionFn] Aviso drenando jobs imediatos:", drainErr?.message);
+    }
+
+    return { ok: true };
+  });
+
+export const cancelExecutionFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { executionId: string }) => d)
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
+    await assertAutomationEditor(companyId, context.userId);
+
+    const { data: exec, error: execErr } = await (supabaseAdmin as any)
+      .from("automation_executions")
+      .select("id, company_id, status, external_conversation_id, source_channel")
+      .eq("id", data.executionId)
+      .eq("company_id", companyId)
+      .maybeSingle();
+
+    if (execErr || !exec) {
+      throw new Error("Execução não encontrada.");
+    }
+
+    if (["queued", "running", "waiting"].includes(exec.status)) {
+      await (supabaseAdmin as any)
+        .from("automation_executions")
+        .update({
+          status: "cancelled",
+          finished_at: new Date().toISOString(),
+          error_code: "CANCELLED_BY_USER",
+          error_summary: "Cancelada manualmente pelo operador",
+        })
+        .eq("id", data.executionId)
+        .eq("company_id", companyId);
+
+      await (supabaseAdmin as any)
+        .from("automation_jobs")
+        .update({ status: "cancelled" })
+        .eq("company_id", companyId)
+        .eq("execution_id", data.executionId)
+        .eq("status", "pending");
+
+      if (exec.external_conversation_id) {
+        try {
+          const { releaseWorkflowControl } = await import("@/lib/automations/conversation-control.server");
+          await releaseWorkflowControl({
+            companyId,
+            externalConversationId: exec.external_conversation_id,
+            executionId: data.executionId,
+          });
+        } catch (relErr: any) {
+          console.warn("[cancelExecutionFn] Aviso liberando controle do bot:", relErr?.message);
+        }
+      }
+    }
+
+    return { ok: true };
+  });
+
+export const simulateWorkflowDryRunFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (d: {
+      graph: any;
+      sampleText?: string;
+      sampleChannel?: string;
+      sampleCardId?: string | null;
+    }) => d
+  )
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
+    const { WorkflowGraphSchema, validateWorkflowGraphStructure, isTriggerNodeType } = await import("@/lib/automations/schema");
+    const { interpolateVariables } = await import("@/lib/automations/registry.server");
+
+    const parsedGraph = WorkflowGraphSchema.parse(data.graph);
+    const structRes = validateWorkflowGraphStructure(parsedGraph);
+    if (!structRes.valid) throw new Error(structRes.errors.map((e) => e.message).join(", "));
+
+    let sampleCard: any = null;
+    if (data.sampleCardId) {
+      try {
+        const { data: c } = await (supabaseAdmin as any)
+          .from("crm_cards")
+          .select("id, titulo, email, numero, valor, tags, campos_extras")
+          .eq("id", data.sampleCardId)
+          .eq("company_id", companyId)
+          .maybeSingle();
+        if (c) sampleCard = c;
+      } catch {}
+    }
+
+    if (!sampleCard) {
+      sampleCard = {
+        id: "00000000-0000-0000-0000-000000000001",
+        titulo: "Lead Simulado",
+        nome: "Lead Simulado",
+        numero: "5511999999999",
+        email: "teste@exemplo.com",
+        tags: ["teste-simulacao"],
+        valor: 1500,
+        campos_extras: { origem: "simulacao" },
+      };
+    }
+
+    const sampleText = data.sampleText || "Olá, gostaria de saber mais informações";
+    const sampleChannel = data.sampleChannel || "whatsapp";
+
+    const simContext: Record<string, any> = {
+      trigger: {
+        text: sampleText,
+        senderId: sampleCard.numero,
+        channel: sampleChannel,
+        cardId: sampleCard.id,
+      },
+      card: sampleCard,
+      lastReply: { text: sampleText },
+      extracted: {},
+    };
+
+    const visitedNodeIds: string[] = [];
+    const visitedEdgeIds: string[] = [];
+    const steps: Array<{
+      nodeId: string;
+      nodeName: string;
+      nodeType: string;
+      portTaken: string | null;
+      preview: string;
+    }> = [];
+
+    const triggers = parsedGraph.nodes.filter((n) => isTriggerNodeType(n.type));
+    let currentNode =
+      triggers.find((t) => {
+        if (sampleChannel === "instagram_dm" || sampleChannel === "facebook_messenger") {
+          return t.type === "meta.comment_received" || t.type === "messaging.inbound_received";
+        }
+        if (sampleChannel === "telegram") {
+          return t.type.startsWith("telegram.") || t.type === "messaging.inbound_received";
+        }
+        return t.type === "messaging.inbound_received";
+      }) || triggers[0] || parsedGraph.nodes[0];
+
+    if (!currentNode) {
+      return { ok: true, visitedNodeIds: [], visitedEdgeIds: [], steps: [] };
+    }
+
+    let currentStepCount = 0;
+    const maxSteps = 25;
+
+    while (currentNode && currentStepCount < maxSteps) {
+      currentStepCount++;
+      visitedNodeIds.push(currentNode.id);
+
+      const cfg = (currentNode.config as Record<string, any>) || {};
+      let portTaken: string | null = "next";
+      let preview = "";
+
+      if (isTriggerNodeType(currentNode.type)) {
+        portTaken = "next";
+        preview = `Disparado com texto: "${sampleText}"`;
+      } else if (currentNode.type === "condition.if_else") {
+        const fieldVal = interpolateVariables(cfg.field || "{{trigger.text}}", simContext);
+        const op = cfg.operator || "contains";
+        const targetVal = cfg.value || "";
+        let isMatch = false;
+        if (op === "contains") isMatch = String(fieldVal).toLowerCase().includes(String(targetVal).toLowerCase());
+        else if (op === "not_contains") isMatch = !String(fieldVal).toLowerCase().includes(String(targetVal).toLowerCase());
+        else if (op === "equals") isMatch = String(fieldVal).toLowerCase() === String(targetVal).toLowerCase();
+        else if (op === "not_equals") isMatch = String(fieldVal).toLowerCase() !== String(targetVal).toLowerCase();
+        else if (op === "is_empty") isMatch = !fieldVal;
+        else if (op === "is_not_empty") isMatch = Boolean(fieldVal);
+        else isMatch = true;
+
+        portTaken = isMatch ? "true" : "false";
+        preview = `Condição (${cfg.field} ${op} "${targetVal}") => ${isMatch ? "Verdadeiro (Sim)" : "Falso (Não)"}`;
+      } else if (currentNode.type === "condition.router") {
+        const branches = Array.isArray(cfg.branches) ? cfg.branches : [];
+        let matchedBranchId: string | null = null;
+
+        for (const b of branches) {
+          const logic = b.logic || "AND";
+          const rules = Array.isArray(b.rules) ? b.rules : [];
+          if (rules.length === 0) continue;
+
+          const results = rules.map((r: any) => {
+            const val = interpolateVariables(r.field || "{{trigger.text}}", simContext);
+            const op = r.operator || "contains";
+            const tVal = r.value || "";
+            if (op === "contains") return String(val).toLowerCase().includes(String(tVal).toLowerCase());
+            if (op === "not_contains") return !String(val).toLowerCase().includes(String(tVal).toLowerCase());
+            if (op === "equals") return String(val).toLowerCase() === String(tVal).toLowerCase();
+            if (op === "not_equals") return String(val).toLowerCase() !== String(tVal).toLowerCase();
+            if (op === "is_empty") return !val;
+            if (op === "is_not_empty") return Boolean(val);
+            return true;
+          });
+
+          const passed = logic === "OR" ? results.some(Boolean) : results.every(Boolean);
+          if (passed) {
+            matchedBranchId = b.id;
+            break;
+          }
+        }
+
+        if (matchedBranchId) {
+          portTaken = matchedBranchId;
+          const bObj = branches.find((b: any) => b.id === matchedBranchId);
+          preview = `Roteado para porta "${bObj?.label || matchedBranchId}"`;
+        } else if (cfg.elseFallback !== false) {
+          portTaken = "else";
+          preview = "Nenhuma regra satisfeita => Roteado para porta Senão (Else)";
+        } else {
+          portTaken = null;
+          preview = "Nenhum ramo satisfeito e sem fallback => Interrompido";
+        }
+      } else if (currentNode.type === "ai.classify_and_route") {
+        const intents = Array.isArray(cfg.intents) ? cfg.intents : [];
+        if (intents.length > 0) {
+          const sampleLower = sampleText.toLowerCase();
+          const matched = intents.find((i: any) =>
+            sampleLower.includes(String(i.label || "").toLowerCase()) ||
+            sampleLower.includes(String(i.description || "").toLowerCase())
+          );
+          if (matched) {
+            portTaken = matched.id;
+            preview = `IA detectou intenção "${matched.label}" (Simulação)`;
+          } else {
+            portTaken = intents[0].id;
+            preview = `IA selecionou ramo "${intents[0].label}" (Confiança 0.92)`;
+          }
+        } else {
+          portTaken = "fallback";
+          preview = "Sem intenções configuradas => Fallback";
+        }
+      } else if (currentNode.type === "control.business_hours") {
+        if (cfg.mode === "wait_until_open") {
+          portTaken = "next";
+          preview = "Modo Aguardar Abertura => Continuaria na próxima abertura comercial";
+        } else {
+          portTaken = "open";
+          preview = "Modo Horário Comercial => Porta Aberto (Horário de atendimento)";
+        }
+      } else if (currentNode.type === "control.split_ab") {
+        const variants = Array.isArray(cfg.variants) && cfg.variants.length > 0 ? cfg.variants : [{ id: "variant_a", label: "A" }];
+        portTaken = variants[0].id;
+        preview = `Teste A/B: Selecionou variante "${variants[0].label || variants[0].id}" (50% tráfego)`;
+      } else if (currentNode.type === "messaging.send_text") {
+        const text = interpolateVariables(cfg.text || "", simContext);
+        portTaken = "next";
+        preview = `Enviaria mensagem: "${text}"`;
+      } else if (currentNode.type === "messaging.send_media") {
+        portTaken = "next";
+        preview = `Enviaria mídia (${cfg.mediaType || "imagem"}): "${cfg.caption ? interpolateVariables(cfg.caption, simContext) : "Sem legenda"}"`;
+      } else if (currentNode.type === "messaging.send_interactive") {
+        const options = Array.isArray(cfg.options) && cfg.options.length > 0 ? cfg.options : [{ id: "opt_1", label: "Opção 1" }];
+        portTaken = options[0].id;
+        preview = `Enviaria menu (${options.length} opções). Avança pela 1ª opção: "${options[0].label}"`;
+      } else if (currentNode.type === "messaging.collect_input") {
+        portTaken = "valid";
+        preview = `Captura de dado (${cfg.targetField || "custom"}). Simula entrada válida.`;
+      } else if (currentNode.type === "messaging.wait_for_reply") {
+        portTaken = "reply";
+        preview = "Aguardar Resposta: Simula resposta recebida pelo lead";
+      } else if (currentNode.type === "meta.send_private_reply") {
+        const text = interpolateVariables(cfg.message || "", simContext);
+        portTaken = "next";
+        preview = `Enviaria DM Privado (Instagram/FB): "${text}"`;
+      } else if (currentNode.type === "meta.reply_comment") {
+        portTaken = "next";
+        preview = `Responderia comentário público: "${cfg.message || "Resposta"}" (com delay simulado)`;
+      } else if (currentNode.type === "meta.capi_event") {
+        portTaken = "next";
+        preview = `Enviaria evento Meta CAPI "${cfg.eventName || "QualifiedLead"}" (valor: ${cfg.valueTemplate || "0"} ${cfg.currency || "BRL"})`;
+      } else if (currentNode.type === "ai.extract_fields") {
+        portTaken = "next";
+        const fieldKeys = (cfg.fields || []).map((f: any) => f.key).join(", ");
+        preview = `IA extrairia dados para o CRM: [${fieldKeys || "campos"}]`;
+      } else if (currentNode.type === "http.webhook") {
+        portTaken = "next";
+        preview = `Dispararia requisição HTTP ${cfg.method || "POST"} para ${cfg.url || "URL"}`;
+      } else if (currentNode.type === "internal.notify") {
+        portTaken = "next";
+        preview = `Alerta interno: "${cfg.title || "Alerta"}" (nota no card + sininho)`;
+      } else if (currentNode.type === "crm.round_robin_assign") {
+        portTaken = "next";
+        preview = "Distribuiria o lead para o próximo corretor da fila circular";
+      } else if (currentNode.type === "crm.update_field") {
+        portTaken = "next";
+        preview = `Atualizaria campo "${cfg.field}" com valor "${interpolateVariables(cfg.value || "", simContext)}"`;
+      } else if (currentNode.type === "crm.add_tag") {
+        portTaken = "next";
+        preview = `Adicionaria etiqueta CRM: "${cfg.tag || "tag"}"`;
+      } else if (currentNode.type === "crm.remove_tag") {
+        portTaken = "next";
+        preview = `Removeria etiqueta CRM: "${cfg.tag || "tag"}"`;
+      } else if (currentNode.type === "crm.move_card_to_stage") {
+        portTaken = "next";
+        preview = "Moveria cartão no funil de vendas";
+      } else if (currentNode.type === "control.wait_duration") {
+        portTaken = "next";
+        preview = `Pausa simulada de ${cfg.durationValue || 5} ${cfg.durationUnit || "minutes"}`;
+      } else if (
+        currentNode.type === "messaging.route_to_human" ||
+        currentNode.type === "telegram.route_to_human" ||
+        currentNode.type === "control.end"
+      ) {
+        portTaken = null;
+        preview = "Ponto terminal do fluxo: Execução concluída.";
+      } else {
+        portTaken = "next";
+        preview = `Ação executada (${currentNode.name || currentNode.type})`;
+      }
+
+      steps.push({
+        nodeId: currentNode.id,
+        nodeName: currentNode.name || currentNode.type,
+        nodeType: currentNode.type,
+        portTaken,
+        preview,
+      });
+
+      if (!portTaken) {
+        break;
+      }
+
+      const nextEdge =
+        parsedGraph.edges.find(
+          (e) => e.source === currentNode.id && (e.sourcePort || (e as any).sourceHandle || "next") === portTaken
+        ) || parsedGraph.edges.find((e) => e.source === currentNode.id);
+
+      if (nextEdge) {
+        visitedEdgeIds.push(nextEdge.id);
+        const nextNode = parsedGraph.nodes.find((n) => n.id === nextEdge.target);
+        if (!nextNode || visitedNodeIds.includes(nextNode.id)) {
+          if (visitedNodeIds.includes(nextNode?.id || "")) {
+            steps.push({
+              nodeId: nextNode?.id || "loop",
+              nodeName: "Loop Detectado",
+              nodeType: "system.loop",
+              portTaken: null,
+              preview: "Loop detectado no fluxo. Simulação interrompida.",
+            });
+          }
+          break;
+        }
+        currentNode = nextNode;
+      } else {
+        break;
+      }
+    }
+
+    return {
+      ok: true,
+      visitedNodeIds,
+      visitedEdgeIds,
+      steps,
+    };
+  });
+
