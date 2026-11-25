@@ -849,11 +849,54 @@ function ConversasPage() {
       )
       .on("postgres_changes",
         { event: "*", schema: "public", table: "contact_pause", filter: `company_id=eq.${companyId}` },
-        () => { void loadPauses(companyId); },
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            const oldNum = (payload.old as any)?.numero;
+            if (!oldNum) { void loadPauses(companyId); return; }
+            const comp = numeroComparable(oldNum);
+            setPauses((prev) => {
+              const next = { ...prev };
+              delete next[oldNum];
+              if (comp) delete next[comp];
+              return next;
+            });
+            return;
+          }
+          const row = payload.new as any;
+          if (!row?.numero) { void loadPauses(companyId); return; }
+          const comp = numeroComparable(row.numero);
+          setPauses((prev) => ({
+            ...prev,
+            [row.numero]: !!row.pausado,
+            ...(comp ? { [comp]: !!row.pausado } : {}),
+          }));
+        },
       )
       .on("postgres_changes",
         { event: "*", schema: "public", table: "crm_cards", filter: `company_id=eq.${companyId}` },
-        () => { void loadCards(companyId); }
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            const oldId = (payload.old as any)?.id;
+            const oldNum = (payload.old as any)?.numero;
+            setCards((prev) => {
+              const next = { ...prev };
+              if (oldNum && next[oldNum]) delete next[oldNum];
+              else if (oldId) {
+                for (const [k, v] of Object.entries(next)) {
+                  if (v.id === oldId) delete next[k];
+                }
+              }
+              return next;
+            });
+            return;
+          }
+          const row = payload.new as LeadCard | undefined;
+          if (!row?.numero) { void loadCards(companyId); return; }
+          setCards((prev) => ({
+            ...prev,
+            [row.numero]: { ...(prev[row.numero] ?? {}), ...row },
+          }));
+        },
       )
       .subscribe();
 
@@ -866,6 +909,52 @@ function ConversasPage() {
 
     return () => { supabase.removeChannel(ch); clearInterval(poll); };
   }, [companyId]);
+
+  const checkedMissingCardsRef = useRef<Set<string>>(new Set());
+  useEffect(() => { checkedMissingCardsRef.current.clear(); }, [companyId]);
+
+  // Busca sob demanda do card CRM caso o chat ativo ainda não esteja no cache em memória
+  useEffect(() => {
+    if (!active || !companyId || isGrupo(active)) return;
+    const comp = numeroComparable(active);
+    const hasLoadedCard = Boolean(
+      cards[active]?.id ||
+      (comp && Object.values(cards).some((c) => c.id && numeroComparable(c.numero) === comp)),
+    );
+    if (hasLoadedCard) return;
+
+    const checkKey = `${companyId}:${comp || active}`;
+    if (checkedMissingCardsRef.current.has(checkKey)) return;
+    checkedMissingCardsRef.current.add(checkKey);
+
+    let cancelled = false;
+    void (async () => {
+      const candidates = Array.from(new Set([active, comp, comp ? `+${comp}` : ""].filter(Boolean)));
+      let { data } = await supabase
+        .from("crm_cards")
+        .select(CARD_COLS)
+        .eq("company_id", companyId)
+        .in("numero", candidates)
+        .limit(1);
+
+      if ((!data || data.length === 0) && comp && comp.length >= 8) {
+        const res = await supabase
+          .from("crm_cards")
+          .select(CARD_COLS)
+          .eq("company_id", companyId)
+          .ilike("numero", `%${comp.slice(-8)}`)
+          .limit(10);
+        data = (res.data ?? []).filter((r: any) => numeroComparable(r.numero) === comp).slice(0, 1);
+      }
+
+      if (!cancelled && data?.[0]) {
+        const row = data[0] as unknown as LeadCard;
+        setCards((prev) => ({ ...prev, [row.numero]: { ...(prev[row.numero] ?? {}), ...row } }));
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, companyId]);
 
 
   useEffect(() => {
@@ -1076,17 +1165,47 @@ function ConversasPage() {
 
 
 
-  async function loadCards(cid: string) {
+  async function fetchCardsPage(cid: string, from: number, to: number) {
     const { data } = await supabase
       .from("crm_cards")
       .select(CARD_COLS)
-      .eq("company_id", cid);
-    if (!data) return;
-    setCards((prev) => {
-      const map: Record<string, LeadCard> = { ...prev };
-      (data as any[]).forEach((r: any) => { map[r.numero] = r; });
-      return map;
-    });
+      .eq("company_id", cid)
+      .order("ultima_em", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: false })
+      .range(from, to);
+    return (data ?? []) as unknown as LeadCard[];
+  }
+
+  async function fetchRemainingCards(cid: string, startOffset = 1000, max = 10000) {
+    const PAGE = 1000;
+    for (let offset = startOffset; offset < max; offset += PAGE) {
+      const batch = await fetchCardsPage(cid, offset, offset + PAGE - 1);
+      if (batch.length === 0) break;
+      setCards((prev) => {
+        const map: Record<string, LeadCard> = { ...prev };
+        for (const r of batch) {
+          if (!map[r.numero] || !map[r.numero].id) {
+            map[r.numero] = r;
+          }
+        }
+        return map;
+      });
+      if (batch.length < PAGE) break;
+    }
+  }
+
+  async function loadCards(cid: string) {
+    const firstBatch = await fetchCardsPage(cid, 0, 999);
+    if (firstBatch.length > 0) {
+      setCards((prev) => {
+        const map: Record<string, LeadCard> = { ...prev };
+        firstBatch.forEach((r) => { map[r.numero] = r; });
+        return map;
+      });
+      if (firstBatch.length === 1000) {
+        void fetchRemainingCards(cid, 1000);
+      }
+    }
   }
 
   /**
@@ -1102,9 +1221,10 @@ function ConversasPage() {
 
   async function load(cid: string) {
     // Tags (cards/etapas/pausas) precisam chegar JUNTO com a primeira pintura
-    // da lista — por isso disparam em paralelo com o recorte rápido.
+    // da lista — por isso disparam em paralelo com o recorte rápido, ordenando
+    // os cards pelas conversas mais recentes (top 1000).
     const metaPromise = Promise.all([
-      supabase.from("crm_cards").select(CARD_COLS).eq("company_id", cid),
+      fetchCardsPage(cid, 0, 999),
       supabase.from("crm_stage").select("id,nome,cor,ordem,tipo,modo_atendimento,pipeline_id").eq("company_id", cid).order("ordem", { ascending: true }),
       supabase.from("contact_pause").select("numero,pausado").eq("company_id", cid),
       supabase.from("company_user").select("user_id").eq("company_id", cid).eq("ativo", true),
@@ -1112,14 +1232,14 @@ function ConversasPage() {
       supabase.from("crm_pipeline").select("id,nome,tipo,ordem").eq("company_id", cid).order("ordem", { ascending: true }),
     ]);
 
-    const [quick, [{ data: c }, { data: st }, { data: pz }, { data: cu }, { data: agents }, { data: pips }]] = await Promise.all([
+    const [quick, [c, { data: st }, { data: pz }, { data: cu }, { data: agents }, { data: pips }]] = await Promise.all([
       fetchAllMensagens(cid, 300).catch(() => [] as any[]),
       metaPromise,
     ]);
 
     setCards((prev) => {
       const map: Record<string, LeadCard> = { ...prev };
-      (c ?? []).forEach((r: any) => { map[r.numero] = r; });
+      (c ?? []).forEach((r) => { map[r.numero] = r; });
       return map;
     });
     setStages((st ?? []) as any);
@@ -1146,10 +1266,11 @@ function ConversasPage() {
       return { user_id: uid, nome: p?.nome ?? null, email: null };
     }));
 
-    // Histórico completo entra depois, sem bloquear a primeira pintura.
-    // Histórico COMPLETO da conta (sem corte por dias/quantidade) entra depois,
-    // sem bloquear a primeira pintura.
-    const m = await fetchAllMensagens(cid);
+    // Histórico completo e cards restantes entram em segundo plano, sem bloquear a primeira pintura.
+    const [m] = await Promise.all([
+      fetchAllMensagens(cid),
+      (c?.length ?? 0) >= 1000 ? fetchRemainingCards(cid, 1000) : Promise.resolve(),
+    ]);
     if (m?.length) {
       setMsgs((prev) => {
         const byId = new Map<string, Msg>();
@@ -1192,7 +1313,15 @@ function ConversasPage() {
         let changed = false;
         for (const r of cds as any[]) {
           const old = prev[r.numero];
-          if (!old || old.ultima_em !== r.ultima_em || old.stage_id !== r.stage_id || old.nome !== r.nome) {
+          if (
+            !old ||
+            old.ultima_em !== r.ultima_em ||
+            old.stage_id !== r.stage_id ||
+            old.nome !== r.nome ||
+            old.owner_id !== r.owner_id ||
+            old.transfer_status !== r.transfer_status ||
+            old.transfer_para_user_id !== r.transfer_para_user_id
+          ) {
             changed = true;
             break;
           }
@@ -1642,51 +1771,165 @@ function ConversasPage() {
 
   async function responderConvite(aceitar: boolean) {
     if (!active) return;
+    const numero = active;
+    const currentCard = activeCard;
+    const cardKey = currentCard?.numero ?? numero;
+    const prevCard = cards[cardKey];
+
+    // Atualização otimista imediata para liberar o chat na hora
+    setCards((c) =>
+      c[cardKey]
+        ? {
+            ...c,
+            [cardKey]: {
+              ...c[cardKey],
+              transfer_status: null,
+              transfer_para_user_id: null,
+              ...(aceitar ? { owner_id: userId } : {}),
+            } as any,
+          }
+        : c,
+    );
+
     try {
-      await responderTransferenciaFn({ data: { numero: active, aceitar } });
-      setCards((c) =>
-        c[active]
-          ? {
-              ...c,
-              [active]: {
-                ...c[active],
-                transfer_status: null,
-                transfer_para_user_id: null,
-                ...(aceitar ? { owner_id: userId } : {}),
-              } as any,
-            }
-          : c,
-      );
+      await responderTransferenciaFn({ data: { numero, aceitar } });
       toast.success(aceitar ? "Você assumiu este atendimento." : "Atendimento recusado.");
     } catch (e: any) {
+      setCards((c) => (prevCard ? { ...c, [cardKey]: prevCard } : c));
       toast.error(e?.message ?? "Não foi possível responder ao convite.");
     }
   }
 
-  async function toggleIa(v: boolean) {
-    if (!active || isGrupo(active)) return;
-    const comp = numeroComparable(active);
-    setPauses((p) => ({ ...p, [active]: !v, ...(comp ? { [comp]: !v } : {}) }));
-    try { await toggleIaFn({ data: { numero: active, ativa: v } }); }
-    catch (e: any) {
-      if (isAbortLike(e)) return;
-      toast.error(e?.message);
-      setPauses((p) => ({ ...p, [active]: v, ...(comp ? { [comp]: v } : {}) }));
+  async function toggleIa(v: boolean, numeroTarget = active): Promise<boolean> {
+    if (!numeroTarget || isGrupo(numeroTarget)) return true;
+    const comp = numeroComparable(numeroTarget);
+    const prevActive = pauses[numeroTarget];
+    const prevComp = comp ? pauses[comp] : undefined;
+    setPauses((p) => ({ ...p, [numeroTarget]: !v, ...(comp ? { [comp]: !v } : {}) }));
+    try {
+      await toggleIaFn({ data: { numero: numeroTarget, ativa: v } });
+      return true;
+    } catch (e: any) {
+      if (isAbortLike(e)) return true;
+      toast.error(e?.message || "Erro ao atualizar estado da IA.");
+      setPauses((p) => {
+        const next = { ...p };
+        if (prevActive === undefined) delete next[numeroTarget];
+        else next[numeroTarget] = prevActive;
+        if (comp) {
+          if (prevComp === undefined) delete next[comp];
+          else next[comp] = prevComp;
+        }
+        return next;
+      });
+      return false;
     }
   }
 
   async function assumir() {
     if (!active) return;
-    await toggleIa(false);
-    if (companyId && userId) {
-      const { error } = await supabase
+    const numero = active;
+    const comp = numeroComparable(numero);
+    const currentCard = activeCard;
+    const cardKey = currentCard?.numero ?? numero;
+    const prevCard = cards[cardKey];
+
+    // 1. UI Otimista Imediata (0 ms): libera o campo de texto e o botão Finalizar na hora
+    if (userId) {
+      setCards((c) => {
+        const existing = c[cardKey] ?? currentCard;
+        const nextCard: LeadCard = existing
+          ? ({ ...existing, owner_id: userId } as LeadCard)
+          : ({
+              id: "",
+              company_id: companyId ?? "",
+              numero,
+              nome: activeConv?.nome ?? numero,
+              owner_id: userId,
+              ultima_em: activeConv?.last?.created_at ?? new Date().toISOString(),
+            } as unknown as LeadCard);
+        return { ...c, [cardKey]: nextCard };
+      });
+    }
+
+    // 2. Execução paralela (pausa IA + atualização no CRM sem bloquear a UI)
+    const iaPromise = toggleIa(false, numero);
+
+    const cardUpdatePromise = (async (): Promise<{ ok: boolean; error?: string; row?: LeadCard | null }> => {
+      if (!companyId || !userId) return { ok: true, row: null };
+      if (currentCard?.id) {
+        const { data: updated, error } = await supabase
+          .from("crm_cards")
+          .update({ owner_id: userId } as any)
+          .eq("id", currentCard.id)
+          .eq("company_id", companyId)
+          .select(CARD_COLS)
+          .maybeSingle();
+        return { ok: !error, error: error?.message, row: (updated as unknown as LeadCard | null) ?? null };
+      }
+
+      const candidates = Array.from(new Set([numero, comp, comp ? `+${comp}` : ""].filter(Boolean)));
+      let { data: updated, error } = await supabase
         .from("crm_cards")
         .update({ owner_id: userId } as any)
         .eq("company_id", companyId)
-        .eq("numero", active);
-      if (error) console.warn("assumir owner update:", error.message);
-      setCards((c) => c[active] ? { ...c, [active]: { ...c[active], owner_id: userId } as any } : c);
+        .in("numero", candidates)
+        .select(CARD_COLS)
+        .maybeSingle();
+
+      if (!error && !updated && comp && comp.length >= 8) {
+        const { data: foundRows } = await supabase
+          .from("crm_cards")
+          .select("id,numero")
+          .eq("company_id", companyId)
+          .ilike("numero", `%${comp.slice(-8)}`)
+          .limit(10);
+        const match = (foundRows ?? []).find((r: any) => numeroComparable(r.numero) === comp);
+        if (match?.id) {
+          const retry = await supabase
+            .from("crm_cards")
+            .update({ owner_id: userId } as any)
+            .eq("id", match.id)
+            .eq("company_id", companyId)
+            .select(CARD_COLS)
+            .maybeSingle();
+          updated = retry.data;
+          error = retry.error;
+        }
+      }
+
+      return { ok: !error, error: error?.message, row: (updated as unknown as LeadCard | null) ?? null };
+    })();
+
+    const [iaOk, cardRes] = await Promise.all([iaPromise, cardUpdatePromise]);
+
+    if (cardRes.row) {
+      const updatedRow = cardRes.row;
+      setCards((c) => {
+        const next = { ...c };
+        if (cardKey !== updatedRow.numero && !next[cardKey]?.id) {
+          delete next[cardKey];
+        }
+        next[updatedRow.numero] = { ...(next[updatedRow.numero] ?? {}), ...updatedRow };
+        return next;
+      });
     }
+
+    if (!iaOk || !cardRes.ok) {
+      if (!cardRes.ok && cardRes.error) {
+        console.warn("assumir owner update:", cardRes.error);
+        toast.error(cardRes.error);
+      }
+      // Reverte dono otimista se falhou
+      setCards((c) => {
+        const next = { ...c };
+        if (prevCard) next[cardKey] = prevCard;
+        else delete next[cardKey];
+        return next;
+      });
+      return;
+    }
+
     toast.success("Ticket aberto. Você assumiu este atendimento.");
   }
 
@@ -1694,31 +1937,29 @@ function ConversasPage() {
   async function finalizar(manterDono = true) {
     if (!active || !companyId) return;
     const numero = active;
+    const currentCard = activeCard;
+    const cardKey = currentCard?.numero ?? numero;
+    const prevCard = cards[cardKey];
     const nome = activeConv?.nome ?? null;
-    
-    // Se não for manter o dono, setamos owner_id como null
-    const updatePayload: any = {};
-    if (!manterDono) {
-      updatePayload.owner_id = null;
-    }
 
-    const { error } = await supabase
-      .from("crm_cards")
-      .update(updatePayload)
-      .eq("company_id", companyId)
-      .eq("numero", numero);
+    setFinalizarDialogOpen(false);
 
-    if (error) { toast.error(error.message); return; }
-    
     if (!manterDono) {
-      setCards((c) => c[numero] ? { ...c, [numero]: { ...c[numero], owner_id: null } as any } : c);
+      setCards((c) => (c[cardKey] ? { ...c, [cardKey]: { ...c[cardKey], owner_id: null } as any } : c));
+      const query = currentCard?.id
+        ? supabase.from("crm_cards").update({ owner_id: null } as any).eq("id", currentCard.id).eq("company_id", companyId)
+        : supabase.from("crm_cards").update({ owner_id: null } as any).eq("company_id", companyId).eq("numero", cardKey);
+      const { error } = await query;
+      if (error) {
+        setCards((c) => (prevCard ? { ...c, [cardKey]: prevCard } : c));
+        toast.error(error.message);
+        return;
+      }
       // Encerrar o ticket NÃO reativa a IA — ela só volta pela etapa (modo IA) ou pelo botão.
     }
 
     // Move o lead conforme a configuração (independe da pesquisa estar ativa)
     try { await moveDestinoFn({ data: { numero } }); } catch (e: any) { console.warn("move destino failed:", e?.message); }
-    
-    setFinalizarDialogOpen(false);
 
     if (csatAtivo && (operationalMode ? csatAoFinalizar : (csatFormato !== "chat" || csatAoFinalizar))) {
       try {
