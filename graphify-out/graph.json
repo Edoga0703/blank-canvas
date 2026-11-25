@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-24T23:04:27.184995+00:00",
+  "generated_at": "2026-11-25T14:27:47.457670+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -2711,7 +2711,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 266871
+      "bytes": 275654
     },
     {
       "path": "src/routes/app/publicacoes.tsx",
