@@ -46,20 +46,42 @@ function createSupabaseFetch(supabaseUrl: string, supabaseKey: string): typeof f
 }
 
 
+const VPS_SUPABASE_URL = 'https://supabase.cuentastupana.com';
+const VPS_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzE5NzkyMDAwLCJleHAiOjIwMzUxNTIwMDB9.zM3xq1Bkafe4-jNNpKDuB4HOpHvVskFxoldZds6raPs';
+
+function pickClientUrl(...candidates: Array<string | undefined>): string {
+  for (const v of candidates) {
+    if (v && !v.includes('llnfjhqdeeuscyqzoqfz')) return v;
+  }
+  return VPS_SUPABASE_URL;
+}
+
+function pickClientKey(...candidates: Array<string | undefined>): string {
+  for (const v of candidates) {
+    if (v && !v.startsWith('sb_publishable_AWtQzPmKl')) return v;
+  }
+  return VPS_SUPABASE_ANON_KEY;
+}
+
 function createSupabaseClient() {
   // Use import.meta.env for client-side (Vite build-time replacement)
   // Fall back to process.env for SSR (server-side rendering)
-  const SUPABASE_URL =
-    import.meta.env['VITE_SUPABASE_URL'] ||
-    (typeof process !== 'undefined' ? process.env['SUPABASE_URL'] : undefined) ||
-    'https://llnfjhqdeeuscyqzoqfz.supabase.co';
-  const SUPABASE_PUBLISHABLE_KEY =
-    import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] ||
-    (typeof process !== 'undefined' ? process.env['SUPABASE_PUBLISHABLE_KEY'] : undefined) ||
-    'sb_publishable_AWtQzPmKl_MS9OWWmSkoZg_-vHK23d5';
+  const SUPABASE_URL = pickClientUrl(
+    import.meta.env['VITE_EXTERNAL_SUPABASE_URL'],
+    typeof process !== 'undefined' ? process.env['EXTERNAL_SUPABASE_URL'] : undefined,
+    import.meta.env['VITE_SUPABASE_URL'],
+    typeof process !== 'undefined' ? process.env['SUPABASE_URL'] : undefined,
+  );
+  const SUPABASE_PUBLISHABLE_KEY = pickClientKey(
+    import.meta.env['VITE_EXTERNAL_SUPABASE_ANON_KEY'],
+    typeof process !== 'undefined' ? process.env['EXTERNAL_SUPABASE_ANON_KEY'] : undefined,
+    import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'],
+    typeof process !== 'undefined' ? process.env['SUPABASE_PUBLISHABLE_KEY'] : undefined,
+  );
 
-  const finalUrl = SUPABASE_URL || 'https://llnfjhqdeeuscyqzoqfz.supabase.co';
-  const finalKey = SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_AWtQzPmKl_MS9OWWmSkoZg_-vHK23d5';
+  const finalUrl = SUPABASE_URL;
+  const finalKey = SUPABASE_PUBLISHABLE_KEY;
 
   return createClient<Database>(finalUrl, finalKey, {
     global: {

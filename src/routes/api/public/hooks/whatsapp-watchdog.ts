@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { assertCronRequest } from "@/lib/cron-auth.server";
 import { canAttemptSilentRecovery, statusAfterRecoveryPolicy } from "@/lib/whatsapp-connection";
+import { buildWebhookUrl } from "@/lib/whatsapp-helpers";
 
 // Cron watchdog: percorre as instâncias D-API (QR / Pairing Code),
 // consulta o estado real na D-API e, se caiu, tenta restart silencioso.
@@ -106,8 +107,3 @@ export const Route = createFileRoute("/api/public/hooks/whatsapp-watchdog")({
     },
   },
 });
-
-function buildWebhookUrl(token: string) {
-  const publicOrigin = (process.env.PUBLIC_APP_URL || process.env.PUBLIC_BASE_URL || process.env.APP_URL || "https://project-blank-github.lovable.app").replace(/\/+$/, "");
-  return `${publicOrigin}/api/public/dapi-webhook?t=${encodeURIComponent(token)}`;
-}

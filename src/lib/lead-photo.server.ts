@@ -20,7 +20,7 @@ export function leadPhotoPath(companyId: string, numero: string) {
  * apenas conhecendo empresa + número.
  */
 export function leadPhotoSignature(companyId: string, numero: string) {
-  const secret = process.env["LEAD_PHOTO_SECRET"] || process.env["SUPABASE_SERVICE_ROLE_KEY"] || process.env["APP_SERVICE_ROLE_KEY"] || "";
+  const secret = process.env["LEAD_PHOTO_SECRET"] || process.env["EXTERNAL_SERVICE_ROLE_KEY"] || process.env["APP_SERVICE_ROLE_KEY"] || process.env["SUPABASE_SERVICE_ROLE_KEY"] || "";
   const n = String(numero).replace(/\D/g, "");
   return createHmac("sha256", secret).update(`${companyId}:${n}`).digest("hex").slice(0, 24);
 }

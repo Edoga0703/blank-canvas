@@ -30,16 +30,8 @@ export const createContact = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const companyId = await resolveCompanyId(context.supabase, context.userId);
-    const { assertWithinLimit } = await import("./plan-limits.server");
-
-    // se já existe um card com esse número não conta como novo
-    const { data: existing } = await context.supabase
-      .from("crm_cards")
-      .select("id")
-      .eq("company_id", companyId)
-      .eq("numero", data.numero)
-      .maybeSingle();
-    if (!existing) await assertWithinLimit(companyId, "contatos");
+    const { assertCompanyCanWrite } = await import("./billing/access.server");
+    await assertCompanyCanWrite(companyId);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: firstStage } = await supabaseAdmin
@@ -77,30 +69,22 @@ export const importContacts = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { assertCompanyCanWrite } = await import("./billing/access.server");
+    await assertCompanyCanWrite(companyId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { getCompanyPlanUsage } = await import("./plan-limits.server");
 
     const numeros = data.contatos.map((c) => c.numero);
-    let existingNumeros = new Set<string>();
-    if (numeros.length) {
+    const existingNumeros = new Set<string>();
+    for (let i = 0; i < numeros.length; i += 500) {
+      const slice = numeros.slice(i, i + 500);
       const { data: ex } = await supabaseAdmin
         .from("crm_cards")
         .select("numero")
         .eq("company_id", companyId)
-        .in("numero", numeros);
-      existingNumeros = new Set((ex ?? []).map((r: any) => r.numero));
+        .in("numero", slice);
+      for (const r of (ex ?? []) as any[]) existingNumeros.add(r.numero);
     }
     const novos = data.contatos.filter((c) => !existingNumeros.has(c.numero));
-
-    if (novos.length > 0) {
-      const { plan, usage } = await getCompanyPlanUsage(companyId, context.userId);
-      if (usage.contatos + novos.length > plan.limites.contatos) {
-        const restante = Math.max(0, plan.limites.contatos - usage.contatos);
-        throw new Error(
-          `Importação excede o limite do plano ${plan.nome} (${plan.limites.contatos.toLocaleString("pt-BR")} contatos). Você ainda pode adicionar ${restante.toLocaleString("pt-BR")}.`,
-        );
-      }
-    }
 
     const { data: firstStage } = await supabaseAdmin
       .from("crm_stage")

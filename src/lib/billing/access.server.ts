@@ -14,7 +14,7 @@ export async function companyCanWrite(companyId: string): Promise<boolean> {
     .maybeSingle();
   if (!data) return true;
   const status = String((data as any).status_cobranca ?? "");
-  if (status === "ativo") return true;
+  if (status === "ativo" || status === "cortesia") return true;
   if (status !== "trial") return false;
   const fim = (data as any).trial_ate ? new Date((data as any).trial_ate).getTime() : 0;
   return fim > Date.now();

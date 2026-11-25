@@ -115,7 +115,7 @@ export async function getCompanyPlan(companyId: string, userId?: string): Promis
     limites: {
       instancias: Number(row?.limite_instancias ?? 1) + extraConexoes,
       usuarios: Number(row?.limite_usuarios ?? 1) + extraUsuarios,
-      contatos: Number(row?.limite_contatos ?? 100000),
+      contatos: 2147483647, // Contatos 100% ilimitados em todos os planos
       mensagens: 2147483647, // Mensagens 100% ilimitadas em todos os planos
     },
   };
@@ -168,8 +168,8 @@ const LIMIT_MSG: Record<LimitKind, (planName: string, lim: number) => string> = 
 };
 
 export async function assertWithinLimit(companyId: string, tipo: LimitKind, delta = 1, userId?: string): Promise<void> {
-  // 1) Mensagens em Capiconversa são 100% ilimitadas (nunca bloquear atendimento ao cliente ou automações)
-  if (tipo === "mensagens") return;
+  // 1) Mensagens e contatos em Capiconversa são 100% ilimitados (nunca bloquear atendimento, CRM ou importações)
+  if (tipo === "mensagens" || tipo === "contatos") return;
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   if (userId) {

@@ -29,19 +29,30 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
+const VPS_SUPABASE_URL = 'https://supabase.cuentastupana.com';
+
+function pickServerUrl(...candidates: Array<string | undefined>): string {
+  for (const v of candidates) {
+    if (v && !v.includes('llnfjhqdeeuscyqzoqfz')) return v;
+  }
+  return VPS_SUPABASE_URL;
+}
+
 function createSupabaseAdminClient() {
-  const SUPABASE_URL =
-    (typeof process !== 'undefined' ? process.env['SUPABASE_URL'] : undefined) ||
-    (typeof process !== 'undefined' ? process.env['VITE_SUPABASE_URL'] : undefined) ||
-    'https://llnfjhqdeeuscyqzoqfz.supabase.co';
+  const SUPABASE_URL = pickServerUrl(
+    typeof process !== 'undefined' ? process.env['EXTERNAL_SUPABASE_URL'] : undefined,
+    typeof process !== 'undefined' ? process.env['VITE_EXTERNAL_SUPABASE_URL'] : undefined,
+    typeof process !== 'undefined' ? process.env['SUPABASE_URL'] : undefined,
+    typeof process !== 'undefined' ? process.env['VITE_SUPABASE_URL'] : undefined,
+  );
   const SUPABASE_SERVICE_ROLE_KEY =
     typeof process !== 'undefined'
-      ? (process.env.SUPABASE_SERVICE_ROLE_KEY ||
-         process.env['SUPABASE_SERVICE_ROLE_KEY'] ||
+      ? (process.env.EXTERNAL_SERVICE_ROLE_KEY ||
+         process.env['EXTERNAL_SERVICE_ROLE_KEY'] ||
          process.env.APP_SERVICE_ROLE_KEY ||
          process.env['APP_SERVICE_ROLE_KEY'] ||
-         process.env.EXTERNAL_SERVICE_ROLE_KEY ||
-         process.env['EXTERNAL_SERVICE_ROLE_KEY'])
+         process.env.SUPABASE_SERVICE_ROLE_KEY ||
+         process.env['SUPABASE_SERVICE_ROLE_KEY'])
       : undefined;
   if (!SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY não configurada no ambiente do servidor.');

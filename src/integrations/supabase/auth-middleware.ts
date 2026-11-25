@@ -28,16 +28,38 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
+const VPS_SUPABASE_URL = 'https://supabase.cuentastupana.com';
+const VPS_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzE5NzkyMDAwLCJleHAiOjIwMzUxNTIwMDB9.zM3xq1Bkafe4-jNNpKDuB4HOpHvVskFxoldZds6raPs';
+
+function pickAuthUrl(...candidates: Array<string | undefined>): string {
+  for (const v of candidates) {
+    if (v && !v.includes('llnfjhqdeeuscyqzoqfz')) return v;
+  }
+  return VPS_SUPABASE_URL;
+}
+
+function pickAuthKey(...candidates: Array<string | undefined>): string {
+  for (const v of candidates) {
+    if (v && !v.startsWith('sb_publishable_AWtQzPmKl')) return v;
+  }
+  return VPS_SUPABASE_ANON_KEY;
+}
+
 export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server(
   async ({ next }) => {
-    const SUPABASE_URL =
-      (typeof process !== 'undefined' ? process.env['SUPABASE_URL'] : undefined) ||
-      (typeof process !== 'undefined' ? process.env['VITE_SUPABASE_URL'] : undefined) ||
-      'https://llnfjhqdeeuscyqzoqfz.supabase.co';
-    const SUPABASE_PUBLISHABLE_KEY =
-      (typeof process !== 'undefined' ? process.env['SUPABASE_PUBLISHABLE_KEY'] : undefined) ||
-      (typeof process !== 'undefined' ? process.env['VITE_SUPABASE_PUBLISHABLE_KEY'] : undefined) ||
-      'sb_publishable_AWtQzPmKl_MS9OWWmSkoZg_-vHK23d5';
+    const SUPABASE_URL = pickAuthUrl(
+      typeof process !== 'undefined' ? process.env['EXTERNAL_SUPABASE_URL'] : undefined,
+      typeof process !== 'undefined' ? process.env['VITE_EXTERNAL_SUPABASE_URL'] : undefined,
+      typeof process !== 'undefined' ? process.env['SUPABASE_URL'] : undefined,
+      typeof process !== 'undefined' ? process.env['VITE_SUPABASE_URL'] : undefined,
+    );
+    const SUPABASE_PUBLISHABLE_KEY = pickAuthKey(
+      typeof process !== 'undefined' ? process.env['EXTERNAL_SUPABASE_ANON_KEY'] : undefined,
+      typeof process !== 'undefined' ? process.env['VITE_EXTERNAL_SUPABASE_ANON_KEY'] : undefined,
+      typeof process !== 'undefined' ? process.env['SUPABASE_PUBLISHABLE_KEY'] : undefined,
+      typeof process !== 'undefined' ? process.env['VITE_SUPABASE_PUBLISHABLE_KEY'] : undefined,
+    );
 
     const request = getRequest();
 

@@ -71,7 +71,18 @@ export default {
             process.env[key] = val;
           }
         }
-        if (!process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.APP_SERVICE_ROLE_KEY) {
+        const extUrl = process.env.EXTERNAL_SUPABASE_URL || "https://supabase.cuentastupana.com";
+        const extAnon =
+          process.env.EXTERNAL_SUPABASE_ANON_KEY ||
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzE5NzkyMDAwLCJleHAiOjIwMzUxNTIwMDB9.zM3xq1Bkafe4-jNNpKDuB4HOpHvVskFxoldZds6raPs";
+        const extKey = process.env.EXTERNAL_SERVICE_ROLE_KEY || process.env.APP_SERVICE_ROLE_KEY;
+        if (extKey) {
+          process.env.SUPABASE_SERVICE_ROLE_KEY = extKey;
+          process.env.SUPABASE_URL = extUrl;
+          process.env.VITE_SUPABASE_URL = extUrl;
+          process.env.SUPABASE_PUBLISHABLE_KEY = extAnon;
+          process.env.VITE_SUPABASE_PUBLISHABLE_KEY = extAnon;
+        } else if (!process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.APP_SERVICE_ROLE_KEY) {
           process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.APP_SERVICE_ROLE_KEY;
         }
       }

@@ -47,42 +47,8 @@ export const executeContactsImportFn = createServerFn({ method: "POST" })
       return { ok: true, totalProcessed: 0, updatedCount: 0, insertedCount: 0, errorsCount: 0 };
     }
 
-    // Verificar límites del plan si hay contactos nuevos
-    try {
-      const { getCompanyPlanUsage } = await import("@/lib/plan-limits.server");
-      const { plan, usage } = await getCompanyPlanUsage(companyId);
-
-      // Contar cuántos son nuevos paginando en lotes de 500 para soportar listas grandes sin truncar PostgREST
-      const uniqueNumbers = contacts.map((c) => c.numero);
-      const existingSet = new Set<string>();
-      const CHUNK = 500;
-      for (let i = 0; i < uniqueNumbers.length; i += CHUNK) {
-        const slice = uniqueNumbers.slice(i, i + CHUNK);
-        const { data: rows } = await (supabaseAdmin as any)
-          .from("crm_cards")
-          .select("numero")
-          .eq("company_id", companyId)
-          .in("numero", slice);
-        for (const r of rows || []) {
-          existingSet.add(r.numero);
-        }
-      }
-      const newContactsCount = contacts.filter((c) => !existingSet.has(c.numero)).length;
-
-      if (newContactsCount > 0 && usage.contatos + newContactsCount > plan.limites.contatos) {
-        const restante = Math.max(0, plan.limites.contatos - usage.contatos);
-        throw new Error(
-          `La importación de ${newContactsCount} contactos nuevos excede el límite de su plan (${plan.limites.contatos.toLocaleString()}). Cupo disponible: ${restante.toLocaleString()}.`,
-        );
-      }
-    } catch (planErr: any) {
-      // Si el error fue por exceso de límite, propagarlo
-      if (planErr?.message?.includes("excede el límite")) {
-        throw planErr;
-      }
-      // Otros errores de plan no bloquean la importación
-      console.warn("[contacts-import] Plan check warning:", planErr?.message);
-    }
+    const { assertCompanyCanWrite } = await import("@/lib/billing/access.server");
+    await assertCompanyCanWrite(companyId);
 
     const result = await executeContactsImport(companyId, context.userId, contacts);
     return result;

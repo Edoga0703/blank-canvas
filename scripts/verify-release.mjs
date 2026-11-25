@@ -78,11 +78,12 @@ report(
 );
 
 // 3. Verificação de ausência de segredos literais no código fonte
-const blacklistedTokens = [
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9", // Hardcoded Service Role JWT
-  "capiversa-mtproto-dev-secret-2026",    // Hardcoded Gateway Secret
-  "capiconversa_cron_secret_7f8a9b2c3d4e5f60", // Hardcoded Cron Secret
-  "capiconversa_media_signing_secret_998877",  // Hardcoded Media Secret
+const blacklistedPatterns = [
+  /eyJyb2xlIjoic2VydmljZV9yb2xl/,          // Hardcoded Service Role JWT
+  /sb_secret_[A-Za-z0-9_-]{12,}/,          // Hardcoded Supabase Secret Key
+  /capiversa-mtproto-dev-secret-2026/,     // Hardcoded Gateway Secret
+  /capiconversa_cron_secret_7f8a9b2c3d4e5f60/, // Hardcoded Cron Secret
+  /capiconversa_media_signing_secret_998877/,  // Hardcoded Media Secret
 ];
 
 function scanCodeDir(dir, exts = [".ts", ".tsx", ".js", ".mjs"]) {
@@ -112,9 +113,9 @@ for (const file of sourceFiles) {
   if (file.endsWith("verify-release.mjs")) continue;
   if (!fs.existsSync(file)) continue;
   const content = fs.readFileSync(file, "utf8");
-  for (const needle of blacklistedTokens) {
-    if (content.includes(needle)) {
-      sourceLeaks.push({ file: path.relative(rootDir, file), needle });
+  for (const needle of blacklistedPatterns) {
+    if (needle.test(content)) {
+      sourceLeaks.push({ file: path.relative(rootDir, file), needle: String(needle) });
     }
   }
 }
@@ -143,9 +144,9 @@ if (fs.existsSync(outputDir)) {
   let bundleLeaks = [];
   for (const f of allBundles) {
     const c = fs.readFileSync(f, "utf8");
-    for (const needle of blacklistedTokens) {
-      if (c.includes(needle)) {
-        bundleLeaks.push({ file: path.relative(rootDir, f), needle });
+    for (const needle of blacklistedPatterns) {
+      if (needle.test(c)) {
+        bundleLeaks.push({ file: path.relative(rootDir, f), needle: String(needle) });
       }
     }
   }

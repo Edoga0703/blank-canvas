@@ -69,7 +69,7 @@ const empty: Partial<Plan> = {
   limite_mensagens: 2147483647,
   limite_instancias: 1,
   limite_usuarios: 2,
-  limite_contatos: 50000,
+  limite_contatos: 2147483647,
   features: {
     whatsapp_dapi: true,
     whatsapp_oficial: true,
@@ -155,7 +155,7 @@ function PlanosPage() {
       limite_mensagens: 2147483647, // Sempre ilimitadas (sem bloqueio)
       limite_instancias: Math.max(1, Number(editing.limite_instancias ?? 1)),
       limite_usuarios: Math.max(1, Number(editing.limite_usuarios ?? 1)),
-      limite_contatos: Math.max(1000, Number(editing.limite_contatos ?? 50000)),
+      limite_contatos: 2147483647, // Sempre ilimitados (sem bloqueio)
       features: featureMap,
       destaque: !!editing.destaque,
       ativo: !!editing.ativo,
@@ -281,9 +281,11 @@ function PlanosPage() {
                   </div>
 
                   <div className="space-y-0.5 pt-1 border-t border-border/40">
-                    <div className="text-[10px] uppercase font-bold text-muted-foreground">Contatos / Leads</div>
-                    <div className="font-semibold text-foreground">
-                      {p.limite_contatos >= 1000000 ? "Ilimitados" : p.limite_contatos.toLocaleString("pt-BR")}
+                    <div className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
+                      <InfinityIcon className="size-3 text-emerald-600" /> Contatos / Leads
+                    </div>
+                    <div className="font-semibold text-emerald-700 dark:text-emerald-300">
+                      Ilimitados
                     </div>
                   </div>
                 </div>
@@ -456,13 +458,10 @@ function PlanosPage() {
                 </Field>
 
                 <Field label="Limite de Contatos / Leads">
-                  <Input
-                    type="number"
-                    min={1000}
-                    step={1000}
-                    value={editing.limite_contatos ?? 50000}
-                    onChange={(e) => setEditing({ ...editing, limite_contatos: Number(e.target.value) })}
-                  />
+                  <div className="flex items-center gap-2 h-9 px-3 rounded-md border bg-emerald-50/60 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
+                    <InfinityIcon className="size-4 shrink-0" />
+                    Ilimitados em todos os planos
+                  </div>
                 </Field>
               </div>
 

@@ -3,7 +3,9 @@ import { defineTool, type ToolContext } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 
 function sb(ctx: ToolContext) {
-  return createClient(process.env.SUPABASE_URL || "https://llnfjhqdeeuscyqzoqfz.supabase.co", process.env.SUPABASE_PUBLISHABLE_KEY || "sb_publishable_AWtQzPmKl_MS9OWWmSkoZg_-vHK23d5", {
+  const url = process.env.EXTERNAL_SUPABASE_URL || (process.env.SUPABASE_URL && !process.env.SUPABASE_URL.includes("llnfjhqdeeuscyqzoqfz") ? process.env.SUPABASE_URL : "https://supabase.cuentastupana.com");
+  const key = process.env.EXTERNAL_SUPABASE_ANON_KEY || (process.env.SUPABASE_PUBLISHABLE_KEY && !process.env.SUPABASE_PUBLISHABLE_KEY.startsWith("sb_publishable_AWtQzPmKl") ? process.env.SUPABASE_PUBLISHABLE_KEY : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzE5NzkyMDAwLCJleHAiOjIwMzUxNTIwMDB9.zM3xq1Bkafe4-jNNpKDuB4HOpHvVskFxoldZds6raPs");
+  return createClient(url, key, {
     global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
     auth: { persistSession: false, autoRefreshToken: false },
   });

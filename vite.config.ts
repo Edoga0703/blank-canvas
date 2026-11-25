@@ -14,6 +14,24 @@ import { serverFnWarmup } from "./vite-serverfn-warmup";
 // generadas permanecen disponibles durante la validacion local en Windows.
 const lovableMcpPlugins = process.platform === "win32" ? [] : [mcpPlugin()];
 
+const VPS_SUPABASE_URL = "https://supabase.cuentastupana.com";
+const VPS_SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzE5NzkyMDAwLCJleHAiOjIwMzUxNTIwMDB9.zM3xq1Bkafe4-jNNpKDuB4HOpHvVskFxoldZds6raPs";
+
+function pickSupabaseUrl(...candidates: Array<string | undefined>) {
+  for (const v of candidates) {
+    if (v && !v.includes("llnfjhqdeeuscyqzoqfz")) return v;
+  }
+  return VPS_SUPABASE_URL;
+}
+
+function pickSupabaseAnonKey(...candidates: Array<string | undefined>) {
+  for (const v of candidates) {
+    if (v && !v.startsWith("sb_publishable_AWtQzPmKl")) return v;
+  }
+  return VPS_SUPABASE_ANON_KEY;
+}
+
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
@@ -24,16 +42,16 @@ export default defineConfig({
     plugins: [...lovableMcpPlugins, serverFnWarmup()],
     define: {
       "process.env.SUPABASE_URL": JSON.stringify(
-        process.env.SUPABASE_URL || "https://llnfjhqdeeuscyqzoqfz.supabase.co"
+        pickSupabaseUrl(process.env.EXTERNAL_SUPABASE_URL, process.env.SUPABASE_URL)
       ),
       "process.env.VITE_SUPABASE_URL": JSON.stringify(
-        process.env.VITE_SUPABASE_URL || "https://llnfjhqdeeuscyqzoqfz.supabase.co"
+        pickSupabaseUrl(process.env.VITE_EXTERNAL_SUPABASE_URL, process.env.EXTERNAL_SUPABASE_URL, process.env.VITE_SUPABASE_URL)
       ),
       "process.env.SUPABASE_PUBLISHABLE_KEY": JSON.stringify(
-        process.env.SUPABASE_PUBLISHABLE_KEY || "sb_publishable_AWtQzPmKl_MS9OWWmSkoZg_-vHK23d5"
+        pickSupabaseAnonKey(process.env.EXTERNAL_SUPABASE_ANON_KEY, process.env.SUPABASE_PUBLISHABLE_KEY)
       ),
       "process.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(
-        process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_AWtQzPmKl_MS9OWWmSkoZg_-vHK23d5"
+        pickSupabaseAnonKey(process.env.VITE_EXTERNAL_SUPABASE_ANON_KEY, process.env.EXTERNAL_SUPABASE_ANON_KEY, process.env.VITE_SUPABASE_PUBLISHABLE_KEY)
       ),
       "process.env.DAPI_BASE_URL": JSON.stringify(process.env.DAPI_BASE_URL || "https://api.d-api.cloud/api/v1"),
       "process.env.PUBLIC_APP_URL": JSON.stringify(process.env.PUBLIC_APP_URL || "https://capiconversa.com"),

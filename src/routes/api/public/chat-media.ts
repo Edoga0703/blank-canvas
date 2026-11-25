@@ -7,6 +7,8 @@ function getMediaSigningSecret(): string {
   const custom = (
     process.env.MEDIA_SIGNING_SECRET ||
     (process.env as any)?.["MEDIA_SIGNING_SECRET"] ||
+    process.env.EXTERNAL_SERVICE_ROLE_KEY ||
+    process.env.APP_SERVICE_ROLE_KEY ||
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     ""
   ).trim();
@@ -33,8 +35,9 @@ function verifyMediaToken(messageId: string, sig: string, expStr: string): boole
   const candidateSecrets = [
     getMediaSigningSecret(),
     (process.env.MEDIA_SIGNING_SECRET || "").trim(),
-    (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim(),
+    (process.env.EXTERNAL_SERVICE_ROLE_KEY || "").trim(),
     (process.env.APP_SERVICE_ROLE_KEY || "").trim(),
+    (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim(),
   ].filter(Boolean);
 
   const b = Buffer.from(sig, "hex");
@@ -188,10 +191,17 @@ export const Route = createFileRoute("/api/public/chat-media")({
           }
           const jwtToken = authHeader.replace("Bearer ", "").trim();
           const { createClient } = await import("@supabase/supabase-js");
-          const sbAuth = createClient(
-            process.env.SUPABASE_URL || "https://llnfjhqdeeuscyqzoqfz.supabase.co",
-            process.env.SUPABASE_PUBLISHABLE_KEY || "sb_publishable_AWtQzPmKl_MS9OWWmSkoZg_-vHK23d5",
-          );
+          const sbUrl =
+            process.env.EXTERNAL_SUPABASE_URL ||
+            (process.env.SUPABASE_URL && !process.env.SUPABASE_URL.includes("llnfjhqdeeuscyqzoqfz")
+              ? process.env.SUPABASE_URL
+              : "https://supabase.cuentastupana.com");
+          const sbKey =
+            process.env.EXTERNAL_SUPABASE_ANON_KEY ||
+            (process.env.SUPABASE_PUBLISHABLE_KEY && !process.env.SUPABASE_PUBLISHABLE_KEY.startsWith("sb_publishable_AWtQzPmKl")
+              ? process.env.SUPABASE_PUBLISHABLE_KEY
+              : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzE5NzkyMDAwLCJleHAiOjIwMzUxNTIwMDB9.zM3xq1Bkafe4-jNNpKDuB4HOpHvVskFxoldZds6raPs");
+          const sbAuth = createClient(sbUrl, sbKey);
           const { data: claimsData, error: claimsErr } = await sbAuth.auth.getClaims(jwtToken);
           const userId = claimsData?.claims?.sub;
           if (claimsErr || !userId) {
