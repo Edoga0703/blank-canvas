@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-25T14:27:47.457670+00:00",
+  "generated_at": "2026-11-25T23:17:18.430386+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -7,7 +7,7 @@
     },
     {
       "path": "vite.config.ts",
-      "bytes": 3043
+      "bytes": 3832
     },
     {
       "path": "billing_create.html",
@@ -99,7 +99,7 @@
     },
     {
       "path": "src/server.ts",
-      "bytes": 3254
+      "bytes": 4012
     },
     {
       "path": "src/start.ts",
@@ -727,7 +727,7 @@
     },
     {
       "path": "src/lib/google.server.ts",
-      "bytes": 18865
+      "bytes": 18906
     },
     {
       "path": "src/lib/tags.functions.ts",
@@ -871,7 +871,7 @@
     },
     {
       "path": "src/lib/plan-limits.server.ts",
-      "bytes": 7517
+      "bytes": 7565
     },
     {
       "path": "src/lib/ai-limiter.server.ts",
@@ -991,7 +991,7 @@
     },
     {
       "path": "src/lib/plan.functions.ts",
-      "bytes": 5087
+      "bytes": 4442
     },
     {
       "path": "src/lib/openai-usage.functions.ts",
@@ -1039,7 +1039,7 @@
     },
     {
       "path": "src/lib/crm-contacts-import.functions.ts",
-      "bytes": 6035
+      "bytes": 4480
     },
     {
       "path": "src/lib/support-kb.ts",
@@ -1111,7 +1111,7 @@
     },
     {
       "path": "src/lib/lead-photo.server.ts",
-      "bytes": 2708
+      "bytes": 2752
     },
     {
       "path": "src/lib/phone-thread.server.ts",
@@ -2355,7 +2355,7 @@
     },
     {
       "path": "src/lib/billing/access.server.ts",
-      "bytes": 1166
+      "bytes": 1191
     },
     {
       "path": "src/lib/billing/abacatepay.server.ts",
@@ -2487,15 +2487,15 @@
     },
     {
       "path": "src/lib/mcp/tools/send-whatsapp.ts",
-      "bytes": 2609
+      "bytes": 3053
     },
     {
       "path": "src/lib/mcp/tools/list-conversations.ts",
-      "bytes": 1755
+      "bytes": 2199
     },
     {
       "path": "src/lib/mcp/tools/list-leads.ts",
-      "bytes": 1687
+      "bytes": 2131
     },
     {
       "path": "src/lib/messaging/providers/dapi.server.ts",
@@ -2579,7 +2579,7 @@
     },
     {
       "path": "src/routes/master/planos.tsx",
-      "bytes": 23974
+      "bytes": 24052
     },
     {
       "path": "src/routes/master/empresas.tsx",
@@ -2771,7 +2771,7 @@
     },
     {
       "path": "src/routes/api/public/chat-media.ts",
-      "bytes": 17910
+      "bytes": 18588
     },
     {
       "path": "src/routes/api/public/google-marketing-callback.ts",
@@ -2855,7 +2855,7 @@
     },
     {
       "path": "src/routes/api/public/hooks/whatsapp-watchdog.ts",
-      "bytes": 5237
+      "bytes": 4994
     },
     {
       "path": "src/routes/api/public/hooks/google-calendar.ts",
@@ -2959,15 +2959,15 @@
     },
     {
       "path": "src/integrations/supabase/auth-middleware.ts",
-      "bytes": 3201
+      "bytes": 4173
     },
     {
       "path": "src/integrations/supabase/client.ts",
-      "bytes": 3515
+      "bytes": 4311
     },
     {
       "path": "src/integrations/supabase/client.server.ts",
-      "bytes": 2972
+      "bytes": 3380
     },
     {
       "path": "src/integrations/supabase/types.ts",
@@ -6205,7 +6205,7 @@
     },
     {
       "source": "src/lib/plan.functions.ts",
-      "target": "./plan-limits.server"
+      "target": "./billing/access.server"
     },
     {
       "source": "src/lib/plan.functions.ts",
@@ -6213,11 +6213,11 @@
     },
     {
       "source": "src/lib/plan.functions.ts",
-      "target": "@/integrations/supabase/client.server"
+      "target": "./billing/access.server"
     },
     {
       "source": "src/lib/plan.functions.ts",
-      "target": "./plan-limits.server"
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/openai-usage.functions.ts",
@@ -6393,7 +6393,7 @@
     },
     {
       "source": "src/lib/crm-contacts-import.functions.ts",
-      "target": "@/lib/plan-limits.server"
+      "target": "@/lib/billing/access.server"
     },
     {
       "source": "src/lib/crm-contacts-import.functions.ts",
@@ -18898,6 +18898,10 @@
     {
       "source": "src/routes/api/public/hooks/whatsapp-watchdog.ts",
       "target": "@/lib/whatsapp-connection"
+    },
+    {
+      "source": "src/routes/api/public/hooks/whatsapp-watchdog.ts",
+      "target": "@/lib/whatsapp-helpers"
     },
     {
       "source": "src/routes/api/public/hooks/whatsapp-watchdog.ts",
