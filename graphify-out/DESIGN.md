@@ -1,6 +1,6 @@
 # Design system
 
-Generated: 2026-11-27T05:23:52.996048+00:00
+Generated: 2026-11-27T14:20:31.546130+00:00
 
 ## Tokens
 - --radius-sm: calc(var(--radius) - 4px) (src/styles.css)
@@ -197,13 +197,32 @@ Generated: 2026-11-27T05:23:52.996048+00:00
 - --page-gradient: radial-gradient(1200px 600px at 85% -15%, rgba(74,93,255,.09), transparent 60%),
     radial-gradient(900px 500px at -10% 15%, rgba(74,93,255,.06), transparent 60%),
     var(--bg-deep) (src/styles.css)
+- --bg-deep: #F4F5F9 (src/styles.css)
+- --panel: #FFFFFF (src/styles.css)
+- --panel-2: #F4F6F8 (src/styles.css)
+- --hairline: #E6EAF0 (src/styles.css)
+- --hairline-strong: #D9DEE5 (src/styles.css)
+- --surface: #FFFFFF (src/styles.css)
+- --background: #F4F5F9 (src/styles.css)
+- --foreground: #12263A (src/styles.css)
+- --card: #FFFFFF (src/styles.css)
+- --card-foreground: #12263A (src/styles.css)
+- --popover: #FFFFFF (src/styles.css)
+- --popover-foreground: #12263A (src/styles.css)
 - --primary: #334155 (src/styles.css)
 - --primary-foreground: #FFFFFF (src/styles.css)
+- --secondary: #EDF2F5 (src/styles.css)
+- --secondary-foreground: #12263A (src/styles.css)
+- --muted: #F4F6F8 (src/styles.css)
+- --muted-foreground: #64748B (src/styles.css)
 - --brand: #334155 (src/styles.css)
 - --brand-strong: #1E293B (src/styles.css)
 - --brand-soft: #E8EEF5 (src/styles.css)
 - --brand-text: #334155 (src/styles.css)
 - --accent: #E8EEF5 (src/styles.css)
+- --accent-foreground: #12263A (src/styles.css)
+- --border: #E6EAF0 (src/styles.css)
+- --input: #D9DEE5 (src/styles.css)
 - --ring: #334155 (src/styles.css)
 
 ## UI components

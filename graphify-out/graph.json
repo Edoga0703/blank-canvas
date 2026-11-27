@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-27T05:23:52.996048+00:00",
+  "generated_at": "2026-11-27T14:20:31.546130+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -111,7 +111,7 @@
     },
     {
       "path": "src/styles.css",
-      "bytes": 15345
+      "bytes": 15850
     },
     {
       "path": "docs/PRE_LOVABLE_VERIFICATION.md",
@@ -619,7 +619,7 @@
     },
     {
       "path": "src/routes/master.tsx",
-      "bytes": 14844
+      "bytes": 16168
     },
     {
       "path": "src/routes/reset-senha.tsx",
@@ -667,7 +667,7 @@
     },
     {
       "path": "src/routes/__root.tsx",
-      "bytes": 10910
+      "bytes": 10979
     },
     {
       "path": "src/routes/index.tsx",
@@ -1519,7 +1519,7 @@
     },
     {
       "path": "src/components/master-subtabs.tsx",
-      "bytes": 3828
+      "bytes": 3923
     },
     {
       "path": "src/components/mobile-app-banner.tsx",
@@ -1543,7 +1543,7 @@
     },
     {
       "path": "src/components/mobile-bottom-nav.tsx",
-      "bytes": 3057
+      "bytes": 3052
     },
     {
       "path": "src/components/onboarding-tour.tsx",
@@ -1567,11 +1567,11 @@
     },
     {
       "path": "src/components/theme-toggle.tsx",
-      "bytes": 1291
+      "bytes": 4640
     },
     {
       "path": "src/components/app-shell.tsx",
-      "bytes": 41893
+      "bytes": 42286
     },
     {
       "path": "src/components/brand-mark.tsx",
@@ -1815,11 +1815,11 @@
     },
     {
       "path": "src/components/support/support-article.tsx",
-      "bytes": 4429
+      "bytes": 4428
     },
     {
       "path": "src/components/support/support-floating-button.tsx",
-      "bytes": 25469
+      "bytes": 25589
     },
     {
       "path": "src/components/support/support-config-dialog.tsx",
@@ -1831,7 +1831,7 @@
     },
     {
       "path": "src/components/support/support-home.tsx",
-      "bytes": 4992
+      "bytes": 4991
     },
     {
       "path": "src/components/dashboard/kpi-card.tsx",
@@ -2063,7 +2063,7 @@
     },
     {
       "path": "src/components/comercial/comercial-widgets.tsx",
-      "bytes": 7865
+      "bytes": 7981
     },
     {
       "path": "src/components/comercial/venda-dialog.tsx",
@@ -2095,43 +2095,43 @@
     },
     {
       "path": "src/components/master/revenue-projection-panel.tsx",
-      "bytes": 12808
+      "bytes": 13059
     },
     {
       "path": "src/components/master/billing-panel.tsx",
-      "bytes": 4731
+      "bytes": 4867
     },
     {
       "path": "src/components/master/openai-spend-panel.tsx",
-      "bytes": 10946
+      "bytes": 11214
     },
     {
       "path": "src/components/master/clientes-lista.tsx",
-      "bytes": 64286
+      "bytes": 65252
     },
     {
       "path": "src/components/master/ai-telemetry-panel.tsx",
-      "bytes": 28418
+      "bytes": 28756
     },
     {
       "path": "src/components/master/signup-welcome-card.tsx",
-      "bytes": 3977
+      "bytes": 4117
     },
     {
       "path": "src/components/master/alerts-bell.tsx",
-      "bytes": 4408
+      "bytes": 4662
     },
     {
       "path": "src/components/master/whatsapp-fleet-panel.tsx",
-      "bytes": 9329
+      "bytes": 9688
     },
     {
       "path": "src/components/master/charges-panel.tsx",
-      "bytes": 7063
+      "bytes": 7191
     },
     {
       "path": "src/components/master/nova-empresa-form.tsx",
-      "bytes": 6253
+      "bytes": 6447
     },
     {
       "path": "src/components/crm/contacts-import-dialog.tsx",
@@ -2291,27 +2291,27 @@
     },
     {
       "path": "src/components/master/crm-admin/connection-header.tsx",
-      "bytes": 3268
+      "bytes": 3408
     },
     {
       "path": "src/components/master/crm-admin/base-tab.tsx",
-      "bytes": 4787
+      "bytes": 4901
     },
     {
       "path": "src/components/master/crm-admin/automacoes-tab.tsx",
-      "bytes": 4120
+      "bytes": 4228
     },
     {
       "path": "src/components/master/crm-admin/overview-tab.tsx",
-      "bytes": 3851
+      "bytes": 3975
     },
     {
       "path": "src/components/master/crm-admin/disparos-tab.tsx",
-      "bytes": 3338
+      "bytes": 3446
     },
     {
       "path": "src/components/master/crm-admin/historico-tab.tsx",
-      "bytes": 3904
+      "bytes": 4004
     },
     {
       "path": "src/components/agente/avatar-layers/index.tsx",
@@ -2478,12 +2478,16 @@
       "bytes": 2646
     },
     {
+      "path": "src/lib/i18n/master-translations.ts",
+      "bytes": 81098
+    },
+    {
       "path": "src/lib/i18n/context.tsx",
       "bytes": 22351
     },
     {
       "path": "src/lib/i18n/translations.ts",
-      "bytes": 163982
+      "bytes": 164468
     },
     {
       "path": "src/lib/i18n/currencies.ts",
@@ -2547,15 +2551,15 @@
     },
     {
       "path": "src/routes/master/clientes.tsx",
-      "bytes": 2114
+      "bytes": 2246
     },
     {
       "path": "src/routes/master/parceiros.tsx",
-      "bytes": 31218
+      "bytes": 31802
     },
     {
       "path": "src/routes/master/sistema.tsx",
-      "bytes": 31538
+      "bytes": 32326
     },
     {
       "path": "src/routes/master/cadastros.tsx",
@@ -2563,15 +2567,15 @@
     },
     {
       "path": "src/routes/master/addons.tsx",
-      "bytes": 12097
+      "bytes": 12353
     },
     {
       "path": "src/routes/master/crm-admin.tsx",
-      "bytes": 4563
+      "bytes": 4711
     },
     {
       "path": "src/routes/master/suporte.tsx",
-      "bytes": 50800
+      "bytes": 51381
     },
     {
       "path": "src/routes/master/cobrancas.tsx",
@@ -2579,15 +2583,15 @@
     },
     {
       "path": "src/routes/master/notificacoes.tsx",
-      "bytes": 7903
+      "bytes": 8129
     },
     {
       "path": "src/routes/master/perfil.tsx",
-      "bytes": 6528
+      "bytes": 6777
     },
     {
       "path": "src/routes/master/planos.tsx",
-      "bytes": 29047
+      "bytes": 29349
     },
     {
       "path": "src/routes/master/empresas.tsx",
@@ -2595,11 +2599,11 @@
     },
     {
       "path": "src/routes/master/financeiro.tsx",
-      "bytes": 32454
+      "bytes": 32981
     },
     {
       "path": "src/routes/master/configuracoes.tsx",
-      "bytes": 10991
+      "bytes": 11151
     },
     {
       "path": "src/routes/master/assinaturas.tsx",
@@ -2607,7 +2611,7 @@
     },
     {
       "path": "src/routes/master/painel.tsx",
-      "bytes": 16824
+      "bytes": 17682
     },
     {
       "path": "src/routes/master/billing.tsx",
@@ -2615,19 +2619,19 @@
     },
     {
       "path": "src/routes/master/feature-flags.tsx",
-      "bytes": 8184
+      "bytes": 8379
     },
     {
       "path": "src/routes/master/sugestoes.tsx",
-      "bytes": 7665
+      "bytes": 7843
     },
     {
       "path": "src/routes/master/treinamentos.tsx",
-      "bytes": 21153
+      "bytes": 21479
     },
     {
       "path": "src/routes/master/plugins.tsx",
-      "bytes": 22361
+      "bytes": 22697
     },
     {
       "path": "src/routes/master/index.tsx",
@@ -2635,7 +2639,7 @@
     },
     {
       "path": "src/routes/master/diagnostico.tsx",
-      "bytes": 15676
+      "bytes": 16385
     },
     {
       "path": "src/routes/master/nova-empresa.tsx",
@@ -2643,7 +2647,7 @@
     },
     {
       "path": "src/routes/app/checkout.tsx",
-      "bytes": 28837
+      "bytes": 29032
     },
     {
       "path": "src/routes/app/agendamentos.tsx",
@@ -2715,7 +2719,7 @@
     },
     {
       "path": "src/routes/app/parceiro.tsx",
-      "bytes": 13575
+      "bytes": 13570
     },
     {
       "path": "src/routes/app/conversas.tsx",
@@ -2731,7 +2735,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 165569
+      "bytes": 165999
     },
     {
       "path": "src/routes/app/prospeccao.tsx",
@@ -2763,7 +2767,7 @@
     },
     {
       "path": "src/routes/app/crm.tsx",
-      "bytes": 170430
+      "bytes": 170428
     },
     {
       "path": "src/routes/api/public/form-submit.ts",
@@ -4290,6 +4294,18 @@
     {
       "source": "src/routes/master.tsx",
       "target": "@/lib/master-alerts.functions"
+    },
+    {
+      "source": "src/routes/master.tsx",
+      "target": "@/components/language-switcher"
+    },
+    {
+      "source": "src/routes/master.tsx",
+      "target": "@/components/theme-toggle"
+    },
+    {
+      "source": "src/routes/master.tsx",
+      "target": "@/lib/i18n/master-translations"
     },
     {
       "source": "src/routes/reset-senha.tsx",
@@ -9384,6 +9400,10 @@
       "target": "@tanstack/react-router"
     },
     {
+      "source": "src/components/master-subtabs.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/components/mobile-app-banner.tsx",
       "target": "react"
     },
@@ -9604,6 +9624,14 @@
       "target": "lucide-react"
     },
     {
+      "source": "src/components/theme-toggle.tsx",
+      "target": "@/lib/i18n/context"
+    },
+    {
+      "source": "src/components/theme-toggle.tsx",
+      "target": "@/lib/utils"
+    },
+    {
       "source": "src/components/app-shell.tsx",
       "target": "@tanstack/react-router"
     },
@@ -9626,6 +9654,10 @@
     {
       "source": "src/components/app-shell.tsx",
       "target": "@/components/language-switcher"
+    },
+    {
+      "source": "src/components/app-shell.tsx",
+      "target": "@/components/theme-toggle"
     },
     {
       "source": "src/components/app-shell.tsx",
@@ -13152,6 +13184,10 @@
       "target": "@/lib/finance.functions"
     },
     {
+      "source": "src/components/master/revenue-projection-panel.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/components/master/billing-panel.tsx",
       "target": "react"
     },
@@ -13182,6 +13218,10 @@
     {
       "source": "src/components/master/billing-panel.tsx",
       "target": "@/lib/master-admin.functions"
+    },
+    {
+      "source": "src/components/master/billing-panel.tsx",
+      "target": "@/lib/i18n/master-translations"
     },
     {
       "source": "src/components/master/openai-spend-panel.tsx",
@@ -13226,6 +13266,10 @@
     {
       "source": "src/components/master/openai-spend-panel.tsx",
       "target": "sonner"
+    },
+    {
+      "source": "src/components/master/openai-spend-panel.tsx",
+      "target": "@/lib/i18n/master-translations"
     },
     {
       "source": "src/components/master/clientes-lista.tsx",
@@ -13292,6 +13336,10 @@
       "target": "sonner"
     },
     {
+      "source": "src/components/master/clientes-lista.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/components/master/ai-telemetry-panel.tsx",
       "target": "react"
     },
@@ -13344,6 +13392,10 @@
       "target": "@/lib/ai-admin.functions"
     },
     {
+      "source": "src/components/master/ai-telemetry-panel.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/components/master/signup-welcome-card.tsx",
       "target": "react"
     },
@@ -13384,6 +13436,10 @@
       "target": "@/lib/signup-welcome.functions"
     },
     {
+      "source": "src/components/master/signup-welcome-card.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/components/master/alerts-bell.tsx",
       "target": "@tanstack/react-router"
     },
@@ -13400,6 +13456,10 @@
       "target": "@/hooks/use-master-alerts"
     },
     {
+      "source": "src/components/master/alerts-bell.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/components/master/whatsapp-fleet-panel.tsx",
       "target": "@/components/ui/card"
     },
@@ -13414,6 +13474,10 @@
     {
       "source": "src/components/master/whatsapp-fleet-panel.tsx",
       "target": "@/lib/provider-monitor.functions"
+    },
+    {
+      "source": "src/components/master/whatsapp-fleet-panel.tsx",
+      "target": "@/lib/i18n/master-translations"
     },
     {
       "source": "src/components/master/charges-panel.tsx",
@@ -13452,6 +13516,10 @@
       "target": "@/lib/billing-checkout.functions"
     },
     {
+      "source": "src/components/master/charges-panel.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/components/master/nova-empresa-form.tsx",
       "target": "react"
     },
@@ -13482,6 +13550,10 @@
     {
       "source": "src/components/master/nova-empresa-form.tsx",
       "target": "@/lib/master.functions"
+    },
+    {
+      "source": "src/components/master/nova-empresa-form.tsx",
+      "target": "@/lib/i18n/master-translations"
     },
     {
       "source": "src/components/crm/contacts-import-dialog.tsx",
@@ -14844,6 +14916,10 @@
       "target": "@/lib/admin-crm.functions"
     },
     {
+      "source": "src/components/master/crm-admin/connection-header.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/components/master/crm-admin/base-tab.tsx",
       "target": "react"
     },
@@ -14878,6 +14954,10 @@
     {
       "source": "src/components/master/crm-admin/base-tab.tsx",
       "target": "@/lib/admin-crm.functions"
+    },
+    {
+      "source": "src/components/master/crm-admin/base-tab.tsx",
+      "target": "@/lib/i18n/master-translations"
     },
     {
       "source": "src/components/master/crm-admin/automacoes-tab.tsx",
@@ -14928,6 +15008,10 @@
       "target": "@/components/master/signup-welcome-card"
     },
     {
+      "source": "src/components/master/crm-admin/automacoes-tab.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/components/master/crm-admin/overview-tab.tsx",
       "target": "react"
     },
@@ -14950,6 +15034,10 @@
     {
       "source": "src/components/master/crm-admin/overview-tab.tsx",
       "target": "@/lib/admin-crm.functions"
+    },
+    {
+      "source": "src/components/master/crm-admin/overview-tab.tsx",
+      "target": "@/lib/i18n/master-translations"
     },
     {
       "source": "src/components/master/crm-admin/disparos-tab.tsx",
@@ -14984,6 +15072,10 @@
       "target": "@/lib/admin-crm.functions"
     },
     {
+      "source": "src/components/master/crm-admin/disparos-tab.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/components/master/crm-admin/historico-tab.tsx",
       "target": "react"
     },
@@ -15006,6 +15098,10 @@
     {
       "source": "src/components/master/crm-admin/historico-tab.tsx",
       "target": "@/lib/admin-crm.functions"
+    },
+    {
+      "source": "src/components/master/crm-admin/historico-tab.tsx",
+      "target": "@/lib/i18n/master-translations"
     },
     {
       "source": "src/components/agente/avatar-layers/index.tsx",
@@ -15624,6 +15720,18 @@
       "target": "zod"
     },
     {
+      "source": "src/lib/i18n/master-translations.ts",
+      "target": "react"
+    },
+    {
+      "source": "src/lib/i18n/master-translations.ts",
+      "target": "./context"
+    },
+    {
+      "source": "src/lib/i18n/master-translations.ts",
+      "target": "./translations"
+    },
+    {
       "source": "src/lib/i18n/context.tsx",
       "target": "react"
     },
@@ -15864,6 +15972,10 @@
       "target": "@/components/master/nova-empresa-form"
     },
     {
+      "source": "src/routes/master/clientes.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/routes/master/parceiros.tsx",
       "target": "@tanstack/react-router"
     },
@@ -15910,6 +16022,10 @@
     {
       "source": "src/routes/master/parceiros.tsx",
       "target": "@/integrations/supabase/client"
+    },
+    {
+      "source": "src/routes/master/parceiros.tsx",
+      "target": "@/lib/i18n/master-translations"
     },
     {
       "source": "src/routes/master/sistema.tsx",
@@ -15988,6 +16104,10 @@
       "target": "@/components/config/storage-vaults-tab"
     },
     {
+      "source": "src/routes/master/sistema.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/routes/master/cadastros.tsx",
       "target": "@tanstack/react-router"
     },
@@ -16048,6 +16168,10 @@
       "target": "lucide-react"
     },
     {
+      "source": "src/routes/master/addons.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/routes/master/crm-admin.tsx",
       "target": "@tanstack/react-router"
     },
@@ -16106,6 +16230,10 @@
     {
       "source": "src/routes/master/crm-admin.tsx",
       "target": "@/components/config/storage-vaults-tab"
+    },
+    {
+      "source": "src/routes/master/crm-admin.tsx",
+      "target": "@/lib/i18n/master-translations"
     },
     {
       "source": "src/routes/master/suporte.tsx",
@@ -16180,6 +16308,10 @@
       "target": "@/lib/support-constants"
     },
     {
+      "source": "src/routes/master/suporte.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/routes/master/cobrancas.tsx",
       "target": "@tanstack/react-router"
     },
@@ -16240,6 +16372,10 @@
       "target": "@/lib/admin-broadcast.functions"
     },
     {
+      "source": "src/routes/master/notificacoes.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/routes/master/perfil.tsx",
       "target": "@tanstack/react-router"
     },
@@ -16282,6 +16418,10 @@
     {
       "source": "src/routes/master/perfil.tsx",
       "target": "sonner"
+    },
+    {
+      "source": "src/routes/master/perfil.tsx",
+      "target": "@/lib/i18n/master-translations"
     },
     {
       "source": "src/routes/master/planos.tsx",
@@ -16348,6 +16488,10 @@
       "target": "@/lib/plan-features"
     },
     {
+      "source": "src/routes/master/planos.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/routes/master/empresas.tsx",
       "target": "@tanstack/react-router"
     },
@@ -16408,6 +16552,10 @@
       "target": "@/components/master/revenue-projection-panel"
     },
     {
+      "source": "src/routes/master/financeiro.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/routes/master/configuracoes.tsx",
       "target": "@tanstack/react-router"
     },
@@ -16456,6 +16604,10 @@
       "target": "@/lib/billing.functions"
     },
     {
+      "source": "src/routes/master/configuracoes.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/routes/master/assinaturas.tsx",
       "target": "@tanstack/react-router"
     },
@@ -16502,6 +16654,10 @@
     {
       "source": "src/routes/master/painel.tsx",
       "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/routes/master/painel.tsx",
+      "target": "@/lib/i18n/master-translations"
     },
     {
       "source": "src/routes/master/billing.tsx",
@@ -16556,6 +16712,10 @@
       "target": "@/hooks/use-feature-flags"
     },
     {
+      "source": "src/routes/master/feature-flags.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/routes/master/sugestoes.tsx",
       "target": "@tanstack/react-router"
     },
@@ -16606,6 +16766,10 @@
     {
       "source": "src/routes/master/sugestoes.tsx",
       "target": "@/lib/admin-broadcast.functions"
+    },
+    {
+      "source": "src/routes/master/sugestoes.tsx",
+      "target": "@/lib/i18n/master-translations"
     },
     {
       "source": "src/routes/master/treinamentos.tsx",
@@ -16662,6 +16826,10 @@
     {
       "source": "src/routes/master/treinamentos.tsx",
       "target": "@/lib/master-training.functions"
+    },
+    {
+      "source": "src/routes/master/treinamentos.tsx",
+      "target": "@/lib/i18n/master-translations"
     },
     {
       "source": "src/routes/master/plugins.tsx",
@@ -16736,6 +16904,10 @@
       "target": "@/components/plugins/plugin-revenue-card"
     },
     {
+      "source": "src/routes/master/plugins.tsx",
+      "target": "@/lib/i18n/master-translations"
+    },
+    {
       "source": "src/routes/master/index.tsx",
       "target": "@tanstack/react-router"
     },
@@ -16790,6 +16962,10 @@
     {
       "source": "src/routes/master/diagnostico.tsx",
       "target": "@/lib/dapi-test.functions"
+    },
+    {
+      "source": "src/routes/master/diagnostico.tsx",
+      "target": "@/lib/i18n/master-translations"
     },
     {
       "source": "src/routes/master/nova-empresa.tsx",
