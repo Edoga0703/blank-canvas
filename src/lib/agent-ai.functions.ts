@@ -105,27 +105,104 @@ export type BriefAnalysis = {
   perguntas: BriefQuestion[];      // perguntas críticas pendentes (máx 6)
 };
 
+function normalizeBriefLang(raw?: string | null): "es" | "pt" | "en" {
+  const v = String(raw || "").trim().toLowerCase();
+  if (v.startsWith("es")) return "es";
+  if (v.startsWith("en")) return "en";
+  return "pt";
+}
+
+async function resolveBriefLanguage(
+  supabase: any,
+  companyId: string,
+  requestedLang?: string | null,
+  agentId?: string | null,
+): Promise<"es" | "pt" | "en"> {
+  if (requestedLang && String(requestedLang).trim()) {
+    return normalizeBriefLang(requestedLang);
+  }
+  if (agentId) {
+    try {
+      const { data } = await supabase
+        .from("agent_config")
+        .select("idioma")
+        .eq("company_id", companyId)
+        .eq("id", agentId)
+        .maybeSingle();
+      if (data?.idioma) return normalizeBriefLang(data.idioma);
+    } catch {}
+  }
+  return "pt";
+}
+
 export const analyzeBusinessBrief = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { descricao: string; respostas?: Record<string, string> }) => {
+  .inputValidator((d: { descricao: string; respostas?: Record<string, string>; language?: string; agentId?: string | null }) => {
     const desc = (d?.descricao || "").trim();
-    if (desc.length < 10) throw new Error("Conte um pouco mais sobre o negócio.");
+    if (desc.length < 10) throw new Error("Cuéntanos un poco más sobre el negocio / Conte um pouco mais sobre o negócio.");
     return {
       descricao: desc.slice(0, 8000),
       respostas: d?.respostas && typeof d.respostas === "object" ? d.respostas : {},
+      language: typeof d?.language === "string" ? d.language : undefined,
+      agentId: d?.agentId || null,
     };
   })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    await requireAdminCompany(supabase, userId);
+    const companyId = await requireAdminCompany(supabase, userId);
     const { lovableAiChat } = await import("./lovable-ai.server");
+    const lang = await resolveBriefLanguage(supabase, companyId, data.language, data.agentId);
 
     const respostasTxt = Object.entries(data.respostas)
       .filter(([, v]) => v && String(v).trim())
       .map(([k, v]) => `- ${k}: ${v}`)
       .join("\n");
 
-    const system = `Você é um Product Manager sênior + consultor de vendas, especialista em montar agentes de WhatsApp para pequenos negócios brasileiros (donos leigos, topo de funil).
+    const system = lang === "es"
+      ? `Eres un Product Manager senior + consultor de ventas, especialista en diseñar agentes de WhatsApp para negocios (para dueños no técnicos).
+
+Tu tarea: ANALIZAR la descripción del negocio e identificar qué FALTA para que el agente atienda bien sin inventar ni responder mal.
+
+Piensa como PRD: el agente necesita saber COMO MÍNIMO:
+1) Qué vende (productos/servicios con precio o rango de precios)
+2) Cómo atiende o entrega (envío, retiro, cita previa, online)
+3) Zona geográfica y horario de atención
+4) Formas de pago aceptadas
+5) Política básica (cambios, cancelación, garantía)
+6) Qué NO puede prometer o hacer el agente
+7) Diferencial / motivo para comprar ahí
+8) Siguiente paso de la venta (¿agendar? ¿pedir dirección? ¿enviar link?)
+
+REGLAS DE LAS PREGUNTAS:
+- Haz MÁXIMO 6 preguntas — solo las CRÍTICAS que falten.
+- Lenguaje humano y cercano, no de formulario rígido.
+- Cada pregunta debe incluir un EJEMPLO concreto acorde al rubro para destrabar al usuario.
+- NUNCA preguntes algo que ya esté claro en la descripción o respuestas previas.
+- Si ya tiene lo esencial (productos + cómo vender + zona O horario), marca "pronto: true" y devuelve "perguntas": [].
+- Si falta algo crítico (ej. precios, métodos de pago), marca "pronto: false".
+
+Responde ÚNICAMENTE con JSON válido en este formato (mantén exactamente los nombres de las claves JSON):
+{
+  "pronto": boolean,
+  "resumo": "resumen corto en español de lo que entendiste",
+  "cobertura": number,
+  "perguntas": [
+    {
+      "id": "snake_case_estable",
+      "pergunta": "pregunta corta en español",
+      "porque": "1 frase en español de por qué esto importa para atender",
+      "exemplo": "ejemplo concreto en español para ese rubro",
+      "campo": "una de: nome_empresa|segmento|regiao_horario|produtos_servicos|formas_pagamento|politicas|diferenciais|publico_alvo|como_vender|nao_pode_fazer|ofertas|extra",
+      "obrigatoria": boolean
+    }
+  ]
+}`
+      : lang === "en"
+        ? `You are a senior Product Manager + sales consultant specializing in WhatsApp agents for SMBs.
+
+Analyze the business description and identify what CRITICAL info is missing so the agent answers accurately without guessing.
+Keep max 6 short, friendly questions with concrete examples. Return ONLY valid JSON with keys: pronto, resumo, cobertura, perguntas[{id, pergunta, porque, exemplo, campo, obrigatoria}] written in natural English.`
+        : `Você é um Product Manager sênior + consultor de vendas, especialista em montar agentes de WhatsApp para pequenos negócios brasileiros (donos leigos, topo de funil).
 
 Sua tarefa: ANALISAR a descrição do negócio e identificar o que FALTA para um agente atender bem sem dar respostas tortas.
 
@@ -164,12 +241,9 @@ Responda APENAS JSON válido neste formato:
   ]
 }`;
 
-    const user = `DESCRIÇÃO DO NEGÓCIO:
-${data.descricao}
-
-${respostasTxt ? `RESPOSTAS JÁ DADAS PELO DONO:\n${respostasTxt}` : ""}
-
-Analise e devolva o JSON.`;
+    const user = lang === "es"
+      ? `DESCRIPCIÓN DEL NEGOCIO:\n${data.descricao}\n\n${respostasTxt ? `RESPUESTAS DADAS POR EL DUEÑO:\n${respostasTxt}` : ""}\n\nAnaliza y devuelve el JSON.`
+      : `DESCRIÇÃO DO NEGÓCIO:\n${data.descricao}\n\n${respostasTxt ? `RESPOSTAS JÁ DADAS PELO DONO:\n${respostasTxt}` : ""}\n\nAnalise e devolva o JSON.`;
 
     const raw = await lovableAiChat(
       [
@@ -207,29 +281,66 @@ Analise e devolva o JSON.`;
 
 export const generateAgentConfig = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { descricao: string; respostas?: Record<string, string>; nome?: string }) => {
+  .inputValidator((d: { descricao: string; respostas?: Record<string, string>; nome?: string; language?: string; agentId?: string | null }) => {
     if (!d?.descricao || d.descricao.trim().length < 20) {
-      throw new Error("Descreva seu negócio com pelo menos algumas frases (mín. 20 caracteres).");
+      throw new Error("Describe tu negocio con al menos algunas frases (mín. 20 caracteres).");
     }
     return {
       descricao: d.descricao.trim().slice(0, 8000),
       respostas: d?.respostas && typeof d.respostas === "object" ? d.respostas : {},
-      nome: d?.nome
+      nome: d?.nome,
+      language: typeof d?.language === "string" ? d.language : undefined,
+      agentId: d?.agentId || null,
     };
   })
 
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    await requireAdminCompany(supabase, userId);
+    const companyId = await requireAdminCompany(supabase, userId);
     const { lovableAiChat } = await import("./lovable-ai.server");
     const { buildSystemPrompt } = await import("./ai-prompt");
+    const lang = await resolveBriefLanguage(supabase, companyId, data.language, data.agentId);
 
     const respostasTxt = Object.entries(data.respostas)
       .filter(([, v]) => v && String(v).trim())
       .map(([k, v]) => `- ${k}: ${v}`)
       .join("\n");
 
-    const system = `Você é um Product Manager sênior + copywriter de vendas, montando um AGENTE DE WHATSAPP para um pequeno negócio brasileiro.
+    const system = lang === "es"
+      ? `Eres un Product Manager senior + copywriter de ventas, diseñando un AGENTE DE WHATSAPP para un negocio hispanohablante.
+
+Recibes: (1) descripción libre del dueño y (2) sus respuestas a preguntas específicas.
+Tu tarea: generar la configuración COMPLETA del agente en español, con enfoque práctico y accionable — nada genérico.
+
+Responde ÚNICAMENTE con JSON válido (sin markdown), con EXACTAMENTE estas claves (todos los valores en español):
+${FIELDS.map((f) => `- ${f}`).join("\n")}
+
+DIRECTRICES:
+- "nome_agente": corto, humano y natural (ej: Lía, Sofía, Mateo, Camila). No uses "Asistente", "Bot" ni "IA".
+- "papel_objetivo": 1-2 frases. Qué hace y para qué (calificar, vender, agendar).
+- "estilo_comunicacao": tono específico del rubro.
+- "apresentacao": primer mensaje real de apertura. Corto, humano, máximo 1 emoji si encaja.
+- "sobre_empresa": párrafo corto sobre quiénes son.
+- "produtos_servicos": lista ítems con precio si se informó; si falta, usa categorías con "(consultar)". NUNCA inventes precios.
+- "como_vender": paso a paso NUMERADO (3-6 pasos) concreto del negocio.
+- "objecoes": 3-5 objeciones REALES del rubro + respuesta breve cada una.
+- "faq": 4-6 preguntas frecuentes reales + respuesta directa.
+- "politicas": cambios, cancelaciones, garantía, plazos. Si no se especificó, escribe estándar razonable marcado "(confirmar con el equipo)".
+- "posvenda_msg": mensaje breve de postventa acorde al tono.
+- "pode_fazer": lista (1 por línea) de lo que sí puede hacer.
+- "nao_pode_fazer": lista (1 por línea) de lo prohibido — incluye siempre "No inventar precios, plazos ni políticas que no estén configurados" y "No cerrar ventas sin confirmar datos esenciales (dirección, horario o método de pago)".
+- "ofertas": solo si mencionó promociones/cupones; si no, "".
+- "formas_pagamento": solo lo indicado (o "(consultar)").
+- Usa "" cuando falte info — NUNCA omitas claves.
+- NO inventes datos faltantes.
+
+Devuelve SOLO el JSON.`
+      : lang === "en"
+        ? `You are a senior Product Manager + sales copywriter building a WhatsApp AI agent.
+Return ONLY valid JSON (no markdown) with EXACTLY these keys, all values written in natural English:
+${FIELDS.map((f) => `- ${f}`).join("\n")}
+Never invent missing prices, addresses, or policies (use "" or "(to confirm)").`
+        : `Você é um Product Manager sênior + copywriter de vendas, montando um AGENTE DE WHATSAPP para um pequeno negócio brasileiro.
 
 Você recebe: (1) descrição livre do dono (leigo) e (2) respostas dele para perguntas específicas.
 Sua tarefa: gerar a configuração COMPLETA do agente, no padrão de um PRD enxuto e ACIONÁVEL — nada genérico, nada "blá-blá de IA".
@@ -258,12 +369,9 @@ DIRETRIZES (siga à risca):
 
 Retorne SÓ o JSON.`;
 
-    const user = `DESCRIÇÃO DO DONO:
-${data.descricao}
-
-${respostasTxt ? `RESPOSTAS ESPECÍFICAS DO DONO:\n${respostasTxt}` : ""}
-
-Gere o JSON do agente.`;
+    const user = lang === "es"
+      ? `DESCRIPCIÓN DEL DUEÑO:\n${data.descricao}\n\n${respostasTxt ? `RESPUESTAS ESPECÍFICAS:\n${respostasTxt}` : ""}\n\nGenera el JSON del agente.`
+      : `DESCRIÇÃO DO DONO:\n${data.descricao}\n\n${respostasTxt ? `RESPOSTAS ESPECÍFICAS DO DONO:\n${respostasTxt}` : ""}\n\nGere o JSON do agente.`;
 
     const raw = await lovableAiChat(
       [

@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
+import { supabase } from "@/integrations/supabase/client";
 import {
   askAgentCopilot,
   executeCopilotAction,
@@ -22,6 +23,7 @@ import {
   getOrCreateCopilotSession,
   updateCopilotMessageProposalState,
   type CopilotChatMessage,
+  type CopilotAttachmentRef,
 } from "@/lib/agent-copilot.functions";
 import type { CopilotActionProposal } from "@/lib/agent-copilot.server";
 import {
@@ -45,6 +47,10 @@ import {
   Wrench,
   RefreshCw,
   MessageSquarePlus,
+  Paperclip,
+  X,
+  FileText,
+  Image as ImageIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -61,9 +67,23 @@ Puedo ayudarte a:
 ¿Qué te gustaría configurar o entrenar hoy?`,
 };
 
+interface PendingCopilotAttachment {
+  id: string;
+  file: File;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  previewUrl?: string;
+}
+
+const MAX_COPILOT_FILES = 2;
+const MAX_COPILOT_FILE_BYTES = 8 * 1024 * 1024;
+const ALLOWED_COPILOT_EXTS = new Set(["png", "jpg", "jpeg", "webp", "pdf", "txt", "csv"]);
+
 interface AgentCopilotSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  companyId?: string | null;
   agentId?: string | null;
   agentName?: string;
   tipo?: string;
@@ -75,6 +95,7 @@ interface AgentCopilotSheetProps {
 export function AgentCopilotSheet({
   open,
   onOpenChange,
+  companyId,
   agentId,
   agentName = "Agente",
   tipo = "qualificacao",
@@ -94,12 +115,16 @@ export function AgentCopilotSheet({
   const [messages, setMessages] = useState<CopilotChatMessage[]>([WELCOME_MESSAGE]);
 
   const [input, setInput] = useState("");
+  const [guidedReadyPrompt, setGuidedReadyPrompt] = useState<string | null>(null);
+  const [pendingAttachments, setPendingAttachments] = useState<PendingCopilotAttachment[]>([]);
+  const [uploadingAttachments, setUploadingAttachments] = useState(false);
   const [loading, setLoading] = useState(false);
   const [executingIdx, setExecutingIdx] = useState<string | null>(null);
   const [testingKey, setTestingKey] = useState<string | null>(null);
   const [sandboxResults, setSandboxResults] = useState<Record<string, any>>({});
   const [auditing, setAuditing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const loadedContextRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -170,8 +195,86 @@ export function AgentCopilotSheet({
   useEffect(() => {
     if (initialPrompt && open) {
       setInput(initialPrompt);
+      setGuidedReadyPrompt(initialPrompt);
+    } else if (!open) {
+      setGuidedReadyPrompt(null);
     }
   }, [initialPrompt, open]);
+
+  useEffect(() => {
+    return () => {
+      pendingAttachments.forEach((att) => {
+        if (att.previewUrl) URL.revokeObjectURL(att.previewUrl);
+      });
+    };
+  }, []);
+
+  function addCopilotFiles(files: File[]) {
+    if (!files.length) return;
+    const nextList: PendingCopilotAttachment[] = [...pendingAttachments];
+    for (const file of files) {
+      if (nextList.length >= MAX_COPILOT_FILES) {
+        toast.warning(`Máximo ${MAX_COPILOT_FILES} archivos adjuntos por mensaje.`);
+        break;
+      }
+      const ext = ((/\.([a-z0-9]+)$/i.exec(file.name || "")?.[1]) || "").toLowerCase();
+      const mime = String(file.type || "").toLowerCase();
+      const allowedByMime =
+        mime.startsWith("image/") ||
+        mime === "application/pdf" ||
+        mime === "text/plain" ||
+        mime === "text/csv";
+      if (!ALLOWED_COPILOT_EXTS.has(ext) && !allowedByMime) {
+        toast.error(`Formato no soportado (${file.name}). Usa PNG, JPG, WEBP, PDF, TXT o CSV.`);
+        continue;
+      }
+      if (file.size > MAX_COPILOT_FILE_BYTES) {
+        toast.error(`"${file.name}" supera el límite de 8 MB.`);
+        continue;
+      }
+      const isImg = mime.startsWith("image/") || ["png", "jpg", "jpeg", "webp"].includes(ext);
+      const previewUrl = isImg ? URL.createObjectURL(file) : undefined;
+      nextList.push({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        file,
+        fileName: file.name || `captura.${ext || "png"}`,
+        mimeType: file.type || (isImg ? `image/${ext || "png"}` : "application/octet-stream"),
+        sizeBytes: file.size,
+        previewUrl,
+      });
+    }
+    setPendingAttachments(nextList);
+  }
+
+  function removePendingAttachment(id: string) {
+    setPendingAttachments((prev) => {
+      const target = prev.find((a) => a.id === id);
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((a) => a.id !== id);
+    });
+  }
+
+  function handlePasteFiles(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const pastedFiles: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind === "file" && item.type.startsWith("image/")) {
+        const f = item.getAsFile();
+        if (f) {
+          const ext = f.type.split("/")[1]?.replace("jpeg", "jpg") || "png";
+          const named = f.name && f.name !== "image.png" ? f : new File([f], `captura-${Date.now()}.${ext}`, { type: f.type });
+          pastedFiles.push(named);
+        }
+      }
+    }
+    if (pastedFiles.length > 0) {
+      e.preventDefault();
+      addCopilotFiles(pastedFiles);
+      toast.success("Captura adjuntada desde el portapapeles.");
+    }
+  }
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -179,26 +282,91 @@ export function AgentCopilotSheet({
     }
   }, [messages, loading]);
 
+  async function resolveUploadCompanyId(): Promise<string> {
+    if (companyId) return companyId;
+    const { data: userData } = await supabase.auth.getUser();
+    const uid = userData?.user?.id;
+    if (!uid) throw new Error("Sesión no disponible para subir archivos.");
+    const { data: cu } = await supabase
+      .from("company_user")
+      .select("company_id")
+      .eq("user_id", uid)
+      .eq("ativo", true)
+      .limit(1)
+      .maybeSingle();
+    if (!cu?.company_id) throw new Error("No se encontró la empresa activa para subir adjuntos.");
+    return cu.company_id;
+  }
+
   async function handleSend(textToSend?: string) {
-    const text = (textToSend || input).trim();
-    if (!text || loading) return;
+    const rawText = (textToSend ?? input).trim();
+    const filesToUpload = [...pendingAttachments];
+    if ((!rawText && filesToUpload.length === 0) || loading || uploadingAttachments) return;
+
+    const text = rawText || "Analiza el archivo adjunto y dime qué debemos configurar o corregir.";
+    const displayLabels = filesToUpload.map((f) => `[Archivo: ${f.fileName}]`).join(" ");
+    const uiMessageText = displayLabels ? `${text}\n\n${displayLabels}` : text;
 
     const userMsgIdx = messages.length;
     const newMsgs: CopilotChatMessage[] = [
       ...messages,
+      { role: "user", content: uiMessageText },
+    ];
+    const requestMsgs: CopilotChatMessage[] = [
+      ...messages,
       { role: "user", content: text },
     ];
+
     setMessages(newMsgs);
     setInput("");
+    setGuidedReadyPrompt(null);
     setLoading(true);
 
     try {
+      let uploadedRefs: CopilotAttachmentRef[] = [];
+      if (filesToUpload.length > 0) {
+        setUploadingAttachments(true);
+        const cid = await resolveUploadCompanyId();
+        uploadedRefs = await Promise.all(
+          filesToUpload.map(async (item, idx) => {
+            const safeName = (item.fileName || "archivo")
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/[^a-zA-Z0-9._-]+/g, "-")
+              .replace(/^-+|-+$/g, "")
+              .slice(0, 80) || "archivo";
+            const storagePath = `${cid}/copilot/${Date.now()}-${idx}-${safeName}`;
+            const { error: upErr } = await supabase.storage
+              .from("agent-knowledge")
+              .upload(storagePath, item.file, {
+                contentType: item.mimeType || "application/octet-stream",
+                upsert: false,
+              });
+            if (upErr) {
+              throw new Error(`Error subiendo "${item.fileName}": ${upErr.message}`);
+            }
+            return {
+              bucket: "agent-knowledge",
+              path: storagePath,
+              mimeType: item.mimeType,
+              fileName: item.fileName,
+            };
+          }),
+        );
+        setUploadingAttachments(false);
+        filesToUpload.forEach((f) => {
+          if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+        });
+        setPendingAttachments([]);
+      }
+
       const res = await askCopilot({
         data: {
-          messages: newMsgs,
+          messages: requestMsgs,
           agentId,
           tipo,
           sessionId,
+          ...(uploadedRefs.length > 0 ? { attachments: uploadedRefs } : {}),
         },
       });
 
@@ -222,6 +390,7 @@ export function AgentCopilotSheet({
     } catch (e: any) {
       toast.error(e.message || "Error al consultar con el Copilot.");
     } finally {
+      setUploadingAttachments(false);
       setLoading(false);
     }
   }
@@ -835,12 +1004,93 @@ export function AgentCopilotSheet({
         </div>
 
         {/* Input Bar */}
-        <div className="p-4 border-t border-border bg-background flex flex-col gap-1.5">
+        <div className="p-4 border-t border-border bg-background flex flex-col gap-2">
+          {guidedReadyPrompt && !loading && (
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 text-[11px]">
+              <span className="text-violet-700 dark:text-violet-300 font-medium truncate">
+                ✨ Guía rápida cargada y lista para iniciar
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                className="h-6 px-2.5 text-[11px] bg-violet-600 hover:bg-violet-700 text-white shrink-0"
+                onClick={() => handleSend(guidedReadyPrompt)}
+              >
+                Iniciar ahora
+              </Button>
+            </div>
+          )}
+
+          {pendingAttachments.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {pendingAttachments.map((att) => (
+                <div
+                  key={att.id}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[11px] text-foreground max-w-[230px]"
+                >
+                  {att.previewUrl ? (
+                    <img
+                      src={att.previewUrl}
+                      alt={att.fileName}
+                      className="h-5 w-5 rounded object-cover shrink-0 border border-border/40"
+                    />
+                  ) : att.mimeType.startsWith("image/") ? (
+                    <ImageIcon className="h-3.5 w-3.5 text-violet-500 shrink-0" />
+                  ) : (
+                    <FileText className="h-3.5 w-3.5 text-violet-500 shrink-0" />
+                  )}
+                  <span className="truncate">{att.fileName}</span>
+                  <button
+                    type="button"
+                    onClick={() => removePendingAttachment(att.id)}
+                    className="text-muted-foreground hover:text-destructive shrink-0"
+                    title="Quitar adjunto"
+                    disabled={loading || uploadingAttachments}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {uploadingAttachments && (
+            <div className="flex items-center gap-1.5 text-[11px] text-violet-600 dark:text-violet-400">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Subiendo adjunto(s) seguro(s) a Storage...</span>
+            </div>
+          )}
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".png,.jpg,.jpeg,.webp,.pdf,.txt,.csv"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              const selected = e.target.files ? Array.from(e.target.files) : [];
+              addCopilotFiles(selected);
+              e.target.value = "";
+            }}
+          />
+
           <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 shrink-0 border-border hover:bg-muted"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading || uploadingAttachments || pendingAttachments.length >= MAX_COPILOT_FILES}
+              title="Adjuntar captura o lista de precios (PNG, JPG, WEBP, PDF, TXT, CSV)"
+            >
+              <Paperclip className="h-4 w-4 text-muted-foreground" />
+            </Button>
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Pregúntale algo al Copilot, pega tu catálogo o datos de webhook..."
+              onPaste={handlePasteFiles}
+              placeholder="Pregunta, pega una captura (Ctrl+V) o adjunta una lista de precios..."
               className="min-h-[44px] max-h-32 text-xs resize-none"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -854,14 +1104,14 @@ export function AgentCopilotSheet({
               size="icon"
               className="h-10 w-10 shrink-0 bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 shadow-sm"
               onClick={() => handleSend()}
-              disabled={!input.trim() || loading}
+              disabled={(!input.trim() && pendingAttachments.length === 0) || loading || uploadingAttachments}
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </div>
           <div className="flex items-center justify-between text-[10px] text-muted-foreground/75 px-1">
             <span>
-              Presiona <kbd className="font-mono bg-muted/80 px-1 py-0.5 rounded text-[9px] border border-border/50">Enter</kbd> para enviar o <kbd className="font-mono bg-muted/80 px-1 py-0.5 rounded text-[9px] border border-border/50">Shift + Enter</kbd> para nueva línea
+              <kbd className="font-mono bg-muted/80 px-1 py-0.5 rounded text-[9px] border border-border/50">Enter</kbd> enviar · <kbd className="font-mono bg-muted/80 px-1 py-0.5 rounded text-[9px] border border-border/50">Ctrl+V</kbd> pegar captura
             </span>
             <span className="text-violet-600 dark:text-violet-400 font-medium">Modelo con Razonamiento</span>
           </div>

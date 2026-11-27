@@ -23,12 +23,104 @@ import {
 } from "./agent-copilot.server";
 import type { ChatMsg } from "./lovable-ai.server";
 
+export interface CopilotAttachmentRef {
+  bucket: string;
+  path: string;
+  mimeType: string;
+  fileName: string;
+}
+
 export interface CopilotChatMessage {
   id?: string;
   role: "user" | "assistant";
   content: string;
   proposals?: CopilotActionProposal[];
   createdAt?: string;
+}
+
+const MAX_COPILOT_ATTACHMENT_BYTES = 8 * 1024 * 1024; // 8 MB
+const MAX_COPILOT_ATTACHMENT_TEXT_CHARS = 6000;
+const COPILOT_IMAGE_PROMPT =
+  "Analiza esta imagen para entrenar un agente de ventas/soporte. Si es una captura de chat (WhatsApp/Instagram), transcribe quién dijo qué y qué falló o qué pidió el cliente. Si es una lista de precios, menú o catálogo, extrae cada producto, precio, moneda y descripción de forma estructurada.";
+
+async function extractCopilotAttachmentText(
+  admin: any,
+  companyId: string,
+  attachment: CopilotAttachmentRef,
+): Promise<string> {
+  const bucket = String(attachment?.bucket || "").trim();
+  if (bucket !== "agent-knowledge") {
+    throw new Error("Bucket no permitido para adjuntos del Copilot.");
+  }
+
+  const cleanPath = String(attachment?.path || "").replace(/^\/+/, "").trim();
+  const expectedPrefix = `${companyId}/copilot/`;
+  if (!cleanPath || !cleanPath.startsWith(expectedPrefix) || cleanPath.includes("..") || cleanPath.includes("\\")) {
+    throw new Error("Ruta de adjunto inválida o fuera de la empresa.");
+  }
+
+  const fileName = String(attachment?.fileName || "archivo").trim().slice(0, 180) || "archivo";
+  const ext = ((/\.([a-z0-9]+)$/i.exec(fileName)?.[1]) || "").toLowerCase();
+  const declaredMime = String(attachment?.mimeType || "").split(";")[0].trim().toLowerCase();
+
+  const { data: blob, error: dlErr } = await admin.storage
+    .from("agent-knowledge")
+    .download(cleanPath);
+
+  if (dlErr || !blob) {
+    throw new Error(`No se pudo descargar el adjunto "${fileName}" desde Storage.`);
+  }
+
+  if (typeof blob.size === "number" && blob.size > MAX_COPILOT_ATTACHMENT_BYTES) {
+    throw new Error(`El adjunto "${fileName}" supera el límite de 8 MB.`);
+  }
+
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  if (!bytes.byteLength || bytes.byteLength > MAX_COPILOT_ATTACHMENT_BYTES) {
+    throw new Error(`El adjunto "${fileName}" está vacío o supera 8 MB.`);
+  }
+
+  const mime = declaredMime || String((blob as any).type || "").split(";")[0].trim().toLowerCase();
+  let rawText = "";
+
+  if (mime === "application/pdf" || ext === "pdf") {
+    const { extractKnowledgeText } = await import("./knowledge-extract.server");
+    const extracted = await extractKnowledgeText(bytes, fileName, "application/pdf");
+    rawText = extracted.text || "";
+  } else if (
+    mime.startsWith("text/") ||
+    mime === "application/json" ||
+    ["txt", "csv", "json", "md"].includes(ext)
+  ) {
+    rawText = new TextDecoder("utf-8", { fatal: false }).decode(bytes).trim();
+  } else if (
+    mime.startsWith("image/") ||
+    ["png", "jpg", "jpeg", "webp"].includes(ext)
+  ) {
+    const { describeIncomingFile } = await import("./media-understanding.server");
+    const imgMime = mime.startsWith("image/")
+      ? mime
+      : ext === "png"
+        ? "image/png"
+        : ext === "webp"
+          ? "image/webp"
+          : "image/jpeg";
+    rawText =
+      (await describeIncomingFile("", "image", imgMime, null, {
+        provider: "gemini",
+        bytes,
+        customPrompt: COPILOT_IMAGE_PROMPT,
+      })) || "";
+  } else {
+    throw new Error(`Tipo de archivo no soportado (${mime || ext || "desconocido"}).`);
+  }
+
+  const { redactCopilotSecretsInText } = await import("./agent-copilot.server");
+  const clean = redactCopilotSecretsInText(rawText).trim();
+  if (clean.length <= MAX_COPILOT_ATTACHMENT_TEXT_CHARS) {
+    return clean;
+  }
+  return `${clean.slice(0, MAX_COPILOT_ATTACHMENT_TEXT_CHARS).trimEnd()}... [truncado]`;
 }
 
 function defaultModelForProvider(provider: string): string {
@@ -374,15 +466,33 @@ export const askAgentCopilot = createServerFn({ method: "POST" })
     agentId?: string | null;
     tipo?: string;
     sessionId?: string | null;
+    attachments?: CopilotAttachmentRef[];
   }) => {
     if (!Array.isArray(d?.messages) || d.messages.length === 0) {
       throw new Error("Mensagem inválida.");
     }
+    const rawAttachments = Array.isArray(d?.attachments) ? d.attachments.slice(0, 2) : [];
+    const attachments: CopilotAttachmentRef[] = rawAttachments
+      .filter((a) => a && typeof a === "object" && a.bucket && a.path)
+      .map((a) => {
+        const path = String(a.path).trim();
+        if (path.startsWith("data:") || path.length > 500) {
+          throw new Error("Los adjuntos deben subirse a Storage (no se permite base64).");
+        }
+        return {
+          bucket: String(a.bucket).trim(),
+          path,
+          mimeType: String(a.mimeType || "application/octet-stream").trim().slice(0, 120),
+          fileName: String(a.fileName || "archivo").trim().slice(0, 180),
+        };
+      });
+
     return {
       messages: d.messages,
       agentId: d.agentId || null,
       tipo: d.tipo || "qualificacao",
       sessionId: d.sessionId ? String(d.sessionId).trim() : null,
+      attachments,
     };
   })
   .handler(async ({ context, data }): Promise<CopilotTurnResult> => {
@@ -445,17 +555,45 @@ export const askAgentCopilot = createServerFn({ method: "POST" })
       } catch {}
     }
 
-    // 3. Ventana deslizante de los últimos 16 mensajes para evitar degradación y timeouts
-    const windowedMessages = data.messages.slice(-16);
-    const historyMsgs: ChatMsg[] = windowedMessages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    // 3. Procesar adjuntos vía Storage (máx. 2, sin base64 en el turno)
+    const extractedAttachments = data.attachments.length > 0
+      ? await Promise.all(
+          data.attachments.map(async (att) => ({
+            fileName: att.fileName,
+            text: await extractCopilotAttachmentText(supabaseAdmin, companyId, att),
+          })),
+        )
+      : [];
 
-    // 4. Modelo desacoplado del bot (prioridad global_ai_config.copilot_* -> global_* -> agente -> default)
+    // 4. Ventana deslizante de los últimos 16 mensajes + inyección del adjunto solo al turno actual
+    const windowedMessages = data.messages.slice(-16);
+    const historyMsgs: ChatMsg[] = windowedMessages.map((m, idx) => {
+      if (
+        idx === windowedMessages.length - 1 &&
+        m.role === "user" &&
+        extractedAttachments.length > 0
+      ) {
+        const attachmentBlock = extractedAttachments
+          .map(
+            (att) =>
+              `[Adjunto analizado: ${att.fileName}]\n${att.text || "(Sin texto legible extraído)"}`,
+          )
+          .join("\n\n");
+        return {
+          role: m.role,
+          content: `${m.content}\n\n${attachmentBlock}`,
+        };
+      }
+      return {
+        role: m.role,
+        content: m.content,
+      };
+    });
+
+    // 5. Modelo desacoplado del bot (prioridad global_ai_config.copilot_* -> global_* -> agente -> default)
     const { provider, model } = await resolveCopilotModelConfig(supabaseAdmin, agentCtx.agent);
 
-    // 5. Executa chat com a IA nativa do sistema protegida por semáforo de concorrência
+    // 6. Executa chat com a IA nativa do sistema protegida por semáforo de concorrência
     const { lovableAiChat } = await import("./lovable-ai.server");
     const { globalAiLimiter } = await import("./ai-limiter.server");
     const rawOutput = await globalAiLimiter.schedule(
@@ -481,10 +619,10 @@ export const askAgentCopilot = createServerFn({ method: "POST" })
       1,
     );
 
-    // 6. Parsea saída e ações estruturadas
+    // 7. Parsea saída e ações estruturadas
     const parsed = parseCopilotOutput(rawOutput);
 
-    // 7. Persiste turno (siempre redactando tokens/headers antes de guardar)
+    // 8. Persiste turno (siempre redactando tokens/headers antes de guardar; nunca bytes ni base64)
     let userMessageId: string | null = null;
     let assistantMessageId: string | null = null;
     const latestMsg = data.messages[data.messages.length - 1];
@@ -493,7 +631,18 @@ export const askAgentCopilot = createServerFn({ method: "POST" })
       const nowIso = new Date().toISOString();
       if (latestMsg?.role === "user") {
         try {
-          const safeUserText = redactCopilotSecretsInText(latestMsg.content);
+          const baseUserText = redactCopilotSecretsInText(latestMsg.content);
+          const persistedRefs = extractedAttachments
+            .map((att) =>
+              att.text
+                ? `[Archivo: ${att.fileName}]\n${att.text}`
+                : `[Archivo: ${att.fileName}]`,
+            )
+            .join("\n\n");
+          const safeUserText = persistedRefs
+            ? `${baseUserText}\n\n${persistedRefs}`
+            : baseUserText;
+
           const { data: insUser } = await (supabaseAdmin as any)
             .from("agent_copilot_messages")
             .insert({

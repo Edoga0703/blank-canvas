@@ -166,22 +166,26 @@ export async function describeIncomingFile(
   tipo: "image" | "video" | "document",
   mime?: string | null,
   caption?: string | null,
-  options?: { provider?: string; model?: string },
+  options?: { provider?: string; model?: string; customPrompt?: string; bytes?: Uint8Array },
 ): Promise<string | null> {
   if (tipo === "video") return null; // Vídeo requer processamento assíncrono complexo
 
   const { openAiKey, geminiKey } = await getMasterAiKeys();
   if (!openAiKey && !geminiKey) return null;
 
-  const file = await download(url);
-  if (!file) return null;
-  const finalMime = (mime || file.mime || "application/octet-stream").split(";")[0];
+  const file = options?.bytes
+    ? { bytes: options.bytes, mime: mime || "application/octet-stream" }
+    : await download(url);
+  if (!file || !file.bytes.byteLength || file.bytes.byteLength > MAX_GEMINI_INLINE_BYTES) return null;
+  const finalMime = (mime || file.mime || "application/octet-stream").split(";")[0].toLowerCase();
 
-  const instrucao =
+  const defaultInstruction =
     tipo === "document"
       ? "Analiza este documento enviado por el cliente. Si es un comprobante de pago, factura, presupuesto o contrato, extrae de manera estructurada con subtítulos, viñetas y negritas: Tipo de documento, Estatus, Montos y monedas, Número de referencia/factura, Bancos o entidades emisora y receptora, Fecha/hora y Partes involucradas. Responde en el mismo idioma del documento (español por defecto) con formato limpio, espaciado y profesional."
       : "Analiza y describe de forma estructurada esta imagen enviada por el cliente. Si es un comprobante de pago (ej. Pago Móvil, Transferencia bancaria, Zelle), factura o recibo, extrae detalladamente con subtítulos, viñetas y negritas: Estatus de la transacción, Monto y moneda, Banco emisor y receptor, Número de referencia, Fecha y hora, y Datos de las partes (teléfono, cédula o beneficiario). Si es un producto o foto general, describe lo que aparece con textos y detalles útiles. Responde en el mismo idioma del contenido (español por defecto) con formato limpio, ordenado y espaciado.";
-  const promptText = caption ? `${instrucao}\nLegenda do cliente: ${caption}` : instrucao;
+  const customPrompt = String(options?.customPrompt || "").trim();
+  const basePrompt = customPrompt || defaultInstruction;
+  const promptText = caption ? `${basePrompt}\nLegenda do cliente: ${caption}` : basePrompt;
 
   if (tipo === "document") {
     if (finalMime !== "application/pdf" || file.bytes.byteLength > MAX_GEMINI_INLINE_BYTES) {

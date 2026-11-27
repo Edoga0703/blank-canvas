@@ -296,6 +296,7 @@ function AgentePage() {
   const [avatarBuilderOpen, setAvatarBuilderOpen] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [copilotInitialPrompt, setCopilotInitialPrompt] = useState<string | null>(null);
+  const [justGeneratedFromWizard, setJustGeneratedFromWizard] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const saveKnowledgeFiles = useServerFn(updateAgentKnowledgeFiles);
   const indexKnowledge = useServerFn(indexAgentKnowledge);
@@ -538,11 +539,15 @@ function AgentePage() {
 
   async function runAnalyze() {
     if (descricao.trim().length < 20) {
-      return toast.error("Conte um pouco mais sobre o negócio (mínimo ~20 caracteres).");
+      return toast.error(
+        language === "es"
+          ? "Cuéntanos un poco más sobre el negocio (mínimo ~20 caracteres)."
+          : "Conte um pouco mais sobre o negócio (mínimo ~20 caracteres).",
+      );
     }
     setAnalyzing(true);
     try {
-      const a: any = await analyze({ data: { descricao, respostas: {} } });
+      const a: any = await analyze({ data: { descricao, respostas: {}, language, agentId: activeAgentId } });
       setResumoIA(a.resumo || "");
       setCobertura(a.cobertura || 0);
       setPerguntas(a.perguntas || []);
@@ -563,12 +568,17 @@ function AgentePage() {
     setGenerating(true);
     try {
       const merged = { ...respostas, ...extraRespostas };
-      const r: any = await generate({ data: { descricao, respostas: merged } });
+      const r: any = await generate({ data: { descricao, respostas: merged, language, agentId: activeAgentId } });
       setCfg((prev: any) => ({ ...(prev || {}), ...r.config }));
       setPromptPreview(r.promptPreview);
       setHasConfig(true);
       setStep("pronto");
-      toast.success("Pronto! Sua IA foi montada com base no seu negócio.");
+      setJustGeneratedFromWizard(true);
+      toast.success(
+        language === "es"
+          ? "¡Listo! La base de tu agente IA fue generada según tu negocio."
+          : "Pronto! Sua IA foi montada com base no seu negócio.",
+      );
     } catch (e: any) {
       toast.error(e?.message || "Falha ao gerar configuração");
     } finally {
@@ -1720,6 +1730,52 @@ function AgentePage() {
               </Button>
             </div>
           </div>
+
+          {justGeneratedFromWizard && (
+            <div className="rounded-xl border border-violet-500/30 bg-gradient-to-r from-violet-600/10 via-indigo-600/5 to-transparent px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Sparkles className="size-3.5 text-violet-600 dark:text-violet-400" />
+                  {language === "es"
+                    ? "Configuración inicial generada con éxito"
+                    : "Configuração inicial gerada com sucesso"}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {language === "es"
+                    ? "Carga tus precios reales, pega capturas o afina reglas finas directamente con el Copilot."
+                    : "Carregue seus preços reais, envie capturas ou ajuste regras com o Copilot."}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 text-xs gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-xs"
+                  onClick={() => {
+                    setJustGeneratedFromWizard(false);
+                    setCopilotInitialPrompt(
+                      language === "es"
+                        ? "Acabo de generar la configuración inicial de mi agente. Revísala y ayúdame a cargar mi catálogo real y afinar las reglas clave."
+                        : "Acabei de gerar a configuração inicial do meu agente. Revise e me ajude a carregar o catálogo real e ajustar as regras.",
+                    );
+                    setCopilotOpen(true);
+                  }}
+                >
+                  <Sparkles className="size-3.5" />
+                  {language === "es" ? "Continuar perfeccionando con Copilot" : "Continuar aperfeiçoando com Copilot"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs text-muted-foreground"
+                  onClick={() => setJustGeneratedFromWizard(false)}
+                >
+                  {language === "es" ? "Ocultar" : "Ocultar"}
+                </Button>
+              </div>
+            </div>
+          )}
 
           {effectiveStudioMode === "simple" ? (
             <div className="grid lg:grid-cols-[1fr_360px] gap-8 pt-2">
@@ -3195,6 +3251,7 @@ function AgentePage() {
       <AgentCopilotSheet
         open={copilotOpen}
         onOpenChange={setCopilotOpen}
+        companyId={companyId}
         agentId={activeAgentId || cfg?.id || null}
         agentName={cfg?.nome_agente || "Agente"}
         tipo={tipo || cfg?.tipo || "qualificacao"}
@@ -3210,8 +3267,18 @@ function AgentePage() {
             if (updated) applyAgentData(updated);
           }
         }}
-        onCatalogUpdated={() => {
-          toast.success("Catálogo actualizado con éxito");
+        onCatalogUpdated={async () => {
+          toast.success(language === "es" ? "Catálogo actualizado con éxito" : "Catálogo atualizado com sucesso");
+          if (companyId) {
+            try {
+              const { data: prods } = await supabase
+                .from("produto")
+                .select("id,nome,preco,ativo")
+                .eq("company_id", companyId)
+                .order("ordem", { ascending: true });
+              if (prods) setProdutos(prods);
+            } catch {}
+          }
         }}
       />
 
