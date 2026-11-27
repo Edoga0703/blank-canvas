@@ -9,6 +9,7 @@ import { getSuperAdminEmails, setSuperAdminEmails } from "@/lib/master.functions
 import { supabase } from "@/integrations/supabase/client";
 import { brand } from "@/config/brand";
 import { toast } from "sonner";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 export const Route = createFileRoute("/master/perfil")({
   head: () => ({
@@ -25,11 +26,12 @@ export const Route = createFileRoute("/master/perfil")({
 });
 
 function PerfilMasterPage() {
+  const { mt } = useMasterT();
   return (
-    <div className="p-3 sm:p-4 md:p-8 space-y-4 bg-[#f6f7f9] min-h-full">
+    <div className="p-3 sm:p-4 md:p-8 space-y-4 bg-background min-h-full">
       <div>
-        <h1 className="text-lg sm:text-xl font-semibold">Perfil</h1>
-        <p className="text-xs text-muted-foreground">Sua conta e o controle de acesso ao painel master.</p>
+        <h1 className="text-lg sm:text-xl font-semibold">{mt("Perfil")}</h1>
+        <p className="text-xs text-muted-foreground">{mt("Sua conta e o controle de acesso ao painel master.")}</p>
       </div>
       <div className="grid gap-4 lg:grid-cols-2 max-w-5xl">
         <MinhaConta />
@@ -40,6 +42,7 @@ function PerfilMasterPage() {
 }
 
 function MinhaConta() {
+  const { mt } = useMasterT();
   const [email, setEmail] = useState<string | null>(null);
   const [nome, setNome] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,26 +67,26 @@ function MinhaConta() {
 
 
   return (
-    <Card className="rounded-2xl border-[color:var(--hairline)] bg-white shadow-sm p-5 space-y-3">
+    <Card className="rounded-2xl border-[color:var(--hairline)] bg-card shadow-sm p-5 space-y-3">
       <div className="flex items-center gap-2">
         <UserRound className="size-4 text-muted-foreground" />
-        <h2 className="font-semibold text-sm">Minha conta</h2>
+        <h2 className="font-semibold text-sm">{mt("Minha conta")}</h2>
       </div>
       {loading ? (
         <div className="grid place-items-center py-6"><Loader2 className="animate-spin text-muted-foreground" /></div>
       ) : (
         <div className="space-y-2 text-sm">
           <div className="flex items-center justify-between border rounded-md px-3 py-2">
-            <span className="text-muted-foreground text-xs">Nome</span>
+            <span className="text-muted-foreground text-xs">{mt("Nome")}</span>
             <span className="truncate">{nome ?? "—"}</span>
           </div>
           <div className="flex items-center justify-between border rounded-md px-3 py-2">
-            <span className="text-muted-foreground text-xs">E-mail</span>
+            <span className="text-muted-foreground text-xs">{mt("E-mail")}</span>
             <span className="truncate">{email ?? "—"}</span>
           </div>
           <div className="flex items-center justify-between border rounded-md px-3 py-2">
-            <span className="text-muted-foreground text-xs">Papel</span>
-            <span className="text-emerald-700 font-medium">Super admin</span>
+            <span className="text-muted-foreground text-xs">{mt("Papel")}</span>
+            <span className="text-emerald-700 font-medium">{mt("Super admin")}</span>
           </div>
         </div>
       )}
@@ -92,6 +95,7 @@ function MinhaConta() {
 }
 
 function AcessoMaster() {
+  const { mt } = useMasterT();
   const get = useServerFn(getSuperAdminEmails);
   const set = useServerFn(setSuperAdminEmails);
   const [emails, setEmails] = useState<string[]>([]);
@@ -125,21 +129,21 @@ function AcessoMaster() {
   }
 
   return (
-    <Card className="rounded-2xl border-[color:var(--hairline)] bg-white shadow-sm p-5 space-y-3">
+    <Card className="rounded-2xl border-[color:var(--hairline)] bg-card shadow-sm p-5 space-y-3">
       <div className="flex items-center gap-2">
         <ShieldCheck className="size-4 text-muted-foreground" />
-        <h2 className="font-semibold text-sm">Acesso master</h2>
+        <h2 className="font-semibold text-sm">{mt("Acesso master")}</h2>
       </div>
-      <p className="text-xs text-muted-foreground">E-mails com permissão de super admin no painel.</p>
+      <p className="text-xs text-muted-foreground">{mt("E-mails com permissão de super admin no painel.")}</p>
       <form onSubmit={add} className="flex gap-2">
         <Input placeholder="email@exemplo.com" value={novo} onChange={(e) => setNovo(e.target.value)} />
-        <Button type="submit" variant="outline"><Plus className="size-4 mr-1" /> Adicionar</Button>
+        <Button type="submit" variant="outline"><Plus className="size-4 mr-1" /> {mt("Adicionar")}</Button>
       </form>
       {loading ? (
         <div className="grid place-items-center py-4"><Loader2 className="animate-spin text-muted-foreground" /></div>
       ) : (
         <ul className="space-y-2">
-          {emails.length === 0 && <li className="text-sm text-muted-foreground">Nenhum email cadastrado.</li>}
+          {emails.length === 0 && <li className="text-sm text-muted-foreground">{mt("Nenhum email cadastrado.")}</li>}
           {emails.map((e) => (
             <li key={e} className="flex items-center justify-between border rounded-md px-3 py-2 bg-card">
               <span className="text-sm truncate">{e}</span>
@@ -152,7 +156,7 @@ function AcessoMaster() {
       )}
       <div className="flex justify-end">
         <Button onClick={save} disabled={saving}>
-          {saving ? <Loader2 className="size-4 mr-1.5 animate-spin" /> : <Save className="size-4 mr-1.5" />} Salvar
+          {saving ? <Loader2 className="size-4 mr-1.5 animate-spin" /> : <Save className="size-4 mr-1.5" />} {mt("Salvar")}
         </Button>
       </div>
     </Card>

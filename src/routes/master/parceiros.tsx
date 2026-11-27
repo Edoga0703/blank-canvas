@@ -43,6 +43,7 @@ import {
   unassignCompany
 } from "@/lib/partners.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 
 export const Route = createFileRoute("/master/parceiros")({
@@ -56,12 +57,13 @@ export const Route = createFileRoute("/master/parceiros")({
 });
 
 function PartnersPage() {
+  const { mt } = useMasterT();
   const [tab, setTab] = useState<"lista" | "saques" | "config">("lista");
 
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-display text-[26px] leading-tight tracking-tight">Parceiros</h1>
+        <h1 className="font-display text-[26px] leading-tight tracking-tight">{mt("Parceiros")}</h1>
         <p className="text-sm text-muted-foreground">Agências e parceiros comerciais que indicam o {brand.name}.</p>
       </div>
 
@@ -95,6 +97,7 @@ function PartnersPage() {
 }
 
 function PartnersList() {
+  const { mt } = useMasterT();
   const load = useServerFn(getPartnersWithMetrics);
   const [partners, setPartners] = useState<any[] | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -137,14 +140,14 @@ function PartnersList() {
         <div className="relative flex-1">
           <Search className="size-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input 
-            placeholder="Buscar parceiro..." 
+            placeholder={mt("Buscar parceiro...")} 
             className="pl-8 h-9" 
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
         <Button size="sm" onClick={() => setShowAdd(true)}>
-          <Plus className="size-4 mr-1.5" /> Novo Parceiro
+          <Plus className="size-4 mr-1.5" /> {mt("Novo Parceiro")}
         </Button>
       </div>
 
@@ -157,7 +160,7 @@ function PartnersList() {
         {filtered.length === 0 && (
           <Card className="p-10 text-center border-dashed">
             <Users className="size-8 mx-auto text-muted-foreground mb-2 opacity-20" />
-            <p className="text-sm text-muted-foreground">Nenhum parceiro encontrado.</p>
+            <p className="text-sm text-muted-foreground">{mt("Nenhum parceiro encontrado.")}</p>
           </Card>
         )}
       </div>
@@ -166,6 +169,7 @@ function PartnersList() {
 }
 
 function PartnerCard({ partner, onUpdate }: { partner: any; onUpdate: () => void }) {
+  const { mt } = useMasterT();
   const update = useServerFn(updatePartner);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -196,7 +200,7 @@ function PartnerCard({ partner, onUpdate }: { partner: any; onUpdate: () => void
   const referralUrl = `${window.location.origin}/entrar?ref=${partner.codigo_indicacao}`;
 
   return (
-    <Card className="p-4 rounded-2xl border-[color:var(--hairline)] bg-white shadow-sm overflow-hidden">
+    <Card className="p-4 rounded-2xl border-[color:var(--hairline)] bg-card shadow-sm overflow-hidden">
       <div className="flex flex-col md:flex-row md:items-center gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -221,23 +225,23 @@ function PartnerCard({ partner, onUpdate }: { partner: any; onUpdate: () => void
               </button>
             </div>
             <span className="text-[11px] font-medium text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">
-              {partner.porcentagem_comissao}% comissão
+              {partner.porcentagem_comissao}{mt("% comissão")}
             </span>
           </div>
         </div>
 
         <div className="grid grid-cols-3 gap-4 md:gap-8 border-t md:border-t-0 md:border-l border-[color:var(--hairline)] pt-4 md:pt-0 md:pl-6">
           <div className="text-center md:text-left">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Acumulado</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{mt("Acumulado")}</p>
             <p className="text-sm font-semibold">{brl(partner.total_acumulado_cents)}</p>
           </div>
           <div className="text-center md:text-left">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Saldo</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{mt("Saldo")}</p>
             <p className="text-sm font-semibold text-emerald-600">{brl(partner.saldo_atual_cents)}</p>
           </div>
           <div className="flex items-center justify-end gap-2">
              <Button variant="secondary" size="sm" className="h-8 text-xs" onClick={() => setOpen(true)}>
-               <BarChart3 className="size-3.5 mr-1" /> Painel
+               <BarChart3 className="size-3.5 mr-1" /> {mt("Painel")}
              </Button>
              <Button 
                variant="outline" 
@@ -253,11 +257,11 @@ function PartnerCard({ partner, onUpdate }: { partner: any; onUpdate: () => void
       </div>
 
       <div className="mt-4 pt-3 border-t border-[color:var(--hairline)] grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <MiniStat icon={<MousePointerClick className="size-3.5" />} label="Cliques no link" value={m.cliques} hint={`${m.cliques30d} em 30 dias`} />
-        <MiniStat icon={<Users className="size-3.5" />} label="Indicações" value={m.indicacoes} />
-        <MiniStat icon={<CheckCircle2 className="size-3.5" />} label="Clientes ativos" value={m.ativos} tone="text-emerald-600" />
-        <MiniStat icon={<Clock className="size-3.5" />} label="Em teste" value={m.trial} />
-        <MiniStat icon={<AlertCircle className="size-3.5" />} label="Conversão" value={`${m.conversao}%`} />
+        <MiniStat icon={<MousePointerClick className="size-3.5" />} label={mt("Cliques no link")} value={m.cliques} hint={`${m.cliques30d} em 30 dias`} />
+        <MiniStat icon={<Users className="size-3.5" />} label={mt("Indicações")} value={m.indicacoes} />
+        <MiniStat icon={<CheckCircle2 className="size-3.5" />} label={mt("Clientes ativos")} value={m.ativos} tone="text-emerald-600" />
+        <MiniStat icon={<Clock className="size-3.5" />} label={mt("Em teste")} value={m.trial} />
+        <MiniStat icon={<AlertCircle className="size-3.5" />} label={mt("Conversão")} value={`${m.conversao}%`} />
       </div>
 
       {open && <PartnerDetailModal partner={partner} onClose={() => setOpen(false)} onChange={onUpdate} />}
@@ -279,6 +283,7 @@ function MiniStat({ icon, label, value, hint, tone }: { icon: React.ReactNode; l
 }
 
 function PartnerDetailModal({ partner, onClose, onChange }: { partner: any; onClose: () => void; onChange: () => void }) {
+  const { mt } = useMasterT();
   const details = useServerFn(getPartnerDetails);
   const listCompanies = useServerFn(listAssignableCompanies);
   const assign = useServerFn(assignCompanyToPartner);
@@ -336,23 +341,23 @@ function PartnerDetailModal({ partner, onClose, onChange }: { partner: any; onCl
         ) : (
           <div className="space-y-5">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <MiniStat icon={<MousePointerClick className="size-3.5" />} label="Cliques" value={m.cliques} hint={`${m.cliques30d} em 30 dias`} />
-              <MiniStat icon={<Users className="size-3.5" />} label="Indicações" value={m.indicacoes} />
-              <MiniStat icon={<CheckCircle2 className="size-3.5" />} label="Ativos" value={m.ativos} tone="text-emerald-600" />
-              <MiniStat icon={<AlertCircle className="size-3.5" />} label="Inadimplentes" value={m.inadimplentes} tone="text-amber-600" />
+              <MiniStat icon={<MousePointerClick className="size-3.5" />} label={mt("Cliques")} value={m.cliques} hint={`${m.cliques30d} em 30 dias`} />
+              <MiniStat icon={<Users className="size-3.5" />} label={mt("Indicações")} value={m.indicacoes} />
+              <MiniStat icon={<CheckCircle2 className="size-3.5" />} label={mt("Ativos")} value={m.ativos} tone="text-emerald-600" />
+              <MiniStat icon={<AlertCircle className="size-3.5" />} label={mt("Inadimplentes")} value={m.inadimplentes} tone="text-amber-600" />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold">Clientes indicados</h3>
+                <h3 className="text-sm font-semibold">{mt("Clientes indicados")}</h3>
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setShowAssign((v) => !v)}>
-                  <Plus className="size-3.5 mr-1" /> Atribuir cliente
+                  <Plus className="size-3.5 mr-1" /> {mt("Atribuir cliente")}
                 </Button>
               </div>
 
               {showAssign && (
                 <div className="mb-3 rounded-xl border border-[color:var(--hairline)] p-3 bg-muted/20 space-y-2">
-                  <Input placeholder="Buscar empresa pelo nome..." className="h-9" value={busca} onChange={(e) => setBusca(e.target.value)} />
+                  <Input placeholder={mt("Buscar empresa pelo nome...")} className="h-9" value={busca} onChange={(e) => setBusca(e.target.value)} />
                   <div className="max-h-52 overflow-y-auto divide-y divide-[color:var(--hairline)]">
                     {options.map((c) => (
                       <div key={c.id} className="flex items-center justify-between py-2">
@@ -380,7 +385,7 @@ function PartnerDetailModal({ partner, onClose, onChange }: { partner: any; onCl
                       </div>
                     ))}
                     {options.length === 0 && (
-                      <p className="py-4 text-center text-xs text-muted-foreground">Nenhuma empresa disponível.</p>
+                      <p className="py-4 text-center text-xs text-muted-foreground">{mt("Nenhuma empresa disponível.")}</p>
                     )}
                   </div>
                 </div>
@@ -424,13 +429,13 @@ function PartnerDetailModal({ partner, onClose, onChange }: { partner: any; onCl
                   </div>
                 ))}
                 {data.referrals.length === 0 && (
-                  <p className="py-6 text-center text-xs text-muted-foreground">Nenhum cliente vinculado ainda.</p>
+                  <p className="py-6 text-center text-xs text-muted-foreground">{mt("Nenhum cliente vinculado ainda.")}</p>
                 )}
               </div>
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5"><Link2 className="size-4" /> Últimos acessos ao link</h3>
+              <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5"><Link2 className="size-4" /> {mt("Últimos acessos ao link")}</h3>
               <div className="rounded-xl border border-[color:var(--hairline)] divide-y divide-[color:var(--hairline)] max-h-56 overflow-y-auto">
                 {data.cliques.map((c: any) => (
                   <div key={c.id} className="px-3 py-2 flex items-center justify-between text-xs">
@@ -439,7 +444,7 @@ function PartnerDetailModal({ partner, onClose, onChange }: { partner: any; onCl
                   </div>
                 ))}
                 {data.cliques.length === 0 && (
-                  <p className="py-6 text-center text-xs text-muted-foreground">Nenhum acesso registrado ainda.</p>
+                  <p className="py-6 text-center text-xs text-muted-foreground">{mt("Nenhum acesso registrado ainda.")}</p>
                 )}
               </div>
             </div>
@@ -451,6 +456,7 @@ function PartnerDetailModal({ partner, onClose, onChange }: { partner: any; onCl
 }
 
 function AddPartnerModal({ onClose, onSave }: { onClose: () => void; onSave: () => void }) {
+  const { mt } = useMasterT();
   const create = useServerFn(createPartner);
   const fetchProfiles = useServerFn(getAllProfiles);
   const [email, setEmail] = useState("");
@@ -510,19 +516,19 @@ function AddPartnerModal({ onClose, onSave }: { onClose: () => void; onSave: () 
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <Card className="w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-lg">Vincular Novo Parceiro</h2>
+          <h2 className="font-semibold text-lg">{mt("Vincular Novo Parceiro")}</h2>
           <Button variant="ghost" size="icon" onClick={onClose}><X className="size-4" /></Button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Selecionar Usuário (já cadastrado)</label>
+            <label className="text-xs font-medium text-muted-foreground">{mt("Selecionar Usuário (já cadastrado)")}</label>
             <select
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               value={email}
               onChange={(e) => handleUserSelect(e.target.value)}
             >
-              <option value="">Selecione um usuário...</option>
+              <option value="">{mt("Selecione um usuário...")}</option>
               {users.map(u => (
                 <option key={u.user_id} value={u.email}>{u.nome} ({u.email})</option>
               ))}
@@ -536,7 +542,7 @@ function AddPartnerModal({ onClose, onSave }: { onClose: () => void; onSave: () 
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Código de Indicação (Slug)</label>
+            <label className="text-xs font-medium text-muted-foreground">{mt("Código de Indicação (Slug)")}</label>
             <Input 
               placeholder="ex: agenciamkt" 
               value={codigo}
@@ -546,7 +552,7 @@ function AddPartnerModal({ onClose, onSave }: { onClose: () => void; onSave: () 
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Comissão Recorrente (%)</label>
+            <label className="text-xs font-medium text-muted-foreground">{mt("Comissão Recorrente (%)")}</label>
             <Input 
               type="number"
               value={comissao}
@@ -555,10 +561,10 @@ function AddPartnerModal({ onClose, onSave }: { onClose: () => void; onSave: () 
           </div>
 
           <div className="pt-2 flex gap-3">
-            <Button type="button" variant="ghost" className="flex-1" onClick={onClose}>Cancelar</Button>
+            <Button type="button" variant="ghost" className="flex-1" onClick={onClose}>{mt("Cancelar")}</Button>
             <Button type="submit" className="flex-1" disabled={loading || !foundUser}>
               {loading ? <Loader2 className="size-4 animate-spin mr-2" /> : <CheckCircle2 className="size-4 mr-2" />} 
-              Vincular Parceiro
+              {mt("Vincular Parceiro")}
             </Button>
           </div>
         </form>
@@ -568,6 +574,7 @@ function AddPartnerModal({ onClose, onSave }: { onClose: () => void; onSave: () 
 }
 
 function WithdrawalsList() {
+  const { mt } = useMasterT();
   const load = useServerFn(getWithdrawalRequests);
   const updateStatus = useServerFn(updateWithdrawalStatus);
   const [requests, setRequests] = useState<any[] | null>(null);
@@ -606,7 +613,7 @@ function WithdrawalsList() {
   return (
     <div className="grid gap-3">
       {requests.map((r) => (
-        <Card key={r.id} className="p-4 rounded-2xl border-[color:var(--hairline)] bg-white shadow-sm overflow-hidden">
+        <Card key={r.id} className="p-4 rounded-2xl border-[color:var(--hairline)] bg-card shadow-sm overflow-hidden">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="size-10 rounded-full bg-brand-50 flex items-center justify-center">
@@ -663,7 +670,7 @@ function WithdrawalsList() {
       {requests.length === 0 && (
         <Card className="p-10 text-center border-dashed">
           <AlertCircle className="size-8 mx-auto text-muted-foreground mb-2 opacity-20" />
-          <p className="text-sm text-muted-foreground">Nenhuma solicitação de saque encontrada.</p>
+          <p className="text-sm text-muted-foreground">{mt("Nenhuma solicitação de saque encontrada.")}</p>
         </Card>
       )}
     </div>
@@ -671,6 +678,7 @@ function WithdrawalsList() {
 }
 
 function PartnerSettings() {
+  const { mt } = useMasterT();
   const loadConfig = useServerFn(getPartnerConfig);
   const update = useServerFn(updatePartnerConfig);
   const [minWithdraw, setMinWithdraw] = useState(50);
@@ -708,45 +716,45 @@ function PartnerSettings() {
 
   return (
     <div className="max-w-2xl">
-      <Card className="p-6 rounded-2xl border-[color:var(--hairline)] bg-white shadow-sm">
+      <Card className="p-6 rounded-2xl border-[color:var(--hairline)] bg-card shadow-sm">
         <div className="flex items-center gap-3 mb-6">
-          <div className="size-10 rounded-full bg-slate-100 flex items-center justify-center">
-            <Settings className="size-5 text-slate-600" />
+          <div className="size-10 rounded-full bg-muted flex items-center justify-center">
+            <Settings className="size-5 text-muted-foreground" />
           </div>
           <div>
-            <h2 className="font-semibold text-base">Regras do Programa</h2>
-            <p className="text-xs text-muted-foreground">Defina as regras globais para todos os parceiros.</p>
+            <h2 className="font-semibold text-base">{mt("Regras do Programa")}</h2>
+            <p className="text-xs text-muted-foreground">{mt("Defina as regras globais para todos os parceiros.")}</p>
           </div>
         </div>
 
         <form onSubmit={handleSave} className="space-y-6">
           <div className="grid sm:grid-cols-2 gap-6">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Saque Mínimo (R$)</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{mt("Saque Mínimo (R$)")}</label>
               <Input 
                 type="number" 
                 value={minWithdraw}
                 onChange={(e) => setMinWithdraw(Number(e.target.value))}
               />
-              <p className="text-[10px] text-muted-foreground">Valor mínimo que o parceiro pode solicitar.</p>
+              <p className="text-[10px] text-muted-foreground">{mt("Valor mínimo que o parceiro pode solicitar.")}</p>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Comissão Padrão (%)</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{mt("Comissão Padrão (%)")}</label>
               <Input 
                 type="number" 
                 value={defCommission}
                 onChange={(e) => setDefCommission(Number(e.target.value))}
               />
-              <p className="text-[10px] text-muted-foreground">Sugestão de comissão para novos parceiros.</p>
+              <p className="text-[10px] text-muted-foreground">{mt("Sugestão de comissão para novos parceiros.")}</p>
             </div>
           </div>
 
           <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3">
             <AlertCircle className="size-4 text-blue-600 mt-0.5 shrink-0" />
             <div className="space-y-1">
-              <p className="text-[11px] font-semibold text-blue-900 leading-none">Importante</p>
+              <p className="text-[11px] font-semibold text-blue-900 leading-none">{mt("Importante")}</p>
               <p className="text-[10px] text-blue-700 leading-relaxed">
-                As alterações aqui refletem na interface do parceiro e nas sugestões de novos vínculos, mas não alteram contratos de comissão já ativos individualmente.
+                {mt("As alterações aqui refletem na interface do parceiro e nas sugestões de novos vínculos, mas não alteram contratos de comissão já ativos individualmente.")}
               </p>
             </div>
           </div>
@@ -754,7 +762,7 @@ function PartnerSettings() {
           <div className="flex justify-end pt-2">
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="size-4 animate-spin mr-2" />}
-              Salvar Configurações
+              {mt("Salvar Configurações")}
             </Button>
           </div>
         </form>

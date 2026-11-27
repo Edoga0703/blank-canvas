@@ -19,6 +19,7 @@ import { AutomacoesTab } from "@/components/master/crm-admin/automacoes-tab";
 import { DisparosTab } from "@/components/master/crm-admin/disparos-tab";
 import { HistoricoTab } from "@/components/master/crm-admin/historico-tab";
 import { StorageVaultsTab } from "@/components/config/storage-vaults-tab";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 export const Route = createFileRoute("/master/crm-admin")({
   head: () => ({
@@ -31,6 +32,7 @@ export const Route = createFileRoute("/master/crm-admin")({
 });
 
 function CrmAdminPage() {
+  const { mt } = useMasterT();
   const fetchStatus = useServerFn(getAdminCrmStatus);
   const createWs = useServerFn(createAdminWorkspace);
   const saveAuto = useServerFn(saveAdminAutomation);
@@ -67,7 +69,7 @@ function CrmAdminPage() {
   if (!data) {
     return (
       <div className="p-8 flex items-center gap-2 text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
+        <Loader2 className="h-4 w-4 animate-spin" /> {mt("Carregando…")}
       </div>
     );
   }
@@ -77,7 +79,7 @@ function CrmAdminPage() {
   return (
     <div className="max-w-[1200px] mx-auto p-4 sm:p-6 space-y-5">
       <header>
-        <h1 className="text-xl font-semibold">CRM Admin</h1>
+        <h1 className="text-xl font-semibold">{mt("CRM Admin")}</h1>
         <p className="text-sm text-muted-foreground">
           Prospecção e relacionamento com a própria base, usando o WhatsApp comercial do Capi Conversa. Só o
           super admin enxerga.
@@ -92,11 +94,11 @@ function CrmAdminPage() {
 
       <Tabs defaultValue="visao">
         <TabsList className="flex-wrap">
-          <TabsTrigger value="visao">Visão geral</TabsTrigger>
-          <TabsTrigger value="base">Base de clientes</TabsTrigger>
-          <TabsTrigger value="automacoes">Automações</TabsTrigger>
-          <TabsTrigger value="disparos">Disparos</TabsTrigger>
-          <TabsTrigger value="historico">Histórico</TabsTrigger>
+          <TabsTrigger value="visao">{mt("Visão geral")}</TabsTrigger>
+          <TabsTrigger value="base">{mt("Base de clientes")}</TabsTrigger>
+          <TabsTrigger value="automacoes">{mt("Automações")}</TabsTrigger>
+          <TabsTrigger value="disparos">{mt("Disparos")}</TabsTrigger>
+          <TabsTrigger value="historico">{mt("Histórico")}</TabsTrigger>
           <TabsTrigger value="armazenamento">Armazenamento & Bóvedas</TabsTrigger>
         </TabsList>
 

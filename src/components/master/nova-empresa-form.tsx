@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, Plus, Copy, Check } from "lucide-react";
 import { createCompanyWithOwner, listPlansBasic } from "@/lib/master.functions";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 type Plan = { id: string; nome: string; preco_cents: number; moeda: string; intervalo: string; trial_days: number };
 
@@ -14,6 +15,7 @@ function fmt(cents: number, moeda?: string | null) {
 }
 
 export function NovaEmpresaForm({ onCreated }: { onCreated?: () => void }) {
+  const { mt } = useMasterT();
   const create = useServerFn(createCompanyWithOwner);
   const fetchPlans = useServerFn(listPlansBasic);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -57,25 +59,25 @@ export function NovaEmpresaForm({ onCreated }: { onCreated?: () => void }) {
       <form onSubmit={submit} className="space-y-5">
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <Label>Nome da empresa</Label>
-            <Input required value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Padaria do Bairro" />
+            <Label>{mt("Nome da empresa")}</Label>
+            <Input required value={nome} onChange={(e) => setNome(e.target.value)} placeholder={mt("Ex.: Padaria do Bairro")} />
           </div>
           <div>
-            <Label>Email do responsável</Label>
-            <Input required type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} placeholder="dono@empresa.com" />
+            <Label>{mt("Email do responsável")}</Label>
+            <Input required type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} placeholder={mt("dono@empresa.com")} />
           </div>
           <div>
-            <Label>Senha (opcional)</Label>
+            <Label>{mt("Senha (opcional)")}</Label>
             <Input
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Deixe em branco para gerar automática"
+              placeholder={mt("Deixe em branco para gerar automática")}
               autoComplete="new-password"
             />
-            <p className="text-[11px] text-muted-foreground mt-1">Se preencher, esta será a senha de acesso.</p>
+            <p className="text-[11px] text-muted-foreground mt-1">{mt("Se preencher, esta será a senha de acesso.")}</p>
           </div>
           <div>
-            <Label>Dias de teste grátis</Label>
+            <Label>{mt("Dias de teste grátis")}</Label>
             <Input
               type="number" min={0} max={90}
               value={trialDays}
@@ -85,7 +87,7 @@ export function NovaEmpresaForm({ onCreated }: { onCreated?: () => void }) {
         </div>
 
         <div>
-          <Label>Plano</Label>
+          <Label>{mt("Plano")}</Label>
           <div className="grid sm:grid-cols-3 gap-2 mt-2">
             {plans.map((p) => {
               const sel = planId === p.id;
@@ -114,20 +116,20 @@ export function NovaEmpresaForm({ onCreated }: { onCreated?: () => void }) {
         <div className="flex justify-end">
           <Button type="submit" disabled={busy || !planId}>
             {busy ? <Loader2 className="size-4 mr-1.5 animate-spin" /> : <Plus className="size-4 mr-1.5" />}
-            Criar e liberar acesso
+            {mt("Criar e liberar acesso")}
           </Button>
         </div>
       </form>
 
       {created && (
         <div className="rounded-xl border bg-emerald-500/10 p-4 space-y-2">
-          <div className="font-semibold text-sm">Acesso criado</div>
+          <div className="font-semibold text-sm">{mt("Acesso criado")}</div>
           <div className="text-xs text-muted-foreground">
-            Envie estes dados para o cliente. Ele entra em <code className="bg-background px-1 rounded">/entrar</code>.
+            {mt("Envie estes dados para o cliente. Ele entra em")} <code className="bg-background px-1 rounded">/entrar</code>.
           </div>
           <div className="grid sm:grid-cols-2 gap-2">
-            <CopyField label="Email" value={created.email} />
-            {created.password && <CopyField label="Senha" value={created.password} />}
+            <CopyField label={mt("Email")} value={created.email} />
+            {created.password && <CopyField label={mt("Senha")} value={created.password} />}
           </div>
         </div>
       )}

@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Plus } from "lucide-react";
 import { ClientesLista } from "@/components/master/clientes-lista";
 import { NovaEmpresaForm } from "@/components/master/nova-empresa-form";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 export const Route = createFileRoute("/master/clientes")({
   head: () => ({
@@ -22,17 +23,18 @@ export const Route = createFileRoute("/master/clientes")({
 });
 
 function ClientesPage() {
+  const { mt } = useMasterT();
   const [novaOpen, setNovaOpen] = useState(false);
 
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="font-display text-[26px] leading-tight tracking-tight">Clientes</h1>
-          <p className="text-sm text-muted-foreground">Cadastro, assinatura e acesso em um único lugar.</p>
+          <h1 className="font-display text-[26px] leading-tight tracking-tight">{mt("Clientes")}</h1>
+          <p className="text-sm text-muted-foreground">{mt("Cadastro, assinatura e acesso em um único lugar.")}</p>
         </div>
         <Button onClick={() => setNovaOpen(true)}>
-          <Plus className="size-4 mr-1.5" /> Nova empresa
+          <Plus className="size-4 mr-1.5" /> {mt("Nova empresa")}
         </Button>
       </div>
 
@@ -41,9 +43,9 @@ function ClientesPage() {
       <Dialog open={novaOpen} onOpenChange={setNovaOpen}>
         <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Nova empresa</DialogTitle>
+            <DialogTitle>{mt("Nova empresa")}</DialogTitle>
             <DialogDescription>
-              Cria a empresa, o usuário responsável e libera o plano com período de teste.
+              {mt("Cria a empresa, o usuário responsável e libera o plano com período de teste.")}
             </DialogDescription>
           </DialogHeader>
           <NovaEmpresaForm />

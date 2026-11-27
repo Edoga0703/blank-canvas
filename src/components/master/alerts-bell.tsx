@@ -4,6 +4,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { UseMasterAlerts } from "@/hooks/use-master-alerts";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 function timeAgo(iso: string) {
   const s = Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 1000));
@@ -14,6 +15,7 @@ function timeAgo(iso: string) {
 }
 
 export function MasterAlertsBell({ state, onDark = true }: { state: UseMasterAlerts; onDark?: boolean }) {
+  const { mt } = useMasterT();
   const { alerts, unseen, urgentCount, muted, toggleMute, markAllSeen, refresh } = state;
   const hasUrgent = urgentCount > 0;
   const badge = unseen.length;
@@ -22,7 +24,7 @@ export function MasterAlertsBell({ state, onDark = true }: { state: UseMasterAle
     <DropdownMenu onOpenChange={(v) => { if (v) markAllSeen(); }}>
       <DropdownMenuTrigger asChild>
         <button
-          title="Alertas do sistema"
+          title={mt("Alertas do sistema")}
           className={`relative size-9 grid place-items-center rounded-lg transition-colors ${
             onDark ? "text-white/85 hover:text-white hover:bg-white/10" : "text-foreground hover:bg-muted"
           }`}
@@ -42,23 +44,23 @@ export function MasterAlertsBell({ state, onDark = true }: { state: UseMasterAle
       <DropdownMenuContent align="end" className="w-[340px] p-0">
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-[color:var(--hairline)]">
           <div className="text-[13px] font-semibold">
-            Alertas
+            {mt("Alertas")}
             {hasUrgent && (
-              <span className="ml-2 text-[11px] font-bold text-red-600">{urgentCount} urgente(s)</span>
+              <span className="ml-2 text-[11px] font-bold text-red-600 dark:text-red-400">{urgentCount} {mt("urgente(s)")}</span>
             )}
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={(e) => { e.preventDefault(); void refresh(); }} title="Atualizar" className="size-7 grid place-items-center rounded-md hover:bg-muted">
+            <button onClick={(e) => { e.preventDefault(); void refresh(); }} title={mt("Atualizar")} className="size-7 grid place-items-center rounded-md hover:bg-muted">
               <RefreshCw className="size-3.5" />
             </button>
-            <button onClick={(e) => { e.preventDefault(); toggleMute(); }} title={muted ? "Ativar sons" : "Silenciar sons"} className="size-7 grid place-items-center rounded-md hover:bg-muted">
+            <button onClick={(e) => { e.preventDefault(); toggleMute(); }} title={muted ? mt("Ativar sons") : mt("Silenciar sons")} className="size-7 grid place-items-center rounded-md hover:bg-muted">
               {muted ? <BellOff className="size-3.5 text-muted-foreground" /> : <Bell className="size-3.5" />}
             </button>
           </div>
         </div>
 
         {alerts.length === 0 ? (
-          <div className="px-3 py-8 text-center text-sm text-muted-foreground">Tudo estável por aqui</div>
+          <div className="px-3 py-8 text-center text-sm text-muted-foreground">{mt("Tudo estável por aqui")}</div>
         ) : (
           <div className="max-h-[420px] overflow-auto">
             {alerts.map((a) => {
@@ -71,14 +73,14 @@ export function MasterAlertsBell({ state, onDark = true }: { state: UseMasterAle
                 >
                   <span
                     className={`mt-0.5 size-6 shrink-0 grid place-items-center rounded-md ${
-                      urgent ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600"
+                      urgent ? "bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400" : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400"
                     }`}
                   >
                     {urgent ? <AlertTriangle className="size-3.5" /> : <Info className="size-3.5" />}
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <span className={`text-[12.5px] font-semibold truncate ${urgent ? "text-red-700" : ""}`}>{a.title}</span>
+                      <span className={`text-[12.5px] font-semibold truncate ${urgent ? "text-red-700 dark:text-red-300" : ""}`}>{a.title}</span>
                       <span className="text-[10.5px] text-muted-foreground shrink-0">{timeAgo(a.at)}</span>
                     </div>
                     <p className="text-[11.5px] text-muted-foreground line-clamp-2">{a.description}</p>

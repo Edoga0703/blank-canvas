@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { getAdminOverviewData, type AdminCrmStatus } from "@/lib/admin-crm.functions";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 type Overview = {
   clientes: number;
@@ -17,6 +18,7 @@ type Overview = {
 };
 
 export function OverviewTab({ status }: { status: AdminCrmStatus }) {
+  const { mt } = useMasterT();
   const fetchOverview = useServerFn(getAdminOverviewData);
   const [ov, setOv] = useState<Overview | null>(null);
 
@@ -58,14 +60,14 @@ export function OverviewTab({ status }: { status: AdminCrmStatus }) {
         </div>
       ) : (
         <Card className="p-6 flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Calculando indicadores…
+          <Loader2 className="h-4 w-4 animate-spin" /> {mt("Calculando indicadores…")}
         </Card>
       )}
 
       {alertas.length > 0 && (
         <Card className="p-4 space-y-2">
           <p className="font-medium text-sm flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-500" /> Pontos de atenção
+            <AlertTriangle className="h-4 w-4 text-amber-500" /> {mt("Pontos de atenção")}
           </p>
           <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
             {alertas.map((a) => (
@@ -76,9 +78,9 @@ export function OverviewTab({ status }: { status: AdminCrmStatus }) {
       )}
 
       <Card className="p-4">
-        <p className="font-medium text-sm mb-2">Últimos envios</p>
+        <p className="font-medium text-sm mb-2">{mt("Últimos envios")}</p>
         {status.logs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nenhum envio ainda.</p>
+          <p className="text-sm text-muted-foreground">{mt("Nenhum envio ainda.")}</p>
         ) : (
           <div className="space-y-1.5">
             {status.logs.slice(0, 8).map((l) => (

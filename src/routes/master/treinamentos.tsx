@@ -33,6 +33,7 @@ import {
   deleteTrainingBanner,
   saveTrainingSettings 
 } from "@/lib/master-training.functions";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 export const Route = createRoute("/master/treinamentos")({
   head: () => ({
@@ -45,6 +46,7 @@ export const Route = createRoute("/master/treinamentos")({
 });
 
 function MasterTrainingPage() {
+  const { mt } = useMasterT();
   const search = useSearch({ from: "/master/treinamentos" }) as any;
   const view = search?.v || "cursos";
   const fetchData = useServerFn(getMasterTrainingData);
@@ -121,18 +123,18 @@ function MasterTrainingPage() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-muted-foreground">Carregando portal...</div>;
+  if (loading) return <div className="p-8 text-center text-muted-foreground">{mt("Carregando portal...")}</div>;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight capitalize">Academia: {view}</h1>
-          <p className="text-sm text-muted-foreground">Gerencie o conteúdo e organização dos treinamentos.</p>
+          <p className="text-sm text-muted-foreground">{mt("Gerencie o conteúdo e organização dos treinamentos.")}</p>
         </div>
         {view !== "ajustes" && view !== "conteudo" && (
           <Button onClick={handleOpenNew} className="bg-[#0B22FE] hover:bg-[#0B22FE]/90">
-            <Plus className="size-4 mr-2" /> Novo {view === 'cursos' ? 'Curso' : view === 'categorias' ? 'Categoria' : 'Banner'}
+            <Plus className="size-4 mr-2" /> {mt("Novo")} {view === 'cursos' ? 'Curso' : view === 'categorias' ? 'Categoria' : 'Banner'}
           </Button>
         )}
       </div>
@@ -158,14 +160,14 @@ function MasterTrainingPage() {
           onDelete={handleDeleteBanner}
         />
       )}
-      {view === "conteudo" && <div className="p-12 text-center border-2 border-dashed rounded-xl">Selecione um curso para gerenciar módulos e aulas.</div>}
+      {view === "conteudo" && <div className="p-12 text-center border-2 border-dashed rounded-xl">{mt("Selecione um curso para gerenciar módulos e aulas.")}</div>}
       {view === "ajustes" && <MasterTrainingSettings onSave={saveSettingsFn} />}
 
       {/* Dialog Curso */}
       <Dialog open={courseModal.open} onOpenChange={(o) => setCourseModal({ open: o })}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{courseModal.data?.id ? "Editar Curso" : "Novo Curso"}</DialogTitle>
+            <DialogTitle>{courseModal.data?.id ? mt("Editar Curso") : "Novo Curso"}</DialogTitle>
             <DialogDescription>Preencha os detalhes do treinamento para seus usuários.</DialogDescription>
           </DialogHeader>
           <form onSubmit={async (e) => {
@@ -194,22 +196,22 @@ function MasterTrainingPage() {
             }
           }} className="space-y-4 pt-2">
             <div>
-              <Label>Título do Curso</Label>
+              <Label>{mt("Título do Curso")}</Label>
               <Input name="title" defaultValue={courseModal.data?.title || ""} required />
             </div>
             <div>
-              <Label>Descrição</Label>
+              <Label>{mt("Descrição")}</Label>
               <Textarea name="description" defaultValue={courseModal.data?.description || ""} rows={3} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Instrutor</Label>
+                <Label>{mt("Instrutor")}</Label>
                 <Input name="instructor" defaultValue={courseModal.data?.instructor || "Capi Conversa"} />
               </div>
               <div>
-                <Label>Categoria</Label>
+                <Label>{mt("Categoria")}</Label>
                 <select name="category_id" defaultValue={courseModal.data?.category_id || ""} className="w-full border rounded-md h-9 px-3 text-sm">
-                  <option value="">Sem Categoria</option>
+                  <option value="">{mt("Sem Categoria")}</option>
                   {(data?.categories || []).map((cat: any) => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
@@ -222,12 +224,12 @@ function MasterTrainingPage() {
             </div>
             <div className="flex items-center gap-2 pt-1">
               <input type="checkbox" name="is_published" id="is_published" defaultChecked={courseModal.data?.is_published ?? true} />
-              <Label htmlFor="is_published" className="cursor-pointer">Publicado na Academia</Label>
+              <Label htmlFor="is_published" className="cursor-pointer">{mt("Publicado na Academia")}</Label>
             </div>
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setCourseModal({ open: false })}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={() => setCourseModal({ open: false })}>{mt("Cancelar")}</Button>
               <Button type="submit" disabled={savingAction} className="bg-[#0B22FE] hover:bg-[#0B22FE]/90">
-                {savingAction && <Loader2 className="size-4 animate-spin mr-2" />} Salvar Curso
+                {savingAction && <Loader2 className="size-4 animate-spin mr-2" />} {mt("Salvar Curso")}
               </Button>
             </DialogFooter>
           </form>
@@ -238,7 +240,7 @@ function MasterTrainingPage() {
       <Dialog open={categoryModal.open} onOpenChange={(o) => setCategoryModal({ open: o })}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{categoryModal.data?.id ? "Editar Categoria" : "Nova Categoria"}</DialogTitle>
+            <DialogTitle>{categoryModal.data?.id ? mt("Editar Categoria") : "Nova Categoria"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={async (e) => {
             e.preventDefault();
@@ -262,7 +264,7 @@ function MasterTrainingPage() {
             }
           }} className="space-y-4 pt-2">
             <div>
-              <Label>Nome da Categoria</Label>
+              <Label>{mt("Nome da Categoria")}</Label>
               <Input name="name" defaultValue={categoryModal.data?.name || ""} required />
             </div>
             <div>
@@ -270,9 +272,9 @@ function MasterTrainingPage() {
               <Input type="number" name="order" defaultValue={categoryModal.data?.order ?? 0} />
             </div>
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setCategoryModal({ open: false })}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={() => setCategoryModal({ open: false })}>{mt("Cancelar")}</Button>
               <Button type="submit" disabled={savingAction} className="bg-[#0B22FE] hover:bg-[#0B22FE]/90">
-                Salvar Categoria
+                {mt("Salvar Categoria")}
               </Button>
             </DialogFooter>
           </form>
@@ -283,7 +285,7 @@ function MasterTrainingPage() {
       <Dialog open={bannerModal.open} onOpenChange={(o) => setBannerModal({ open: o })}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{bannerModal.data?.id ? "Editar Banner" : "Novo Banner"}</DialogTitle>
+            <DialogTitle>{bannerModal.data?.id ? mt("Editar Banner") : "Novo Banner"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={async (e) => {
             e.preventDefault();
@@ -325,9 +327,9 @@ function MasterTrainingPage() {
               <Label htmlFor="is_active" className="cursor-pointer">Banner Ativo</Label>
             </div>
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setBannerModal({ open: false })}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={() => setBannerModal({ open: false })}>{mt("Cancelar")}</Button>
               <Button type="submit" disabled={savingAction} className="bg-[#0B22FE] hover:bg-[#0B22FE]/90">
-                Salvar Banner
+                {mt("Salvar Banner")}
               </Button>
             </DialogFooter>
           </form>
@@ -405,6 +407,7 @@ function MasterCategoriesList({ categories, onEdit, onDelete }: { categories: an
 }
 
 function MasterBannersList({ banners, onEdit, onDelete }: { banners: any[]; onEdit: (b: any) => void; onDelete: (id: string) => void }) {
+  const { mt } = useMasterT();
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {banners.map((banner) => (
@@ -428,7 +431,7 @@ function MasterBannersList({ banners, onEdit, onDelete }: { banners: any[]; onEd
       ))}
       {banners.length === 0 && (
         <div className="col-span-full py-12 text-center text-muted-foreground border-2 border-dashed rounded-xl">
-          Nenhum banner cadastrado.
+          {mt("Nenhum banner cadastrado.")}
         </div>
       )}
     </div>
@@ -436,6 +439,7 @@ function MasterBannersList({ banners, onEdit, onDelete }: { banners: any[]; onEd
 }
 
 function MasterTrainingSettings({ onSave }: { onSave: (arg: any) => Promise<any> }) {
+  const { mt } = useMasterT();
   const [color, setColor] = useState("#0B22FE");
   const [immersive, setImmersive] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -455,7 +459,7 @@ function MasterTrainingSettings({ onSave }: { onSave: (arg: any) => Promise<any>
   return (
     <Card className="border-[color:var(--hairline)]">
       <CardHeader>
-        <CardTitle>Ajustes da Academia</CardTitle>
+        <CardTitle>{mt("Ajustes da Academia")}</CardTitle>
         <CardDescription>Configurações visuais e de comportamento do portal.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -473,7 +477,7 @@ function MasterTrainingSettings({ onSave }: { onSave: (arg: any) => Promise<any>
           </div>
         </div>
         <Button onClick={handleSave} disabled={saving} className="bg-[#0B22FE] hover:bg-[#0B22FE]/90 cursor-pointer">
-          {saving && <Loader2 className="size-4 animate-spin mr-2" />} Salvar Preferências
+          {saving && <Loader2 className="size-4 animate-spin mr-2" />} {mt("Salvar Preferências")}
         </Button>
       </CardContent>
     </Card>

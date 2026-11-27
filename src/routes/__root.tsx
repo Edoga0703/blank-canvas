@@ -210,7 +210,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
-const NO_FLASH_THEME = `(()=>{try{document.documentElement.classList.remove('dark');localStorage.removeItem('theme');var l=localStorage.getItem('capiversa_locale')||'es';document.documentElement.lang=l;}catch(e){}})();`;
+const NO_FLASH_THEME = `(()=>{try{var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');var l=localStorage.getItem('capiversa_locale')||'es';document.documentElement.lang=l;}catch(e){}})();`;
 
 function RootShell({ children }: { children: ReactNode }) {
   return (

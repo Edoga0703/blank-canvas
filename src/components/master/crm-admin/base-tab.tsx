@@ -12,6 +12,7 @@ import {
   type AdminBaseRow,
   type AdminCrmStatus,
 } from "@/lib/admin-crm.functions";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 const FILTROS = [
   { id: "todos", label: "Todos" },
@@ -22,6 +23,7 @@ const FILTROS = [
 ];
 
 export function BaseTab({ workspace }: { workspace: AdminCrmStatus["workspace"] }) {
+  const { mt } = useMasterT();
   const listar = useServerFn(listAdminBaseRows);
   const sync = useServerFn(syncAdminContactsNow);
 
@@ -75,7 +77,7 @@ export function BaseTab({ workspace }: { workspace: AdminCrmStatus["workspace"] 
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && void load()}
-          placeholder="Buscar cliente…"
+          placeholder={mt("Buscar cliente…")}
           className="h-9 w-56"
         />
         <Button
@@ -96,7 +98,7 @@ export function BaseTab({ workspace }: { workspace: AdminCrmStatus["workspace"] 
           }}
         >
           {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          Sincronizar
+          {mt("Sincronizar")}
         </Button>
       </div>
 
@@ -105,7 +107,7 @@ export function BaseTab({ workspace }: { workspace: AdminCrmStatus["workspace"] 
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-6 text-center">Nenhum cliente neste filtro.</p>
+        <p className="text-sm text-muted-foreground py-6 text-center">{mt("Nenhum cliente neste filtro.")}</p>
       ) : (
         <div className="divide-y rounded-md border border-[color:var(--hairline)]">
           {rows.map((r) => (

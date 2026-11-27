@@ -37,7 +37,7 @@ export function SupportHome({
   const buscando = q.trim().length >= 2;
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-white">
+    <div className="flex-1 min-h-0 flex flex-col bg-card">
       <div className="flex-1 min-h-0 overflow-y-auto">
         {/* Saudação */}
         <div className="px-5 pt-6 pb-4 text-center">

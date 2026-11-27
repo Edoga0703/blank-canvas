@@ -17,6 +17,7 @@ import { Inbox, Loader2, Archive, Reply, Link2 } from "lucide-react";
 import {
   listFeedback, replyFeedback, setFeedbackStatus,
 } from "@/lib/admin-broadcast.functions";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 export const Route = createFileRoute("/master/sugestoes")({
   component: SugestoesPage,
@@ -29,6 +30,7 @@ const statusColors: Record<string, string> = {
 };
 
 export function SugestoesPage() {
+  const { mt } = useMasterT();
   const qc = useQueryClient();
   const listFn = useServerFn(listFeedback);
   const replyFn = useServerFn(replyFeedback);
@@ -66,17 +68,17 @@ export function SugestoesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold flex items-center gap-2">
-            <Inbox className="size-5" /> Sugestões
+            <Inbox className="size-5" /> {mt("Sugestões")}
           </h1>
-          <p className="text-sm text-muted-foreground">Feedback enviado pelos clientes.</p>
+          <p className="text-sm text-muted-foreground">{mt("Feedback enviado pelos clientes.")}</p>
         </div>
         <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
           <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="aberto">Abertos</SelectItem>
-            <SelectItem value="respondido">Respondidos</SelectItem>
-            <SelectItem value="arquivado">Arquivados</SelectItem>
-            <SelectItem value="todos">Todos</SelectItem>
+            <SelectItem value="aberto">{mt("Abertos")}</SelectItem>
+            <SelectItem value="respondido">{mt("Respondidos")}</SelectItem>
+            <SelectItem value="arquivado">{mt("Arquivados")}</SelectItem>
+            <SelectItem value="todos">{mt("Todos")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -84,7 +86,7 @@ export function SugestoesPage() {
       {isLoading ? (
         <div className="py-16 grid place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
       ) : (data?.rows ?? []).length === 0 ? (
-        <Card className="p-12 text-center text-muted-foreground">Nenhum feedback nesta caixa.</Card>
+        <Card className="p-12 text-center text-muted-foreground">{mt("Nenhum feedback nesta caixa.")}</Card>
       ) : (
         <div className="space-y-3">
           {(data?.rows ?? []).map((f: any) => (
@@ -148,21 +150,21 @@ export function SugestoesPage() {
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Responder feedback</DialogTitle>
+            <DialogTitle>{mt("Responder feedback")}</DialogTitle>
           </DialogHeader>
           {selected && (
             <div className="space-y-3">
               <div className="rounded-lg bg-[color:var(--panel-2)] p-3 text-sm whitespace-pre-wrap">
                 {selected.message}
               </div>
-              <Textarea rows={5} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Sua resposta…" />
+              <Textarea rows={5} value={reply} onChange={(e) => setReply(e.target.value)} placeholder={mt("Sua resposta…")} />
             </div>
           )}
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setSelected(null)}>Cancelar</Button>
+            <Button variant="ghost" onClick={() => setSelected(null)}>{mt("Cancelar")}</Button>
             <Button onClick={() => replyMut.mutate()} disabled={replyMut.isPending || reply.trim().length < 2}>
               {replyMut.isPending && <Loader2 className="size-4 mr-2 animate-spin" />}
-              Enviar resposta
+              {mt("Enviar resposta")}
             </Button>
           </DialogFooter>
         </DialogContent>

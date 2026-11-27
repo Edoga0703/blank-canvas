@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, RefreshCw, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { listBillingEvents, reprocessBillingEvent, deleteBillingEvent } from "@/lib/master-admin.functions";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 export function BillingPanel() {
+  const { mt } = useMasterT();
   const list = useServerFn(listBillingEvents);
   const retry = useServerFn(reprocessBillingEvent);
   const del = useServerFn(deleteBillingEvent);
@@ -38,11 +40,11 @@ export function BillingPanel() {
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
-        <p className="text-sm text-muted-foreground">Eventos de webhook dos provedores (Kiwify, Cakto, PerfectPay)</p>
+        <p className="text-sm text-muted-foreground">{mt("Eventos de webhook dos provedores (Kiwify, Cakto, PerfectPay)")}</p>
         <div className="flex gap-2">
-          <Button variant={onlyFailed ? "default" : "outline"} size="sm" onClick={() => setOnlyFailed(true)}>Só falhas</Button>
-          <Button variant={onlyFailed ? "outline" : "default"} size="sm" onClick={() => setOnlyFailed(false)}>Todos</Button>
-          <Button variant="outline" size="sm" onClick={reload}><RefreshCw className="size-3.5 mr-1" />Atualizar</Button>
+          <Button variant={onlyFailed ? "default" : "outline"} size="sm" onClick={() => setOnlyFailed(true)}>{mt("Só falhas")}</Button>
+          <Button variant={onlyFailed ? "outline" : "default"} size="sm" onClick={() => setOnlyFailed(false)}>{mt("Todos")}</Button>
+          <Button variant="outline" size="sm" onClick={reload}><RefreshCw className="size-3.5 mr-1" />{mt("Atualizar")}</Button>
         </div>
       </div>
 
@@ -51,7 +53,7 @@ export function BillingPanel() {
       ) : rows.length === 0 ? (
         <Card className="p-10 text-center rounded-2xl border-[color:var(--hairline)]">
           <CheckCircle2 className="size-10 mx-auto text-emerald-500" />
-          <p className="mt-2 text-sm text-muted-foreground">Nenhum evento {onlyFailed ? "com falha" : ""}.</p>
+          <p className="mt-2 text-sm text-muted-foreground">{mt("Nenhum evento")} {onlyFailed ? mt("com falha") : ""}.</p>
         </Card>
       ) : (
         <Card className="rounded-2xl border-[color:var(--hairline)] overflow-hidden">

@@ -886,7 +886,7 @@ function KanbanPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="shrink-0 rounded-2xl border border-[color:var(--hairline)] bg-white px-2 sm:px-3 py-1.5 sm:py-2.5 flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+      <div className="shrink-0 rounded-2xl border border-[color:var(--hairline)] bg-card px-2 sm:px-3 py-1.5 sm:py-2.5 flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
         {/* Linha 1 (mobile): funil + adicionar lead */}
         <div className="flex items-center gap-1.5 min-w-0 sm:contents">
         {/* Seletor de pipeline */}
@@ -1912,7 +1912,7 @@ function Column({ stage, count, total, onToggleValor, children, onEdit, onDelete
 
   return (
     <div ref={setColRef} id={`kcol-${stage.id}`}
-      className={`flex flex-col rounded-lg border bg-white h-full min-h-0 transition-colors snap-start shrink-0 w-[85vw] max-w-[320px] sm:w-[300px] ${
+      className={`flex flex-col rounded-lg border bg-card h-full min-h-0 transition-colors snap-start shrink-0 w-[85vw] max-w-[320px] sm:w-[300px] ${
         isOver ? "border-[var(--brand)]/60 ring-2 ring-[var(--brand)]/20" : "border-[color:var(--hairline)]"
       }`}>
       <div ref={setHandleRef} {...attributes} {...listeners} data-kanban-header

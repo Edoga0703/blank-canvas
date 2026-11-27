@@ -16,12 +16,14 @@ import { Bell, Trash2, Send, Loader2 } from "lucide-react";
 import {
   listBroadcasts, createBroadcast, deleteBroadcast,
 } from "@/lib/admin-broadcast.functions";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 export const Route = createFileRoute("/master/notificacoes")({
   component: NotificacoesPage,
 });
 
 export function NotificacoesPage() {
+  const { mt } = useMasterT();
   const qc = useQueryClient();
   const listFn = useServerFn(listBroadcasts);
   const createFn = useServerFn(createBroadcast);
@@ -67,49 +69,49 @@ export function NotificacoesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold flex items-center gap-2">
-          <Bell className="size-5" /> Notificações
+          <Bell className="size-5" /> {mt("Notificações")}
         </h1>
-        <p className="text-sm text-muted-foreground">Envie avisos in-app para os assinantes.</p>
+        <p className="text-sm text-muted-foreground">{mt("Envie avisos in-app para os assinantes.")}</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
         {/* Form */}
         <Card className="p-5 space-y-4">
-          <div className="text-sm font-semibold">Nova notificação</div>
+          <div className="text-sm font-semibold">{mt("Nova notificação")}</div>
           <div className="space-y-2">
-            <Label>Título</Label>
+            <Label>{mt("Título")}</Label>
             <Input value={titulo} onChange={(e) => setTitulo(e.target.value)} maxLength={120} />
           </div>
           <div className="space-y-2">
-            <Label>Mensagem</Label>
+            <Label>{mt("Mensagem")}</Label>
             <Textarea value={mensagem} onChange={(e) => setMensagem(e.target.value)} rows={4} maxLength={2000} />
           </div>
           <div className="space-y-2">
-            <Label>Link (opcional)</Label>
+            <Label>{mt("Link (opcional)")}</Label>
             <Input placeholder="https://..." value={link} onChange={(e) => setLink(e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Público-alvo</Label>
+              <Label>{mt("Público-alvo")}</Label>
               <Select value={targetType} onValueChange={(v: any) => { setTargetType(v); setTargetValue(""); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="plan">Por plano (slug)</SelectItem>
-                  <SelectItem value="status">Por status</SelectItem>
+                  <SelectItem value="all">{mt("Todos")}</SelectItem>
+                  <SelectItem value="plan">{mt("Por plano (slug)")}</SelectItem>
+                  <SelectItem value="status">{mt("Por status")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {targetType !== "all" && (
               <div className="space-y-2">
-                <Label>{targetType === "plan" ? "Slug do plano" : "Status"}</Label>
+                <Label>{targetType === "plan" ? mt("Slug do plano") : mt("Status")}</Label>
                 {targetType === "status" ? (
                   <Select value={targetValue} onValueChange={setTargetValue}>
-                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={mt("Selecione")} /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="trial">trial</SelectItem>
                       <SelectItem value="ativo">ativo</SelectItem>
-                      <SelectItem value="suspenso">suspenso</SelectItem>
+                      <SelectItem value="suspenso">{mt("suspenso")}</SelectItem>
                       <SelectItem value="pendente">pendente</SelectItem>
                     </SelectContent>
                   </Select>
@@ -122,7 +124,7 @@ export function NotificacoesPage() {
 
           {/* Preview */}
           <div className="rounded-lg border border-[color:var(--hairline)] p-3 bg-[color:var(--panel-2)]">
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Prévia</div>
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">{mt("Prévia")}</div>
             <div className="text-sm font-semibold">{titulo || "Título da notificação"}</div>
             <div className="text-sm text-muted-foreground whitespace-pre-wrap">
               {mensagem || "Mensagem exibida ao usuário…"}
@@ -136,17 +138,17 @@ export function NotificacoesPage() {
             className="w-full"
           >
             {create.isPending ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Send className="size-4 mr-2" />}
-            Enviar
+            {mt("Enviar")}
           </Button>
         </Card>
 
         {/* Histórico */}
         <Card className="p-5">
-          <div className="text-sm font-semibold mb-3">Histórico</div>
+          <div className="text-sm font-semibold mb-3">{mt("Histórico")}</div>
           {isLoading ? (
             <div className="py-8 grid place-items-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>
           ) : (data?.rows ?? []).length === 0 ? (
-            <div className="text-sm text-muted-foreground py-8 text-center">Nenhuma notificação enviada ainda.</div>
+            <div className="text-sm text-muted-foreground py-8 text-center">{mt("Nenhuma notificação enviada ainda.")}</div>
           ) : (
             <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
               {(data?.rows ?? []).map((b: any) => (

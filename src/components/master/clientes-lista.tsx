@@ -36,6 +36,7 @@ import {
 } from "@/lib/master.functions";
 import { listCompanyAddonsMaster, setCompanyAddonAccess } from "@/lib/addons.functions";
 import { toast } from "sonner";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 export type ClienteRow = {
   id: string;
@@ -70,8 +71,9 @@ const PROVIDER_LABEL: Record<string, string> = {
 };
 
 function ConexoesCell({ row }: { row: ClienteRow }) {
+  const { mt } = useMasterT();
   const list = row.conexoes ?? [];
-  if (!list.length) return <span className="text-xs text-muted-foreground">sem conexão</span>;
+  if (!list.length) return <span className="text-xs text-muted-foreground">{mt("sem conexão")}</span>;
   const online = row.conexoes_online ?? 0;
   return (
     <div className="space-y-1">
@@ -86,7 +88,7 @@ function ConexoesCell({ row }: { row: ClienteRow }) {
             <span className="opacity-70">· {PROVIDER_LABEL[c.provider] ?? c.provider}</span>
           </div>
         ))}
-        {list.length > 2 && <div className="text-[11px] text-muted-foreground">+{list.length - 2} conexão(ões)</div>}
+        {list.length > 2 && <div className="text-[11px] text-muted-foreground">+{list.length - 2} {mt("conexão(ões)")}</div>}
       </div>
     </div>
   );
@@ -143,6 +145,7 @@ function matchView(r: ClienteRow, view: string) {
 
 
 export function ClientesLista({ onStats }: { onStats?: (s: { mrr: number; active: number; trial: number; past: number; pendentes: number; total: number }) => void }) {
+  const { mt } = useMasterT();
   const fetchSubscriptions = useServerFn(listMasterSubscriptions);
   const fetchSignups = useServerFn(listSignups);
   const resendConfirm = useServerFn(resendSignupConfirmation);
@@ -342,12 +345,12 @@ export function ClientesLista({ onStats }: { onStats?: (s: { mrr: number; active
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-        <Stat label="Receita recorrente" value={formatBRL(stats.mrr)} hint={`${stats.pagantes} pagando plano`} tone="emerald" />
-        <Stat label="Pagantes" value={String(stats.pagantes)} hint="plano ativo" tone="brand" />
-        <Stat label="Cortesia" value={String(stats.cortesia)} hint="sem cobrança" tone="violet" />
-        <Stat label="Em teste" value={String(stats.trial)} hint="período de avaliação" tone="blue" />
-        <Stat label="Vencidos / inativos" value={String(stats.inativos)} hint={`${stats.past} inadimplentes`} tone="amber" />
-        <Stat label="Base total" value={String(stats.total)} hint={`${stats.pendentes} cadastros parados`} />
+        <Stat label={mt("Receita recorrente")} value={formatBRL(stats.mrr)} hint={`${stats.pagantes} pagando plano`} tone="emerald" />
+        <Stat label={mt("Pagantes")} value={String(stats.pagantes)} hint="plano ativo" tone="brand" />
+        <Stat label={mt("Cortesia")} value={String(stats.cortesia)} hint="sem cobrança" tone="violet" />
+        <Stat label={mt("Em teste")} value={String(stats.trial)} hint="período de avaliação" tone="blue" />
+        <Stat label={mt("Vencidos / inativos")} value={String(stats.inativos)} hint={`${stats.past} inadimplentes`} tone="amber" />
+        <Stat label={mt("Base total")} value={String(stats.total)} hint={`${stats.pendentes} cadastros parados`} />
       </div>
 
       <Card className="p-3 sm:p-4 rounded-2xl border-[color:var(--hairline)] space-y-3">
@@ -375,10 +378,10 @@ export function ClientesLista({ onStats }: { onStats?: (s: { mrr: number; active
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
           <div className="relative flex-1">
             <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por empresa, responsável, telefone ou plano..." className="pl-9" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={mt("Buscar por empresa, responsável, telefone ou plano...")} className="pl-9" />
           </div>
           <div className="text-xs text-muted-foreground shrink-0 sm:pr-1">
-            {filtered.length} {filtered.length === 1 ? "cliente" : "clientes"} · {VIEWS.find((v) => v.id === filter)?.hint}
+            {filtered.length} {filtered.length === 1 ? mt("cliente") : "clientes"} · {VIEWS.find((v) => v.id === filter)?.hint}
           </div>
         </div>
       </Card>
@@ -387,7 +390,7 @@ export function ClientesLista({ onStats }: { onStats?: (s: { mrr: number; active
       {loading ? (
         <div className="grid place-items-center py-20"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>
       ) : filtered.length === 0 ? (
-        <Card className="p-10 text-center text-sm text-muted-foreground rounded-2xl">Nenhum cliente encontrado.</Card>
+        <Card className="p-10 text-center text-sm text-muted-foreground rounded-2xl">{mt("Nenhum cliente encontrado.")}</Card>
       ) : (
         <>
         {/* Mobile / tablet: cards */}
@@ -472,14 +475,14 @@ export function ClientesLista({ onStats }: { onStats?: (s: { mrr: number; active
             <table className="w-full text-sm">
               <thead className="bg-muted/60 backdrop-blur text-xs uppercase tracking-wider text-muted-foreground sticky top-0 z-10">
                 <tr>
-                  <th className="text-left px-4 py-3">Cliente</th>
-                  <th className="text-left px-4 py-3">Plano</th>
-                  <th className="text-left px-4 py-3">Status</th>
-                  <th className="text-left px-4 py-3">Conexões</th>
-                  <th className="text-left px-4 py-3">Próx. cobrança / fim trial</th>
-                  <th className="text-left px-4 py-3">Créditos</th>
-                  <th className="text-left px-4 py-3">Cadastro</th>
-                  <th className="text-right px-4 py-3">Ações</th>
+                  <th className="text-left px-4 py-3">{mt("Cliente")}</th>
+                  <th className="text-left px-4 py-3">{mt("Plano")}</th>
+                  <th className="text-left px-4 py-3">{mt("Status")}</th>
+                  <th className="text-left px-4 py-3">{mt("Conexões")}</th>
+                  <th className="text-left px-4 py-3">{mt("Próx. cobrança / fim trial")}</th>
+                  <th className="text-left px-4 py-3">{mt("Créditos")}</th>
+                  <th className="text-left px-4 py-3">{mt("Cadastro")}</th>
+                  <th className="text-right px-4 py-3">{mt("Ações")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -588,12 +591,13 @@ function ClienteActionsMenu({
   row, onOpen, onMarkPaid, onExtend, onReopen, onCancel, onDelete,
   onResend, onConfirm, onPassword, onProvision,
 }: ClienteActionsMenuProps) {
+  const { mt } = useMasterT();
   const signup = row.signup;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="size-8" aria-label="Abrir ações do cliente">
+        <Button variant="ghost" size="icon" className="size-8" aria-label={mt("Abrir ações do cliente")}>
           <MoreHorizontal className="size-4" />
         </Button>
       </DropdownMenuTrigger>
@@ -602,22 +606,22 @@ function ClienteActionsMenu({
           <>
             {!signup.confirmed_at && signup.email && (
               <>
-                <DropdownMenuItem onClick={() => onResend(signup.email ?? "")}><Mail /> Reenviar confirmação</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onConfirm(signup.user_id)}><ShieldCheck /> Confirmar e-mail</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onResend(signup.email ?? "")}><Mail /> {mt("Reenviar confirmação")}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onConfirm(signup.user_id)}><ShieldCheck /> {mt("Confirmar e-mail")}</DropdownMenuItem>
               </>
             )}
-            <DropdownMenuItem onClick={() => onPassword(signup.user_id)}><KeyRound /> Gerar nova senha</DropdownMenuItem>
-            <DropdownMenuItem onClick={onProvision}><Rocket /> Liberar acesso</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onPassword(signup.user_id)}><KeyRound /> {mt("Gerar nova senha")}</DropdownMenuItem>
+            <DropdownMenuItem onClick={onProvision}><Rocket /> {mt("Liberar acesso")}</DropdownMenuItem>
           </>
         ) : (
           <>
-            <DropdownMenuItem onClick={onOpen}><Eye /> Abrir ficha</DropdownMenuItem>
-            <DropdownMenuItem onClick={onMarkPaid}><BadgeDollarSign className="text-emerald-600" /> Confirmar pagamento</DropdownMenuItem>
-            <DropdownMenuItem onClick={onExtend}><CalendarPlus /> Estender trial</DropdownMenuItem>
-            <DropdownMenuItem onClick={onReopen}><RotateCcw /> Reabrir onboarding</DropdownMenuItem>
+            <DropdownMenuItem onClick={onOpen}><Eye /> {mt("Abrir ficha")}</DropdownMenuItem>
+            <DropdownMenuItem onClick={onMarkPaid}><BadgeDollarSign className="text-emerald-600" /> {mt("Confirmar pagamento")}</DropdownMenuItem>
+            <DropdownMenuItem onClick={onExtend}><CalendarPlus /> {mt("Estender trial")}</DropdownMenuItem>
+            <DropdownMenuItem onClick={onReopen}><RotateCcw /> {mt("Reabrir onboarding")}</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onCancel} className="text-destructive focus:text-destructive"><Ban /> Cancelar assinatura</DropdownMenuItem>
-            <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive"><Trash2 /> Excluir permanentemente</DropdownMenuItem>
+            <DropdownMenuItem onClick={onCancel} className="text-destructive focus:text-destructive"><Ban /> {mt("Cancelar assinatura")}</DropdownMenuItem>
+            <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive"><Trash2 /> {mt("Excluir permanentemente")}</DropdownMenuItem>
           </>
         )}
       </DropdownMenuContent>
@@ -650,6 +654,7 @@ function Stat({ label, value, hint, tone = "slate" }: { label: string; value: st
 
 /* ------------- Ficha do cliente ------------- */
 function ClienteDialog({ row, onClose, onSaved, onRefresh }: { row: ClienteRow; onClose: () => void; onSaved: () => void; onRefresh?: () => void }) {
+  const { mt } = useMasterT();
   const fetchProfile = useServerFn(getSubscriberProfile);
   const fetchDetails = useServerFn(getCompanyDetails);
   const fetchPlans = useServerFn(listPlansBasic);
@@ -828,7 +833,7 @@ function ClienteDialog({ row, onClose, onSaved, onRefresh }: { row: ClienteRow; 
       <DialogContent className="max-w-3xl max-h-[88vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{nome}</DialogTitle>
-          <DialogDescription>Ficha completa do cliente: cadastro, assinatura, usuários e acesso.</DialogDescription>
+          <DialogDescription>{mt("Ficha completa do cliente: cadastro, assinatura, usuários e acesso.")}</DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-4 rounded-lg bg-muted p-1 text-xs sm:text-sm font-medium">
@@ -854,21 +859,21 @@ function ClienteDialog({ row, onClose, onSaved, onRefresh }: { row: ClienteRow; 
         ) : tab === "cadastro" ? (
           <div className="space-y-4 py-2 text-sm">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Empresa" value={c?.nome ?? nome} />
+              <Field label={mt("Empresa")} value={c?.nome ?? nome} />
               <Field label="Slug" value={c?.slug} />
-              <Field label="E-mail" value={c?.email_corporativo ?? email} />
-              <Field label="Telefone" value={c?.telefone} />
+              <Field label={mt("E-mail")} value={c?.email_corporativo ?? email} />
+              <Field label={mt("Telefone")} value={c?.telefone} />
               <Field label="CNPJ/CPF" value={c?.cnpj} />
-              <Field label="Segmento" value={c?.segmento} />
-              <Field label="Endereço" value={c?.endereco} />
-              <Field label="Cidade/UF" value={[c?.cidade, c?.uf].filter(Boolean).join(" / ")} />
-              <Field label="Plano" value={profile?.subscription?.plan?.nome ?? "—"} />
-              <Field label="Status">
+              <Field label={mt("Segmento")} value={c?.segmento} />
+              <Field label={mt("Endereço")} value={c?.endereco} />
+              <Field label={mt("Cidade/UF")} value={[c?.cidade, c?.uf].filter(Boolean).join(" / ")} />
+              <Field label={mt("Plano")} value={profile?.subscription?.plan?.nome ?? "—"} />
+              <Field label={mt("Status")}>
                 <Badge className={`${STATUS[status]?.cls ?? "bg-muted"} border`}>{STATUS[status]?.label ?? status}</Badge>
               </Field>
-              <Field label="Trial até" value={profile?.company?.trial_ate ? new Date(profile.company.trial_ate).toLocaleString("pt-BR") : "—"} />
-              <Field label="Créditos IA" value={String(profile?.company?.creditos_saldo ?? 0)} />
-              <Field label="Cadastro" value={profile?.company?.created_at ? new Date(profile.company.created_at).toLocaleString("pt-BR") : "—"} />
+              <Field label={mt("Trial até")} value={profile?.company?.trial_ate ? new Date(profile.company.trial_ate).toLocaleString("pt-BR") : "—"} />
+              <Field label={mt("Créditos IA")} value={String(profile?.company?.creditos_saldo ?? 0)} />
+              <Field label={mt("Cadastro")} value={profile?.company?.created_at ? new Date(profile.company.created_at).toLocaleString("pt-BR") : "—"} />
             </div>
 
             <div>
@@ -889,12 +894,12 @@ function ClienteDialog({ row, onClose, onSaved, onRefresh }: { row: ClienteRow; 
                       {cx.paused ? "pausada" : cx.status === "connected" ? "conectada" : cx.status}
                     </Badge>
                   </div>
-                )) : <div className="text-muted-foreground text-xs">Nenhuma conexão.</div>}
+                )) : <div className="text-muted-foreground text-xs">{mt("Nenhuma conexão.")}</div>}
               </div>
             </div>
 
             <div>
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">Responsáveis</div>
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">{mt("Responsáveis")}</div>
               <div className="space-y-1">
                 {details?.members?.length ? details.members.map((m: any) => (
                   <div key={m.user_id} className="flex items-center justify-between border rounded-md px-3 py-2">
@@ -906,7 +911,7 @@ function ClienteDialog({ row, onClose, onSaved, onRefresh }: { row: ClienteRow; 
                     </div>
                     <Badge variant={m.role === "owner" ? "default" : "secondary"}>{m.role}</Badge>
                   </div>
-                )) : <div className="text-muted-foreground text-xs">Nenhum usuário.</div>}
+                )) : <div className="text-muted-foreground text-xs">{mt("Nenhum usuário.")}</div>}
               </div>
             </div>
 
@@ -926,9 +931,9 @@ function ClienteDialog({ row, onClose, onSaved, onRefresh }: { row: ClienteRow; 
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label>Plano</Label>
+                <Label>{mt("Plano")}</Label>
                 <Select value={planId} onValueChange={setPlanId}>
-                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={mt("Selecione...")} /></SelectTrigger>
                   <SelectContent>
                     {plans.map((p) => (
                       <SelectItem key={p.id} value={p.id}>{p.nome} — {formatBRL(p.preco_cents, p.moeda)}</SelectItem>
@@ -937,61 +942,61 @@ function ClienteDialog({ row, onClose, onSaved, onRefresh }: { row: ClienteRow; 
                 </Select>
               </div>
               <div>
-                <Label>Ciclo</Label>
+                <Label>{mt("Ciclo")}</Label>
                 <Select value={ciclo} onValueChange={setCiclo}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="mensal">Mensal</SelectItem>
-                    <SelectItem value="trimestral">Trimestral</SelectItem>
-                    <SelectItem value="semestral">Semestral</SelectItem>
-                    <SelectItem value="anual">Anual</SelectItem>
+                    <SelectItem value="mensal">{mt("Mensal")}</SelectItem>
+                    <SelectItem value="trimestral">{mt("Trimestral")}</SelectItem>
+                    <SelectItem value="semestral">{mt("Semestral")}</SelectItem>
+                    <SelectItem value="anual">{mt("Anual")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>Status</Label>
+                <Label>{mt("Status")}</Label>
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">Ativo</SelectItem>
-                    <SelectItem value="trialing">Em trial</SelectItem>
-                    <SelectItem value="past_due">Inadimplente</SelectItem>
-                    <SelectItem value="canceled">Cancelado</SelectItem>
-                    <SelectItem value="expired">Expirado</SelectItem>
-                    <SelectItem value="paused">Pausado</SelectItem>
+                    <SelectItem value="active">{mt("Ativo")}</SelectItem>
+                    <SelectItem value="trialing">{mt("Em trial")}</SelectItem>
+                    <SelectItem value="past_due">{mt("Inadimplente")}</SelectItem>
+                    <SelectItem value="canceled">{mt("Cancelado")}</SelectItem>
+                    <SelectItem value="expired">{mt("Expirado")}</SelectItem>
+                    <SelectItem value="paused">{mt("Pausado")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>Valor customizado (R$)</Label>
-                <Input placeholder="Padrão do plano" value={valorCustom} onChange={(e) => setValorCustom(e.target.value)} />
+                <Label>{mt("Valor customizado (R$)")}</Label>
+                <Input placeholder={mt("Padrão do plano")} value={valorCustom} onChange={(e) => setValorCustom(e.target.value)} />
               </div>
               <div>
-                <Label>Estender trial (+ dias)</Label>
+                <Label>{mt("Estender trial (+ dias)")}</Label>
                 <Input type="number" min={0} value={extendTrialDays} onChange={(e) => setExtendTrialDays(e.target.value)} />
               </div>
               <div>
-                <Label>Estender acesso (+ dias)</Label>
+                <Label>{mt("Estender acesso (+ dias)")}</Label>
                 <Input type="number" min={0} value={extendAccessDays} onChange={(e) => setExtendAccessDays(e.target.value)} />
               </div>
               <div>
-                <Label>Extra de usuários</Label>
+                <Label>{mt("Extra de usuários")}</Label>
                 <Input type="number" min={0} value={extraUsuarios} onChange={(e) => setExtraUsuarios(e.target.value)} />
               </div>
               <div>
-                <Label>Extra de conexões</Label>
+                <Label>{mt("Extra de conexões")}</Label>
                 <Input type="number" min={0} value={extraConexoes} onChange={(e) => setExtraConexoes(e.target.value)} />
               </div>
               <div className="col-span-2">
-                <Label>Créditos IA (saldo)</Label>
+                <Label>{mt("Créditos IA (saldo)")}</Label>
                 <Input type="number" min={0} value={creditos} onChange={(e) => setCreditos(e.target.value)} />
               </div>
             </div>
 
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
-                <div className="font-medium text-sm flex items-center gap-1.5"><Gift className="size-4 text-emerald-600" /> Cortesia (sem cobrança)</div>
-                <p className="text-xs text-muted-foreground">Acesso liberado sem cobrar.</p>
+                <div className="font-medium text-sm flex items-center gap-1.5"><Gift className="size-4 text-emerald-600" /> {mt("Cortesia (sem cobrança)")}</div>
+                <p className="text-xs text-muted-foreground">{mt("Acesso liberado sem cobrar.")}</p>
               </div>
               <Switch checked={cortesia} onCheckedChange={setCortesia} />
             </div>
@@ -999,12 +1004,12 @@ function ClienteDialog({ row, onClose, onSaved, onRefresh }: { row: ClienteRow; 
             <ConexoesLiberadas companyId={row.company_id} />
 
             <div>
-              <Label>Notas internas (opcional)</Label>
-              <Textarea placeholder="Motivo da alteração, contato, etc." value={notas} onChange={(e) => setNotas(e.target.value)} rows={3} />
+              <Label>{mt("Notas internas (opcional)")}</Label>
+              <Textarea placeholder={mt("Motivo da alteração, contato, etc.")} value={notas} onChange={(e) => setNotas(e.target.value)} rows={3} />
             </div>
 
             <Button className="w-full" onClick={handleSave} disabled={saving}>
-              {saving ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Save className="size-4 mr-2" />} Salvar alterações
+              {saving ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Save className="size-4 mr-2" />} {mt("Salvar alterações")}
             </Button>
           </div>
         ) : tab === "usuarios" ? (
@@ -1032,10 +1037,10 @@ function ClienteDialog({ row, onClose, onSaved, onRefresh }: { row: ClienteRow; 
             })()}
 
             {lastTempPass && (
-              <div className="rounded-lg border border-emerald-500/30 bg-emerald-50/70 p-3 flex items-center justify-between gap-2 text-xs">
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-50/70 dark:bg-emerald-950/35 p-3 flex items-center justify-between gap-2 text-xs">
                 <div>
-                  <span className="font-semibold text-emerald-900">Nova senha gerada para {lastTempPass.email}:</span>{" "}
-                  <code className="font-mono bg-white px-2 py-0.5 rounded border">{lastTempPass.password}</code>
+                  <span className="font-semibold text-emerald-900 dark:text-emerald-300">{mt("Nova senha gerada para")} {lastTempPass.email}:</span>{" "}
+                  <code className="font-mono bg-background px-2 py-0.5 rounded border">{lastTempPass.password}</code>
                 </div>
                 <Button
                   size="sm"
@@ -1045,7 +1050,7 @@ function ClienteDialog({ row, onClose, onSaved, onRefresh }: { row: ClienteRow; 
                     toast.success("Senha copiada!");
                   }}
                 >
-                  <Copy className="size-3.5 mr-1" /> Copiar
+                  <Copy className="size-3.5 mr-1" /> {mt("Copiar")}
                 </Button>
               </div>
             )}
@@ -1053,7 +1058,7 @@ function ClienteDialog({ row, onClose, onSaved, onRefresh }: { row: ClienteRow; 
             <div className="space-y-2">
               {(details?.members ?? []).length === 0 ? (
                 <div className="text-xs text-muted-foreground py-4 text-center border rounded-lg">
-                  Nenhum usuário vinculado à empresa.
+                  {mt("Nenhum usuário vinculado à empresa.")}
                 </div>
               ) : (
                 (details?.members ?? []).map((m: any) => (
@@ -1190,19 +1195,19 @@ function ClienteDialog({ row, onClose, onSaved, onRefresh }: { row: ClienteRow; 
             {/* + Adicionar usuário à empresa */}
             <form onSubmit={handleAddCompanyUser} className="rounded-lg border p-3.5 space-y-3 bg-muted/15">
               <div className="font-semibold text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <UserPlus className="size-3.5" /> Adicionar usuário à empresa
+                <UserPlus className="size-3.5" /> {mt("Adicionar usuário à empresa")}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <Label className="text-xs">Nome</Label>
+                  <Label className="text-xs">{mt("Nome")}</Label>
                   <Input
                     value={newUserNome}
                     onChange={(e) => setNewUserNome(e.target.value)}
-                    placeholder="Nome completo"
+                    placeholder={mt("Nome completo")}
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">E-mail</Label>
+                  <Label className="text-xs">{mt("E-mail")}</Label>
                   <Input
                     type="email"
                     required
@@ -1212,48 +1217,48 @@ function ClienteDialog({ row, onClose, onSaved, onRefresh }: { row: ClienteRow; 
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Papel</Label>
+                  <Label className="text-xs">{mt("Papel")}</Label>
                   <Select value={newUserRole} onValueChange={(v) => setNewUserRole(v as any)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="owner">Proprietário (owner)</SelectItem>
-                      <SelectItem value="admin">Administrador (admin)</SelectItem>
-                      <SelectItem value="atendente">Sub-usuário (atendente)</SelectItem>
+                      <SelectItem value="owner">{mt("Proprietário (owner)")}</SelectItem>
+                      <SelectItem value="admin">{mt("Administrador (admin)")}</SelectItem>
+                      <SelectItem value="atendente">{mt("Sub-usuário (atendente)")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs">Senha inicial (opcional)</Label>
+                  <Label className="text-xs">{mt("Senha inicial (opcional)")}</Label>
                   <Input
                     type="password"
                     value={newUserPass}
                     onChange={(e) => setNewUserPass(e.target.value)}
-                    placeholder="Vazio gera senha temporária"
+                    placeholder={mt("Vazio gera senha temporária")}
                   />
                 </div>
               </div>
               <Button type="submit" size="sm" disabled={addingUser} className="gap-1.5">
                 {addingUser ? <Loader2 className="size-3.5 animate-spin" /> : <UserPlus className="size-3.5" />}
-                Vincular usuário
+                {mt("Vincular usuário")}
               </Button>
             </form>
           </div>
         ) : (
           <div className="space-y-4 py-2">
             <div className="rounded-lg border p-4 space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium"><Mail className="size-4" /> Enviar link de redefinição</div>
-              <p className="text-xs text-muted-foreground">O cliente recebe um e-mail seguro para criar uma nova senha. Recomendado.</p>
+              <div className="flex items-center gap-2 text-sm font-medium"><Mail className="size-4" /> {mt("Enviar link de redefinição")}</div>
+              <p className="text-xs text-muted-foreground">{mt("O cliente recebe um e-mail seguro para criar uma nova senha. Recomendado.")}</p>
               <Button className="w-full" onClick={handleSendReset} disabled={sendingReset}>
                 {sendingReset ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Mail className="size-4 mr-2" />}
-                Enviar para {email}
+                {mt("Enviar para")} {email}
               </Button>
             </div>
 
             <div className="rounded-lg border p-4 space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium"><KeyRound className="size-4 text-amber-600" /> Definir senha manualmente</div>
-              <p className="text-xs text-muted-foreground">Para suporte por telefone. Informe a nova senha em canal seguro.</p>
+              <div className="flex items-center gap-2 text-sm font-medium"><KeyRound className="size-4 text-amber-600" /> {mt("Definir senha manualmente")}</div>
+              <p className="text-xs text-muted-foreground">{mt("Para suporte por telefone. Informe a nova senha em canal seguro.")}</p>
               <div>
-                <Label>Nova senha (min. 8 caracteres)</Label>
+                <Label>{mt("Nova senha (min. 8 caracteres)")}</Label>
                 <div className="flex gap-2">
                   <Input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder="********" />
                   <Button onClick={handleApplyPassword} disabled={applyingPass || newPass.length < 8}>
@@ -1284,6 +1289,7 @@ const CONEXAO_TIPOS = [
 ];
 
 function ConexoesLiberadas({ companyId }: { companyId: string }) {
+  const { mt } = useMasterT();
   const listAddons = useServerFn(listCompanyAddonsMaster);
   const setAccess = useServerFn(setCompanyAddonAccess);
   const [loading, setLoading] = useState(true);
@@ -1329,16 +1335,16 @@ function ConexoesLiberadas({ companyId }: { companyId: string }) {
     <div className="rounded-lg border p-3 space-y-3">
       <div>
         <div className="font-medium text-sm flex items-center gap-1.5">
-          <ShieldCheck className="size-4 text-primary" /> Conexões liberadas
+          <ShieldCheck className="size-4 text-primary" /> {mt("Conexões liberadas")}
         </div>
         <p className="text-xs text-muted-foreground">
-          Libere tipos de conexão extras para este cliente sem cobrança adicional.
+          {mt("Libere tipos de conexão extras para este cliente sem cobrança adicional.")}
         </p>
       </div>
 
       {loading ? (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="size-3.5 animate-spin" /> Carregando...
+          <Loader2 className="size-3.5 animate-spin" /> {mt("Carregando...")}
         </div>
       ) : (
         CONEXAO_TIPOS.map((c) => (

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, RefreshCw, Zap } from "lucide-react";
 import { getAdminOverviewData, type AdminCrmStatus } from "@/lib/admin-crm.functions";
 import { SignupWelcomeCard } from "@/components/master/signup-welcome-card";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 type Props = {
   automacoes: AdminCrmStatus["automacoes"];
@@ -20,6 +21,7 @@ type Props = {
 };
 
 export function AutomacoesTab({ automacoes, temConexao, busy, onSave, onRun }: Props) {
+  const { mt } = useMasterT();
   const fetchOverview = useServerFn(getAdminOverviewData);
   const [matches, setMatches] = useState<Record<string, number>>({});
 
@@ -35,11 +37,11 @@ export function AutomacoesTab({ automacoes, temConexao, busy, onSave, onRun }: P
       <Card className="p-4 space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 font-medium">
-            <Zap className="h-4 w-4" /> Réguas automáticas
+            <Zap className="h-4 w-4" /> {mt("Réguas automáticas")}
           </div>
           <Button variant="outline" size="sm" disabled={busy === "run" || !temConexao} onClick={onRun}>
             {busy === "run" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Rodar agora
+            {mt("Rodar agora")}
           </Button>
         </div>
 

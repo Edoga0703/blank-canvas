@@ -96,7 +96,7 @@ function PartnerClientDashboard() {
           <h1 className="font-display text-[26px] leading-tight tracking-tight">{t("partner.title", undefined, "Portal do Parceiro")}</h1>
           <p className="text-sm text-muted-foreground">{t("partner.welcome", { code: partner.codigo_indicacao }, `Bem-vindo, ${partner.codigo_indicacao}! Acompanhe seu crescimento.`)}</p>
         </div>
-        <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-[color:var(--hairline)] shadow-sm">
+        <div className="flex items-center gap-2 bg-card p-2 rounded-xl border border-[color:var(--hairline)] shadow-sm">
           <div className="px-3 py-1.5 bg-muted/50 rounded-lg flex items-center gap-3">
             <code className="text-xs font-mono font-bold text-brand-700">{referralUrl}</code>
             <button 
@@ -116,7 +116,7 @@ function PartnerClientDashboard() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card className="p-5 rounded-2xl border-[color:var(--hairline)] bg-white shadow-sm">
+        <Card className="p-5 rounded-2xl border-[color:var(--hairline)] bg-card shadow-sm">
           <div className="flex items-center gap-2 text-muted-foreground mb-2">
             <Users className="size-4" />
             <span className="text-xs font-medium uppercase tracking-wider">Indicações</span>
@@ -125,7 +125,7 @@ function PartnerClientDashboard() {
           <p className="text-[11px] text-muted-foreground mt-1">Total de empresas indicadas</p>
         </Card>
 
-        <Card className="p-5 rounded-2xl border-[color:var(--hairline)] bg-white shadow-sm">
+        <Card className="p-5 rounded-2xl border-[color:var(--hairline)] bg-card shadow-sm">
           <div className="flex items-center gap-2 text-muted-foreground mb-2">
             <TrendingUp className="size-4" />
             <span className="text-xs font-medium uppercase tracking-wider">Comissão Acumulada</span>
@@ -167,7 +167,7 @@ function PartnerClientDashboard() {
           { label: "Clientes ativos", value: m.ativos, hint: "assinaturas em dia" },
           { label: "Em teste / atraso", value: `${m.trial} / ${m.inadimplentes}`, hint: "trial e inadimplentes" },
         ].map((s) => (
-          <Card key={s.label} className="p-4 rounded-2xl border-[color:var(--hairline)] bg-white shadow-sm">
+          <Card key={s.label} className="p-4 rounded-2xl border-[color:var(--hairline)] bg-card shadow-sm">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{s.label}</p>
             <p className="text-2xl font-bold mt-1">{s.value}</p>
             <p className="text-[11px] text-muted-foreground mt-0.5">{s.hint}</p>
@@ -175,7 +175,7 @@ function PartnerClientDashboard() {
         ))}
       </div>
 
-      <Card className="rounded-2xl border-[color:var(--hairline)] bg-white shadow-sm overflow-hidden">
+      <Card className="rounded-2xl border-[color:var(--hairline)] bg-card shadow-sm overflow-hidden">
         <div className="p-4 border-b border-[color:var(--hairline)] flex items-center justify-between">
           <h2 className="font-semibold text-sm">Empresas Indicadas</h2>
           <Badge variant="outline">{referrals.length} Clientes</Badge>
@@ -194,7 +194,7 @@ function PartnerClientDashboard() {
               {referrals.map((ref: any) => (
                 <tr key={ref.id} className="hover:bg-muted/10 transition-colors">
                   <td className="px-6 py-4">
-                    <div className="font-medium text-slate-900">{ref.company?.nome || "Empresa"}</div>
+                    <div className="font-medium text-foreground">{ref.company?.nome || "Empresa"}</div>
                     <div className="text-[10px] text-muted-foreground">ID: {ref.company_id.split("-")[0]}</div>
                   </td>
                   <td className="px-6 py-4 text-muted-foreground">
@@ -224,7 +224,7 @@ function PartnerClientDashboard() {
         </div>
       </Card>
 
-      <Card className="p-6 rounded-2xl border-[color:var(--hairline)] bg-white shadow-sm">
+      <Card className="p-6 rounded-2xl border-[color:var(--hairline)] bg-card shadow-sm">
         <div className="flex items-start gap-4">
           <div className="size-10 rounded-full bg-brand-50 flex items-center justify-center shrink-0">
             <ExternalLink className="size-5 text-brand-600" />

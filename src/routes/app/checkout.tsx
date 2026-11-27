@@ -298,22 +298,22 @@ function CheckoutPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-8 pt-6 space-y-8">
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto space-y-3">
-          <Badge variant="outline" className="gap-1.5 px-3 py-1 bg-white">
+          <Badge variant="outline" className="gap-1.5 px-3 py-1 bg-card">
             {paywallMode ? <Lock className="size-3.5" /> : <Sparkles className="size-3.5 text-primary" />}
             {paywallMode
               ? "Ative sua assinatura"
               : `${plano?.trial_days ?? 7} dias grátis sem cartão`}
           </Badge>
-          <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
             {hasCompany ? "Escolha e ative seu plano" : "Comece seu teste gratuito"}
           </h1>
-          <p className="text-sm sm:text-base text-slate-600">
+          <p className="text-sm sm:text-base text-muted-foreground">
             WhatsApp API Oficial Meta ($0 por conexão), WhatsApp QR Code, Instagram, Facebook, Telegram e Créditos de IA em um só CRM.
           </p>
 
           {/* Toggle Moeda & Ciclo */}
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <div className="inline-flex rounded-full border bg-white p-1 shadow-sm">
+            <div className="inline-flex rounded-full border bg-card p-1 shadow-sm">
               <button
                 type="button"
                 onClick={() => {
@@ -321,7 +321,7 @@ function CheckoutPage() {
                   setActiveCharge(null);
                 }}
                 className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                  currency === "BRL" ? "bg-primary text-primary-foreground" : "text-slate-600"
+                  currency === "BRL" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Brasil (R$ · PIX / Cartão)
@@ -333,14 +333,14 @@ function CheckoutPage() {
                   setActiveCharge(null);
                 }}
                 className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors flex items-center gap-1 ${
-                  currency === "USD" ? "bg-primary text-primary-foreground" : "text-slate-600"
+                  currency === "USD" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Globe className="size-3.5" /> Venezuela / LATAM (US$)
               </button>
             </div>
 
-            <div className="inline-flex rounded-full border bg-white p-1 shadow-sm">
+            <div className="inline-flex rounded-full border bg-card p-1 shadow-sm">
               <button
                 type="button"
                 onClick={() => {
@@ -348,7 +348,7 @@ function CheckoutPage() {
                   setActiveCharge(null);
                 }}
                 className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                  cycle === "month" ? "bg-slate-900 text-white" : "text-slate-600"
+                  cycle === "month" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Mensal
@@ -360,7 +360,7 @@ function CheckoutPage() {
                   setActiveCharge(null);
                 }}
                 className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors flex items-center gap-1.5 ${
-                  cycle === "annual" ? "bg-slate-900 text-white" : "text-slate-600"
+                  cycle === "annual" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Anual
@@ -403,20 +403,20 @@ function CheckoutPage() {
                   }}
                   className={`p-5 cursor-pointer transition-all flex flex-col justify-between gap-4 ${
                     isSelected
-                      ? "border-2 border-primary ring-2 ring-primary/15 shadow-md bg-white"
-                      : "hover:border-slate-300 bg-white/85"
+                      ? "border-2 border-primary ring-2 ring-primary/15 shadow-md bg-card"
+                      : "hover:border-primary/40 bg-card/85"
                   }`}
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-bold text-lg text-slate-900">{p.nome}</span>
+                      <span className="font-bold text-lg text-foreground">{p.nome}</span>
                       {p.destaque && (
-                        <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30 text-[10px]">
+                        <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-[10px]">
                           Recomendado
                         </Badge>
                       )}
                     </div>
-                    {p.descricao && <p className="text-xs text-slate-500">{p.descricao}</p>}
+                    {p.descricao && <p className="text-xs text-muted-foreground">{p.descricao}</p>}
 
                     <div>
                       <div className="flex items-baseline gap-1">
@@ -475,7 +475,7 @@ function CheckoutPage() {
 
         {/* Área de Pagamento / Ativação do Plano Selecionado */}
         {plano && (
-          <Card className="max-w-3xl mx-auto p-6 sm:p-8 space-y-5 bg-white shadow-sm">
+          <Card className="max-w-3xl mx-auto p-6 sm:p-8 space-y-5 bg-card shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
               <div>
                 <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
@@ -499,7 +499,7 @@ function CheckoutPage() {
 
             {!hasCompany ? (
               <div className="space-y-4">
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-muted-foreground">
                   Ao iniciar seu teste gratuito, sua conta já recebe{" "}
                   <b>{Number(plano.creditos_trial ?? 300).toLocaleString("pt-BR")} créditos de IA</b> por{" "}
                   <b>{plano.trial_days ?? 7} dias</b> sem compromisso.
@@ -515,11 +515,11 @@ function CheckoutPage() {
                 </Button>
               </div>
             ) : !podeAssinar ? (
-              <div className="text-center text-sm text-emerald-700 font-medium py-2">
+              <div className="text-center text-sm text-emerald-600 dark:text-emerald-400 font-medium py-2">
                 Sua empresa já possui uma assinatura ativa.
               </div>
             ) : activeCharge ? (
-              <div className="space-y-4 rounded-xl border p-5 bg-slate-50">
+              <div className="space-y-4 rounded-xl border p-5 bg-muted/40">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 font-semibold">
                     <RefreshCw className="size-4 animate-spin text-primary" />
@@ -541,7 +541,7 @@ function CheckoutPage() {
                     />
                     {activeCharge.pix_copia_cola && (
                       <div className="w-full flex gap-2">
-                        <Input readOnly value={activeCharge.pix_copia_cola} className="font-mono text-xs bg-white" />
+                        <Input readOnly value={activeCharge.pix_copia_cola} className="font-mono text-xs bg-background" />
                         <Button
                           type="button"
                           variant="outline"

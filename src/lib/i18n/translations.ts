@@ -81,7 +81,12 @@ export const translations: Record<SupportedLanguage, Record<string, any>> = {
       "switch_language": "Cambiar idioma",
       "no_description": "Sin descripción",
       "save_changes": "Guardar cambios",
-      "delete_error": "No se pudo eliminar"
+      "delete_error": "No se pudo eliminar",
+      "theme": "Tema",
+      "light_mode": "Modo claro",
+      "dark_mode": "Modo oscuro",
+      "theme_light_short": "Claro",
+      "theme_dark_short": "Oscuro"
     },
     "nav": {
       "attendance": "Atención",
@@ -1264,7 +1269,12 @@ export const translations: Record<SupportedLanguage, Record<string, any>> = {
       "switch_language": "Switch language",
       "no_description": "No description",
       "save_changes": "Save changes",
-      "delete_error": "Could not delete"
+      "delete_error": "Could not delete",
+      "theme": "Theme",
+      "light_mode": "Light mode",
+      "dark_mode": "Dark mode",
+      "theme_light_short": "Light",
+      "theme_dark_short": "Dark"
     },
     "nav": {
       "attendance": "Customer Care",
@@ -2447,7 +2457,12 @@ export const translations: Record<SupportedLanguage, Record<string, any>> = {
       "switch_language": "Trocar idioma",
       "no_description": "Sem descrição",
       "save_changes": "Salvar alterações",
-      "delete_error": "Não foi possível apagar"
+      "delete_error": "Não foi possível apagar",
+      "theme": "Tema",
+      "light_mode": "Modo claro",
+      "dark_mode": "Modo escuro",
+      "theme_light_short": "Claro",
+      "theme_dark_short": "Escuro"
     },
     "nav": {
       "attendance": "Atendimento",

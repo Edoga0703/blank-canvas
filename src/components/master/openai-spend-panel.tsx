@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, DollarSign, ArrowDownToLine, ArrowUpFromLine, Repeat, AlertCircle, Wallet, Settings2 } from "lucide-react";
 import { getOpenAiSpend, getOpenAiCredit, setOpenAiCredit, type OpenAiRange } from "@/lib/openai-usage.functions";
 import { toast } from "sonner";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 const RANGES: { v: OpenAiRange; label: string }[] = [
   { v: "mes", label: "Este mês" },
@@ -32,6 +33,7 @@ function Kpi({ icon, label, value, hint }: { icon: React.ReactNode; label: strin
 }
 
 export function OpenAiSpendPanel() {
+  const { mt } = useMasterT();
   const load = useServerFn(getOpenAiSpend);
   const loadCredit = useServerFn(getOpenAiCredit);
   const saveCredit = useServerFn(setOpenAiCredit);
@@ -91,33 +93,33 @@ export function OpenAiSpendPanel() {
     <Card className="p-5 sm:p-6 rounded-2xl border-[color:var(--hairline)] space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-[15px] font-semibold">Gasto real na OpenAI</h2>
-          <p className="text-xs text-muted-foreground">Custo e tokens direto da conta que roda os agentes. Os dados podem ter até 24h de atraso em relação ao painel da OpenAI.</p>
+          <h2 className="text-[15px] font-semibold">{mt("Gasto real na OpenAI")}</h2>
+          <p className="text-xs text-muted-foreground">{mt("Custo e tokens direto da conta que roda os agentes. Os dados podem ter até 24h de atraso em relação ao painel da OpenAI.")}</p>
         </div>
         <div className="flex items-center gap-2">
           <Popover open={creditOpen} onOpenChange={setCreditOpen}>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="h-9 gap-1.5">
-                <Wallet className="size-3.5" /> Crédito
+                <Wallet className="size-3.5" /> {mt("Crédito")}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-72 space-y-3" align="end">
               <div className="text-sm font-medium flex items-center gap-1.5">
-                <Settings2 className="size-4" /> Crédito da conta OpenAI
+                <Settings2 className="size-4" /> {mt("Crédito da conta OpenAI")}
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Informe o valor da última recarga (ex.: 5 dólares) e a data. O saldo é calculado automaticamente pelo gasto real.
+                {mt("Informe o valor da última recarga (ex.: 5 dólares) e a data. O saldo é calculado automaticamente pelo gasto real.")}
               </p>
               <div className="space-y-1.5">
-                <Label className="text-xs">Crédito total (US$)</Label>
+                <Label className="text-xs">{mt("Crédito total (US$)")}</Label>
                 <Input value={creditTotal} onChange={e => setCreditTotal(e.target.value)} placeholder="5.00" inputMode="decimal" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Data da recarga</Label>
+                <Label className="text-xs">{mt("Data da recarga")}</Label>
                 <Input type="date" value={creditDesde} onChange={e => setCreditDesde(e.target.value)} />
               </div>
               <Button size="sm" className="w-full" onClick={handleSaveCredit} disabled={saving}>
-                {saving && <Loader2 className="size-3.5 animate-spin" />} Salvar
+                {saving && <Loader2 className="size-3.5 animate-spin" />} {mt("Salvar")}
               </Button>
             </PopoverContent>
           </Popover>
@@ -135,14 +137,14 @@ export function OpenAiSpendPanel() {
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <span className="flex items-center gap-1.5 text-muted-foreground">
               <Wallet className="size-4" />
-              Crédito: <strong className="text-foreground">{usd.format(credit.totalUsd)}</strong>
+              {mt("Crédito:")} <strong className="text-foreground">{usd.format(credit.totalUsd)}</strong>
             </span>
             <span className="text-muted-foreground">
-              Gasto desde {new Date(credit.desde + "T00:00:00Z").toLocaleDateString("pt-BR")}:{" "}
+              {mt("Gasto desde")} {new Date(credit.desde + "T00:00:00Z").toLocaleDateString("pt-BR")}:{" "}
               <strong className="text-foreground">{usd.format(credit.gastoDesde)}</strong>
             </span>
             <span className="text-muted-foreground">
-              Saldo estimado:{" "}
+              {mt("Saldo estimado:")}{" "}
               <strong className={credit.restante <= credit.totalUsd * 0.2 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}>
                 {usd.format(credit.restante)}
               </strong>
@@ -151,17 +153,17 @@ export function OpenAiSpendPanel() {
           {credit.tokensRestantes != null && (
             <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-[12px] text-muted-foreground border-t border-[color:var(--hairline)] pt-2">
               <span>
-                Tokens ainda disponíveis (estimado):{" "}
+                {mt("Tokens ainda disponíveis (estimado):")}{" "}
                 <strong className="text-foreground">{nf.format(credit.tokensRestantes)}</strong>
               </span>
               {credit.mensagensRestantes != null && (
                 <span>
-                  Respostas de IA restantes (estimado):{" "}
+                  {mt("Respostas de IA restantes (estimado):")}{" "}
                   <strong className="text-foreground">{nf.format(credit.mensagensRestantes)}</strong>
                 </span>
               )}
               {credit.custoPorMensagem != null && (
-                <span>Custo médio por resposta: US$ {credit.custoPorMensagem.toFixed(5)}</span>
+                <span>{mt("Custo médio por resposta: US$")} {credit.custoPorMensagem.toFixed(5)}</span>
               )}
             </div>
           )}
@@ -178,15 +180,15 @@ export function OpenAiSpendPanel() {
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <Kpi icon={<DollarSign className="size-3.5" />} label="Gasto no período" value={usd.format(data.totalUsd)} hint={data.periodo.label} />
-            <Kpi icon={<Repeat className="size-3.5" />} label="Chamadas" value={nf.format(data.requests)} hint="Requisições aos modelos" />
-            <Kpi icon={<ArrowDownToLine className="size-3.5" />} label="Tokens de entrada" value={nf.format(data.inputTokens)} />
-            <Kpi icon={<ArrowUpFromLine className="size-3.5" />} label="Tokens de saída" value={nf.format(data.outputTokens)} />
+            <Kpi icon={<DollarSign className="size-3.5" />} label={mt("Gasto no período")} value={usd.format(data.totalUsd)} hint={data.periodo.label} />
+            <Kpi icon={<Repeat className="size-3.5" />} label={mt("Chamadas")} value={nf.format(data.requests)} hint="Requisições aos modelos" />
+            <Kpi icon={<ArrowDownToLine className="size-3.5" />} label={mt("Tokens de entrada")} value={nf.format(data.inputTokens)} />
+            <Kpi icon={<ArrowUpFromLine className="size-3.5" />} label={mt("Tokens de saída")} value={nf.format(data.outputTokens)} />
           </div>
 
           {data.serie.length > 0 && (
             <div>
-              <div className="text-xs text-muted-foreground mb-2">Gasto por dia</div>
+              <div className="text-xs text-muted-foreground mb-2">{mt("Gasto por dia")}</div>
               <div className="flex items-end gap-1 h-24">
                 {data.serie.map((s: any) => (
                   <div key={s.dia} className="flex-1 min-w-[3px] rounded-t bg-primary/70" title={`${s.dia}: ${usd.format(s.usd)}`}
@@ -201,10 +203,10 @@ export function OpenAiSpendPanel() {
               <table className="w-full text-xs">
                 <thead className="text-muted-foreground">
                   <tr className="text-left">
-                    <th className="py-2 pr-3 font-medium">Modelo</th>
-                    <th className="py-2 pr-3 font-medium text-right">Chamadas</th>
-                    <th className="py-2 pr-3 font-medium text-right">Entrada</th>
-                    <th className="py-2 font-medium text-right">Saída</th>
+                    <th className="py-2 pr-3 font-medium">{mt("Modelo")}</th>
+                    <th className="py-2 pr-3 font-medium text-right">{mt("Chamadas")}</th>
+                    <th className="py-2 pr-3 font-medium text-right">{mt("Entrada")}</th>
+                    <th className="py-2 font-medium text-right">{mt("Saída")}</th>
                   </tr>
                 </thead>
                 <tbody>

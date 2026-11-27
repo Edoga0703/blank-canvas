@@ -255,14 +255,14 @@ export function SupportFloatingButton({ companyId }: { companyId: string | null 
 
       {open && (
         <div
-          className="fixed z-40 bg-white rounded-2xl shadow-2xl border flex flex-col overflow-hidden
+          className="fixed z-40 bg-card text-foreground rounded-2xl shadow-2xl border flex flex-col overflow-hidden
                      bottom-24 right-4 lg:bottom-24 lg:right-6
                      w-[calc(100vw-2rem)] sm:w-[380px] h-[70vh] max-h-[600px]"
           role="dialog"
           aria-label="Suporte"
         >
           {/* Header com abas Chat / Histórico */}
-          <header className="px-3 py-2.5 border-b flex items-center gap-2 shrink-0 bg-white">
+          <header className="px-3 py-2.5 border-b flex items-center gap-2 shrink-0 bg-card">
             {(view === "kb" || view === "chat" || view === "new") && (
               <button
                 onClick={() => {
@@ -281,7 +281,7 @@ export function SupportFloatingButton({ companyId }: { companyId: string | null 
               <button
                 onClick={() => { setView("home"); setActiveId(null); setArticle(null); }}
                 className={`flex-1 text-xs font-semibold py-1.5 rounded-full transition-colors ${
-                  isHelpTab ? "bg-white shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  isHelpTab ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Ajuda
@@ -289,7 +289,7 @@ export function SupportFloatingButton({ companyId }: { companyId: string | null 
               <button
                 onClick={() => { setView("list"); setArticle(null); }}
                 className={`flex-1 text-xs font-semibold py-1.5 rounded-full transition-colors flex items-center justify-center gap-1.5 ${
-                  !isHelpTab ? "bg-white shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  !isHelpTab ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Histórico
@@ -376,7 +376,7 @@ export function SupportFloatingButton({ companyId }: { companyId: string | null 
 
           {/* CHAT */}
           {view === "chat" && (
-            <div className="flex-1 min-h-0 flex flex-col bg-[#f8f9fb]">
+            <div className="flex-1 min-h-0 flex flex-col bg-background">
               <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
                 {msgsQ.isLoading ? (
                   <div className="p-4 grid place-items-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>
@@ -384,7 +384,7 @@ export function SupportFloatingButton({ companyId }: { companyId: string | null 
                   <div key={m.id} className={`flex ${m.sender_role === "user" ? "justify-end" : "justify-start"}`}>
                     <div
                       className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap ${
-                        m.sender_role === "user" ? "text-white rounded-br-sm" : "bg-white border rounded-bl-sm"
+                        m.sender_role === "user" ? "text-white rounded-br-sm" : "bg-card border rounded-bl-sm"
                       }`}
                       style={m.sender_role === "user" ? { background: "var(--brand)" } : undefined}
                     >
@@ -413,14 +413,14 @@ export function SupportFloatingButton({ companyId }: { companyId: string | null 
                 ))}
                 {adminTyping && (
                   <div className="flex justify-start">
-                    <div className="bg-white border rounded-2xl rounded-bl-sm px-3 py-2 text-xs text-muted-foreground">
+                    <div className="bg-card border rounded-2xl rounded-bl-sm px-3 py-2 text-xs text-muted-foreground">
                       suporte digitando…
                     </div>
                   </div>
                 )}
               </div>
               {activeTicket?.status === "resolvido" && !activeTicket?.csat_score && (
-                <div className="p-3 border-t bg-amber-50 shrink-0 text-center space-y-2">
+                <div className="p-3 border-t bg-amber-50 dark:bg-amber-950/30 shrink-0 text-center space-y-2">
                   <p className="text-xs font-medium">Como você avalia este atendimento?</p>
                   <div className="flex justify-center gap-1">
                     {[1, 2, 3, 4, 5].map((n) => (
@@ -449,11 +449,11 @@ export function SupportFloatingButton({ companyId }: { companyId: string | null 
                 </div>
               )}
               {activeTicket?.csat_score ? (
-                <div className="p-2 border-t bg-emerald-50 text-center text-xs text-emerald-700 shrink-0">
+                <div className="p-2 border-t bg-emerald-50 dark:bg-emerald-950/30 text-center text-xs text-emerald-700 dark:text-emerald-300 shrink-0">
                   Avaliação enviada: {activeTicket.csat_score}/5 · obrigado!
                 </div>
               ) : null}
-              <div className="p-3 border-t bg-white space-y-2 shrink-0">
+              <div className="p-3 border-t bg-card space-y-2 shrink-0">
                 {files.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {files.map((f, i) => (

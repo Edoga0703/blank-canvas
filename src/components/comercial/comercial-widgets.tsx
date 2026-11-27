@@ -26,13 +26,13 @@ export function KpiCard({
   const isHero = highlight ?? hero;
   const heading = title ?? label ?? "";
   return (
-    <div className={`rounded-2xl border border-[color:var(--hairline)] p-6 space-y-4 shadow-sm transition-all duration-200 hover:shadow-md ${isHero ? "bg-gradient-to-br from-indigo-50/50 via-white to-white ring-1 ring-[var(--brand)]/10" : "bg-white"}`}>
+    <div className={`rounded-2xl border border-[color:var(--hairline)] p-6 space-y-4 shadow-sm transition-all duration-200 hover:shadow-md ${isHero ? "bg-gradient-to-br from-indigo-50/50 via-card to-card dark:from-indigo-950/40 dark:via-card dark:to-card ring-1 ring-[var(--brand)]/10" : "bg-card"}`}>
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{heading}</p>
-          <p className="text-2xl font-black tracking-tight text-slate-900">{value}</p>
+          <p className="text-2xl font-black tracking-tight text-foreground">{value}</p>
         </div>
-        <div className={`size-12 rounded-2xl flex items-center justify-center ${isHero ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20" : "bg-slate-50 text-slate-400 border border-slate-100"}`}>
+        <div className={`size-12 rounded-2xl flex items-center justify-center ${isHero ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20" : "bg-muted text-muted-foreground border border-border"}`}>
           {icon}
         </div>
       </div>
@@ -77,27 +77,27 @@ export function MetaCard({
   const realizadoLabel = realizado ?? (typeof receitaMes === "number" ? fmtMoney(receitaMes) : formatCurrency(0));
 
   return (
-    <div className="rounded-2xl border border-[color:var(--hairline)] bg-white p-6 space-y-6 shadow-sm hover:shadow-md transition-all">
+    <div className="rounded-2xl border border-[color:var(--hairline)] bg-card p-6 space-y-6 shadow-sm hover:shadow-md transition-all">
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{cardTitle}</p>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-slate-900">{pctVal}%</span>
+            <span className="text-3xl font-black text-foreground">{pctVal}%</span>
             <span className="text-xs font-bold text-muted-foreground">{t("sales.achieved", undefined, "alcanzado")}</span>
           </div>
         </div>
         {onEdit ? (
-          <Button variant="ghost" size="icon" className="size-9 rounded-xl text-[color:var(--brand)] hover:bg-blue-50 cursor-pointer" onClick={onEdit}>
+          <Button variant="ghost" size="icon" className="size-9 rounded-xl text-[color:var(--brand)] hover:bg-accent cursor-pointer" onClick={onEdit}>
             <Target className="size-5" />
           </Button>
         ) : (
-          <div className="size-12 rounded-2xl border flex items-center justify-center text-indigo-600 bg-indigo-50 border-indigo-100">
+          <div className="size-12 rounded-2xl border flex items-center justify-center text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 border-indigo-100 dark:border-indigo-900/60">
             {icon ?? <Target className="size-6" />}
           </div>
         )}
       </div>
       <div className="space-y-2">
-        <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden p-0.5">
+        <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden p-0.5">
           <div
             className="h-full rounded-full bg-gradient-to-r from-indigo-600 to-indigo-500 transition-all duration-500"
             style={{ width: `${Math.min(Math.max(pctVal, 0), 100)}%` }}
@@ -129,20 +129,20 @@ export function MetaConfigCard({
   const effectiveVisibilidade = visibilidadeLabel || t("sales.entire_unit", undefined, "Toda la unidad");
 
   return (
-    <div className="rounded-2xl border border-[color:var(--hairline)] bg-white p-8 space-y-8 shadow-sm">
+    <div className="rounded-2xl border border-[color:var(--hairline)] bg-card p-8 space-y-8 shadow-sm">
       <div className="space-y-1">
-        <h3 className="font-bold text-lg text-slate-900">{t("sales.goal_config", undefined, "Configuración de la meta")}</h3>
+        <h3 className="font-bold text-lg text-foreground">{t("sales.goal_config", undefined, "Configuración de la meta")}</h3>
         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("sales.goal_config_subtitle", undefined, "Ajusta los parámetros de rendimiento")}</p>
       </div>
       
       <div className="space-y-6">
         <div className="flex items-center gap-4 group">
-          <div className="size-11 rounded-xl bg-slate-50 border border-slate-100 grid place-items-center text-slate-400 group-hover:text-[color:var(--brand)] group-hover:border-[color:var(--brand)]/20 transition-colors">
+          <div className="size-11 rounded-xl bg-muted border border-border grid place-items-center text-muted-foreground group-hover:text-[color:var(--brand)] group-hover:border-[color:var(--brand)]/20 transition-colors">
             <Calendar className="size-5" />
           </div>
           <div>
             <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">{t("sales.period", undefined, "Período")}</p>
-            <p className="text-xs font-bold text-slate-800 uppercase tracking-wider capitalize">{currentPeriod}</p>
+            <p className="text-xs font-bold text-foreground uppercase tracking-wider capitalize">{currentPeriod}</p>
           </div>
         </div>
 

@@ -21,6 +21,7 @@ import {
   type PluginBanner,
 } from "@/lib/plugin-banners.functions";
 import { PluginRevenueCard } from "@/components/plugins/plugin-revenue-card";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 
 export const Route = createFileRoute("/master/plugins")({
@@ -66,6 +67,7 @@ const PLANOS = ["starter", "pro", "business"];
 const STATUS = ["rascunho", "em_breve", "beta", "ativo", "descontinuado"];
 
 function PluginsPage() {
+  const { mt } = useMasterT();
   const list = useServerFn(listPluginsMaster);
   const save = useServerFn(savePlugin);
   const del = useServerFn(deletePlugin);
@@ -112,19 +114,19 @@ function PluginsPage() {
     <div className="space-y-6">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Plugins</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{mt("Plugins")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Catálogo interno de integrações. Nada aqui aparece para os clientes enquanto “Visível para clientes” estiver desligado.
+            {mt("Catálogo interno de integrações. Nada aqui aparece para os clientes enquanto “Visível para clientes” estiver desligado.")}
           </p>
         </div>
-        <Button onClick={() => setEditing({ ...empty })}><Plus className="size-4 mr-1.5" /> Novo plugin</Button>
+        <Button onClick={() => setEditing({ ...empty })}><Plus className="size-4 mr-1.5" /> {mt("Novo plugin")}</Button>
       </div>
 
       <PluginRevenueCard />
 
       <BannersManager plugins={items} />
 
-      <Input value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Buscar plugin..." className="max-w-sm" />
+      <Input value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder={mt("Buscar plugin...")} className="max-w-sm" />
 
 
       {loading ? (
@@ -132,7 +134,7 @@ function PluginsPage() {
       ) : filtered.length === 0 ? (
         <Card className="p-10 text-center text-sm text-muted-foreground">
           <Puzzle className="size-8 mx-auto mb-3 text-muted-foreground/50" />
-          Nenhum plugin encontrado.
+          {mt("Nenhum plugin encontrado.")}
         </Card>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -167,19 +169,19 @@ function PluginsPage() {
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing?.id ? "Editar plugin" : "Novo plugin"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editing?.id ? mt("Editar plugin") : mt("Novo plugin")}</DialogTitle></DialogHeader>
           {editing && (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <div><Label>Nome</Label><Input value={editing.nome ?? ""} onChange={(e) => setEditing({ ...editing, nome: e.target.value })} /></div>
+                <div><Label>{mt("Nome")}</Label><Input value={editing.nome ?? ""} onChange={(e) => setEditing({ ...editing, nome: e.target.value })} /></div>
                 <div><Label>Slug</Label><Input value={editing.slug ?? ""} onChange={(e) => setEditing({ ...editing, slug: e.target.value })} placeholder="telegram" /></div>
               </div>
-              <div><Label>Descrição</Label><Textarea rows={3} value={editing.descricao ?? ""} onChange={(e) => setEditing({ ...editing, descricao: e.target.value })} /></div>
+              <div><Label>{mt("Descrição")}</Label><Textarea rows={3} value={editing.descricao ?? ""} onChange={(e) => setEditing({ ...editing, descricao: e.target.value })} /></div>
               <div className="grid grid-cols-2 gap-3">
-                <SelectField label="Categoria" value={editing.categoria ?? "integracao"} options={CATEGORIAS} onChange={(v) => setEditing({ ...editing, categoria: v })} />
-                <SelectField label="Autenticação" value={editing.auth_tipo ?? "none"} options={AUTHS} onChange={(v) => setEditing({ ...editing, auth_tipo: v })} />
-                <SelectField label="Plano mínimo" value={editing.plano_minimo ?? "starter"} options={PLANOS} onChange={(v) => setEditing({ ...editing, plano_minimo: v })} />
-                <SelectField label="Status" value={editing.status ?? "rascunho"} options={STATUS} onChange={(v) => setEditing({ ...editing, status: v })} />
+                <SelectField label={mt("Categoria")} value={editing.categoria ?? "integracao"} options={CATEGORIAS} onChange={(v) => setEditing({ ...editing, categoria: v })} />
+                <SelectField label={mt("Autenticação")} value={editing.auth_tipo ?? "none"} options={AUTHS} onChange={(v) => setEditing({ ...editing, auth_tipo: v })} />
+                <SelectField label={mt("Plano mínimo")} value={editing.plano_minimo ?? "starter"} options={PLANOS} onChange={(v) => setEditing({ ...editing, plano_minimo: v })} />
+                <SelectField label={mt("Status")} value={editing.status ?? "rascunho"} options={STATUS} onChange={(v) => setEditing({ ...editing, status: v })} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <SelectField
@@ -211,7 +213,7 @@ function PluginsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Docs URL</Label><Input value={editing.docs_url ?? ""} onChange={(e) => setEditing({ ...editing, docs_url: e.target.value })} /></div>
-                <div><Label>Ordem</Label><Input type="number" value={editing.ordem ?? 0} onChange={(e) => setEditing({ ...editing, ordem: Number(e.target.value) })} /></div>
+                <div><Label>{mt("Ordem")}</Label><Input type="number" value={editing.ordem ?? 0} onChange={(e) => setEditing({ ...editing, ordem: Number(e.target.value) })} /></div>
               </div>
               <div><Label>Frase curta (tagline)</Label><Input value={editing.tagline ?? ""} onChange={(e) => setEditing({ ...editing, tagline: e.target.value })} placeholder="Sincronize reuniões com sua agenda" /></div>
               <div><Label>Descrição longa (uma linha = um parágrafo)</Label><Textarea rows={5} value={editing.descricao_longa ?? ""} onChange={(e) => setEditing({ ...editing, descricao_longa: e.target.value })} /></div>
@@ -242,8 +244,8 @@ function PluginsPage() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
-            <Button onClick={submit} disabled={saving}>{saving && <Loader2 className="size-4 mr-1.5 animate-spin" />}Salvar</Button>
+            <Button variant="outline" onClick={() => setEditing(null)}>{mt("Cancelar")}</Button>
+            <Button onClick={submit} disabled={saving}>{saving && <Loader2 className="size-4 mr-1.5 animate-spin" />}{mt("Salvar")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -277,6 +279,7 @@ const emptyBanner: Partial<PluginBanner> = {
 };
 
 function BannersManager({ plugins }: { plugins: Plugin[] }) {
+  const { mt } = useMasterT();
   const listB = useServerFn(listPluginBannersMaster);
   const saveB = useServerFn(savePluginBanner);
   const delB = useServerFn(deletePluginBanner);
@@ -316,20 +319,20 @@ function BannersManager({ plugins }: { plugins: Plugin[] }) {
     <Card className="p-4 space-y-4">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <div className="font-bold flex items-center gap-2"><ImageIcon className="size-4" /> Banners da loja</div>
+          <div className="font-bold flex items-center gap-2"><ImageIcon className="size-4" /> {mt("Banners da loja")}</div>
           <p className="text-xs text-muted-foreground mt-1">
             Artes rotativas exibidas no topo da loja (novidades, novos plugins, avisos). Recomendado 1600×320px.
           </p>
         </div>
         <Button size="sm" variant="outline" onClick={() => setEditing({ ...emptyBanner })}>
-          <Plus className="size-4 mr-1.5" /> Novo banner
+          <Plus className="size-4 mr-1.5" /> {mt("Novo banner")}
         </Button>
       </div>
 
       {loading ? (
         <div className="grid place-items-center py-8"><Loader2 className="size-4 animate-spin text-muted-foreground" /></div>
       ) : banners.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-4">Nenhum banner cadastrado.</p>
+        <p className="text-sm text-muted-foreground py-4">{mt("Nenhum banner cadastrado.")}</p>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {banners.map((b) => (
@@ -350,7 +353,7 @@ function BannersManager({ plugins }: { plugins: Plugin[] }) {
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing?.id ? "Editar banner" : "Novo banner"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editing?.id ? mt("Editar banner") : mt("Novo banner")}</DialogTitle></DialogHeader>
           {editing && (
             <div className="space-y-3">
               <div className="rounded-lg border bg-muted/40 p-2.5 text-[11px] text-muted-foreground leading-relaxed">
@@ -382,11 +385,11 @@ function BannersManager({ plugins }: { plugins: Plugin[] }) {
                   onChange={(e) => setEditing({ ...editing, plugin_id: e.target.value || null })}
                   className="mt-1 w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
                 >
-                  <option value="">Nenhum</option>
+                  <option value="">{mt("Nenhum")}</option>
                   {plugins.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
               </div>
-              <div><Label>Ordem</Label><Input type="number" value={editing.ordem ?? 0} onChange={(e) => setEditing({ ...editing, ordem: Number(e.target.value) })} /></div>
+              <div><Label>{mt("Ordem")}</Label><Input type="number" value={editing.ordem ?? 0} onChange={(e) => setEditing({ ...editing, ordem: Number(e.target.value) })} /></div>
               <label className="flex items-center gap-2 text-sm">
                 <Switch checked={editing.ativo ?? true} onCheckedChange={(v) => setEditing({ ...editing, ativo: v })} />
                 Ativo (exibir na loja)
@@ -394,8 +397,8 @@ function BannersManager({ plugins }: { plugins: Plugin[] }) {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
-            <Button onClick={submit} disabled={saving}>{saving && <Loader2 className="size-4 mr-1.5 animate-spin" />}Salvar</Button>
+            <Button variant="outline" onClick={() => setEditing(null)}>{mt("Cancelar")}</Button>
+            <Button onClick={submit} disabled={saving}>{saving && <Loader2 className="size-4 mr-1.5 animate-spin" />}{mt("Salvar")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -405,6 +408,7 @@ function BannersManager({ plugins }: { plugins: Plugin[] }) {
 
 
 function UploadButton({ onDone }: { onDone: (url: string) => void }) {
+  const { mt } = useMasterT();
   const [busy, setBusy] = useState(false);
 
   async function pick(file: File | null) {
@@ -441,7 +445,7 @@ function UploadButton({ onDone }: { onDone: (url: string) => void }) {
       />
       <span className="inline-flex h-9 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm cursor-pointer hover:bg-muted">
         {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-        Enviar
+        {mt("Enviar")}
       </span>
     </label>
   );

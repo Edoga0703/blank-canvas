@@ -12,6 +12,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { invalidateFeatureFlags } from "@/hooks/use-feature-flags";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 export const Route = createFileRoute("/master/feature-flags")({
   component: FeatureFlagsPage,
@@ -26,6 +27,7 @@ const ROLLOUT_META: Record<FeatureRollout, { label: string; icon: any; className
 type Company = { id: string; nome: string };
 
 function FeatureFlagsPage() {
+  const { mt } = useMasterT();
   const listFn = useServerFn(listFeatureFlags);
   const updateFn = useServerFn(updateFeatureFlag);
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
@@ -69,19 +71,19 @@ function FeatureFlagsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Feature Flags</h1>
-        <p className="text-sm text-muted-foreground">Controle interno/beta/público de cada módulo e sub-funcionalidade.</p>
+        <h1 className="text-2xl font-bold">{mt("Feature Flags")}</h1>
+        <p className="text-sm text-muted-foreground">{mt("Controle interno/beta/público de cada módulo e sub-funcionalidade.")}</p>
       </div>
 
       <div className="relative max-w-sm">
         <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Buscar..." value={q} onChange={(e) => setQ(e.target.value)} className="pl-9" />
+        <Input placeholder={mt("Buscar...")} value={q} onChange={(e) => setQ(e.target.value)} className="pl-9" />
       </div>
 
-      {loading ? <div className="text-sm text-muted-foreground">Carregando...</div> : (
+      {loading ? <div className="text-sm text-muted-foreground">{mt("Carregando...")}</div> : (
         <>
-          <Section title="Módulos" flags={filtered.modulos} companies={companies} onSet={setRollout} />
-          <Section title="Sub-funcionalidades" flags={filtered.subs} companies={companies} onSet={setRollout} />
+          <Section title={mt("Módulos")} flags={filtered.modulos} companies={companies} onSet={setRollout} />
+          <Section title={mt("Sub-funcionalidades")} flags={filtered.subs} companies={companies} onSet={setRollout} />
         </>
       )}
 
@@ -155,6 +157,7 @@ function BetaDialog({ flag, companies, onClose, onSave }: {
   flag: FeatureFlag | null; companies: Company[];
   onClose: () => void; onSave: (key: string, ids: string[]) => void | Promise<void>;
 }) {
+  const { mt } = useMasterT();
   const [selected, setSelected] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   useEffect(() => { setSelected(flag?.beta_company_ids ?? []); setSearch(""); }, [flag]);
@@ -171,7 +174,7 @@ function BetaDialog({ flag, companies, onClose, onSave }: {
         <DialogHeader>
           <DialogTitle>Beta — {flag.nome}</DialogTitle>
         </DialogHeader>
-        <Input placeholder="Buscar empresa..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Input placeholder={mt("Buscar empresa...")} value={search} onChange={(e) => setSearch(e.target.value)} />
         <div className="max-h-72 overflow-y-auto space-y-1 border rounded-md p-2">
           {list.map((c) => {
             const on = selected.includes(c.id);
@@ -186,11 +189,11 @@ function BetaDialog({ flag, companies, onClose, onSave }: {
               </label>
             );
           })}
-          {!list.length && <div className="text-xs text-muted-foreground p-2">Nenhuma empresa</div>}
+          {!list.length && <div className="text-xs text-muted-foreground p-2">{mt("Nenhuma empresa")}</div>}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={() => onSave(flag.key, selected)}>Salvar</Button>
+          <Button variant="outline" onClick={onClose}>{mt("Cancelar")}</Button>
+          <Button onClick={() => onSave(flag.key, selected)}>{mt("Salvar")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

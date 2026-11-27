@@ -23,22 +23,26 @@ import { toast } from "sonner";
 import { useMasterAlerts } from "@/hooks/use-master-alerts";
 import { MasterAlertsBell } from "@/components/master/alerts-bell";
 import type { MasterAlertGroup } from "@/lib/master-alerts.functions";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 
 export const Route = createFileRoute("/master")({
   ssr: false,
   beforeLoad: async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session?.user) {
+      throw redirect({ to: "/entrar", search: { modo: "login" } });
+    }
     let authResult: Awaited<ReturnType<typeof supabase.auth.getUser>>;
     try {
       authResult = await supabase.auth.getUser();
-    } catch (cause) {
-      throw cause instanceof Error
-        ? cause
-        : new Error("Não foi possível validar a sessão administrativa");
+    } catch {
+      throw redirect({ to: "/entrar", search: { modo: "login" } });
     }
     const { data: u, error: authError } = authResult;
-    if (authError) throw new Error(authError.message || "Não foi possível validar a sessão administrativa");
-    if (!u.user) throw redirect({ to: "/entrar" });
+    if (authError || !u.user) throw redirect({ to: "/entrar", search: { modo: "login" } });
     const { data: roles, error: rolesError } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id);
     if (rolesError) throw new Error(rolesError.message || "Não foi possível validar as permissões administrativas");
     const isSuper = (roles ?? []).some((r: any) => r.role === "super_admin");
@@ -97,6 +101,7 @@ const mobileItems: MobileNavItem[] = [
 
 
 function MasterLayout() {
+  const { mt } = useMasterT();
   const loc = useLocation();
   const ctx = Route.useRouteContext() as any;
   const email: string | null = ctx?.user?.email ?? null;
@@ -119,37 +124,39 @@ function MasterLayout() {
 
   async function signOut() {
     await supabase.auth.signOut();
-    toast.success("Sessão encerrada");
+    toast.success(mt("Sessão encerrada"));
     window.location.href = "/entrar";
   }
 
   const width = collapsed ? "w-[76px]" : "w-[248px]";
+  const localizedMobileItems: MobileNavItem[] = mobileItems.map((it) => ({ ...it, label: mt(it.label) }));
 
   return (
     <div className="h-screen overflow-hidden flex flex-col bg-background text-foreground">
       {/* Mobile top bar */}
-      <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between gap-3 px-4 py-3 text-white" style={{ background: "#214AC4" }}>
+      <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between gap-2 px-4 py-3 text-white" style={{ background: "#214AC4" }}>
         <div className="flex items-center min-w-0">
-          <img src={logoFull.url} alt={brand.name} className="h-7 w-auto object-contain" />
+          <img src={logoFull.url} alt={brand.name} className="h-7 w-auto object-contain brightness-0 invert" />
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           <span className="hidden xs:flex items-center gap-1.5 text-[11.5px] font-semibold px-2.5 py-1 rounded-full bg-white/15">
-            <Shield className="size-3.5" /> Master
+            <Shield className="size-3.5" /> {mt("Master")}
           </span>
           <Link
             to="/app/dashboard"
-            title="Voltar ao app"
-            className="h-9 px-2.5 flex items-center gap-1.5 rounded-lg text-[12px] font-medium text-white/85 hover:text-white hover:bg-white/10"
+            title={mt("Voltar ao app")}
+            className="h-9 px-2 flex items-center gap-1.5 rounded-lg text-[12px] font-medium text-white/85 hover:text-white hover:bg-white/10"
           >
             <ArrowLeft className="size-[18px]" />
-            <span className="hidden sm:inline">Voltar ao app</span>
+            <span className="hidden sm:inline">{mt("Voltar ao app")}</span>
           </Link>
+          <ThemeToggle className="bg-white/10 text-white hover:bg-white/20 hover:text-white" />
+          <LanguageSwitcher variant="compact" className="text-white hover:bg-white/10" />
           <MasterAlertsBell state={alertsState} />
 
           <button
             onClick={signOut}
-
-            title="Sair"
+            title={mt("Sair")}
             className="size-9 grid place-items-center rounded-lg text-white/80 hover:text-white hover:bg-white/10"
           >
             <LogOut className="size-[18px]" />
@@ -168,13 +175,13 @@ function MasterLayout() {
               <img
                 src={collapsed ? "/favicon.png" : logoFull.url}
                 alt={brand.name}
-                className={`${collapsed ? "size-9" : "h-9"} w-auto object-contain`}
+                className={`${collapsed ? "size-9" : "h-9 brightness-0 invert"} w-auto object-contain`}
               />
             </div>
             {!collapsed && (
               <button
                 onClick={() => setCollapsed(true)}
-                title="Recolher menu"
+                title={mt("Recolher menu")}
                 className="size-8 grid place-items-center rounded-lg text-white/80 hover:text-white hover:bg-white/10 shrink-0"
               >
                 <ChevronsLeft className="size-[18px]" />
@@ -184,7 +191,7 @@ function MasterLayout() {
           {collapsed && (
             <button
               onClick={() => setCollapsed(false)}
-              title="Expandir menu"
+              title={mt("Expandir menu")}
               className="mx-auto mt-2 size-8 grid place-items-center rounded-lg text-white/80 hover:text-white hover:bg-white/10"
             >
               <ChevronsRight className="size-[18px]" />
@@ -194,7 +201,7 @@ function MasterLayout() {
           <div className={`px-3 pt-3 flex items-center ${collapsed ? "justify-center" : "justify-between"} gap-2`}>
             {!collapsed && (
               <div className="flex items-center gap-2 text-[11.5px] font-semibold px-3 py-1.5 rounded-full bg-white/15 text-white w-fit">
-                <Shield className="size-3.5" /> Modo super admin
+                <Shield className="size-3.5" /> {mt("Modo super admin")}
               </div>
             )}
             <MasterAlertsBell state={alertsState} />
@@ -206,7 +213,7 @@ function MasterLayout() {
                 <div key={section.title} className="flex flex-col gap-[3px] mb-2">
                   {!collapsed && (
                     <div className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-[.12em] text-white/45">
-                      {section.title}
+                      {mt(section.title)}
                     </div>
                   )}
                   {collapsed && <div className="h-px bg-white/10 mx-2 my-1.5" />}
@@ -222,18 +229,19 @@ function MasterLayout() {
                 const badge = urgent || info;
 
                 const Icon = item.icon;
+                const label = mt(item.label);
                 return (
                   <Link
                     key={item.to}
                     to={item.to}
                     preload="intent"
-                    title={collapsed ? item.label : undefined}
+                    title={collapsed ? label : undefined}
                     className={`group relative flex items-center ${collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2"} rounded-lg text-[13.5px] font-medium whitespace-nowrap transition-colors ${
-                      active ? "bg-white text-[color:var(--brand-text)] shadow-sm" : "text-white hover:bg-white/10"
+                      active ? "bg-white text-[#214AC4] shadow-sm font-semibold" : "text-white hover:bg-white/10"
                     }`}
                   >
                     <Icon className="size-[17px] shrink-0" strokeWidth={active ? 2.2 : 1.9} />
-                    {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+                    {!collapsed && <span className="flex-1 truncate">{label}</span>}
                     {badge > 0 && (
                       <span
                         className={`${collapsed ? "absolute top-1 right-2 size-2 p-0" : "min-w-[18px] h-[18px] px-1 text-[10px]"} grid place-items-center rounded-full font-bold leading-none text-white ${
@@ -254,15 +262,23 @@ function MasterLayout() {
 
             <Link
               to="/app/dashboard"
-              title={collapsed ? "Voltar ao app" : undefined}
+              title={collapsed ? mt("Voltar ao app") : undefined}
               className={`flex items-center ${collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2"} rounded-lg text-[13px] text-white/80 hover:text-white hover:bg-white/10 transition-colors`}
             >
               <ArrowLeft className="size-[17px] shrink-0" />
-              {!collapsed && <span className="truncate">Voltar ao app</span>}
+              {!collapsed && <span className="truncate">{mt("Voltar ao app")}</span>}
             </Link>
           </nav>
 
-          <div className="p-3 border-t border-white/10">
+          <div className="p-3 border-t border-white/10 space-y-2.5">
+            <div className={`flex ${collapsed ? "flex-col items-center gap-1.5" : "items-center gap-1.5"}`}>
+              <LanguageSwitcher
+                variant={collapsed ? "compact" : "segmented"}
+                className={collapsed ? "text-white hover:bg-white/10" : "flex-1 justify-center bg-white/10 border-white/15"}
+              />
+              <ThemeToggle className="bg-white/10 text-white hover:bg-white/20 hover:text-white size-8 rounded-xl" />
+            </div>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -299,17 +315,20 @@ function MasterLayout() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/app/dashboard"><ArrowLeft className="size-4 mr-2" />Voltar ao app</Link>
+                  <Link to="/app/dashboard"><ArrowLeft className="size-4 mr-2" />{mt("Voltar ao app")}</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/master/perfil"><Shield className="size-4 mr-2" />Meu perfil</Link>
+                  <Link to="/master/perfil"><Shield className="size-4 mr-2" />{mt("Meu perfil")}</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/master/sistema"><Settings className="size-4 mr-2" />Sistema</Link>
+                  <Link to="/master/sistema"><Settings className="size-4 mr-2" />{mt("Sistema")}</Link>
                 </DropdownMenuItem>
+                <div className="px-1 py-0.5">
+                  <ThemeToggle variant="menu" />
+                </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
-                  <LogOut className="size-4 mr-2" />Sair
+                  <LogOut className="size-4 mr-2" />{mt("Sair")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -328,7 +347,7 @@ function MasterLayout() {
         </div>
       </div>
 
-      <MobileBottomNav items={mobileItems} accent="#ffffff" />
+      <MobileBottomNav items={localizedMobileItems} />
     </div>
   );
 }

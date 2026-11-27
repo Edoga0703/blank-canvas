@@ -17,6 +17,7 @@ import {
 import { BillingPanel } from "@/components/master/billing-panel";
 import { ChargesPanel } from "@/components/master/charges-panel";
 import { RevenueProjectionPanel } from "@/components/master/revenue-projection-panel";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 export const Route = createFileRoute("/master/financeiro")({
   head: () => ({
@@ -48,13 +49,14 @@ const brl = (cents: number) =>
 const dataBr = (v?: string | null) => (v ? new Date(v).toLocaleDateString("pt-BR") : "—");
 
 function FinanceiroPage() {
+  const { mt } = useMasterT();
   const [tab, setTab] = useState<Tab>("visao");
 
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-display text-[26px] leading-tight tracking-tight">Financeiro</h1>
-        <p className="text-sm text-muted-foreground">Receita recorrente, clientes pagantes, faturas e cobrança.</p>
+        <h1 className="font-display text-[26px] leading-tight tracking-tight">{mt("Financeiro")}</h1>
+        <p className="text-sm text-muted-foreground">{mt("Receita recorrente, clientes pagantes, faturas e cobrança.")}</p>
       </div>
 
       <div className="flex items-center gap-1 border-b border-[color:var(--hairline)] overflow-x-auto no-scrollbar">
@@ -85,8 +87,8 @@ function FinanceiroPage() {
         <div className="space-y-8">
           <ChargesPanel />
           <div className="pt-2 border-t border-[color:var(--hairline)]">
-            <h2 className="text-sm font-semibold mt-4">Eventos dos provedores</h2>
-            <p className="text-[12px] text-muted-foreground mb-3">Webhooks recebidos — reprocesse os que falharam.</p>
+            <h2 className="text-sm font-semibold mt-4">{mt("Eventos dos provedores")}</h2>
+            <p className="text-[12px] text-muted-foreground mb-3">{mt("Webhooks recebidos — reprocesse os que falharam.")}</p>
             <BillingPanel />
           </div>
         </div>
@@ -98,6 +100,7 @@ function FinanceiroPage() {
 /* ------------------------------- Visão geral ------------------------------- */
 
 function VisaoGeral() {
+  const { mt } = useMasterT();
   const load = useServerFn(financeOverview);
   const [d, setD] = useState<any | null>(null);
 
@@ -141,7 +144,7 @@ function VisaoGeral() {
   return (
     <div className="space-y-5">
       <div className="flex justify-end">
-        <Button variant="outline" size="sm" onClick={reload}><RefreshCw className="size-3.5 mr-1" />Atualizar</Button>
+        <Button variant="outline" size="sm" onClick={reload}><RefreshCw className="size-3.5 mr-1" />{mt("Atualizar")}</Button>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -176,12 +179,12 @@ function VisaoGeral() {
       <div className="grid lg:grid-cols-[1.6fr_1fr] gap-3">
         <Card className="p-4 rounded-2xl border-[color:var(--hairline)]">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold">Faturamento (6 meses)</h2>
+            <h2 className="text-sm font-semibold">{mt("Faturamento (6 meses)")}</h2>
             <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
               <span className="flex items-center gap-1">
-                <i className="size-2 rounded-full" style={{ background: "var(--brand)" }} /> Recebido
+                <i className="size-2 rounded-full" style={{ background: "var(--brand)" }} /> {mt("Recebido")}
               </span>
-              <span className="flex items-center gap-1"><i className="size-2 rounded-full bg-amber-400" /> Reembolsos</span>
+              <span className="flex items-center gap-1"><i className="size-2 rounded-full bg-amber-400" /> {mt("Reembolsos")}</span>
             </div>
           </div>
           <div className="mt-5 flex items-end gap-2 sm:gap-4 h-44">
@@ -219,10 +222,10 @@ function VisaoGeral() {
         <Card className="p-4 rounded-2xl border-[color:var(--hairline)]">
           <div className="flex items-center gap-2">
             <CalendarClock className="size-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Próximos vencimentos</h2>
+            <h2 className="text-sm font-semibold">{mt("Próximos vencimentos")}</h2>
           </div>
           {!d.proximosVencimentos?.length ? (
-            <p className="mt-3 text-sm text-muted-foreground">Nenhum vencimento nos próximos 30 dias.</p>
+            <p className="mt-3 text-sm text-muted-foreground">{mt("Nenhum vencimento nos próximos 30 dias.")}</p>
           ) : (
             <div className="mt-1 divide-y divide-[color:var(--hairline)]">
               {d.proximosVencimentos.map((v: any) => (
@@ -245,10 +248,10 @@ function VisaoGeral() {
         <Card className="p-4 rounded-2xl border-red-200 bg-red-50/40">
           <div className="flex items-center gap-2 text-red-700">
             <AlertTriangle className="size-4" />
-            <h2 className="text-sm font-semibold">Fora da receita recorrente (ciclo vencido)</h2>
+            <h2 className="text-sm font-semibold">{mt("Fora da receita recorrente (ciclo vencido)")}</h2>
           </div>
           <p className="text-[12px] text-red-700/80 mt-0.5">
-            Continuam marcadas como ativas, mas o ciclo já venceu — não entram no cálculo do MRR.
+            {mt("Continuam marcadas como ativas, mas o ciclo já venceu — não entram no cálculo do MRR.")}
           </p>
           <div className="mt-2 divide-y divide-red-200/70">
             {d.vencidas.map((v: any) => (
@@ -264,19 +267,20 @@ function VisaoGeral() {
       )}
 
       <div className="grid md:grid-cols-2 gap-3">
-        <BreakdownCard title="Receita por plano" rows={d.receitaPorPlano} total={d.planoMrr} />
-        <BreakdownCard title="Receita por upgrade" rows={d.receitaPorAddon} total={d.addonMrr} />
+        <BreakdownCard title={mt("Receita por plano")} rows={d.receitaPorPlano} total={d.planoMrr} />
+        <BreakdownCard title={mt("Receita por upgrade")} rows={d.receitaPorAddon} total={d.addonMrr} />
       </div>
     </div>
   );
 }
 
 function BreakdownCard({ title, rows, total }: { title: string; rows: any[]; total: number }) {
+  const { mt } = useMasterT();
   return (
     <Card className="p-4 rounded-2xl border-[color:var(--hairline)]">
       <h2 className="text-sm font-semibold">{title}</h2>
       {!rows?.length ? (
-        <p className="mt-2 text-sm text-muted-foreground">Nada por aqui ainda.</p>
+        <p className="mt-2 text-sm text-muted-foreground">{mt("Nada por aqui ainda.")}</p>
       ) : (
         <div className="mt-2 space-y-3">
           {rows.map((p: any) => {
@@ -311,6 +315,7 @@ const SITUACAO: Record<string, { label: string; cls: string }> = {
 };
 
 function ClientesPagantes() {
+  const { mt } = useMasterT();
   const load = useServerFn(listPayingCustomers);
   const [rows, setRows] = useState<any[] | null>(null);
   const [q, setQ] = useState("");
@@ -352,15 +357,15 @@ function ClientesPagantes() {
       <div className="flex flex-col md:flex-row md:items-center gap-2">
         <div className="relative w-full md:w-[260px]">
           <Search className="size-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar cliente…" className="pl-8 h-9" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={mt("Buscar cliente…")} className="pl-8 h-9" />
         </div>
         <div className="flex items-center gap-2 md:ml-auto text-sm text-muted-foreground flex-wrap">
-          <span>Recorrência: <b className="text-foreground">{brl(mrr)}</b></span>
-          <span>• Já pago: <b className="text-foreground">{brl(totalPago)}</b></span>
+          <span>{mt("Recorrência:")} <b className="text-foreground">{brl(mrr)}</b></span>
+          <span>{mt("• Já pago:")} <b className="text-foreground">{brl(totalPago)}</b></span>
           <Button variant="outline" size="sm" onClick={exportCsv} disabled={!filtered.length}>
             <Download className="size-3.5 mr-1" />CSV
           </Button>
-          <Button variant="outline" size="sm" onClick={reload}><RefreshCw className="size-3.5 mr-1" />Atualizar</Button>
+          <Button variant="outline" size="sm" onClick={reload}><RefreshCw className="size-3.5 mr-1" />{mt("Atualizar")}</Button>
         </div>
       </div>
 
@@ -395,13 +400,13 @@ function ClientesPagantes() {
               <table className="w-full text-sm">
                 <thead className="bg-muted/40 text-[12px] text-muted-foreground">
                   <tr>
-                    <th className="text-left font-medium px-4 py-2.5">Cliente</th>
-                    <th className="text-left font-medium px-4 py-2.5">Plano</th>
-                    <th className="text-right font-medium px-4 py-2.5">Mensalidade</th>
-                    <th className="text-left font-medium px-4 py-2.5">Cobrança</th>
-                    <th className="text-left font-medium px-4 py-2.5">Próx. vencimento</th>
-                    <th className="text-right font-medium px-4 py-2.5">Total pago</th>
-                    <th className="text-left font-medium px-4 py-2.5">Último pgto.</th>
+                    <th className="text-left font-medium px-4 py-2.5">{mt("Cliente")}</th>
+                    <th className="text-left font-medium px-4 py-2.5">{mt("Plano")}</th>
+                    <th className="text-right font-medium px-4 py-2.5">{mt("Mensalidade")}</th>
+                    <th className="text-left font-medium px-4 py-2.5">{mt("Cobrança")}</th>
+                    <th className="text-left font-medium px-4 py-2.5">{mt("Próx. vencimento")}</th>
+                    <th className="text-right font-medium px-4 py-2.5">{mt("Total pago")}</th>
+                    <th className="text-left font-medium px-4 py-2.5">{mt("Último pgto.")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[color:var(--hairline)]">
@@ -460,6 +465,7 @@ const STATUS_STYLE: Record<string, string> = {
 const FILTERS = ["todos", "pago", "aguardando", "falhou", "reembolsado", "chargeback", "cancelado"];
 
 function Faturas() {
+  const { mt } = useMasterT();
   const load = useServerFn(listMasterInvoices);
   const [rows, setRows] = useState<any[] | null>(null);
   const [status, setStatus] = useState("todos");
@@ -507,7 +513,7 @@ function Faturas() {
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && setBusca(q)}
             onBlur={() => setBusca(q)}
-            placeholder="Buscar por e-mail…"
+            placeholder={mt("Buscar por e-mail…")}
             className="pl-8 h-9 w-full md:w-[240px]"
           />
         </div>
@@ -519,11 +525,11 @@ function Faturas() {
           ))}
         </div>
         <div className="flex items-center gap-2 md:ml-auto">
-          <span className="text-sm text-muted-foreground truncate">Pago: <b className="text-foreground">{brl(total)}</b></span>
+          <span className="text-sm text-muted-foreground truncate">{mt("Pago:")} <b className="text-foreground">{brl(total)}</b></span>
           <Button variant="outline" size="sm" onClick={exportCsv} disabled={!rows?.length} className="ml-auto md:ml-0">
             <Download className="size-3.5 mr-1" />CSV
           </Button>
-          <Button variant="outline" size="sm" onClick={reload}><RefreshCw className="size-3.5 mr-1" />Atualizar</Button>
+          <Button variant="outline" size="sm" onClick={reload}><RefreshCw className="size-3.5 mr-1" />{mt("Atualizar")}</Button>
         </div>
       </div>
 
@@ -560,11 +566,11 @@ function Faturas() {
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-[12px] text-muted-foreground">
                 <tr>
-                  <th className="text-left font-medium px-4 py-2.5">Data</th>
-                  <th className="text-left font-medium px-4 py-2.5">Cliente</th>
-                  <th className="text-left font-medium px-4 py-2.5">Provedor</th>
-                  <th className="text-left font-medium px-4 py-2.5">Status</th>
-                  <th className="text-right font-medium px-4 py-2.5">Valor</th>
+                  <th className="text-left font-medium px-4 py-2.5">{mt("Data")}</th>
+                  <th className="text-left font-medium px-4 py-2.5">{mt("Cliente")}</th>
+                  <th className="text-left font-medium px-4 py-2.5">{mt("Provedor")}</th>
+                  <th className="text-left font-medium px-4 py-2.5">{mt("Status")}</th>
+                  <th className="text-right font-medium px-4 py-2.5">{mt("Valor")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[color:var(--hairline)]">
@@ -602,6 +608,7 @@ function Faturas() {
 /* ------------------------------ Inadimplência ------------------------------ */
 
 function Inadimplencia() {
+  const { mt } = useMasterT();
   const load = useServerFn(listDelinquent);
   const suspend = useServerFn(suspendCompanyBilling);
   const [rows, setRows] = useState<any[] | null>(null);
@@ -630,9 +637,9 @@ function Inadimplencia() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-sm text-muted-foreground">
-          {rows.length} cliente(s) em atraso • Recorrência em risco <b className="text-foreground">{brl(totalEmRisco)}</b>
+          {rows.length} {mt("cliente(s) em atraso • Recorrência em risco")} <b className="text-foreground">{brl(totalEmRisco)}</b>
         </p>
-        <Button variant="outline" size="sm" onClick={reload}><RefreshCw className="size-3.5 mr-1" />Atualizar</Button>
+        <Button variant="outline" size="sm" onClick={reload}><RefreshCw className="size-3.5 mr-1" />{mt("Atualizar")}</Button>
       </div>
 
       <Card className="rounded-2xl border-[color:var(--hairline)] overflow-hidden">

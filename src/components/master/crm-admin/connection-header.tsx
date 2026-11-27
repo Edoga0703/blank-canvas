@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Plug, ExternalLink, MessageCircle } from "lucide-react";
 import type { AdminCrmStatus } from "@/lib/admin-crm.functions";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 type Props = {
   workspace: AdminCrmStatus["workspace"];
@@ -13,6 +14,7 @@ type Props = {
 const OK = ["connected", "open", "conectado"];
 
 export function ConnectionHeader({ workspace, busy, onCreate }: Props) {
+  const { mt } = useMasterT();
   const conexao = workspace?.conexao ?? null;
   const conectado = !!conexao && OK.includes(conexao.status.toLowerCase());
 
@@ -30,14 +32,14 @@ export function ConnectionHeader({ workspace, busy, onCreate }: Props) {
     return (
       <Card className="p-4 space-y-3">
         <div className="flex items-center gap-2 font-medium">
-          <Plug className="h-4 w-4" /> Espaço comercial interno
+          <Plug className="h-4 w-4" /> {mt("Espaço comercial interno")}
         </div>
         <p className="text-sm text-muted-foreground">
           Crie o espaço interno para usar o CRM com o seu WhatsApp comercial. Ele funciona como uma
           conta de cliente, só que visível apenas para você.
         </p>
         <Button disabled={busy === "ws"} onClick={onCreate}>
-          {busy === "ws" && <Loader2 className="h-4 w-4 animate-spin" />} Criar espaço interno
+          {busy === "ws" && <Loader2 className="h-4 w-4 animate-spin" />} {mt("Criar espaço interno")}
         </Button>
       </Card>
     );
@@ -59,7 +61,7 @@ export function ConnectionHeader({ workspace, busy, onCreate }: Props) {
                 {conexao.instance_name} · {conexao.status}
               </Badge>
             ) : (
-              <Badge variant="destructive">sem número conectado</Badge>
+              <Badge variant="destructive">{mt("sem número conectado")}</Badge>
             )}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
@@ -72,13 +74,13 @@ export function ConnectionHeader({ workspace, busy, onCreate }: Props) {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => abrirCrm("/app/conexao")}>
-            <Plug className="h-4 w-4" /> Conexões
+            <Plug className="h-4 w-4" /> {mt("Conexões")}
           </Button>
           <Button variant="outline" size="sm" onClick={() => abrirCrm("/app/conversas")}>
-            <MessageCircle className="h-4 w-4" /> Conversas
+            <MessageCircle className="h-4 w-4" /> {mt("Conversas")}
           </Button>
           <Button size="sm" onClick={() => abrirCrm("/app/crm")}>
-            <ExternalLink className="h-4 w-4" /> Abrir meu CRM comercial
+            <ExternalLink className="h-4 w-4" /> {mt("Abrir meu CRM comercial")}
           </Button>
         </div>
       </div>

@@ -1021,7 +1021,7 @@ function AgentePage() {
   );
 
   if (loading && agents.length === 0) return (
-    <div className="flex h-screen items-center justify-center bg-[#F4F5F9]">
+    <div className="flex h-screen items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-4">
         <Loader2 className="size-8 animate-spin text-[var(--brand)]" />
         <p className="text-sm text-muted-foreground animate-pulse">Carregando Studio...</p>
@@ -1365,10 +1365,10 @@ function AgentePage() {
                   </div>
 
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="p-4 rounded-xl border border-[var(--border)] bg-white space-y-2">
+                    <div className="p-4 rounded-xl border border-[var(--border)] bg-card space-y-2">
                       <div className="flex items-center justify-between">
-                        <div className="size-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                          <FileText className="size-4 text-blue-600" />
+                        <div className="size-8 rounded-lg bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center">
+                          <FileText className="size-4 text-blue-600 dark:text-blue-400" />
                         </div>
                         <span className="text-lg font-bold">
                           {(Array.isArray(cfg?.knowledge_files) ? cfg.knowledge_files.length : 0) + (livre?.trim() ? 1 : 0) + (Array.isArray(cfg?.produtos_servicos) ? cfg.produtos_servicos.length : 0)}
@@ -1376,19 +1376,19 @@ function AgentePage() {
                       </div>
                       <p className="text-[11px] text-muted-foreground uppercase font-semibold">{t("ai.linked_sources", undefined, "Fuentes vinculadas")}</p>
                     </div>
-                    <div className="p-4 rounded-xl border border-[var(--border)] bg-white space-y-2">
+                    <div className="p-4 rounded-xl border border-[var(--border)] bg-card space-y-2">
                       <div className="flex items-center justify-between">
-                        <div className="size-8 rounded-lg bg-green-50 flex items-center justify-center">
-                          <Zap className="size-4 text-green-600" />
+                        <div className="size-8 rounded-lg bg-green-50 dark:bg-green-950/50 flex items-center justify-center">
+                          <Zap className="size-4 text-green-600 dark:text-green-400" />
                         </div>
-                        <span className="text-[10px] text-green-600 font-medium">{t("ai.updated_now", undefined, "Actualizado ahora")}</span>
+                        <span className="text-[10px] text-green-600 dark:text-green-400 font-medium">{t("ai.updated_now", undefined, "Actualizado ahora")}</span>
                       </div>
                       <p className="text-[11px] text-muted-foreground uppercase font-semibold">{t("ai.status", undefined, "Estado")}</p>
                     </div>
-                    <div className="p-4 rounded-xl border border-[var(--border)] bg-white space-y-2">
+                    <div className="p-4 rounded-xl border border-[var(--border)] bg-card space-y-2">
                       <div className="flex items-center justify-between">
-                        <div className="size-8 rounded-lg bg-purple-50 flex items-center justify-center">
-                          <CheckCircle2 className="size-4 text-purple-600" />
+                        <div className="size-8 rounded-lg bg-purple-50 dark:bg-purple-950/50 flex items-center justify-center">
+                          <CheckCircle2 className="size-4 text-purple-600 dark:text-purple-400" />
                         </div>
                         <span className="text-lg font-bold">100%</span>
                       </div>
@@ -1408,7 +1408,7 @@ function AgentePage() {
                           />
                         </div>
                       </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-2 p-4 rounded-xl border border-[var(--border)] bg-white space-y-4">
+                      <CollapsibleContent className="mt-2 p-4 rounded-xl border border-[var(--border)] bg-card space-y-4">
                         <div className="space-y-2">
                           <Label>Conhecimento Geral e Regras</Label>
                           <Textarea 
@@ -1433,7 +1433,7 @@ function AgentePage() {
                           />
                         </div>
                       </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-2 p-4 rounded-xl border border-[var(--border)] bg-white space-y-4">
+                      <CollapsibleContent className="mt-2 p-4 rounded-xl border border-[var(--border)] bg-card space-y-4">
                         <div className="flex items-center justify-between gap-4">
                           <div>
                             <p className="text-sm font-semibold">{language === "es" ? "Consultar y recomendar catálogo" : "Consultar e recomendar catálogo"}</p>
@@ -1466,7 +1466,7 @@ function AgentePage() {
                           />
                         </div>
                       </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-2 p-4 rounded-xl border border-[var(--border)] bg-white space-y-4">
+                      <CollapsibleContent className="mt-2 p-4 rounded-xl border border-[var(--border)] bg-card space-y-4">
                         <div>
                           <p className="text-sm font-semibold">Movimentação Inteligente no Kanban</p>
                           <p className="text-xs text-muted-foreground">A IA analisa o diálogo em tempo real e avança o contato automaticamente conforme a intenção do cliente.</p>
@@ -1519,9 +1519,9 @@ function AgentePage() {
                       </div>
                     )}
                     {(Array.isArray(cfg?.knowledge_files) ? cfg.knowledge_files : []).map((file: any) => (
-                      <div key={file.path} className="flex items-center justify-between p-3 rounded-xl border border-[var(--border)] bg-white group">
+                      <div key={file.path} className="flex items-center justify-between p-3 rounded-xl border border-[var(--border)] bg-card group">
                         <div className="flex items-center gap-3">
-                          <div className="size-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                          <div className="size-8 rounded-lg bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center text-blue-600 dark:text-blue-400">
                             <FileText className="size-4" />
                           </div>
                           <div>
@@ -2061,11 +2061,11 @@ function AgentePage() {
                 <TabsContent value="canais" className="mt-0 space-y-6">
                   <Section title={language === "es" ? "Conectar Canales de Atención" : "Conectar Canais de Atendimento"}>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="p-4 rounded-xl border border-[var(--border)] bg-white space-y-4">
+                      <div className="p-4 rounded-xl border border-[var(--border)] bg-card space-y-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="size-10 rounded-lg bg-green-50 flex items-center justify-center">
-                              <Zap className="size-5 text-green-600" />
+                            <div className="size-10 rounded-lg bg-green-50 dark:bg-green-950/50 flex items-center justify-center">
+                              <Zap className="size-5 text-green-600 dark:text-green-400" />
                             </div>
                             <div>
                               <h4 className="text-sm font-bold">WhatsApp</h4>
@@ -2076,11 +2076,11 @@ function AgentePage() {
                         </div>
                         <Button variant="outline" size="sm" className="w-full text-xs" asChild><Link to="/app/conexao">{language === "es" ? "Gestionar conexiones" : "Gerenciar conexões"}</Link></Button>
                       </div>
-                      <div className="p-4 rounded-xl border border-[var(--border)] bg-white space-y-4">
+                      <div className="p-4 rounded-xl border border-[var(--border)] bg-card space-y-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="size-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                              <Share2 className="size-5 text-blue-600" />
+                            <div className="size-10 rounded-lg bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center">
+                              <Share2 className="size-5 text-blue-600 dark:text-blue-400" />
                             </div>
                             <div>
                               <h4 className="text-sm font-bold">Instagram Direct</h4>
@@ -2091,11 +2091,11 @@ function AgentePage() {
                         </div>
                         <Button variant="outline" size="sm" className="w-full text-xs" asChild><Link to="/app/conexao" search={{ tab: "instagram" }}>{language === "es" ? "Configurar canal" : "Configurar canal"}</Link></Button>
                       </div>
-                      <div className="p-4 rounded-xl border border-[var(--border)] bg-white space-y-4">
+                      <div className="p-4 rounded-xl border border-[var(--border)] bg-card space-y-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="size-10 rounded-lg bg-sky-50 flex items-center justify-center">
-                              <Send className="size-5 text-sky-600" />
+                            <div className="size-10 rounded-lg bg-sky-50 dark:bg-sky-950/50 flex items-center justify-center">
+                              <Send className="size-5 text-sky-600 dark:text-sky-400" />
                             </div>
                             <div>
                               <h4 className="text-sm font-bold">Telegram</h4>
@@ -2123,7 +2123,7 @@ function AgentePage() {
                           else if (val === "anthropic") setAiModel("claude-3-5-sonnet-latest");
                           else setAiModel("gemini-3.5-flash-lite");
                         }}>
-                          <SelectTrigger className="bg-white">
+                          <SelectTrigger className="bg-background">
                             <SelectValue placeholder={language === "es" ? "Selecciona el proveedor" : "Selecione o provedor"} />
                           </SelectTrigger>
                           <SelectContent>
@@ -2139,7 +2139,7 @@ function AgentePage() {
                       <div className="space-y-1.5">
                         <Label>{language === "es" ? "Modelo de Lenguaje (LLM)" : "Modelo de Linguagem (LLM)"}</Label>
                         <Select value={aiModel} onValueChange={setAiModel}>
-                          <SelectTrigger className="bg-white">
+                          <SelectTrigger className="bg-background">
                             <SelectValue placeholder={language === "es" ? "Selecciona el modelo" : "Selecione o modelo"} />
                           </SelectTrigger>
                           <SelectContent>
@@ -2221,13 +2221,13 @@ function AgentePage() {
                               value={servicosAgendaveis}
                               onChange={(e) => setServicosAgendaveis(e.target.value)}
                               placeholder="Ex: Demonstração do CRM, Consultoria de Vendas"
-                              className="bg-white text-xs"
+                              className="bg-background text-xs"
                             />
                           </div>
                           <div className="space-y-1.5">
                             <Label className="text-xs">{language === "es" ? "Duración estándar de la reunión" : "Duração padrão da reunião"}</Label>
                             <Select value={duracaoPadrao} onValueChange={setDuracaoPadrao}>
-                              <SelectTrigger className="bg-white text-xs"><SelectValue /></SelectTrigger>
+                              <SelectTrigger className="bg-background text-xs"><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="15 min">15 {language === "es" ? "minutos" : "minutos"}</SelectItem>
                                 <SelectItem value="30 min">30 {language === "es" ? "minutos (Recomendado)" : "minutos (Recomendado)"}</SelectItem>
@@ -2245,7 +2245,7 @@ function AgentePage() {
                               value={horariosDisponiveis}
                               onChange={(e) => setHorariosDisponiveis(e.target.value)}
                               placeholder="Ex: Seg a Sex das 09h às 18h"
-                              className="bg-white text-xs"
+                              className="bg-background text-xs"
                             />
                           </div>
                           <div className="space-y-1.5">
@@ -2254,7 +2254,7 @@ function AgentePage() {
                               value={antecedenciaMin}
                               onChange={(e) => setAntecedenciaMin(e.target.value)}
                               placeholder="Ex: 2 horas, 1 dia"
-                              className="bg-white text-xs"
+                              className="bg-background text-xs"
                             />
                           </div>
                         </div>
@@ -2306,7 +2306,7 @@ function AgentePage() {
                             onChange={(e) => setMenuSetoresTexto(e.target.value)}
                             placeholder={language === "es" ? "¡Hola! Bienvenido a nuestra empresa. Para agilizar tu atención, responde con el número de la opción deseada:" : "Olá! Seja bem-vindo à nossa empresa. Para agilizar o seu atendimento, digite o número da opção desejada:"}
                             rows={3}
-                            className="bg-white text-xs"
+                            className="bg-background text-xs"
                           />
                         </div>
 
@@ -2336,7 +2336,7 @@ function AgentePage() {
                           ) : (
                             <div className="space-y-2">
                               {menuSetoresOpcoes.map((opt, idx) => (
-                                <div key={idx} className="flex items-center gap-2 p-2 rounded-lg border bg-white">
+                                <div key={idx} className="flex items-center gap-2 p-2 rounded-lg border bg-card">
                                   <div className="size-7 rounded bg-[var(--brand)] text-white flex items-center justify-center font-bold text-xs shrink-0">
                                     {opt.numero}
                                   </div>
@@ -2359,7 +2359,7 @@ function AgentePage() {
                                       setMenuSetoresOpcoes(updated);
                                     }}
                                   >
-                                    <SelectTrigger className="h-8 text-xs w-48 bg-white"><SelectValue placeholder={language === "es" ? "Sector destino" : "Setor destino"} /></SelectTrigger>
+                                    <SelectTrigger className="h-8 text-xs w-48 bg-background"><SelectValue placeholder={language === "es" ? "Sector destino" : "Setor destino"} /></SelectTrigger>
                                     <SelectContent>
                                       {departments.map(d => (
                                         <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
@@ -2395,7 +2395,7 @@ function AgentePage() {
                           value={palavraPausar}
                           onChange={(e) => setPalavraPausar(e.target.value)}
                           placeholder="/pausar"
-                          className="bg-white text-xs font-mono"
+                          className="bg-background text-xs font-mono"
                         />
                         <p className="text-[11px] text-muted-foreground">{language === "es" ? "El asesor puede escribir este comando en el chat para silenciar al bot." : "O atendente pode digitar esse comando no chat para calar o robô."}</p>
                       </div>
@@ -2406,7 +2406,7 @@ function AgentePage() {
                           value={palavraDespausar}
                           onChange={(e) => setPalavraDespausar(e.target.value)}
                           placeholder="/despausar"
-                          className="bg-white text-xs font-mono"
+                          className="bg-background text-xs font-mono"
                         />
                         <p className="text-[11px] text-muted-foreground">{language === "es" ? "Restaura las respuestas automáticas de la IA inmediatamente." : "Restaura as respostas automáticas da IA imediatamente."}</p>
                       </div>
@@ -2419,12 +2419,12 @@ function AgentePage() {
                           value={telefone}
                           onChange={(e) => setTelefone(e.target.value)}
                           placeholder="Ex: +58 412 1234567 ou 5511999999999"
-                          className="bg-white text-xs"
+                          className="bg-background text-xs"
                         />
                         <p className="text-[11px] text-muted-foreground">{language === "es" ? "Cuando la IA no sepa responder o el cliente pida un asesor, transfiere a este número." : "Quando a IA não souber responder ou o cliente pedir atendente, encaminha para este número."}</p>
                       </div>
 
-                      <div className="flex items-center justify-between p-3 rounded-xl border bg-white">
+                      <div className="flex items-center justify-between p-3 rounded-xl border bg-card">
                         <div>
                           <Label className="text-xs font-semibold">{language === "es" ? "Dividir mensajes en partes" : "Dividir mensagens em partes"}</Label>
                           <p className="text-[11px] text-muted-foreground">{language === "es" ? "Envía párrafos separados con pequeñas pausas naturales (estilo humano)." : "Envia parágrafos separados com pequenas pausas naturais."}</p>
@@ -2516,7 +2516,7 @@ function AgentePage() {
                           <div className="max-w-[85%] flex flex-col gap-2">
 
                             {(m.parts && m.parts.length ? m.parts : [m.content]).map((p, j) => (
-                              <div key={j} className="bg-white border border-[var(--border)] text-foreground rounded-2xl rounded-tl-sm px-4 py-2.5 text-xs shadow-sm">
+                              <div key={j} className="bg-card border border-[var(--border)] text-foreground rounded-2xl rounded-tl-sm px-4 py-2.5 text-xs shadow-sm">
                                 {p}
                               </div>
                             ))}
@@ -2556,7 +2556,7 @@ function AgentePage() {
                           className="shrink-0 border border-[var(--border)]" 
                         />
 
-                        <div className="bg-white border border-[var(--border)] rounded-2xl rounded-tl-sm px-4 py-2.5 text-xs shadow-sm italic text-muted-foreground flex items-center gap-2">
+                        <div className="bg-card border border-[var(--border)] rounded-2xl rounded-tl-sm px-4 py-2.5 text-xs shadow-sm italic text-muted-foreground flex items-center gap-2">
                           <Loader2 className="size-3 animate-spin" /> {t("ai.typing", undefined, "Escribiendo...")}
                         </div>
                       </div>
@@ -2570,7 +2570,7 @@ function AgentePage() {
                       onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void runTest(); } }}
                       placeholder={t("ai.type_as_client", undefined, "Escribe como un cliente...")}
                       disabled={testing}
-                      className="pr-10 bg-white"
+                      className="pr-10 bg-background"
                     />
                     <Button 
                       onClick={() => runTest()} 
@@ -2893,9 +2893,9 @@ function AgentePage() {
 
 function KnowledgeCard({ icon, title, description, status, badge }: { icon: React.ReactNode; title: string; description: string; status?: string; badge?: string }) {
   return (
-    <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--border)] bg-white hover:bg-[var(--panel-2)]/30 transition-colors cursor-pointer group">
+    <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--border)] bg-card hover:bg-[var(--panel-2)]/40 transition-colors cursor-pointer group">
       <div className="flex items-center gap-4">
-        <div className="size-10 shrink-0 aspect-square rounded-lg bg-[var(--panel-2)] flex items-center justify-center text-muted-foreground group-hover:bg-white transition-colors">
+        <div className="size-10 shrink-0 aspect-square rounded-lg bg-[var(--panel-2)] flex items-center justify-center text-muted-foreground group-hover:bg-background transition-colors">
           {icon}
         </div>
         <div className="space-y-0.5">
@@ -2904,8 +2904,8 @@ function KnowledgeCard({ icon, title, description, status, badge }: { icon: Reac
         </div>
       </div>
       <div className="flex items-center gap-3">
-        {status && <span className="text-[10px] font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">{status}</span>}
-        {badge && <span className="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{badge}</span>}
+        {status && <span className="text-[10px] font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/50 px-2 py-0.5 rounded-full">{status}</span>}
+        {badge && <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-full">{badge}</span>}
         <ChevronDown className="size-4 text-muted-foreground -rotate-90" />
       </div>
     </div>

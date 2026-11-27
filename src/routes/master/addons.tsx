@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { brand } from "@/config/brand";
 import { toast } from "sonner";
 import { Plus, Edit3, Loader2, Trash2, Package, PlusSquare } from "lucide-react";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 export const Route = createFileRoute("/master/addons")({
   head: () => ({ meta: [{ title: `${brand.name} — Upgrades` }] }),
@@ -36,6 +37,7 @@ const empty: Partial<AddonProduct> = {
 };
 
 function AddonsPage() {
+  const { mt } = useMasterT();
   const list = useServerFn(listAddonsMaster);
   const save = useServerFn(saveAddon);
   const del = useServerFn(deleteAddon);
@@ -88,12 +90,12 @@ function AddonsPage() {
     <div className="space-y-6">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Upgrades</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{mt("Upgrades")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Produtos extras (conexões WhatsApp, integrações) que somam ao plano do cliente.
+            {mt("Produtos extras (conexões WhatsApp, integrações) que somam ao plano do cliente.")}
           </p>
         </div>
-        <Button onClick={() => setEditing({ ...empty })}><Plus className="size-4 mr-1.5" /> Novo upgrade</Button>
+        <Button onClick={() => setEditing({ ...empty })}><Plus className="size-4 mr-1.5" /> {mt("Novo upgrade")}</Button>
       </div>
 
       {loading ? (
@@ -101,7 +103,7 @@ function AddonsPage() {
       ) : items.length === 0 ? (
         <Card className="p-10 text-center text-sm text-muted-foreground">
           <PlusSquare className="size-8 mx-auto mb-3 text-muted-foreground/50" />
-          Nenhum upgrade cadastrado.
+          {mt("Nenhum upgrade cadastrado.")}
         </Card>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -154,40 +156,40 @@ function AddonsPage() {
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{(editing as any)?.id ? "Editar upgrade" : "Novo upgrade"}</DialogTitle>
+            <DialogTitle>{(editing as any)?.id ? mt("Editar upgrade") : mt("Novo upgrade")}</DialogTitle>
           </DialogHeader>
           {editing && (
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Nome"><Input value={editing.nome ?? ""} onChange={(e) => setEditing({ ...editing, nome: e.target.value })} /></Field>
+              <Field label={mt("Nome")}><Input value={editing.nome ?? ""} onChange={(e) => setEditing({ ...editing, nome: e.target.value })} /></Field>
               <Field label="Slug"><Input value={editing.slug ?? ""} onChange={(e) => setEditing({ ...editing, slug: e.target.value })} placeholder="conexao-custom" /></Field>
-              <Field label="Descrição" full>
+              <Field label={mt("Descrição")} full>
                 <Textarea rows={2} value={editing.descricao ?? ""} onChange={(e) => setEditing({ ...editing, descricao: e.target.value })} />
               </Field>
-              <Field label="Tipo">
+              <Field label={mt("Tipo")}>
                 <select className="w-full h-10 px-3 rounded-md border bg-background text-sm"
                   value={editing.tipo ?? "custom"}
                   onChange={(e) => setEditing({ ...editing, tipo: e.target.value as any })}>
                   
-                  <option value="whatsapp_meta">WhatsApp API Oficial (Meta)</option>
-                  <option value="custom">Outro</option>
+                  <option value="whatsapp_meta">{mt("WhatsApp API Oficial (Meta)")}</option>
+                  <option value="custom">{mt("Outro")}</option>
                 </select>
               </Field>
-              <Field label="Intervalo">
+              <Field label={mt("Intervalo")}>
                 <select className="w-full h-10 px-3 rounded-md border bg-background text-sm"
                   value={editing.intervalo ?? "month"}
                   onChange={(e) => setEditing({ ...editing, intervalo: e.target.value as any })}>
-                  <option value="month">Mensal</option>
-                  <option value="year">Anual</option>
+                  <option value="month">{mt("Mensal")}</option>
+                  <option value="year">{mt("Anual")}</option>
                 </select>
               </Field>
-              <Field label="Preço (centavos)"><Input type="number" value={editing.preco_cents ?? 0} onChange={(e) => setEditing({ ...editing, preco_cents: Number(e.target.value) })} /></Field>
-              <Field label="Moeda"><Input value={editing.moeda ?? "BRL"} onChange={(e) => setEditing({ ...editing, moeda: e.target.value.toUpperCase() })} /></Field>
-              <Field label="Ordem"><Input type="number" value={editing.ordem ?? 0} onChange={(e) => setEditing({ ...editing, ordem: Number(e.target.value) })} /></Field>
-              <Field label="Libera usuários (por unidade)">
+              <Field label={mt("Preço (centavos)")}><Input type="number" value={editing.preco_cents ?? 0} onChange={(e) => setEditing({ ...editing, preco_cents: Number(e.target.value) })} /></Field>
+              <Field label={mt("Moeda")}><Input value={editing.moeda ?? "BRL"} onChange={(e) => setEditing({ ...editing, moeda: e.target.value.toUpperCase() })} /></Field>
+              <Field label={mt("Ordem")}><Input type="number" value={editing.ordem ?? 0} onChange={(e) => setEditing({ ...editing, ordem: Number(e.target.value) })} /></Field>
+              <Field label={mt("Libera usuários (por unidade)")}>
                 <Input type="number" min={0} value={editing.concede_usuarios ?? 0}
                   onChange={(e) => setEditing({ ...editing, concede_usuarios: Number(e.target.value) })} />
               </Field>
-              <Field label="Libera conexões (por unidade)">
+              <Field label={mt("Libera conexões (por unidade)")}>
                 <Input type="number" min={0} value={editing.concede_conexoes ?? 0}
                   onChange={(e) => setEditing({ ...editing, concede_conexoes: Number(e.target.value) })} />
               </Field>
@@ -212,27 +214,27 @@ function AddonsPage() {
                   é deste upgrade e ativa a conexão automaticamente.
                 </p>
               </Field>
-              <Field label="URL de checkout" full>
+              <Field label={mt("URL de checkout")} full>
                 <Input
                   value={editing.checkout_url ?? ""}
                   onChange={(e) => setEditing({ ...editing, checkout_url: e.target.value })}
                   placeholder="https://pay.kiwify.com.br/xxxxxx"
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  Link para onde o cliente é enviado ao clicar em <b>Contratar</b>. O sistema adiciona o e-mail dele automaticamente.
+                  Link para onde o cliente é enviado ao clicar em <b>{mt("Contratar")}</b>. O sistema adiciona o e-mail dele automaticamente.
                 </p>
               </Field>
               <div className="col-span-2 flex items-center gap-6 pt-1">
                 <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={!!editing.ativo} onCheckedChange={(v) => setEditing({ ...editing, ativo: v })} /> Ativo
+                  <Switch checked={!!editing.ativo} onCheckedChange={(v) => setEditing({ ...editing, ativo: v })} /> {mt("Ativo")}
                 </label>
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setEditing(null)} disabled={saving}>Cancelar</Button>
+            <Button variant="ghost" onClick={() => setEditing(null)} disabled={saving}>{mt("Cancelar")}</Button>
             <Button onClick={submit} disabled={saving}>
-              {saving && <Loader2 className="size-4 mr-1.5 animate-spin" />}Salvar
+              {saving && <Loader2 className="size-4 mr-1.5 animate-spin" />}{mt("Salvar")}
             </Button>
           </DialogFooter>
         </DialogContent>

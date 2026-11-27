@@ -1,4 +1,5 @@
 import { Link, useLocation } from "@tanstack/react-router";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 export type MasterTab = { to: string; label: string; search?: Record<string, string> };
 
@@ -77,12 +78,13 @@ export function groupForPath(pathname: string) {
 }
 
 export function MasterSubTabs() {
+  const { mt } = useMasterT();
   const loc = useLocation();
   const group = groupForPath(loc.pathname);
   if (!group || group.tabs.length < 2) return null;
 
   return (
-    <div className="border-b border-[color:var(--hairline)] bg-white px-3 sm:px-4 md:px-8">
+    <div className="border-b border-[color:var(--hairline)] bg-card px-3 sm:px-4 md:px-8">
       <div className="max-w-[1600px] 2xl:max-w-[1920px] mx-auto flex items-center gap-1 overflow-x-auto no-scrollbar">
         {group.tabs.map((t) => {
           const currentV = (loc.search as Record<string, unknown> | undefined)?.v as string | undefined;
@@ -98,7 +100,7 @@ export function MasterSubTabs() {
                 active ? "text-[color:var(--brand-text)]" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t.label}
+              {mt(t.label)}
               {active && (
                 <span
                   className="absolute left-2 right-2 -bottom-px h-[2px] rounded-full"

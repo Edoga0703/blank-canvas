@@ -43,6 +43,7 @@ import {
   normalizePlanFeatures,
   type PlanModuleDef,
 } from "@/lib/plan-features";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 export const Route = createFileRoute("/master/planos")({
   head: () => ({
@@ -164,6 +165,7 @@ const CATEGORY_LABELS: Record<PlanModuleDef["category"], string> = {
 };
 
 function MasterPlanosPage() {
+  const { mt } = useMasterT();
   const fetchPlans = useServerFn(listPlansMasterFn);
   const savePlan = useServerFn(savePlanMasterFn);
   const togglePlan = useServerFn(togglePlanActiveMasterFn);
@@ -300,23 +302,23 @@ function MasterPlanosPage() {
             Motor Unificado de Planos (BRL &amp; USD)
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Separação de custo entre WhatsApp QR (D-API pago) e API Oficial Meta ($0), créditos de IA e preços públicos dinâmicos.
+            {mt("Separação de custo entre WhatsApp QR (D-API pago) e API Oficial Meta ($0), créditos de IA e preços públicos dinâmicos.")}
           </p>
         </div>
         <Button onClick={openCreate} className="gap-1.5">
           <Plus className="size-4" />
-          Novo Plano
+          {mt("Novo Plano")}
         </Button>
       </div>
 
       {loading ? (
         <Card className="p-8 flex items-center justify-center text-muted-foreground gap-2">
           <Loader2 className="size-4 animate-spin" />
-          Carregando planos...
+          {mt("Carregando planos...")}
         </Card>
       ) : plans.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">
-          Nenhum plano cadastrado.
+          {mt("Nenhum plano cadastrado.")}
         </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -479,14 +481,14 @@ function MasterPlanosPage() {
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{form.id ? `Editar Plano: ${form.nome}` : "Novo Plano"}</DialogTitle>
+            <DialogTitle>{form.id ? `Editar Plano: ${form.nome}` : mt("Novo Plano")}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-5 py-2">
             {/* Identificação */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <Label className="text-xs">Nome do Plano</Label>
+                <Label className="text-xs">{mt("Nome do Plano")}</Label>
                 <Input
                   value={form.nome}
                   onChange={(e) => setForm((p) => ({ ...p, nome: e.target.value }))}
@@ -494,7 +496,7 @@ function MasterPlanosPage() {
                 />
               </div>
               <div>
-                <Label className="text-xs">Slug (identificador)</Label>
+                <Label className="text-xs">{mt("Slug (identificador)")}</Label>
                 <Input
                   value={form.slug}
                   disabled={Boolean(form.id && ["starter", "pro", "business", "cortesia"].includes(form.slug))}
@@ -503,7 +505,7 @@ function MasterPlanosPage() {
                 />
               </div>
               <div>
-                <Label className="text-xs">Ordem de exibição</Label>
+                <Label className="text-xs">{mt("Ordem de exibição")}</Label>
                 <Input
                   type="number"
                   value={form.ordem}
@@ -513,7 +515,7 @@ function MasterPlanosPage() {
             </div>
 
             <div>
-              <Label className="text-xs">Descrição pública (Pricing e Checkout)</Label>
+              <Label className="text-xs">{mt("Descrição pública (Pricing e Checkout)")}</Label>
               <Textarea
                 rows={2}
                 value={form.descricao}
@@ -534,35 +536,35 @@ function MasterPlanosPage() {
               </div>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <div>
-                  <Label className="text-xs">BRL Mensal (R$)</Label>
+                  <Label className="text-xs">{mt("BRL Mensal (R$)")}</Label>
                   <Input
                     value={form.preco_brl}
                     onChange={(e) => setForm((p) => ({ ...p, preco_brl: e.target.value }))}
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">BRL Anual/mês (R$)</Label>
+                  <Label className="text-xs">{mt("BRL Anual/mês (R$)")}</Label>
                   <Input
                     value={form.preco_anual_brl}
                     onChange={(e) => setForm((p) => ({ ...p, preco_anual_brl: e.target.value }))}
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">USD Mensal ($)</Label>
+                  <Label className="text-xs">{mt("USD Mensal ($)")}</Label>
                   <Input
                     value={form.preco_usd}
                     onChange={(e) => setForm((p) => ({ ...p, preco_usd: e.target.value }))}
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">USD Anual/mês ($)</Label>
+                  <Label className="text-xs">{mt("USD Anual/mês ($)")}</Label>
                   <Input
                     value={form.preco_anual_usd}
                     onChange={(e) => setForm((p) => ({ ...p, preco_anual_usd: e.target.value }))}
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Desconto Anual (%)</Label>
+                  <Label className="text-xs">{mt("Desconto Anual (%)")}</Label>
                   <Input
                     type="number"
                     min={0}
@@ -577,11 +579,11 @@ function MasterPlanosPage() {
             {/* Cotas e Créditos */}
             <div className="rounded-lg border p-3.5 space-y-3">
               <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Cotas de Conexões, Equipe e Créditos de IA
+                {mt("Cotas de Conexões, Equipe e Créditos de IA")}
               </h4>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <div>
-                  <Label className="text-xs">WhatsApp QR (D-API pago)</Label>
+                  <Label className="text-xs">{mt("WhatsApp QR (D-API pago)")}</Label>
                   <Input
                     type="number"
                     min={0}
@@ -590,7 +592,7 @@ function MasterPlanosPage() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">WhatsApp API Oficial Meta ($0)</Label>
+                  <Label className="text-xs">{mt("WhatsApp API Oficial Meta ($0)")}</Label>
                   <Input
                     type="number"
                     min={0}
@@ -599,7 +601,7 @@ function MasterPlanosPage() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Usuários / Equipe</Label>
+                  <Label className="text-xs">{mt("Usuários / Equipe")}</Label>
                   <Input
                     type="number"
                     min={1}
@@ -608,7 +610,7 @@ function MasterPlanosPage() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Créditos IA / mês</Label>
+                  <Label className="text-xs">{mt("Créditos IA / mês")}</Label>
                   <Input
                     type="number"
                     min={0}
@@ -617,7 +619,7 @@ function MasterPlanosPage() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Créditos IA no Trial</Label>
+                  <Label className="text-xs">{mt("Créditos IA no Trial")}</Label>
                   <Input
                     type="number"
                     min={0}
@@ -626,7 +628,7 @@ function MasterPlanosPage() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Dias de Trial Grátis</Label>
+                  <Label className="text-xs">{mt("Dias de Trial Grátis")}</Label>
                   <Input
                     type="number"
                     min={0}
@@ -684,11 +686,11 @@ function MasterPlanosPage() {
             {/* Opções extras & Visibilidade */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
               <div>
-                <Label className="text-xs">URL Checkout Externo (opcional)</Label>
+                <Label className="text-xs">{mt("URL Checkout Externo (opcional)")}</Label>
                 <Input
                   value={form.checkout_url}
                   onChange={(e) => setForm((p) => ({ ...p, checkout_url: e.target.value }))}
-                  placeholder="Deixe vazio para usar AbacatePay / USD interno"
+                  placeholder={mt("Deixe vazio para usar AbacatePay / USD interno")}
                 />
               </div>
               <div className="flex items-center gap-6 pt-5">
@@ -697,14 +699,14 @@ function MasterPlanosPage() {
                     checked={form.destaque}
                     onCheckedChange={(v) => setForm((p) => ({ ...p, destaque: v }))}
                   />
-                  Plano em Destaque
+                  {mt("Plano em Destaque")}
                 </label>
                 <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
                   <Switch
                     checked={form.ativo}
                     onCheckedChange={(v) => setForm((p) => ({ ...p, ativo: v }))}
                   />
-                  Ativo na Vitrine
+                  {mt("Ativo na Vitrine")}
                 </label>
               </div>
             </div>
@@ -712,11 +714,11 @@ function MasterPlanosPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setModalOpen(false)} disabled={saving}>
-              Cancelar
+              {mt("Cancelar")}
             </Button>
             <Button onClick={handleSave} disabled={saving} className="gap-1.5">
               {saving ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
-              Salvar Plano
+              {mt("Salvar Plano")}
             </Button>
           </DialogFooter>
         </DialogContent>

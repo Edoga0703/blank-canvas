@@ -12,6 +12,7 @@ import {
   Activity, Check, Globe
 } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { AgentAvatar } from "@/components/agente/agent-avatar";
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -372,9 +373,10 @@ export function AppShell({
         }}
       >
         <div className="flex items-center min-w-0">
-          <img src={logoFull.url} alt={brand.name} className="h-10 w-auto object-contain" loading="eager" decoding="async" />
+          <img src={logoFull.url} alt={brand.name} className="h-10 w-auto object-contain dark:brightness-0 dark:invert" loading="eager" decoding="async" />
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          <ThemeToggle />
           <LanguageSwitcher variant="compact" />
           <NotificationsBell companyId={company?.id} />
           <button
@@ -560,7 +562,7 @@ function Sidebar({
      >
        <div className={`h-[72px] shrink-0 flex items-center border-b border-border ${collapsed ? "justify-center" : "gap-1 px-3"}`}>
          <Link to="/app/dashboard" title="Capi Conversa" className={collapsed ? "grid size-11 place-items-center rounded-xl bg-muted overflow-hidden" : "flex-1 min-w-0 flex items-center justify-center"}>
-           {collapsed ? <img src="/favicon.png" alt="Capi Conversa" className="size-9 object-contain" /> : <img src={logoFull.url} alt={brand.name} className="h-11 w-full object-contain" />}
+           {collapsed ? <img src="/favicon.png" alt="Capi Conversa" className="size-9 object-contain" /> : <img src={logoFull.url} alt={brand.name} className="h-11 w-full object-contain dark:brightness-0 dark:invert" />}
          </Link>
          {!collapsed && <button type="button" onClick={onToggleCollapsed} title={t("nav.collapse_menu", undefined, "Recolher menu")} aria-label={t("nav.collapse_menu", undefined, "Recolher menu")} className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-foreground hover:bg-accent"><ChevronsLeft className="size-5" /></button>}
        </div>
@@ -605,9 +607,10 @@ function Sidebar({
        <div className={`shrink-0 border-t border-border ${collapsed ? "p-3" : "p-3"}`}>
         {collapsed && <button type="button" onClick={onToggleCollapsed} title={t("nav.expand_menu", undefined, "Expandir menu")} aria-label={t("nav.expand_menu", undefined, "Expandir menu")} className="mb-3 grid size-10 place-items-center rounded-full bg-muted text-foreground hover:bg-accent"><ChevronsRight className="size-5" /></button>}
 
-        {/* Seletor rápido de Idioma acessível direto na barra lateral */}
-        <div className={`mb-2.5 flex items-center ${collapsed ? "justify-center" : "px-0.5"}`}>
-          <LanguageSwitcher variant={collapsed ? "compact" : "segmented"} className="w-full justify-center" />
+        {/* Seletor rápido de Idioma e Tema acessível direto na barra lateral */}
+        <div className={`mb-2.5 flex ${collapsed ? "flex-col items-center gap-1.5" : "items-center gap-1.5 px-0.5"}`}>
+          <LanguageSwitcher variant={collapsed ? "compact" : "segmented"} className={collapsed ? "justify-center" : "flex-1 justify-center"} />
+          <ThemeToggle className={collapsed ? "size-9" : "size-8 rounded-xl"} />
         </div>
 
         <DropdownMenu>
@@ -671,6 +674,9 @@ function Sidebar({
               {soundsMuted ? <VolumeX className="size-4 mr-2" /> : <Volume2 className="size-4 mr-2" />}
               {soundsMuted ? t("common.unmute_sounds", undefined, "Ativar sons") : t("common.mute_sounds", undefined, "Silenciar sons")}
             </DropdownMenuItem>
+            <div className="px-1 py-0.5">
+              <ThemeToggle variant="menu" />
+            </div>
 
 
 

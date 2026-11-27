@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2, Send } from "lucide-react";
 import { previewAdminBroadcast, sendAdminBroadcastNow } from "@/lib/admin-crm.functions";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 const SEGMENTOS = [
   { id: "todos", label: "Toda a base" },
@@ -16,6 +17,7 @@ const SEGMENTOS = [
 ];
 
 export function DisparosTab({ temConexao, onDone }: { temConexao: boolean; onDone: () => void }) {
+  const { mt } = useMasterT();
   const preview = useServerFn(previewAdminBroadcast);
   const enviar = useServerFn(sendAdminBroadcastNow);
 
@@ -35,7 +37,7 @@ export function DisparosTab({ temConexao, onDone }: { temConexao: boolean; onDon
   return (
     <Card className="p-4 space-y-3">
       <div className="flex items-center gap-2 font-medium">
-        <Send className="h-4 w-4" /> Disparo para a base
+        <Send className="h-4 w-4" /> {mt("Disparo para a base")}
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -87,7 +89,7 @@ export function DisparosTab({ temConexao, onDone }: { temConexao: boolean; onDon
             }
           }}
         >
-          {sending && <Loader2 className="h-4 w-4 animate-spin" />} Enviar
+          {sending && <Loader2 className="h-4 w-4 animate-spin" />} {mt("Enviar")}
         </Button>
       </div>
     </Card>

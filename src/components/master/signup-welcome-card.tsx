@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, Send, MessageCircle } from "lucide-react";
 import { testSignupWelcome, listSignupWelcomeLogs } from "@/lib/signup-welcome.functions";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 type Log = {
   id: string;
@@ -21,6 +22,7 @@ type Log = {
 
 /** Teste e histórico do disparo imediato de boas-vindas (config fica na régua acima). */
 export function SignupWelcomeCard() {
+  const { mt } = useMasterT();
   const test = useServerFn(testSignupWelcome);
   const getLogs = useServerFn(listSignupWelcomeLogs);
 
@@ -59,7 +61,7 @@ export function SignupWelcomeCard() {
     <Card className="p-5 space-y-4">
       <div>
         <h2 className="font-semibold flex items-center gap-2">
-          <MessageCircle className="size-4" /> Boas-vindas no cadastro
+          <MessageCircle className="size-4" /> {mt("Boas-vindas no cadastro")}
         </h2>
         <p className="text-sm text-muted-foreground">
           Usa a régua "Boas-vindas" acima: assim que alguém cria a conta, a mensagem sai na hora pelo
@@ -69,7 +71,7 @@ export function SignupWelcomeCard() {
 
       <div className="flex items-end gap-2">
         <div className="space-y-1.5">
-          <Label className="text-xs">Número para teste</Label>
+          <Label className="text-xs">{mt("Número para teste")}</Label>
           <Input
             value={testeFone}
             onChange={(e) => setTesteFone(e.target.value)}
@@ -79,19 +81,19 @@ export function SignupWelcomeCard() {
         </div>
         <Button variant="outline" onClick={enviarTeste} disabled={testing || !testeFone}>
           {testing ? <Loader2 className="size-4 mr-1.5 animate-spin" /> : <Send className="size-4 mr-1.5" />}
-          Enviar teste
+          {mt("Enviar teste")}
         </Button>
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <div className="text-sm font-medium">Últimos disparos de cadastro</div>
+          <div className="text-sm font-medium">{mt("Últimos disparos de cadastro")}</div>
           <Button size="sm" variant="ghost" onClick={refreshLogs}>
-            Atualizar
+            {mt("Atualizar")}
           </Button>
         </div>
         {logs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nenhum disparo ainda.</p>
+          <p className="text-sm text-muted-foreground">{mt("Nenhum disparo ainda.")}</p>
         ) : (
           <ul className="divide-y rounded-md border">
             {logs.map((l) => (

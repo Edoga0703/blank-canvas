@@ -24,6 +24,7 @@ import {
 import { SupportMetricsDialog } from "@/components/support/support-metrics-dialog";
 import { SupportConfigDialog } from "@/components/support/support-config-dialog";
 import { SUPPORT_CATEGORIAS, SUPPORT_PRIORIDADES, SLA_MINUTOS } from "@/lib/support-constants";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 
 export const Route = createFileRoute("/master/suporte")({
@@ -95,6 +96,7 @@ function applyVars(text: string, vars: Record<string, string>) {
 
 
 function SuportePage() {
+  const { mt } = useMasterT();
   const qc = useQueryClient();
   const [filter, setFilter] = useState<"aberto" | "andamento" | "resolvido" | "todos">("todos");
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -355,10 +357,10 @@ function SuportePage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-semibold flex items-center gap-2">
-            <HeadsetIcon className="size-5 shrink-0" /> Suporte
+            <HeadsetIcon className="size-5 shrink-0" /> {mt("Suporte")}
             {totalUnread > 0 && <span className="ml-1 min-w-[22px] h-[22px] px-1.5 rounded-full bg-red-500 text-white text-xs font-bold grid place-items-center">{totalUnread}</span>}
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">Chat ao vivo com os clientes, com contexto e respostas rápidas.</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">{mt("Chat ao vivo com os clientes, com contexto e respostas rápidas.")}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Button
@@ -379,31 +381,31 @@ function SuportePage() {
           <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
             <SelectTrigger className="w-[150px] shrink-0 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todos status</SelectItem>
-              <SelectItem value="aberto">Abertos</SelectItem>
-              <SelectItem value="andamento">Em andamento</SelectItem>
-              <SelectItem value="resolvido">Resolvidos</SelectItem>
+              <SelectItem value="todos">{mt("Todos status")}</SelectItem>
+              <SelectItem value="aberto">{mt("Abertos")}</SelectItem>
+              <SelectItem value="andamento">{mt("Em andamento")}</SelectItem>
+              <SelectItem value="resolvido">{mt("Resolvidos")}</SelectItem>
             </SelectContent>
           </Select>
           <Select value={prioFilter} onValueChange={setPrioFilter}>
             <SelectTrigger className="w-[140px] shrink-0 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="todas">Toda prioridade</SelectItem>
+              <SelectItem value="todas">{mt("Toda prioridade")}</SelectItem>
               {SUPPORT_PRIORIDADES.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={catFilter} onValueChange={setCatFilter}>
             <SelectTrigger className="w-[160px] shrink-0 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="todas">Toda categoria</SelectItem>
+              <SelectItem value="todas">{mt("Toda categoria")}</SelectItem>
               {SUPPORT_CATEGORIAS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={agentFilter} onValueChange={setAgentFilter}>
             <SelectTrigger className="w-[160px] shrink-0 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todos agentes</SelectItem>
-              <SelectItem value="nao_atribuidos">Não atribuídos</SelectItem>
+              <SelectItem value="todos">{mt("Todos agentes")}</SelectItem>
+              <SelectItem value="nao_atribuidos">{mt("Não atribuídos")}</SelectItem>
               {agents.map((a) => <SelectItem key={a.user_id} value={a.user_id}>{a.nome}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -418,7 +420,7 @@ function SuportePage() {
             {ticketsQ.isLoading ? (
               <div className="p-6 grid place-items-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>
             ) : tickets.length === 0 ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">Nenhum chamado.</div>
+              <div className="p-6 text-center text-sm text-muted-foreground">{mt("Nenhum chamado.")}</div>
             ) : (
               <ul className="divide-y">
                 {tickets.map((t) => {
@@ -490,12 +492,12 @@ function SuportePage() {
         >
           {dragOver && activeTicket && (
             <div className="absolute inset-0 z-20 bg-primary/10 border-2 border-dashed border-primary rounded-xl grid place-items-center text-sm font-medium text-primary">
-              Solte os arquivos para anexar
+              {mt("Solte os arquivos para anexar")}
             </div>
           )}
           {!activeTicket ? (
             <div className="flex-1 grid place-items-center text-sm text-muted-foreground">
-              Selecione um chamado para conversar.
+              {mt("Selecione um chamado para conversar.")}
             </div>
           ) : (
             <>
@@ -503,15 +505,15 @@ function SuportePage() {
                 <div className="flex items-center gap-2 sm:gap-3">
                   <Button
                     variant="ghost" size="icon" className="md:hidden shrink-0"
-                    onClick={() => setActiveId(null)} title="Voltar"
+                    onClick={() => setActiveId(null)} title={mt("Voltar")}
                   >
                     <ChevronLeft className="size-4" />
                   </Button>
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold truncate text-sm sm:text-base">{activeTicket.company?.nome} · {activeTicket.assunto}</div>
                     <div className="text-[11px] text-muted-foreground flex items-center gap-2 flex-wrap">
-                      <span className="hidden sm:inline">Aberto em {new Date(activeTicket.created_at).toLocaleString("pt-BR")}</span>
-                      <span>última msg há <span className={slaTone(activeTicket.last_message_at)}>{sinceLabel(activeTicket.last_message_at)}</span></span>
+                      <span className="hidden sm:inline">{mt("Aberto em")} {new Date(activeTicket.created_at).toLocaleString("pt-BR")}</span>
+                      <span>{mt("última msg há")} <span className={slaTone(activeTicket.last_message_at)}>{sinceLabel(activeTicket.last_message_at)}</span></span>
                       {(() => {
                         const sla = slaInfo(activeTicket);
                         return sla ? (
@@ -522,15 +524,15 @@ function SuportePage() {
                       })()}
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setShowSearch((v) => !v)} title="Buscar no chamado">
+                  <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setShowSearch((v) => !v)} title={mt("Buscar no chamado")}>
                     <Search className="size-4" />
                   </Button>
                   <Select value={activeTicket.status} onValueChange={(v: any) => statusMut.mutate(v)}>
                     <SelectTrigger className="w-[120px] sm:w-[150px] h-8 shrink-0"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="aberto">Aberto</SelectItem>
-                      <SelectItem value="andamento">Em andamento</SelectItem>
-                      <SelectItem value="resolvido">Resolvido</SelectItem>
+                      <SelectItem value="aberto">{mt("Aberto")}</SelectItem>
+                      <SelectItem value="andamento">{mt("Em andamento")}</SelectItem>
+                      <SelectItem value="resolvido">{mt("Resolvido")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -571,7 +573,7 @@ function SuportePage() {
                       <span className="inline-flex items-center gap-1.5"><UserCheck className="size-3" /><SelectValue /></span>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Sem responsável</SelectItem>
+                      <SelectItem value="none">{mt("Sem responsável")}</SelectItem>
                       {agents.map((a) => <SelectItem key={a.user_id} value={a.user_id}>{a.nome}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -584,7 +586,7 @@ function SuportePage() {
                 <div className="px-4 py-2 border-b bg-muted/40">
                   <Input
                     autoFocus value={chatSearch} onChange={(e) => setChatSearch(e.target.value)}
-                    placeholder="Buscar nesta conversa…" className="h-8"
+                    placeholder={mt("Buscar nesta conversa…")} className="h-8"
                   />
                   {chatSearch && (
                     <div className="text-[11px] text-muted-foreground mt-1">{visibleMessages.length} mensagem(ns) encontrada(s)</div>
@@ -592,14 +594,14 @@ function SuportePage() {
                 </div>
               )}
 
-              <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-3 bg-[#f8f9fb]">
+              <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-3 bg-background">
                 {msgsQ.isLoading ? (
                   <div className="grid place-items-center py-6"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>
                 ) : visibleMessages.map((m: any) => (
                   <div key={m.id} className={`flex ${m.sender_role === "admin" ? "justify-end" : "justify-start"}`}>
                     <div
                       className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap ${
-                        m.sender_role === "admin" ? "text-white rounded-br-sm" : "bg-white border rounded-bl-sm"
+                        m.sender_role === "admin" ? "text-white rounded-br-sm" : "bg-card border rounded-bl-sm"
                       }`}
                       style={m.sender_role === "admin" ? { background: "var(--brand)" } : undefined}
                     >
@@ -628,16 +630,16 @@ function SuportePage() {
                 ))}
                 {clientTyping && (
                   <div className="flex justify-start">
-                    <div className="bg-white border rounded-2xl rounded-bl-sm px-3 py-2 text-xs text-muted-foreground">
-                      cliente digitando…
+                    <div className="bg-card border rounded-2xl rounded-bl-sm px-3 py-2 text-xs text-muted-foreground">
+                      {mt("cliente digitando…")}
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="p-2 sm:p-3 border-t bg-white space-y-2 relative">
+              <div className="p-2 sm:p-3 border-t bg-card space-y-2 relative">
                 {macroOpen && filteredMacros.length > 0 && (
-                  <div className="absolute bottom-full left-3 right-3 mb-2 z-30 bg-white border rounded-xl shadow-lg max-h-64 overflow-y-auto">
+                  <div className="absolute bottom-full left-3 right-3 mb-2 z-30 bg-popover text-popover-foreground border rounded-xl shadow-lg max-h-64 overflow-y-auto">
                     <div className="px-3 py-2 text-[11px] text-muted-foreground border-b flex items-center gap-1.5">
                       <Zap className="size-3" /> Respostas rápidas — digite <b>/atalho</b>
                     </div>
@@ -676,7 +678,7 @@ function SuportePage() {
                   </label>
                   <Button
                     type="button" variant="ghost" size="icon" className="shrink-0"
-                    title="Respostas rápidas" onClick={() => { setMacroOpen((v) => !v); setMacroQuery(""); }}
+                    title={mt("Respostas rápidas")} onClick={() => { setMacroOpen((v) => !v); setMacroQuery(""); }}
                   >
                     <Zap className="size-4 text-muted-foreground" />
                   </Button>
@@ -697,7 +699,7 @@ function SuportePage() {
                         if (draft.trim() || files.length) sendMut.mutate();
                       }
                     }}
-                    placeholder="Digite sua mensagem… (use / para respostas rápidas)"
+                    placeholder={mt("Digite sua mensagem… (use / para respostas rápidas)")}
                     className="min-h-[40px] max-h-[120px] resize-none"
                   />
                   <Button
@@ -718,7 +720,7 @@ function SuportePage() {
           <Card className="min-h-0 hidden xl:flex flex-col overflow-hidden">
             {!activeTicket ? (
               <div className="flex-1 grid place-items-center text-xs text-muted-foreground px-4 text-center">
-                O contexto do cliente aparece aqui.
+                {mt("O contexto do cliente aparece aqui.")}
               </div>
             ) : ctxQ.isLoading ? (
               <div className="flex-1 grid place-items-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>
@@ -726,7 +728,7 @@ function SuportePage() {
               <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 text-sm">
                 <section className="space-y-1.5">
                   <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    <Building2 className="size-3.5" /> Empresa
+                    <Building2 className="size-3.5" /> {mt("Empresa")}
                   </div>
                   <div className="flex items-center gap-3">
                     {ctx?.owner?.avatar_url || ctx?.company?.logo_url ? (
@@ -754,27 +756,27 @@ function SuportePage() {
                   <div className="text-xs text-muted-foreground">{ctx?.company?.telefone || ctx?.owner?.telefone || "—"}</div>
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {ctx?.company?.segmento && <Badge variant="secondary" className="text-[10px]">{ctx.company.segmento}</Badge>}
-                    {!ctx?.company?.onboarding_completed && <Badge className="text-[10px] bg-amber-100 text-amber-800">Onboarding incompleto</Badge>}
+                    {!ctx?.company?.onboarding_completed && <Badge className="text-[10px] bg-amber-100 text-amber-800">{mt("Onboarding incompleto")}</Badge>}
                   </div>
                 </section>
 
                 <section className="space-y-1.5 border-t pt-3">
                   <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    <CreditCard className="size-3.5" /> Plano
+                    <CreditCard className="size-3.5" /> {mt("Plano")}
                   </div>
                   <div className="font-semibold">{ctx?.subscription?.plano || "Sem assinatura"}</div>
                   {ctx?.subscription && (
                     <>
-                      <div className="text-xs">{brl(ctx.subscription.valor_cents || 0)}/mês</div>
+                      <div className="text-xs">{brl(ctx.subscription.valor_cents || 0)}{mt("/mês")}</div>
                       <div className="flex flex-wrap gap-1.5">
                         <Badge variant="secondary" className="text-[10px]">{ctx.subscription.status}</Badge>
-                        {ctx.subscription.cortesia && <Badge className="text-[10px] bg-violet-100 text-violet-800">cortesia</Badge>}
-                        {ctx.subscription.cancel_at_period_end && <Badge className="text-[10px] bg-red-100 text-red-800">cancela no fim</Badge>}
+                        {ctx.subscription.cortesia && <Badge className="text-[10px] bg-violet-100 text-violet-800">{mt("cortesia")}</Badge>}
+                        {ctx.subscription.cancel_at_period_end && <Badge className="text-[10px] bg-red-100 text-red-800">{mt("cancela no fim")}</Badge>}
                       </div>
                     </>
                   )}
                   <div className="text-xs text-muted-foreground">
-                    Cobrança: {ctx?.company?.status_cobranca || "—"}
+                    {mt("Cobrança:")} {ctx?.company?.status_cobranca || "—"}
                     {typeof ctx?.trial_dias === "number" && ctx.trial_dias > -1 && (
                       <> · Trial: {ctx.trial_dias > 0 ? `${ctx.trial_dias} dia(s)` : "expirado"}</>
                     )}
@@ -783,20 +785,20 @@ function SuportePage() {
 
                 <section className="space-y-1.5 border-t pt-3">
                   <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    <Sparkles className="size-3.5" /> Créditos de IA
+                    <Sparkles className="size-3.5" /> {mt("Créditos de IA")}
                   </div>
                   <div className="text-sm">
                     <b>{ctx?.company?.creditos_saldo ?? 0}</b>
-                    {ctx?.subscription?.creditos_mensais ? <span className="text-muted-foreground"> / {ctx.subscription.creditos_mensais} mensais</span> : null}
+                    {ctx?.subscription?.creditos_mensais ? <span className="text-muted-foreground"> / {ctx.subscription.creditos_mensais} {mt("mensais")}</span> : null}
                   </div>
                 </section>
 
                 <section className="space-y-1.5 border-t pt-3">
                   <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    <Smartphone className="size-3.5" /> Conexões
+                    <Smartphone className="size-3.5" /> {mt("Conexões")}
                   </div>
                   {(ctx?.conexoes ?? []).length === 0 ? (
-                    <div className="text-xs text-muted-foreground">Nenhuma conexão criada.</div>
+                    <div className="text-xs text-muted-foreground">{mt("Nenhuma conexão criada.")}</div>
                   ) : ctx.conexoes.map((c: any) => (
                     <div key={c.id} className="flex items-center gap-2 text-xs">
                       <span className={`size-2 rounded-full ${c.paused ? "bg-amber-500" : c.status === "connected" || c.status === "open" ? "bg-emerald-500" : "bg-red-500"}`} />
@@ -808,10 +810,10 @@ function SuportePage() {
 
                 <section className="space-y-1.5 border-t pt-3">
                   <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    <History className="size-3.5" /> Chamados anteriores
+                    <History className="size-3.5" /> {mt("Chamados anteriores")}
                   </div>
                   {(ctx?.chamados_anteriores ?? []).length === 0 ? (
-                    <div className="text-xs text-muted-foreground">Primeiro chamado desta empresa.</div>
+                    <div className="text-xs text-muted-foreground">{mt("Primeiro chamado desta empresa.")}</div>
                   ) : ctx.chamados_anteriores.map((t: any) => (
                     <button
                       key={t.id} onClick={() => setActiveId(t.id)}
@@ -827,12 +829,12 @@ function SuportePage() {
 
                 <section className="space-y-2 border-t pt-3">
                   <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    <StickyNote className="size-3.5" /> Notas internas
+                    <StickyNote className="size-3.5" /> {mt("Notas internas")}
                   </div>
-                  <p className="text-[10px] text-muted-foreground -mt-1">Visível só para a equipe. O cliente não vê.</p>
+                  <p className="text-[10px] text-muted-foreground -mt-1">{mt("Visível só para a equipe. O cliente não vê.")}</p>
                   <Textarea
                     rows={2} value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)}
-                    placeholder="Anotar algo sobre este chamado…"
+                    placeholder={mt("Anotar algo sobre este chamado…")}
                     className="text-xs resize-none bg-amber-50/60 border-amber-200"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && noteDraft.trim()) noteMut.mutate();
@@ -844,10 +846,10 @@ function SuportePage() {
                     onClick={() => noteMut.mutate()}
                   >
                     {noteMut.isPending ? <Loader2 className="size-3.5 animate-spin mr-1.5" /> : <Plus className="size-3.5 mr-1.5" />}
-                    Adicionar nota
+                    {mt("Adicionar nota")}
                   </Button>
                   {notes.length === 0 ? (
-                    <div className="text-xs text-muted-foreground">Nenhuma nota ainda.</div>
+                    <div className="text-xs text-muted-foreground">{mt("Nenhuma nota ainda.")}</div>
                   ) : notes.map((n: any) => (
                     <div key={n.id} className="rounded-lg bg-amber-50 border border-amber-200 p-2">
                       <div className="text-xs whitespace-pre-wrap">{n.content}</div>
@@ -873,10 +875,10 @@ function SuportePage() {
 
                 <div className="border-t pt-3 flex flex-col gap-2">
                   <Button asChild variant="outline" size="sm">
-                    <a href="/master/clientes">Abrir em Clientes</a>
+                    <a href="/master/clientes">{mt("Abrir em Clientes")}</a>
                   </Button>
                   <Button asChild variant="outline" size="sm">
-                    <a href="/master/financeiro">Abrir em Financeiro</a>
+                    <a href="/master/financeiro">{mt("Abrir em Financeiro")}</a>
                   </Button>
                 </div>
               </div>
@@ -907,6 +909,7 @@ function MacroManager({
   onDelete: (id: string) => Promise<void>;
   inline?: boolean;
 }) {
+  const { mt } = useMasterT();
   const empty = { id: undefined as string | undefined, titulo: "", atalho: "", conteudo: "", categoria: "Geral", ordem: 0 };
   const [form, setForm] = useState<any>(empty);
   const [saving, setSaving] = useState(false);
@@ -927,8 +930,8 @@ function MacroManager({
     <>
         <div className={`grid sm:grid-cols-2 gap-4 ${inline ? "" : "max-h-[60vh] overflow-y-auto"}`}>
           <div className="space-y-2">
-            <div className="text-xs font-semibold text-muted-foreground uppercase">Biblioteca</div>
-            {macros.length === 0 && <div className="text-sm text-muted-foreground">Nenhuma resposta cadastrada.</div>}
+            <div className="text-xs font-semibold text-muted-foreground uppercase">{mt("Biblioteca")}</div>
+            {macros.length === 0 && <div className="text-sm text-muted-foreground">{mt("Nenhuma resposta cadastrada.")}</div>}
             {macros.map((m) => (
               <div key={m.id} className="border rounded-lg p-2.5 bg-card shadow-sm">
                 <div className="flex items-center gap-2">
@@ -943,19 +946,19 @@ function MacroManager({
           </div>
           <div className="space-y-2 rounded-lg border bg-card shadow-sm p-3">
             <div className="text-xs font-semibold text-muted-foreground uppercase">
-              {form.id ? "Editar" : "Nova resposta"}
+              {form.id ? mt("Editar") : "Nova resposta"}
             </div>
-            <Input placeholder="Título" value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} />
+            <Input placeholder={mt("Título")} value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} />
             <div className="grid grid-cols-2 gap-2">
-              <Input placeholder="atalho (sem /)" value={form.atalho} onChange={(e) => setForm({ ...form, atalho: e.target.value })} />
-              <Input placeholder="Categoria" value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })} />
+              <Input placeholder={mt("atalho (sem /)")} value={form.atalho} onChange={(e) => setForm({ ...form, atalho: e.target.value })} />
+              <Input placeholder={mt("Categoria")} value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })} />
             </div>
             <Textarea
               rows={7} placeholder="Conteúdo… use {{nome}}, {{empresa}}, {{plano}}"
               value={form.conteudo} onChange={(e) => setForm({ ...form, conteudo: e.target.value })}
             />
             <p className="text-[11px] text-muted-foreground">
-              Variáveis disponíveis: <code>{"{{nome}}"}</code> <code>{"{{empresa}}"}</code> <code>{"{{plano}}"}</code>
+              {mt("Variáveis disponíveis:")} <code>{"{{nome}}"}</code> <code>{"{{empresa}}"}</code> <code>{"{{plano}}"}</code>
             </p>
           </div>
         </div>
@@ -964,10 +967,10 @@ function MacroManager({
 
   const actions = (
     <>
-      {form.id && <Button variant="ghost" onClick={() => setForm(empty)}>Cancelar edição</Button>}
+      {form.id && <Button variant="ghost" onClick={() => setForm(empty)}>{mt("Cancelar edição")}</Button>}
       <Button onClick={save} disabled={saving} style={{ background: "var(--brand)" }}>
         {saving ? <Loader2 className="size-4 animate-spin mr-1.5" /> : <Plus className="size-4 mr-1.5" />}
-        {form.id ? "Salvar" : "Adicionar"}
+        {form.id ? mt("Salvar") : mt("Adicionar")}
       </Button>
     </>
   );
@@ -975,7 +978,7 @@ function MacroManager({
   if (inline) {
     return (
       <div className="space-y-4 rounded-xl border bg-muted/40 p-4 sm:p-5">
-        <h1 className="text-xl sm:text-2xl font-semibold flex items-center gap-2"><Zap className="size-5" /> Respostas rápidas</h1>
+        <h1 className="text-xl sm:text-2xl font-semibold flex items-center gap-2"><Zap className="size-5" /> {mt("Respostas rápidas")}</h1>
         {body}
         <div className="flex justify-end gap-2">{actions}</div>
       </div>
@@ -986,7 +989,7 @@ function MacroManager({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Zap className="size-4" /> Respostas rápidas</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><Zap className="size-4" /> {mt("Respostas rápidas")}</DialogTitle>
         </DialogHeader>
         {body}
         <DialogFooter>{actions}</DialogFooter>

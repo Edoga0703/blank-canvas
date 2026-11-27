@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { listAdminLogRows } from "@/lib/admin-crm.functions";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 type LogRow = {
   id: string;
@@ -32,6 +33,7 @@ const PERIODOS = [
 ];
 
 export function HistoricoTab() {
+  const { mt } = useMasterT();
   const listar = useServerFn(listAdminLogRows);
   const [tipo, setTipo] = useState("todos");
   const [status, setStatus] = useState("todos");
@@ -80,7 +82,7 @@ export function HistoricoTab() {
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-6 text-center">Nenhum envio neste filtro.</p>
+        <p className="text-sm text-muted-foreground py-6 text-center">{mt("Nenhum envio neste filtro.")}</p>
       ) : (
         <div className="divide-y rounded-md border border-[color:var(--hairline)]">
           {rows.map((l) => (

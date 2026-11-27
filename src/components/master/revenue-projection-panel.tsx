@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { TrendingUp, Target, Wallet, LineChart, Pencil, Check, X } from "lucide-react";
 import { revenueProjection, saveRevenueGoal } from "@/lib/finance.functions";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 const brl = (c: number) =>
   ((c ?? 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -22,6 +23,7 @@ const CENARIOS: { id: Cenario; label: string; desc: string }[] = [
 ];
 
 export function RevenueProjectionPanel() {
+  const { mt } = useMasterT();
   const load = useServerFn(revenueProjection);
   const save = useServerFn(saveRevenueGoal);
   const [d, setD] = useState<any | null>(null);
@@ -76,30 +78,30 @@ export function RevenueProjectionPanel() {
         <div className="relative bg-[color:var(--brand)] text-white p-6 sm:p-7">
           <div className="relative z-10 grid gap-6 lg:grid-cols-[1.1fr_1fr_1fr]">
             <div>
-              <div className="text-[11px] uppercase tracking-wider text-white/70">Faturado desde o início</div>
+              <div className="text-[11px] uppercase tracking-wider text-white/70">{mt("Faturado desde o início")}</div>
               <div className="mt-2 text-[38px] sm:text-[44px] font-semibold leading-none tabular-nums">
                 {brlExato(d.totalLiquido)}
               </div>
               <div className="mt-2 text-[12.5px] text-white/75">
-                {d.mesesAtivos} mês(es) com receita
+                {d.mesesAtivos} {mt("mês(es) com receita")}
                 {d.totalReembolsos > 0 ? ` • ${brl(d.totalReembolsos)} devolvidos` : ""}
               </div>
             </div>
             <div className="space-y-1.5">
-              <div className="text-[11px] uppercase tracking-wider text-white/70">Recorrência contratada</div>
-              <div className="text-[26px] font-semibold leading-none tabular-nums">{brlExato(d.mrr)}/mês</div>
-              <div className="text-[12.5px] text-white/75">{d.clientesPagantes} cliente(s) pagando hoje</div>
-              <div className="text-[12.5px] text-white/75">Média dos últimos 12 meses: {brl(d.mediaMensal12m)}</div>
+              <div className="text-[11px] uppercase tracking-wider text-white/70">{mt("Recorrência contratada")}</div>
+              <div className="text-[26px] font-semibold leading-none tabular-nums">{brlExato(d.mrr)}{mt("/mês")}</div>
+              <div className="text-[12.5px] text-white/75">{d.clientesPagantes} {mt("cliente(s) pagando hoje")}</div>
+              <div className="text-[12.5px] text-white/75">{mt("Média dos últimos 12 meses:")} {brl(d.mediaMensal12m)}</div>
             </div>
             <div className="space-y-1.5">
-              <div className="text-[11px] uppercase tracking-wider text-white/70">Tendência mensal</div>
+              <div className="text-[11px] uppercase tracking-wider text-white/70">{mt("Tendência mensal")}</div>
               <div className="text-[26px] font-semibold leading-none tabular-nums">
                 {cresc > 0 ? "+" : ""}
                 {cresc.toFixed(1)}%
               </div>
-              <div className="text-[12.5px] text-white/75">Variação média da receita mês a mês</div>
+              <div className="text-[12.5px] text-white/75">{mt("Variação média da receita mês a mês")}</div>
               <div className="text-[12.5px] text-white/75">
-                Projeção {new Date().getFullYear()}: {brl(d.ano.projetado)}
+                {mt("Projeção")} {new Date().getFullYear()}: {brl(d.ano.projetado)}
               </div>
             </div>
           </div>
@@ -114,9 +116,9 @@ export function RevenueProjectionPanel() {
             <div>
               <h3 className="text-[17px] font-semibold flex items-center gap-2">
                 <LineChart className="size-4 text-[color:var(--brand-text)]" />
-                Realizado e projeção
+                {mt("Realizado e projeção")}
               </h3>
-              <p className="text-xs text-muted-foreground">Últimos meses recebidos e os próximos 6 projetados</p>
+              <p className="text-xs text-muted-foreground">{mt("Últimos meses recebidos e os próximos 6 projetados")}</p>
             </div>
             <div className="flex rounded-xl bg-muted p-1">
               {CENARIOS.map((c) => (
@@ -125,7 +127,7 @@ export function RevenueProjectionPanel() {
                   onClick={() => setCenario(c.id)}
                   title={c.desc}
                   className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                    cenario === c.id ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                    cenario === c.id ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {c.label}
@@ -154,11 +156,11 @@ export function RevenueProjectionPanel() {
           </div>
           <div className="mt-3 flex items-center gap-4 text-[11px] text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-sm bg-[color:var(--brand)]" /> Recebido
+              <span className="size-2.5 rounded-sm bg-[color:var(--brand)]" /> {mt("Recebido")}
             </span>
             <span className="flex items-center gap-1.5">
               <span className="size-2.5 rounded-sm bg-[color:var(--brand)]/25 border border-dashed border-[color:var(--brand)]/50" />{" "}
-              Projetado
+              {mt("Projetado")}
             </span>
           </div>
         </Card>
@@ -167,9 +169,9 @@ export function RevenueProjectionPanel() {
           <div>
             <h3 className="text-[17px] font-semibold flex items-center gap-2">
               <TrendingUp className="size-4 text-emerald-600" />
-              Quanto entra pela frente
+              {mt("Quanto entra pela frente")}
             </h3>
-            <p className="text-xs text-muted-foreground">Soma prevista no cenário {CENARIOS.find((c) => c.id === cenario)?.label.toLowerCase()}</p>
+            <p className="text-xs text-muted-foreground">{mt("Soma prevista no cenário")} {CENARIOS.find((c) => c.id === cenario)?.label.toLowerCase()}</p>
           </div>
           {[
             { label: "Próximos 3 meses", v: d.resumo.prox3[cenario] },
@@ -196,7 +198,7 @@ export function RevenueProjectionPanel() {
               <Target className="size-4 text-amber-600" />
               Meta de {d.ano.ano}
             </h3>
-            <p className="text-xs text-muted-foreground">Acompanhe o quanto falta para bater o planejado</p>
+            <p className="text-xs text-muted-foreground">{mt("Acompanhe o quanto falta para bater o planejado")}</p>
           </div>
           {editMeta ? (
             <div className="flex items-center gap-2">
@@ -242,9 +244,9 @@ export function RevenueProjectionPanel() {
               />
             </div>
             <div className="grid gap-3 sm:grid-cols-4">
-              <Metric label="Meta do ano" value={brl(meta)} />
-              <Metric label="Já faturado" value={brl(d.ano.faturado)} hint={`${pctMetaReal}% da meta`} />
-              <Metric label="Projetado até dez" value={brl(d.ano.projetado)} hint={`${pctMeta}% da meta`} />
+              <Metric label={mt("Meta do ano")} value={brl(meta)} />
+              <Metric label={mt("Já faturado")} value={brl(d.ano.faturado)} hint={`${pctMetaReal}% da meta`} />
+              <Metric label={mt("Projetado até dez")} value={brl(d.ano.projetado)} hint={`${pctMeta}% da meta`} />
               <Metric
                 label={d.ano.projetado >= meta ? "Acima da meta" : "Falta"}
                 value={brl(Math.abs(meta - d.ano.projetado))}
@@ -261,7 +263,7 @@ export function RevenueProjectionPanel() {
           </div>
         ) : (
           <p className="mt-4 text-sm text-muted-foreground">
-            Defina uma meta anual para acompanhar o progresso ao lado da projeção.
+            {mt("Defina uma meta anual para acompanhar o progresso ao lado da projeção.")}
           </p>
         )}
       </Card>

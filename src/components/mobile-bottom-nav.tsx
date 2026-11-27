@@ -11,7 +11,6 @@ export type MobileNavItem = {
 
 export function MobileBottomNav({
   items,
-  accent = "var(--foreground)",
   onNavigateStart,
   activePath,
 }: {
@@ -39,8 +38,8 @@ export function MobileBottomNav({
               : false);
           const Icon = it.icon;
           const className =
-            `tt-exempt relative min-w-0 flex-1 flex flex-col items-center justify-center gap-0.5 px-0.5 py-1.5 min-h-[48px] rounded-xl text-[10px] sm:text-[10.5px] font-medium transition-all ${active ? "bg-primary" : "text-muted-foreground"}`;
-          const style = active ? { color: accent } : undefined;
+            `tt-exempt relative min-w-0 flex-1 flex flex-col items-center justify-center gap-0.5 px-0.5 py-1.5 min-h-[48px] rounded-xl text-[10px] sm:text-[10.5px] font-medium transition-all ${active ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"}`;
+          const style = undefined;
           const inner = (
             <>
               <span className="relative">

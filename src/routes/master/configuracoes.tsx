@@ -12,6 +12,7 @@ import { brand } from "@/config/brand";
 import {
   getBillingWebhookInfo, listRecentBillingEvents, getBillingGateway, setBillingGateway,
 } from "@/lib/billing.functions";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 export const Route = createFileRoute("/master/configuracoes")({
   head: () => ({ meta: [{ title: `${brand.name} — Webhooks` }] }),
@@ -29,6 +30,7 @@ const EVENTOS = [
 ];
 
 function ConfigPage() {
+  const { mt } = useMasterT();
   const getWebhooks = useServerFn(getBillingWebhookInfo);
   const getEvents = useServerFn(listRecentBillingEvents);
 
@@ -85,15 +87,15 @@ function ConfigPage() {
   return (
     <div className="space-y-5 w-full animate-in fade-in duration-200">
       <div>
-        <h1 className="font-display text-[24px] font-semibold tracking-tight leading-tight">Webhooks</h1>
+        <h1 className="font-display text-[24px] font-semibold tracking-tight leading-tight">{mt("Webhooks")}</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          URLs de integração com os checkouts e eventos de cobrança recebidos.
+          {mt("URLs de integração com os checkouts e eventos de cobrança recebidos.")}
         </p>
       </div>
 
       <Card className="p-5 rounded-2xl border-[color:var(--hairline)] space-y-3">
         <div>
-          <h2 className="font-semibold text-[15px]">Gateway padrão dos clientes</h2>
+          <h2 className="font-semibold text-[15px]">{mt("Gateway padrão dos clientes")}</h2>
           <p className="text-xs text-muted-foreground mt-1">
             Define para onde o cliente é levado ao pagar em Configurações → Plano. Com a Kiwify, o checkout interno
             (PIX/cartão do AbacatePay) fica oculto.
@@ -119,7 +121,7 @@ function ConfigPage() {
             className="text-[12px]"
           />
           <Button size="sm" onClick={salvarGateway} disabled={savingGateway}>
-            {savingGateway ? <Loader2 className="size-3.5 animate-spin" /> : "Salvar"}
+            {savingGateway ? <Loader2 className="size-3.5 animate-spin" /> : mt("Salvar")}
           </Button>
         </div>
       </Card>
@@ -127,7 +129,7 @@ function ConfigPage() {
       <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr] items-start">
         <Card className="p-5 rounded-2xl border-[color:var(--hairline)] space-y-4">
           <div>
-            <h2 className="font-semibold text-[15px]">Webhooks de cobrança</h2>
+            <h2 className="font-semibold text-[15px]">{mt("Webhooks de cobrança")}</h2>
             <p className="text-xs text-muted-foreground mt-1">
               Cole as URLs no painel do checkout. Venda aprovada libera o cliente pelo <b>e-mail do comprador</b>;
               cancelamento, reembolso ou chargeback suspendem a conta e a renovação reativa.
@@ -172,7 +174,7 @@ function ConfigPage() {
                 <div>
                   <div className="font-bold uppercase tracking-wider mb-1">AbacatePay</div>
                   <ol className="list-decimal pl-4 space-y-0.5 text-muted-foreground">
-                    <li>Painel AbacatePay → <b>Integrações</b> → <b>Webhooks</b>.</li>
+                    <li>Painel AbacatePay → <b>Integrações</b> → <b>{mt("Webhooks")}</b>.</li>
                     <li>Cole a URL do AbacatePay acima (o segredo já vai na própria URL).</li>
                     <li>Ative os eventos de pagamento aprovado, cancelado e estornado.</li>
                     <li>Faça uma cobrança teste de R$1 — ela deve aparecer em "Últimos eventos".</li>
@@ -181,7 +183,7 @@ function ConfigPage() {
                 <div>
                   <div className="font-bold uppercase tracking-wider mb-1">Kiwify</div>
                   <ol className="list-decimal pl-4 space-y-0.5 text-muted-foreground">
-                    <li>Painel Kiwify → <b>Apps</b> → <b>Webhooks</b> → <b>Nova URL</b>.</li>
+                    <li>Painel Kiwify → <b>Apps</b> → <b>{mt("Webhooks")}</b> → <b>Nova URL</b>.</li>
                     <li>Cole a URL da Kiwify acima.</li>
                     <li>Marque: <code>compra aprovada</code>, <code>reembolso</code>, <code>chargeback</code>, <code>assinatura cancelada</code>, <code>assinatura renovada</code>.</li>
                     <li>Salve e valide com uma compra teste.</li>
@@ -197,11 +199,11 @@ function ConfigPage() {
         </Card>
 
         <Card className="p-5 rounded-2xl border-[color:var(--hairline)] space-y-3">
-          <h3 className="text-sm font-semibold">Últimos eventos recebidos</h3>
+          <h3 className="text-sm font-semibold">{mt("Últimos eventos recebidos")}</h3>
           {loading ? (
             <div className="grid place-items-center py-8"><Loader2 className="animate-spin text-muted-foreground" /></div>
           ) : events.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Nenhum webhook recebido ainda.</p>
+            <p className="text-xs text-muted-foreground">{mt("Nenhum webhook recebido ainda.")}</p>
           ) : (
             <ul className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
               {events.map((e) => (

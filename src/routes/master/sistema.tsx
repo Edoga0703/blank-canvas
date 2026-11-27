@@ -25,6 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 import { AiTelemetryPanel } from "@/components/master/ai-telemetry-panel";
 import { StorageVaultsTab } from "@/components/config/storage-vaults-tab";
+import { useMasterT, translateMaster } from "@/lib/i18n/master-translations";
 
 export const Route = createFileRoute("/master/sistema")({
   head: () => ({
@@ -48,14 +49,15 @@ function PageHeader({ title, description, actions }: { title: string; descriptio
   );
 }
 
-function annStatus(a: any): { label: string; cls: string } {
+function annStatus(a: any, language: "es" | "en" | "pt"): { label: string; cls: string } {
   const expired = a.expires_at && new Date(a.expires_at).getTime() <= Date.now();
-  if (!a.is_active) return { label: "Inativo", cls: "bg-slate-100 text-slate-600 border-slate-200" };
-  if (expired) return { label: "Expirado", cls: "bg-amber-50 text-amber-700 border-amber-200" };
-  return { label: "No ar", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+  if (!a.is_active) return { label: translateMaster(language, "Inativo"), cls: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700" };
+  if (expired) return { label: translateMaster(language, "Expirado"), cls: "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800" };
+  return { label: translateMaster(language, "No ar"), cls: "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" };
 }
 
 function SistemaPage() {
+  const { mt, language } = useMasterT();
   const loadAnnouncements = useServerFn(listAllAnnouncements);
   const saveAnnouncement = useServerFn(createAnnouncement);
   const removeAnnouncement = useServerFn(deleteAnnouncement);
@@ -279,8 +281,8 @@ function SistemaPage() {
     return (
       <div className="space-y-5 w-full animate-in fade-in duration-200">
         <PageHeader
-          title="Armazenamento & Bóvedas Globais"
-          description="Infraestrutura central de cache quente (Cloudflare R2) e arquivo frio (Google Drive Master)."
+          title={mt("Armazenamento & Bóvedas Globais")}
+          description={mt("Infraestrutura central de cache quente (Cloudflare R2) e arquivo frio (Google Drive Master).")}
         />
         <StorageVaultsTab />
       </div>
@@ -291,28 +293,28 @@ function SistemaPage() {
     return (
       <div className="space-y-5 w-full animate-in fade-in duration-200">
         <PageHeader
-          title="Popups e avisos"
-          description="Avisos globais exibidos no painel dos clientes."
+          title={mt("Popups e avisos")}
+          description={mt("Avisos globais exibidos no painel dos clientes.")}
           actions={
             <Dialog open={isAddOpen} onOpenChange={(o) => { setIsAddOpen(o); if (!o) setEditingId(null); }}>
               <DialogTrigger asChild>
-                <Button size="sm" className="rounded-lg gap-2"><Plus className="size-4" /> Novo aviso</Button>
+                <Button size="sm" className="rounded-lg gap-2"><Plus className="size-4" /> {mt("Novo aviso")}</Button>
               </DialogTrigger>
               <DialogContent className="max-w-4xl rounded-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>{editingId ? "Editar aviso" : "Criar novo aviso"}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{editingId ? mt("Editar aviso") : "Criar novo aviso"}</DialogTitle></DialogHeader>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 py-4">
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <Label>Título</Label>
+                      <Label>{mt("Título")}</Label>
                       <Input value={newAnn.title} onChange={e => setNewAnn({ ...newAnn, title: e.target.value })} />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Conteúdo</Label>
+                      <Label>{mt("Conteúdo")}</Label>
                       <Textarea value={newAnn.content || ''} onChange={e => setNewAnn({ ...newAnn, content: e.target.value })} />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <Label>Imagem</Label>
+                        <Label>{mt("Imagem")}</Label>
                         <div className="flex gap-2">
                           <Input value={newAnn.image_url || ''} onChange={e => setNewAnn({ ...newAnn, image_url: e.target.value })} className="flex-1" />
                           <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
@@ -322,14 +324,14 @@ function SistemaPage() {
                         </div>
                       </div>
                       <div className="space-y-1.5">
-                        <Label>Tamanho</Label>
+                        <Label>{mt("Tamanho")}</Label>
                         <Select value={newAnn.size} onValueChange={v => setNewAnn({ ...newAnn, size: v as any })}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="sm">Pequeno (380px)</SelectItem>
-                            <SelectItem value="md">Médio (560px)</SelectItem>
-                            <SelectItem value="lg">Grande (800px)</SelectItem>
-                            <SelectItem value="full">Tela cheia</SelectItem>
+                            <SelectItem value="sm">{mt("Pequeno (380px)")}</SelectItem>
+                            <SelectItem value="md">{mt("Médio (560px)")}</SelectItem>
+                            <SelectItem value="lg">{mt("Grande (800px)")}</SelectItem>
+                            <SelectItem value="full">{mt("Tela cheia")}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -338,17 +340,17 @@ function SistemaPage() {
                       <div className="space-y-1.5">
                         <Label>Duração ({newAnn.display_time_seconds}s)</Label>
                         <Input type="range" min={1} max={60} value={newAnn.display_time_seconds} onChange={e => setNewAnn({ ...newAnn, display_time_seconds: parseInt(e.target.value) })} />
-                        <p className="text-[10px] text-muted-foreground">Tempo que o popup fica na tela</p>
+                        <p className="text-[10px] text-muted-foreground">{mt("Tempo que o popup fica na tela")}</p>
                       </div>
                       <div className="space-y-1.5">
-                        <Label>Prazo de expiração</Label>
+                        <Label>{mt("Prazo de expiração")}</Label>
                         <Input type="date" value={newAnn.expires_at} onChange={e => setNewAnn({ ...newAnn, expires_at: e.target.value })} />
-                        <p className="text-[10px] text-muted-foreground">O aviso sai do ar automaticamente após esta data.</p>
+                        <p className="text-[10px] text-muted-foreground">{mt("O aviso sai do ar automaticamente após esta data.")}</p>
                       </div>
                     </div>
                   </div>
                   <div className="space-y-4">
-                    <Label className="text-xs font-bold uppercase text-muted-foreground">Pré-visualização</Label>
+                    <Label className="text-xs font-bold uppercase text-muted-foreground">{mt("Pré-visualização")}</Label>
                     <div className="border border-dashed rounded-xl p-4 bg-muted/40 min-h-[200px] flex items-center justify-center">
                       <div className="bg-card rounded-xl border shadow-md p-4 w-full max-w-[300px] space-y-3">
                         {newAnn.image_url && <img src={newAnn.image_url} alt="" className="w-full aspect-video object-contain rounded-lg bg-muted" />}
@@ -359,7 +361,7 @@ function SistemaPage() {
                     </div>
                   </div>
                 </div>
-                <DialogFooter><Button onClick={handleAdd}>{editingId ? "Salvar alterações" : "Publicar aviso"}</Button></DialogFooter>
+                <DialogFooter><Button onClick={handleAdd}>{editingId ? mt("Salvar alterações") : "Publicar aviso"}</Button></DialogFooter>
               </DialogContent>
             </Dialog>
           }
@@ -369,11 +371,11 @@ function SistemaPage() {
           {announcements === null ? (
             <div className="py-16 grid place-items-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>
           ) : announcements.length === 0 ? (
-            <p className="text-center py-14 text-sm text-muted-foreground">Nenhum aviso cadastrado.</p>
+            <p className="text-center py-14 text-sm text-muted-foreground">{mt("Nenhum aviso cadastrado.")}</p>
           ) : (
             <div className="max-h-[70vh] overflow-y-auto grid gap-2 p-1">
               {announcements.map(a => {
-                const st = annStatus(a);
+                const st = annStatus(a, language);
                 return (
                   <div key={a.id} className="flex flex-wrap items-center justify-between gap-3 p-3 sm:p-4 rounded-xl border border-[color:var(--hairline)] bg-card">
                     <div className="flex items-center gap-3 min-w-0">
@@ -413,8 +415,8 @@ function SistemaPage() {
   return (
     <div className="space-y-5 w-full animate-in fade-in duration-200">
       <PageHeader
-        title="Inteligência Artificial"
-        description="Configuração global dos agentes: provedor, modelo e chaves."
+        title={mt("Inteligência Artificial")}
+        description={mt("Configuração global dos agentes: provedor, modelo e chaves.")}
         actions={
           <Badge variant="outline" className="text-[11px] gap-1.5 py-1">
             <Sparkles className="size-3" /> {globalAi.ai_provider} · {globalAi.ai_model || "—"}
@@ -431,7 +433,7 @@ function SistemaPage() {
         <Card className="p-5 sm:p-6 rounded-2xl border-[color:var(--hairline)] space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Provedor padrão</Label>
+              <Label>{mt("Provedor padrão")}</Label>
               <Select
                 value={globalAi.ai_provider}
                 onValueChange={(v) => {
@@ -441,19 +443,19 @@ function SistemaPage() {
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="drael">Drael AI (drael.sh / drael-v1 — Base Independente Recomendada)</SelectItem>
-                  <SelectItem value="gemini">Google Gemini Direto (generativelanguage.googleapis.com — Gemini 3.5 Flash Lite)</SelectItem>
-                  <SelectItem value="openai">OpenAI Direto (api.openai.com / GPT-4o mini)</SelectItem>
-                  <SelectItem value="anthropic">Anthropic Direto (api.anthropic.com / Claude)</SelectItem>
+                  <SelectItem value="drael">{mt("Drael AI (drael.sh / drael-v1 — Base Independente Recomendada)")}</SelectItem>
+                  <SelectItem value="gemini">{mt("Google Gemini Direto (generativelanguage.googleapis.com — Gemini 3.5 Flash Lite)")}</SelectItem>
+                  <SelectItem value="openai">{mt("OpenAI Direto (api.openai.com / GPT-4o mini)")}</SelectItem>
+                  <SelectItem value="anthropic">{mt("Anthropic Direto (api.anthropic.com / Claude)")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Modelo global</Label>
+              <Label>{mt("Modelo global")}</Label>
               <Input
                 value={globalAi.ai_model}
                 onChange={e => setGlobalAi({ ...globalAi, ai_model: e.target.value })}
-                placeholder="ex: gemini-3.5-flash-lite, gemini-3.8-flash ou drael-v1"
+                placeholder={mt("ex: gemini-3.5-flash-lite, gemini-3.8-flash ou drael-v1")}
                 list="ai-models"
               />
               <datalist id="ai-models">
@@ -473,7 +475,7 @@ function SistemaPage() {
             {/* Drael API Key */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2 flex-wrap">
-                <Key className="size-3 text-purple-600" /> API Key Drael (dk-...)
+                <Key className="size-3 text-purple-600" /> {mt("API Key Drael (dk-...)")}
                 {keysStatus.drael.configured && (
                   <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-semibold">
                     <ShieldCheck className="size-3" /> Configurado ({keysStatus.drael.preview})
@@ -496,13 +498,13 @@ function SistemaPage() {
                   {showKeys.drael ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </Button>
               </div>
-              <p className="text-[11px] text-muted-foreground">Endpoint: <code className="bg-muted px-1 rounded">https://drael.sh/v1</code> — Chave padrão caso o Pool Drael esteja vazio.</p>
+              <p className="text-[11px] text-muted-foreground">Endpoint: <code className="bg-muted px-1 rounded">https://drael.sh/v1</code> {mt("— Chave padrão caso o Pool Drael esteja vazio.")}</p>
             </div>
 
             {/* OpenAI API Key */}
             <div className="space-y-2 pt-2 border-t">
               <Label className="flex items-center gap-2 flex-wrap">
-                <Key className="size-3 text-emerald-600" /> API Key OpenAI Direto (sk-...)
+                <Key className="size-3 text-emerald-600" /> {mt("API Key OpenAI Direto (sk-...)")}
                 {keysStatus.openai.configured && (
                   <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-semibold">
                     <ShieldCheck className="size-3" /> Configurado ({keysStatus.openai.preview})
@@ -531,7 +533,7 @@ function SistemaPage() {
             {/* Google Gemini Direct API Key */}
             <div className="space-y-2 pt-2 border-t">
               <Label className="flex items-center gap-2 flex-wrap">
-                <Key className="size-3 text-blue-600" /> API Key Google Gemini Direto (AIzaSy...)
+                <Key className="size-3 text-blue-600" /> {mt("API Key Google Gemini Direto (AIzaSy...)")}
                 {keysStatus.gemini.configured && (
                   <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-semibold">
                     <ShieldCheck className="size-3" /> Configurado ({keysStatus.gemini.preview})
@@ -554,13 +556,13 @@ function SistemaPage() {
                   {showKeys.gemini ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </Button>
               </div>
-              <p className="text-[11px] text-muted-foreground">Endpoint direto: <code className="bg-muted px-1 rounded">https://generativelanguage.googleapis.com</code> (também atua como failover automático do Pool Drael).</p>
+              <p className="text-[11px] text-muted-foreground">{mt("Endpoint direto:")} <code className="bg-muted px-1 rounded">https://generativelanguage.googleapis.com</code> {mt("(também atua como failover automático do Pool Drael).")}</p>
             </div>
 
             {/* Anthropic Direct API Key */}
             <div className="space-y-2 pt-2 border-t">
               <Label className="flex items-center gap-2 flex-wrap">
-                <Key className="size-3 text-amber-600" /> API Key Anthropic Direto (sk-ant-...)
+                <Key className="size-3 text-amber-600" /> {mt("API Key Anthropic Direto (sk-ant-...)")}
                 {keysStatus.anthropic.configured && (
                   <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-semibold">
                     <ShieldCheck className="size-3" /> Configurado ({keysStatus.anthropic.preview})
@@ -583,22 +585,22 @@ function SistemaPage() {
                   {showKeys.anthropic ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </Button>
               </div>
-              <p className="text-[11px] text-muted-foreground">Endpoint direto: <code className="bg-muted px-1 rounded">https://api.anthropic.com/v1/messages</code> (Claude 3.5 Sonnet).</p>
+              <p className="text-[11px] text-muted-foreground">{mt("Endpoint direto:")} <code className="bg-muted px-1 rounded">https://api.anthropic.com/v1/messages</code> (Claude 3.5 Sonnet).</p>
             </div>
 
             {/* Zero External Gateway Note */}
             <div className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/50 text-[11.5px] text-emerald-900 dark:text-emerald-200 flex items-center gap-2">
               <ShieldCheck className="size-4 text-emerald-600 shrink-0" />
-              <span><strong>Independência Total:</strong> Todas as inferências de IA consomem exclusivamente as chaves configuradas no servidor e no Pool Drael, mantendo segredos protegidos fora do navegador.</span>
+              <span><strong>{mt("Independência Total:")}</strong> {mt("Todas as inferências de IA consomem exclusivamente as chaves configuradas no servidor e no Pool Drael, mantendo segredos protegidos fora do navegador.")}</span>
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2">
             <Button className="flex-1 gap-2" onClick={handleSaveAi} disabled={savingAi}>
-              {savingAi ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Salvar configuração
+              {savingAi ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} {mt("Salvar configuração")}
             </Button>
             <Button variant="outline" className="flex-1 gap-2" onClick={handleTestAi} disabled={testing}>
-              {testing ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Testar resposta
+              {testing ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} {mt("Testar resposta")}
             </Button>
           </div>
         </Card>
@@ -615,14 +617,14 @@ function SistemaPage() {
           </Card>
 
           <Card className="p-4 rounded-2xl border-[color:var(--hairline)]">
-            <h3 className="text-sm font-semibold mb-2">Resultado do teste</h3>
+            <h3 className="text-sm font-semibold mb-2">{mt("Resultado do teste")}</h3>
             {!testResult ? (
-              <p className="text-xs text-muted-foreground">Execute "Testar resposta" para validar provedor, modelo e chave.</p>
+              <p className="text-xs text-muted-foreground">{mt("Execute \"Testar resposta\" para validar provedor, modelo e chave.")}</p>
             ) : testResult.ok ? (
               <div className="flex items-start gap-2 text-xs text-emerald-800">
                 <CheckCircle2 className="size-4 shrink-0 mt-0.5" />
                 <div>
-                  <strong>Respondendo.</strong> Latência: {testResult.ms}ms
+                  <strong>{mt("Respondendo.")}</strong> {mt("Latência:")} {testResult.ms}ms
                   <p className="opacity-80 mt-1 break-words">{String(testResult.sample ?? "").slice(0, 160)}</p>
                 </div>
               </div>
@@ -630,9 +632,9 @@ function SistemaPage() {
               <div className="flex items-start gap-2 text-xs text-red-800">
                 <AlertTriangle className="size-4 shrink-0 mt-0.5" />
                 <div className="break-words">
-                  <strong>Falhou:</strong> {testResult.error}
+                  <strong>{mt("Falhou:")}</strong> {testResult.error}
                   {String(testResult.error ?? "").includes("invalid model ID") && (
-                    <p className="mt-1 font-semibold">O modelo não corresponde ao provedor selecionado. Para OpenAI use gpt-4o-mini.</p>
+                    <p className="mt-1 font-semibold">{mt("O modelo não corresponde ao provedor selecionado. Para OpenAI use gpt-4o-mini.")}</p>
                   )}
                 </div>
               </div>

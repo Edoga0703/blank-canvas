@@ -40,6 +40,7 @@ import {
   saveAiPoolKeyFn,
   testAiPoolKeyFn,
 } from "@/lib/ai-admin.functions";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 type UsageRange = "24h" | "7d" | "30d" | "mes";
 
@@ -105,6 +106,7 @@ const EMPTY_FORM = {
 };
 
 export function AiTelemetryPanel() {
+  const { mt } = useMasterT();
   const loadSummary = useServerFn(getMasterAiUsageSummaryFn);
   const loadPool = useServerFn(listAiPoolKeysFn);
   const savePoolKey = useServerFn(saveAiPoolKeyFn);
@@ -304,10 +306,10 @@ export function AiTelemetryPanel() {
           <div>
             <h2 className="text-[15px] font-semibold flex items-center gap-2">
               <Activity className="size-4 text-[color:var(--brand-text)]" />
-              Telemetria e Custos de IA (Multi-Provedor)
+              {mt("Telemetria e Custos de IA (Multi-Provedor)")}
             </h2>
             <p className="text-xs text-muted-foreground">
-              Consumo real unificado de Drael, Gemini, OpenAI, Anthropic e Whisper por empresa e módulo.
+              {mt("Consumo real unificado de Drael, Gemini, OpenAI, Anthropic e Whisper por empresa e módulo.")}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -318,7 +320,7 @@ export function AiTelemetryPanel() {
               onClick={() => void refreshSummary(range)}
               disabled={loadingSummary}
             >
-              <RefreshCw className={`size-3.5 ${loadingSummary ? "animate-spin" : ""}`} /> Atualizar
+              <RefreshCw className={`size-3.5 ${loadingSummary ? "animate-spin" : ""}`} /> {mt("Atualizar")}
             </Button>
             <Select value={range} onValueChange={(v) => setRange(v as UsageRange)}>
               <SelectTrigger className="w-[170px] h-9">
@@ -327,7 +329,7 @@ export function AiTelemetryPanel() {
               <SelectContent>
                 {RANGES.map((r) => (
                   <SelectItem key={r.v} value={r.v}>
-                    {r.label}
+                    {mt(r.label)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -338,25 +340,25 @@ export function AiTelemetryPanel() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
             icon={<Zap className="size-4 text-blue-600" />}
-            label="Chamadas registradas"
+            label={mt("Chamadas registradas")}
             value={nf.format(totals.requests)}
             hint={`${nf.format(totals.rate_limited_count)} rate-limit(s) 429`}
           />
           <KpiCard
             icon={<DollarSign className="size-4 text-emerald-600" />}
-            label="Custo estimado (USD)"
+            label={mt("Custo estimado (USD)")}
             value={usd.format(totals.cost_usd ?? 0)}
             hint="Soma real + amortizado Drael"
           />
           <KpiCard
             icon={<Cpu className="size-4 text-violet-600" />}
-            label="Tokens (In / Out)"
+            label={mt("Tokens (In / Out)")}
             value={`${nf.format(totals.input_tokens)} / ${nf.format(totals.output_tokens)}`}
             hint="Captura direta das APIs"
           />
           <KpiCard
             icon={<Sparkles className="size-4 text-amber-600" />}
-            label="Créditos computados"
+            label={mt("Créditos computados")}
             value={nf.format(totals.credits_charged)}
             hint="Base para consumo dos clientes"
           />
@@ -370,7 +372,7 @@ export function AiTelemetryPanel() {
           <>
             {dailySeries.length > 0 && (
               <div className="space-y-2 pt-1">
-                <div className="text-xs font-medium text-muted-foreground">Volume diário de chamadas</div>
+                <div className="text-xs font-medium text-muted-foreground">{mt("Volume diário de chamadas")}</div>
                 <div className="flex items-end gap-1 h-24 rounded-xl border border-[color:var(--hairline)] bg-muted/20 p-3">
                   {dailySeries.map((d) => {
                     const pct = Math.max(6, Math.round((d.requests / maxDayReqs) * 100));
@@ -395,10 +397,10 @@ export function AiTelemetryPanel() {
               {/* Por provedor */}
               <div className="rounded-xl border border-[color:var(--hairline)] p-3.5 space-y-2.5">
                 <div className="text-xs font-semibold flex items-center gap-1.5">
-                  <Cpu className="size-3.5 text-muted-foreground" /> Por Provedor
+                  <Cpu className="size-3.5 text-muted-foreground" /> {mt("Por Provedor")}
                 </div>
                 {(summary?.by_provider ?? []).length === 0 ? (
-                  <p className="text-xs text-muted-foreground py-4 text-center">Sem eventos no período.</p>
+                  <p className="text-xs text-muted-foreground py-4 text-center">{mt("Sem eventos no período.")}</p>
                 ) : (
                   <div className="space-y-2">
                     {(summary?.by_provider ?? []).map((p: any) => (
@@ -422,10 +424,10 @@ export function AiTelemetryPanel() {
               {/* Por empresa */}
               <div className="rounded-xl border border-[color:var(--hairline)] p-3.5 space-y-2.5">
                 <div className="text-xs font-semibold flex items-center gap-1.5">
-                  <Building2 className="size-3.5 text-muted-foreground" /> Por Empresa
+                  <Building2 className="size-3.5 text-muted-foreground" /> {mt("Por Empresa")}
                 </div>
                 {(summary?.by_company ?? []).length === 0 ? (
-                  <p className="text-xs text-muted-foreground py-4 text-center">Sem eventos no período.</p>
+                  <p className="text-xs text-muted-foreground py-4 text-center">{mt("Sem eventos no período.")}</p>
                 ) : (
                   <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                     {(summary?.by_company ?? []).slice(0, 12).map((c: any) => (
@@ -446,18 +448,18 @@ export function AiTelemetryPanel() {
               {/* Por módulo */}
               <div className="rounded-xl border border-[color:var(--hairline)] p-3.5 space-y-2.5">
                 <div className="text-xs font-semibold flex items-center gap-1.5">
-                  <Layers className="size-3.5 text-muted-foreground" /> Por Módulo
+                  <Layers className="size-3.5 text-muted-foreground" /> {mt("Por Módulo")}
                 </div>
                 {(summary?.by_feature ?? []).length === 0 ? (
-                  <p className="text-xs text-muted-foreground py-4 text-center">Sem eventos no período.</p>
+                  <p className="text-xs text-muted-foreground py-4 text-center">{mt("Sem eventos no período.")}</p>
                 ) : (
                   <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                     {(summary?.by_feature ?? []).map((f: any) => (
                       <div key={f.feature} className="flex items-center justify-between text-xs gap-2">
                         <div className="min-w-0">
-                          <div className="font-medium truncate">{FEATURE_LABELS[f.feature] || f.feature}</div>
+                          <div className="font-medium truncate">{mt(FEATURE_LABELS[f.feature] || f.feature)}</div>
                           <div className="text-[10.5px] text-muted-foreground">
-                            {nf.format(f.requests)} chamadas · {nf.format(f.credits_charged)} créd.
+                            {nf.format(f.requests)} chamadas · {nf.format(f.credits_charged)} {mt("créd.")}
                           </div>
                         </div>
                         <span className="font-semibold tabular-nums shrink-0">{usd.format(f.cost_usd)}</span>
@@ -476,21 +478,21 @@ export function AiTelemetryPanel() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-[15px] font-semibold">Pool de Contas Drael AI (Rotação por Turnos)</h2>
+              <h2 className="text-[15px] font-semibold">{mt("Pool de Contas Drael AI (Rotação por Turnos)")}</h2>
               <Badge variant="outline" className="text-[11px]">
-                {activeDraelKeys.length} ativa(s) · {usedSlots}/{totalSlots} hilos em uso
+                {activeDraelKeys.length} ativa(s) · {usedSlots}/{totalSlots} {mt("hilos em uso")}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Coordenação distribuída via PostgreSQL (4 hilos simultâneos por conta + cooldown automático em 429).
+              {mt("Coordenação distribuída via PostgreSQL (4 hilos simultâneos por conta + cooldown automático em 429).")}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={() => void refreshPool()} disabled={loadingPool}>
-              <RefreshCw className={`size-3.5 ${loadingPool ? "animate-spin" : ""}`} /> Atualizar Pool
+              <RefreshCw className={`size-3.5 ${loadingPool ? "animate-spin" : ""}`} /> {mt("Atualizar Pool")}
             </Button>
             <Button size="sm" className="h-9 gap-1.5" onClick={openNewDialog}>
-              <Plus className="size-4" /> Adicionar conta
+              <Plus className="size-4" /> {mt("Adicionar conta")}
             </Button>
           </div>
         </div>
@@ -501,9 +503,9 @@ export function AiTelemetryPanel() {
           </div>
         ) : poolKeys.length === 0 ? (
           <div className="rounded-xl border border-dashed p-6 text-center space-y-2">
-            <p className="text-sm font-medium">Nenhuma conta cadastrada no pool ainda</p>
+            <p className="text-sm font-medium">{mt("Nenhuma conta cadastrada no pool ainda")}</p>
             <p className="text-xs text-muted-foreground">
-              Enquanto o pool estiver vazio, o sistema usa a chave única das Configurações Globais abaixo. Adicione contas Drael aqui para escalar até 4 hilos por chave.
+              {mt("Enquanto o pool estiver vazio, o sistema usa a chave única das Configurações Globais abaixo. Adicione contas Drael aqui para escalar até 4 hilos por chave.")}
             </p>
           </div>
         ) : (
@@ -626,12 +628,12 @@ export function AiTelemetryPanel() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle>{form.id ? "Editar conta do pool" : "Adicionar conta ao pool de IA"}</DialogTitle>
+            <DialogTitle>{form.id ? mt("Editar conta do pool") : mt("Adicionar conta ao pool de IA")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Provedor</Label>
+                <Label>{mt("Provedor")}</Label>
                 <Select
                   value={form.provider}
                   onValueChange={(v) => setForm({ ...form, provider: v as any })}
@@ -649,11 +651,11 @@ export function AiTelemetryPanel() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Apelido</Label>
+                <Label>{mt("Apelido")}</Label>
                 <Input
                   value={form.alias}
                   onChange={(e) => setForm({ ...form, alias: e.target.value })}
-                  placeholder="Drael Conta 1"
+                  placeholder={mt("Drael Conta 1")}
                 />
               </div>
             </div>
@@ -671,7 +673,7 @@ export function AiTelemetryPanel() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Hilos simultâneos</Label>
+                <Label>{mt("Hilos simultâneos")}</Label>
                 <Input
                   type="number"
                   min={1}
@@ -681,7 +683,7 @@ export function AiTelemetryPanel() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Prioridade (1 = maior)</Label>
+                <Label>{mt("Prioridade (1 = maior)")}</Label>
                 <Input
                   type="number"
                   min={1}
@@ -693,17 +695,17 @@ export function AiTelemetryPanel() {
             </div>
 
             <div className="flex items-center justify-between pt-1">
-              <Label>Conta ativa para rotação</Label>
+              <Label>{mt("Conta ativa para rotação")}</Label>
               <Switch checked={form.active} onCheckedChange={(v) => setForm({ ...form, active: v })} />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancelar
+              {mt("Cancelar")}
             </Button>
             <Button onClick={() => void handleSavePoolKey()} disabled={savingKey}>
               {savingKey && <Loader2 className="size-4 animate-spin mr-1.5" />}
-              {form.id ? "Salvar alterações" : "Adicionar ao pool"}
+              {form.id ? mt("Salvar alterações") : mt("Adicionar ao pool")}
             </Button>
           </DialogFooter>
         </DialogContent>

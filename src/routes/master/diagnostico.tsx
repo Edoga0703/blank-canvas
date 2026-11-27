@@ -14,6 +14,7 @@ import { getProvidersHealth, getWhatsappFleet, setProviderCapacity, type Provide
 import { WhatsappFleetPanel } from "@/components/master/whatsapp-fleet-panel";
 import { Input } from "@/components/ui/input";
 import { testDapiConnection, type ProviderTestResult } from "@/lib/dapi-test.functions";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 export const Route = createFileRoute("/master/diagnostico")({
   component: DiagnosticoPage,
@@ -30,6 +31,7 @@ function loadHistory(): Record<string, Sample[]> {
 }
 
 function DiagnosticoPage() {
+  const { mt, localeCode } = useMasterT();
   const fetchHealth = useServerFn(getProvidersHealth);
   const fetchFleet = useServerFn(getWhatsappFleet);
   const runDapi = useServerFn(testDapiConnection);
@@ -127,35 +129,35 @@ function DiagnosticoPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[clamp(20px,3vw,26px)] font-display font-bold tracking-tight flex items-center gap-2">
-            Monitoramento WhatsApp
+            {mt("Monitoramento WhatsApp")}
             <HelpTip text="Validação contínua da API de WhatsApp, capacidade de conexões e métricas da frota." />
           </h1>
           <p className="text-sm text-muted-foreground">
-            Verificação automática a cada 20 segundos.
-            {checkedAt && <> · última às {new Date(checkedAt).toLocaleTimeString("pt-BR")}</>}
+            {mt("Verificação automática a cada 20 segundos.")}
+            {checkedAt && <> {mt("· última às")} {new Date(checkedAt).toLocaleTimeString(localeCode)}</>}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setAuto((v) => !v)}>
             <Activity className={`h-4 w-4 mr-2 ${auto ? "text-emerald-600" : ""}`} />
-            {auto ? "Tempo real: ativo" : "Tempo real: pausado"}
+            {auto ? mt("Tempo real: ativo") : mt("Tempo real: pausado")}
           </Button>
           <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={refreshing}>
             {refreshing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-            Atualizar
+            {mt("Atualizar")}
           </Button>
           <Button size="sm" onClick={runAll} disabled={loading !== null}>
             {loading === "all" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <PlugZap className="h-4 w-4 mr-2" />}
-            Testar credenciais
+            {mt("Testar credenciais")}
           </Button>
         </div>
       </div>
 
       {degradedCount > 0 && (
-        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800">
+        <div className="flex items-start gap-2 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-red-800 dark:text-red-300">
           <AlertTriangle className="size-4 mt-0.5 shrink-0" />
           <div className="text-[13px]">
-            <strong>API instável.</strong> Novas conexões e envios podem falhar enquanto o status não normalizar.
+            <strong>{mt("API instável.")}</strong> {mt("Novas conexões e envios podem falhar enquanto o status não normalizar.")}
           </div>
         </div>
       )}
@@ -163,7 +165,7 @@ function DiagnosticoPage() {
       {uaz ? (
         <StatusStrip p={uaz} samples={samples} result={results.dapi} auto={auto} onSaved={() => void refresh()} />
       ) : (
-        <Card className="rounded-2xl p-6 text-sm text-muted-foreground">Consultando a API…</Card>
+        <Card className="rounded-2xl p-6 text-sm text-muted-foreground">{mt("Consultando a API…")}</Card>
       )}
 
       <WhatsappFleetPanel fleet={fleet} />
@@ -174,24 +176,25 @@ function DiagnosticoPage() {
 function StatusStrip({
   p, samples, result, auto, onSaved,
 }: { p: ProviderHealth; samples: Sample[]; result?: ProviderTestResult; auto: boolean; onSaved: () => void }) {
+  const { mt, localeCode } = useMasterT();
   const state = !p.configured ? "off" : !p.ok ? "down" : p.degraded ? "slow" : "up";
   const tone = {
-    up: { dot: "bg-emerald-500", text: "text-emerald-700", label: "Operacional", ring: "border-emerald-200" },
-    slow: { dot: "bg-amber-500", text: "text-amber-700", label: "Instável", ring: "border-amber-200" },
-    down: { dot: "bg-red-500", text: "text-red-700", label: "Fora do ar", ring: "border-red-200" },
-    off: { dot: "bg-slate-300", text: "text-slate-500", label: "Não configurado", ring: "border-slate-200" },
+    up: { dot: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-300", label: mt("Operacional"), ring: "border-emerald-200 dark:border-emerald-900/60" },
+    slow: { dot: "bg-amber-500", text: "text-amber-700 dark:text-amber-300", label: mt("Instável"), ring: "border-amber-200 dark:border-amber-900/60" },
+    down: { dot: "bg-red-500", text: "text-red-700 dark:text-red-300", label: mt("Fora do ar"), ring: "border-red-200 dark:border-red-900/60" },
+    off: { dot: "bg-slate-300 dark:bg-slate-600", text: "text-slate-500 dark:text-slate-400", label: mt("Não configurado"), ring: "border-border" },
   }[state];
 
   const uptime = samples.length ? Math.round((samples.filter((s) => s.ok).length / samples.length) * 100) : null;
   const avg = samples.length ? Math.round(samples.reduce((a, s) => a + s.latencyMs, 0) / samples.length) : null;
 
   return (
-    <Card className={`rounded-2xl p-5 border bg-white ${tone.ring} space-y-4`}>
+    <Card className={`rounded-2xl p-5 border bg-card ${tone.ring} space-y-4`}>
       {/* Cabeçalho: status + credenciais */}
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <span className={`size-2.5 rounded-full shrink-0 ${tone.dot} ${auto ? "animate-pulse" : ""}`} />
-          <span className="font-semibold text-[15px]">API de WhatsApp</span>
+          <span className="font-semibold text-[15px]">{mt("API de WhatsApp")}</span>
           <Badge variant="outline" className={`text-[10.5px] ${tone.text}`}>{tone.label}</Badge>
           <span className="text-[12px] text-muted-foreground truncate hidden sm:inline">— {p.message}</span>
         </div>
@@ -200,26 +203,26 @@ function StatusStrip({
           {result ? (
             <>
               {result.ok ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <XCircle className="h-4 w-4 text-red-600" />}
-              <span className="font-medium">{result.ok ? "Credenciais válidas" : "Falha nas credenciais"}</span>
+              <span className="font-medium">{result.ok ? mt("Credenciais válidas") : mt("Falha nas credenciais")}</span>
               {result.status !== undefined && <Badge variant="outline" className="text-[10px]">HTTP {result.status}</Badge>}
               <Badge variant="outline" className="text-[10px]">{result.latencyMs} ms</Badge>
               <span className="text-muted-foreground hidden md:inline">Token: {result.tokenPreview || "—"}</span>
             </>
           ) : (
-            <span className="text-muted-foreground">Use “Testar credenciais” para validar a chave de acesso.</span>
+            <span className="text-muted-foreground">{mt("Use “Testar credenciais” para validar a chave de acesso.")}</span>
           )}
         </div>
       </div>
 
       {/* Linha única de métricas */}
       <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2 text-center">
-        <Metric icon={<Clock className="size-3.5" />} value={p.latencyMs} label="ms agora" tone="text-foreground" />
-        <Metric icon={<Activity className="size-3.5" />} value={uptime ?? 0} label="% uptime" tone="text-emerald-600" />
-        <Metric icon={<Gauge className="size-3.5" />} value={avg ?? 0} label="ms média" tone="text-sky-600" />
-        <Metric icon={<Wifi className="size-3.5" />} value={p.connected} label="Ativas" tone="text-emerald-600" />
-        <Metric icon={<Clock className="size-3.5" />} value={p.connecting} label="Conectando" tone="text-amber-600" />
-        <Metric icon={<XCircle className="size-3.5" />} value={p.disconnected} label="Caídas" tone="text-red-600" />
-        <Metric icon={<PauseCircle className="size-3.5" />} value={p.paused} label="Pausadas" tone="text-slate-500" />
+        <Metric icon={<Clock className="size-3.5" />} value={p.latencyMs} label={mt("ms agora")} tone="text-foreground" />
+        <Metric icon={<Activity className="size-3.5" />} value={uptime ?? 0} label={mt("% uptime")} tone="text-emerald-600" />
+        <Metric icon={<Gauge className="size-3.5" />} value={avg ?? 0} label={mt("ms média")} tone="text-sky-600" />
+        <Metric icon={<Wifi className="size-3.5" />} value={p.connected} label={mt("Ativas")} tone="text-emerald-600" />
+        <Metric icon={<Clock className="size-3.5" />} value={p.connecting} label={mt("Conectando")} tone="text-amber-600" />
+        <Metric icon={<XCircle className="size-3.5" />} value={p.disconnected} label={mt("Caídas")} tone="text-red-600" />
+        <Metric icon={<PauseCircle className="size-3.5" />} value={p.paused} label={mt("Pausadas")} tone="text-slate-500" />
       </div>
 
       {/* Histórico + capacidade */}
@@ -227,13 +230,13 @@ function StatusStrip({
         <div className="rounded-xl border bg-muted/30 px-3 py-2.5 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <span className="flex items-center gap-1.5 text-[11.5px] font-medium text-muted-foreground">
-              <Activity className="size-3.5" /> Latência recente (tempo real)
+              <Activity className="size-3.5" /> {mt("Latência recente (tempo real)")}
             </span>
             <span className="text-[10.5px] text-muted-foreground break-all text-right">
-              {p.url || "URL não configurada"}{p.status !== undefined && ` · HTTP ${p.status}`}
+              {p.url || mt("URL não configurada")}{p.status !== undefined && ` · HTTP ${p.status}`}
             </span>
           </div>
-          <Sparkline samples={samples} />
+          <Sparkline samples={samples} localeCode={localeCode} />
         </div>
         <CapacityBlock p={p} onSaved={onSaved} />
       </div>
@@ -242,6 +245,7 @@ function StatusStrip({
 }
 
 function CapacityBlock({ p, onSaved }: { p: ProviderHealth; onSaved: () => void }) {
+  const { mt } = useMasterT();
   const save = useServerFn(setProviderCapacity);
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(String(p.capacity ?? ""));
@@ -271,7 +275,7 @@ function CapacityBlock({ p, onSaved }: { p: ProviderHealth; onSaved: () => void 
     <div className="rounded-xl border bg-muted/30 px-3 py-2.5 space-y-2">
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 text-[11.5px] font-medium text-muted-foreground">
-          <Gauge className="size-3.5" /> Conexões x capacidade
+          <Gauge className="size-3.5" /> {mt("Conexões x capacidade")}
         </span>
         {editing ? (
           <div className="flex items-center gap-1">
@@ -281,10 +285,10 @@ function CapacityBlock({ p, onSaved }: { p: ProviderHealth; onSaved: () => void 
               className="h-7 w-16 text-[12px]"
               placeholder="0"
             />
-            <button onClick={() => void commit()} disabled={saving} className="text-emerald-600 hover:text-emerald-700" title="Salvar">
+            <button onClick={() => void commit()} disabled={saving} className="text-emerald-600 hover:text-emerald-700" title={mt("Salvar")}>
               {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
             </button>
-            <button onClick={() => { setEditing(false); setValue(String(p.capacity ?? "")); }} className="text-muted-foreground hover:text-destructive" title="Cancelar">
+            <button onClick={() => { setEditing(false); setValue(String(p.capacity ?? "")); }} className="text-muted-foreground hover:text-destructive" title={mt("Cancelar")}>
               <X className="size-4" />
             </button>
           </div>
@@ -292,16 +296,16 @@ function CapacityBlock({ p, onSaved }: { p: ProviderHealth; onSaved: () => void 
           <button
             onClick={() => setEditing(true)}
             className="flex items-center gap-1 text-[11.5px] text-muted-foreground hover:text-foreground"
-            title="Definir limite contratado"
+            title={mt("Definir limite contratado")}
           >
-            <Pencil className="size-3" /> limite
+            <Pencil className="size-3" /> {mt("limite")}
           </button>
         )}
       </div>
 
       <div className="flex items-baseline gap-1">
         <span className="text-[18px] font-bold leading-none">{used}</span>
-        <span className="text-[12px] text-muted-foreground">/ {cap ?? "—"} conexões</span>
+        <span className="text-[12px] text-muted-foreground">/ {cap ?? "—"} {mt("conexões")}</span>
         {pct !== null && <span className="ml-auto text-[11px] font-medium text-muted-foreground">{pct}%</span>}
       </div>
 
@@ -311,11 +315,11 @@ function CapacityBlock({ p, onSaved }: { p: ProviderHealth; onSaved: () => void 
 
       <div className="text-[10.5px] text-muted-foreground">
         {cap === undefined
-          ? "Limite não informado pela API — defina o valor contratado."
+          ? mt("Limite não informado pela API — defina o valor contratado.")
           : p.capacitySource === "provider"
-            ? "Limite lido automaticamente do provedor."
-            : "Limite definido manualmente."}
-        {cap !== undefined && ` · ${Math.max(0, cap - used)} disponível(is)`}
+            ? mt("Limite lido automaticamente do provedor.")
+            : mt("Limite definido manualmente.")}
+        {cap !== undefined && ` · ${Math.max(0, cap - used)} ${mt("disponível(is)")}`}
       </div>
     </div>
   );
@@ -331,7 +335,7 @@ function Metric({ icon, value, label, tone }: { icon: React.ReactNode; value: nu
   );
 }
 
-function Sparkline({ samples }: { samples: Sample[] }) {
+function Sparkline({ samples, localeCode = "es-ES" }: { samples: Sample[]; localeCode?: string }) {
   const last = samples.slice(-24);
   if (!last.length) return <div className="h-8 rounded-md bg-muted/40" />;
   const max = Math.max(...last.map((s) => s.latencyMs), 300);
@@ -340,7 +344,7 @@ function Sparkline({ samples }: { samples: Sample[] }) {
       {last.map((s, i) => (
         <div
           key={i}
-          title={`${new Date(s.t).toLocaleTimeString("pt-BR")} — ${s.latencyMs} ms`}
+          title={`${new Date(s.t).toLocaleTimeString(localeCode)} — ${s.latencyMs} ms`}
           className={`flex-1 rounded-sm ${s.ok ? "bg-emerald-400" : "bg-red-400"}`}
           style={{ height: `${Math.max(12, (s.latencyMs / max) * 100)}%` }}
         />

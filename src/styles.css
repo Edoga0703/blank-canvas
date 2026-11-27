@@ -239,15 +239,35 @@
     var(--bg-deep);
 }
 
-/* External-facing pages keep a restrained, independent interaction palette. */
+/* External-facing pages keep a restrained, independent light interaction palette. */
 .public-surface {
+  color-scheme: light;
+  --bg-deep: #F4F5F9;
+  --panel: #FFFFFF;
+  --panel-2: #F4F6F8;
+  --hairline: #E6EAF0;
+  --hairline-strong: #D9DEE5;
+  --surface: #FFFFFF;
+  --background: #F4F5F9;
+  --foreground: #12263A;
+  --card: #FFFFFF;
+  --card-foreground: #12263A;
+  --popover: #FFFFFF;
+  --popover-foreground: #12263A;
   --primary: #334155;
   --primary-foreground: #FFFFFF;
+  --secondary: #EDF2F5;
+  --secondary-foreground: #12263A;
+  --muted: #F4F6F8;
+  --muted-foreground: #64748B;
   --brand: #334155;
   --brand-strong: #1E293B;
   --brand-soft: #E8EEF5;
   --brand-text: #334155;
   --accent: #E8EEF5;
+  --accent-foreground: #12263A;
+  --border: #E6EAF0;
+  --input: #D9DEE5;
   --ring: #334155;
 }
 

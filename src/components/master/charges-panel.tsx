@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Loader2, RefreshCw, CheckCircle2, Search } from "lucide-react";
 import { listChargesMaster, markChargePaidMaster, syncChargeMaster } from "@/lib/billing-checkout.functions";
+import { useMasterT } from "@/lib/i18n/master-translations";
 
 const brl = (c: number) => ((c ?? 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const usd = (c: number) => ((c ?? 0) / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -29,6 +30,7 @@ const STATUS: { id: string | null; label: string }[] = [
 
 /** Cobranças geradas pelo checkout próprio (Abacate Pay). */
 export function ChargesPanel() {
+  const { mt } = useMasterT();
   const listFn = useServerFn(listChargesMaster);
   const markFn = useServerFn(markChargePaidMaster);
   const syncFn = useServerFn(syncChargeMaster);
@@ -57,8 +59,8 @@ export function ChargesPanel() {
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
-          <h2 className="text-sm font-semibold">Cobranças do checkout</h2>
-          <p className="text-[12px] text-muted-foreground">Geradas dentro do sistema (Abacate Pay).</p>
+          <h2 className="text-sm font-semibold">{mt("Cobranças do checkout")}</h2>
+          <p className="text-[12px] text-muted-foreground">{mt("Geradas dentro do sistema (Abacate Pay).")}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {STATUS.map((s) => (
@@ -73,12 +75,12 @@ export function ChargesPanel() {
           ))}
           <Input
             className="w-44 h-9"
-            placeholder="Buscar empresa"
+            placeholder={mt("Buscar empresa")}
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && load()}
           />
-          <Button variant="outline" size="icon" className="size-9" onClick={() => load()} aria-label="Buscar">
+          <Button variant="outline" size="icon" className="size-9" onClick={() => load()} aria-label={mt("Buscar")}>
             <Search className="size-4" />
           </Button>
         </div>
@@ -90,7 +92,7 @@ export function ChargesPanel() {
         </div>
       ) : rows.length === 0 ? (
         <Card className="p-8 text-center text-sm text-muted-foreground rounded-2xl border-[color:var(--hairline)]">
-          Nenhuma cobrança gerada pelo checkout próprio.
+          {mt("Nenhuma cobrança gerada pelo checkout próprio.")}
         </Card>
       ) : (
         <div className="space-y-2">
