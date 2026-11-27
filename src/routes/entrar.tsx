@@ -23,7 +23,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { brand } from "@/config/brand";
-import metrixLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
+import capiversaLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import mascotLogin from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import { getRememberChoice, setRememberChoice } from "@/lib/session-persistence";
 import { maskPhone } from "@/lib/masks";
@@ -33,7 +33,14 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { useLanguage } from "@/lib/i18n/context";
 
 
-type Search = { modo?: "login" | "signup"; plano?: string; next?: string; ref?: string };
+type Search = {
+  modo?: "login" | "signup";
+  plano?: string;
+  moeda?: "BRL" | "USD";
+  ciclo?: "month" | "annual";
+  next?: string;
+  ref?: string;
+};
 
 function safeNext(v: unknown): string | undefined {
   if (typeof v !== "string" || !v.startsWith("/") || v.startsWith("//")) return undefined;
@@ -46,6 +53,8 @@ export const Route = createFileRoute("/entrar")({
   validateSearch: (s: Record<string, unknown>): Search => ({
     modo: s.modo === "login" ? "login" : "signup",
     plano: typeof s.plano === "string" ? s.plano : undefined,
+    moeda: s.moeda === "USD" ? "USD" : s.moeda === "BRL" ? "BRL" : undefined,
+    ciclo: s.ciclo === "annual" ? "annual" : s.ciclo === "month" ? "month" : undefined,
     next: safeNext(s.next),
     ref: typeof s.ref === "string" ? s.ref : undefined,
   }),
@@ -119,7 +128,15 @@ function EntrarPage() {
       return;
     }
     if (search.plano) {
-      navigate({ to: "/app/checkout", search: { plano: search.plano } as any, replace: true });
+      navigate({
+        to: "/app/checkout",
+        search: {
+          plano: search.plano,
+          ...(search.moeda ? { moeda: search.moeda } : {}),
+          ...(search.ciclo ? { ciclo: search.ciclo } : {}),
+        } as any,
+        replace: true,
+      });
       return;
     }
     
@@ -276,7 +293,7 @@ function EntrarPage() {
           </div>
 
           <div className="absolute top-8 right-8 xl:top-10 xl:right-10 z-20">
-            <img src={metrixLogo.url} alt="Capi Conversa" className="h-16 xl:h-20 w-auto drop-shadow-sm" />
+            <img src={capiversaLogo.url} alt="Capi Conversa" className="h-16 xl:h-20 w-auto drop-shadow-sm" />
           </div>
 
           <div className="relative flex-1 flex items-center justify-center">
@@ -348,7 +365,7 @@ function EntrarPage() {
             <Link to="/" className="inline-flex items-center gap-2 text-sm text-[#12263A]/60 hover:text-[#334155]">
               <ArrowLeft className="size-4" /> voltar
             </Link>
-            <img src={metrixLogo.url} alt="Capi Conversa" className="h-9 sm:h-11 w-auto" />
+            <img src={capiversaLogo.url} alt="Capi Conversa" className="h-9 sm:h-11 w-auto" />
           </div>
 
           <div className="lg:hidden mb-3 sm:mb-5 relative">

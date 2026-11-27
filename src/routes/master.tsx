@@ -17,8 +17,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import logoFull from "@/assets/metrix-bubble-v4.png.asset.json";
-import faviconMark from "@/assets/metrix-mark.png.asset.json";
+import logoFull from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 
 import { toast } from "sonner";
 import { useMasterAlerts } from "@/hooks/use-master-alerts";
@@ -167,9 +166,9 @@ function MasterLayout() {
           <div className="h-16 flex items-center gap-2 px-3 border-b border-white/10">
             <div className="flex-1 min-w-0 flex items-center justify-center">
               <img
-                src={collapsed ? faviconMark.url : logoFull.url}
+                src={collapsed ? "/favicon.png" : logoFull.url}
                 alt={brand.name}
-                className={`${collapsed ? "h-9" : "h-9"} w-auto object-contain`}
+                className={`${collapsed ? "size-9" : "h-9"} w-auto object-contain`}
               />
             </div>
             {!collapsed && (

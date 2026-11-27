@@ -29,7 +29,7 @@ export const getBillingGateway = createServerFn({ method: "GET" })
     const { data } = await (supabaseAdmin as any)
       .from("app_config").select("gateway_padrao, gateway_portal_url").limit(1).maybeSingle();
     return {
-      gateway: (data?.gateway_padrao as string) ?? "kiwify",
+      gateway: (data?.gateway_padrao as string) ?? "abacatepay",
       portalUrl: (data?.gateway_portal_url as string) ?? "",
     };
   });
@@ -37,7 +37,7 @@ export const getBillingGateway = createServerFn({ method: "GET" })
 export const setBillingGateway = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { gateway: string; portalUrl?: string | null }) => ({
-    gateway: d.gateway === "abacatepay" ? "abacatepay" : "kiwify",
+    gateway: d.gateway === "kiwify" ? "kiwify" : "abacatepay",
     portalUrl: (d.portalUrl ?? "").toString().trim() || null,
   }))
   .handler(async ({ context, data }) => {

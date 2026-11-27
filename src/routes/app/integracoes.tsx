@@ -21,11 +21,11 @@ import { Link } from "@tanstack/react-router";
 
 import { brand } from "@/config/brand";
 import { featuresFor } from "@/lib/plan-features";
-import { requireAdmin } from "@/lib/route-guards";
+import { requirePermission } from "@/lib/route-guards";
 
 export const Route = createFileRoute("/app/integracoes")({
   head: () => ({ meta: [{ title: `${brand.name} — Integrações` }] }),
-  beforeLoad: ({ context }) => requireAdmin(context),
+  beforeLoad: ({ context }) => requirePermission(context, "integracoes.manage"),
   component: IntegracoesPage,
 });
 

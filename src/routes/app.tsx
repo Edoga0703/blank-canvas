@@ -6,11 +6,13 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import type { CompanyRow, Membership } from "@/lib/tenant";
 import { getAccessInfo } from "@/lib/tenant";
+import { resolveEffectivePermissions } from "@/lib/permissions";
 
 type Ctx = {
   user: { id: string; email?: string | null };
   company: CompanyRow | null;
   membership: Membership | null;
+  permissions: Record<string, boolean>;
   isSuperAdmin: boolean;
   impersonating: boolean;
   readOnly?: boolean;
@@ -110,15 +112,16 @@ export const Route = createFileRoute("/app")({
           user: { id: u.user.id, email: u.user.email },
           company: comp as any as CompanyRow,
           membership: { company_id: comp.id, role: "owner", forcar_troca_senha: false },
+          permissions: resolveEffectivePermissions({ role: "owner", isSuperAdmin }),
           isSuperAdmin,
           impersonating: true,
         }, location.pathname);
       }
     }
 
-    const { data: cu } = await supabase
+    const { data: cu } = await (supabase as any)
       .from("company_user")
-      .select("company_id, role, forcar_troca_senha, ativo, created_at, custom_role_id, company:company(*)")
+      .select("company_id, role, forcar_troca_senha, ativo, created_at, custom_role_id, permissions_override, company:company(*)")
       .eq("user_id", u.user.id)
       .eq("ativo", true)
       .order("created_at", { ascending: true })
@@ -139,6 +142,7 @@ export const Route = createFileRoute("/app")({
             user: { id: u.user.id, email: u.user.email },
             company: anyCompany as any as CompanyRow,
             membership: { company_id: (anyCompany as any).id, role: "owner", forcar_troca_senha: false },
+            permissions: resolveEffectivePermissions({ role: "owner", isSuperAdmin }),
             isSuperAdmin,
             impersonating: true,
           }, location.pathname);
@@ -157,9 +161,9 @@ export const Route = createFileRoute("/app")({
         console.error("auto-provision company falhou", e);
       }
 
-      const { data: cu2 } = await supabase
+      const { data: cu2 } = await (supabase as any)
         .from("company_user")
-        .select("company_id, role, forcar_troca_senha, ativo, created_at, custom_role_id, company:company(*)")
+        .select("company_id, role, forcar_troca_senha, ativo, created_at, custom_role_id, permissions_override, company:company(*)")
         .eq("user_id", u.user.id)
         .eq("ativo", true)
         .order("created_at", { ascending: true })
@@ -167,7 +171,14 @@ export const Route = createFileRoute("/app")({
         .maybeSingle();
 
       if (!cu2) {
-        return cacheAndGuard({ user: { id: u.user.id, email: u.user.email }, company: null, membership: null, isSuperAdmin, impersonating: false }, location.pathname);
+        return cacheAndGuard({
+          user: { id: u.user.id, email: u.user.email },
+          company: null,
+          membership: null,
+          permissions: resolveEffectivePermissions({ role: null, isSuperAdmin }),
+          isSuperAdmin,
+          impersonating: false,
+        }, location.pathname);
       }
       const company2 = (cu2.company as any) as CompanyRow;
       let customPermissions2: Record<string, Record<string, boolean>> | null = null;
@@ -181,6 +192,7 @@ export const Route = createFileRoute("/app")({
           .maybeSingle();
         customPermissions2 = (customRole?.permissions as Record<string, Record<string, boolean>> | null) ?? null;
       }
+      const permsOverride2 = (cu2.permissions_override as Record<string, boolean> | null) ?? null;
       return cacheAndGuard({
         user: { id: u.user.id, email: u.user.email },
         company: company2,
@@ -190,7 +202,14 @@ export const Route = createFileRoute("/app")({
           forcar_troca_senha: cu2.forcar_troca_senha,
           custom_role_id: cu2.custom_role_id,
           custom_permissions: customPermissions2,
+          permissions_override: permsOverride2,
         },
+        permissions: resolveEffectivePermissions({
+          role: cu2.role,
+          isSuperAdmin,
+          customRolePermissions: customPermissions2,
+          permissionsOverride: permsOverride2,
+        }),
         isSuperAdmin,
         impersonating: false,
       }, location.pathname);
@@ -214,6 +233,7 @@ export const Route = createFileRoute("/app")({
         .maybeSingle();
       customPermissions = (customRole?.permissions as Record<string, Record<string, boolean>> | null) ?? null;
     }
+    const permsOverride = (cu.permissions_override as Record<string, boolean> | null) ?? null;
     return cacheAndGuard({
       user: { id: u.user.id, email: u.user.email },
       company,
@@ -223,7 +243,14 @@ export const Route = createFileRoute("/app")({
         forcar_troca_senha: cu.forcar_troca_senha,
         custom_role_id: cu.custom_role_id,
         custom_permissions: customPermissions,
+        permissions_override: permsOverride,
       },
+      permissions: resolveEffectivePermissions({
+        role: cu.role,
+        isSuperAdmin,
+        customRolePermissions: customPermissions,
+        permissionsOverride: permsOverride,
+      }),
       isSuperAdmin,
       impersonating: false,
     }, location.pathname);
@@ -287,7 +314,14 @@ function AppLayout() {
           </Button>
         </div>
       )}
-      <AppShell company={ctx.company} membership={ctx.membership} email={ctx.user.email} userId={ctx.user.id} isSuperAdmin={ctx.isSuperAdmin}>
+      <AppShell
+        company={ctx.company}
+        membership={ctx.membership}
+        permissions={ctx.permissions}
+        email={ctx.user.email}
+        userId={ctx.user.id}
+        isSuperAdmin={ctx.isSuperAdmin}
+      >
         <Outlet />
       </AppShell>
     </>

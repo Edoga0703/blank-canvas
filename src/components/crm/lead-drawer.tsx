@@ -1652,7 +1652,7 @@ function OrigemPicker({ companyId, value, onChange, hideLabel }: { companyId: st
   const [customOrigens, setCustomOrigens] = useState<string[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [novo, setNovo] = useState("");
-  const storageKey = `metrix:origens:${companyId}`;
+  const storageKey = `capiversa:origens:${companyId}`;
 
   useEffect(() => {
     try {

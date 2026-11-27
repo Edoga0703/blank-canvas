@@ -34,13 +34,19 @@ import {
   TikTokGlyph,
   YouTubeGlyph,
 } from "@/components/ui/channel-icons";
-import { listOmnichannelComments } from "@/lib/omnichannel-content.functions";
+import { listOmnichannelComments, suggestCommentReplyFn } from "@/lib/omnichannel-content.functions";
 import { replyMetaComment } from "@/lib/meta-content.functions";
 import type { ContentComment, SocialPlatform } from "@/lib/social-content.types";
 
 interface ExtendedComment extends ContentComment {
   isLiked?: boolean;
-  intent?: "commercial" | "positive" | "question";
+  intent?: "commercial" | "positive" | "question" | "general";
+  instance_name?: string | null;
+  postCaption?: string | null;
+  permalink?: string | null;
+  automationStatus?: string | null;
+  automationReason?: string | null;
+  automationWorkflowId?: string | null;
 }
 
 const INITIAL_COMMENTS: ExtendedComment[] = [
@@ -132,9 +138,12 @@ export function OmnichannelCommentsInbox() {
   const [searchQuery, setSearchQuery] = useState("");
   const [replyTextMap, setReplyTextMap] = useState<Record<string, string>>({});
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [aiLoadingId, setAiLoadingId] = useState<string | null>(null);
+  const [pendingBadgeCount, setPendingBadgeCount] = useState<number>(0);
 
   const listCommentsFn = useServerFn(listOmnichannelComments);
   const replyMetaCommentFn = useServerFn(replyMetaComment);
+  const suggestAiFn = useServerFn(suggestCommentReplyFn);
 
   useEffect(() => {
     let alive = true;
@@ -149,11 +158,14 @@ export function OmnichannelCommentsInbox() {
     })
       .then((res: any) => {
         if (!alive) return;
-        if (res?.comments && res.comments.length > 0) {
-          setComments(res.comments);
+        if (typeof res?.counts?.pending === "number") {
+          setPendingBadgeCount(res.counts.pending);
+        }
+        if (res?.hasConnectedAccounts || (res?.comments && res.comments.length > 0)) {
+          setComments(res.comments ?? []);
           setIsRealData(true);
         } else {
-          // Quando o banco ainda não tem comentários, mantém os exemplos com aviso transparente
+          // Solo mostrar ejemplos interactivos cuando la empresa aún no tiene cuentas sociales conectadas
           setComments(INITIAL_COMMENTS);
           setIsRealData(false);
         }
@@ -186,8 +198,9 @@ export function OmnichannelCommentsInbox() {
   }, [comments, activeFilter, platformFilter, searchQuery]);
 
   const pendingCount = useMemo(() => {
+    if (isRealData) return pendingBadgeCount;
     return comments.filter((c) => c.status === "pending").length;
-  }, [comments]);
+  }, [comments, isRealData, pendingBadgeCount]);
 
   // Curtir/Descurtir comentário — Validação de suporte da API por plataforma
   const handleToggleLike = (commentId: string) => {
@@ -245,14 +258,16 @@ export function OmnichannelCommentsInbox() {
     const targetComment = comments.find((c) => c.id === commentId);
     setSendingId(commentId);
 
-    // Se for comentário real de conta Meta, despacha para a API real
+    // Se for comentário real de conta Meta, despacha para a API real resolvendo instance_name/social_account_id
     if (isRealData && targetComment && (targetComment.platform === "instagram" || targetComment.platform === "facebook")) {
       try {
         await replyMetaCommentFn({
           data: {
             commentId: targetComment.external_comment_id || targetComment.id,
             message: text,
-            instanceName: targetComment.platform === "instagram" ? "instagram" : "facebook",
+            instanceName: targetComment.instance_name || targetComment.platform,
+            socialAccountId: targetComment.social_account_id || undefined,
+            network: targetComment.platform,
           },
         });
         setComments((prev) =>
@@ -262,10 +277,11 @@ export function OmnichannelCommentsInbox() {
               : c
           )
         );
+        setPendingBadgeCount((prev) => Math.max(0, prev - 1));
         setReplyTextMap((prev) => ({ ...prev, [commentId]: "" }));
-        toast.success("Resposta enviada oficialmente via Graph API!");
+        toast.success("Respuesta enviada oficialmente vía Meta Graph API.");
       } catch (err: any) {
-        toast.error(err.message || "Falha ao enviar resposta via API.");
+        toast.error(err.message || "Error al enviar respuesta vía API.");
       } finally {
         setSendingId(null);
       }
@@ -292,35 +308,32 @@ export function OmnichannelCommentsInbox() {
     setReplyTextMap((prev) => ({ ...prev, [commentId]: text }));
   };
 
-  // Sugestão com IA comercial em português profissional
-  const handleAiSuggest = (comment: ExtendedComment) => {
-    let suggested = `Olá ${comment.author_name || ""}! Ficamos felizes com seu contato. `;
-    if (
-      comment.text.toLowerCase().includes("preço") ||
-      comment.text.toLowerCase().includes("valor") ||
-      comment.text.toLowerCase().includes("plano") ||
-      comment.text.toLowerCase().includes("contratação")
-    ) {
-      suggested += "Nossos planos são totalmente personalizados para o tamanho da sua operação. Fale com nosso time de especialistas pelo WhatsApp ou envie uma mensagem direta para receber uma proposta exclusiva!";
-    } else if (
-      comment.text.toLowerCase().includes("pix") ||
-      comment.text.toLowerCase().includes("pagamento") ||
-      comment.text.toLowerCase().includes("nota fiscal") ||
-      comment.text.toLowerCase().includes("boleto")
-    ) {
-      suggested += "Sim! Emitimos nota fiscal para todos os serviços e aceitamos Pix com desconto, Cartão de Crédito e Boleto. Fale conosco pelo canal de atendimento para emitir sua fatura com facilidade.";
-    } else if (
-      comment.text.toLowerCase().includes("agendar") ||
-      comment.text.toLowerCase().includes("demonstração") ||
-      comment.text.toLowerCase().includes("reunião")
-    ) {
-      suggested += "Com certeza! Será um prazer agendar uma demonstração exclusiva com nossa equipe. Chame no WhatsApp ou acesse o link da nossa bio para escolher o melhor horário.";
-    } else {
-      suggested += "Agradecemos muito pelo carinho e feedback positivo! Nossa equipe está sempre à disposição para o que você precisar.";
+  // Sugerencia real con IA contextualizada
+  const handleAiSuggest = async (comment: ExtendedComment) => {
+    setAiLoadingId(comment.id);
+    try {
+      const res: any = await suggestAiFn({
+        data: {
+          commentText: comment.text,
+          authorName: comment.author_name || comment.author_username || undefined,
+          platform: comment.platform,
+          postCaption: comment.postCaption || undefined,
+          mode: "public",
+        },
+      });
+      if (res?.suggestion) {
+        setReplyTextMap((prev) => ({ ...prev, [comment.id]: res.suggestion }));
+        toast.success(
+          res.source === "ai"
+            ? "Borrador generado con IA listo para revisar."
+            : "Borrador sugerido listo para revisar.",
+        );
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "No se pudo generar sugerencia con IA.");
+    } finally {
+      setAiLoadingId(null);
     }
-
-    setReplyTextMap((prev) => ({ ...prev, [comment.id]: suggested }));
-    toast.success("Rascunho comercial gerado pela IA (Revise antes de enviar)!");
   };
 
   return (
@@ -596,11 +609,12 @@ export function OmnichannelCommentsInbox() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => handleAiSuggest(comment)}
+                      disabled={aiLoadingId === comment.id}
+                      onClick={() => void handleAiSuggest(comment)}
                       className="h-6 text-[10.5px] gap-1 px-2 ml-auto text-primary border-primary/20 hover:bg-primary/10 font-bold"
                     >
-                      <Sparkles className="size-3" />
-                      <span>Sugerir com IA</span>
+                      <Sparkles className={`size-3 ${aiLoadingId === comment.id ? "animate-spin" : ""}`} />
+                      <span>{aiLoadingId === comment.id ? "Gerando..." : "Sugerir com IA"}</span>
                     </Button>
                   </div>
 

@@ -1,5 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  NON_DELEGABLE_PERMISSIONS,
+  PERMISSION_PRESETS,
+  ALL_PERMISSION_KEYS,
+  type PermissionPresetId,
+} from "@/lib/permissions";
 
 async function getOwnedCompanyId(supabase: any, userId: string): Promise<{ companyId: string; role: string; customRoleId?: string | null }> {
   const { data, error } = await supabase
@@ -16,22 +22,14 @@ async function getOwnedCompanyId(supabase: any, userId: string): Promise<{ compa
 }
 
 async function assertCanManageTeam(supabase: any, memberInfo: { companyId: string; role: string; customRoleId?: string | null }) {
-  if (memberInfo.role === "owner" || memberInfo.role === "admin" || memberInfo.role === "supervisor") {
+  if (memberInfo.role === "owner" || memberInfo.role === "admin") {
     return true;
   }
-  if (memberInfo.customRoleId) {
-    const { data: crole } = await supabase
-      .from("company_role")
-      .select("permissions")
-      .eq("id", memberInfo.customRoleId)
-      .eq("ativo", true)
-      .maybeSingle();
-    const perms = crole?.permissions as any;
-    if (perms?.configuracoes?.manage_users === true || perms?.equipe?.manage === true || perms?.manage_users === true) {
-      return true;
-    }
-  }
-  throw new Error("Apenas administradores, supervisores ou usuários com permissão de gerenciamento podem gerenciar sub-agentes e atendentes.");
+  try {
+    const { data: isSuper } = await supabase.rpc("is_super_admin");
+    if (isSuper) return true;
+  } catch {}
+  throw new Error("Apenas o proprietário ou administradores podem gerenciar usuários e permissões.");
 }
 
 function assertAdmin(role: string) {
@@ -40,17 +38,58 @@ function assertAdmin(role: string) {
   }
 }
 
+function sanitizePermissionsOverride(
+  dbRole: "admin" | "atendente",
+  presetId: string | null | undefined,
+  rawOverride?: Record<string, any> | null,
+): Record<string, boolean> {
+  if (dbRole === "admin") return {};
+  const base: Record<string, boolean> =
+    presetId === "supervisor"
+      ? { ...PERMISSION_PRESETS.supervisor.permissions }
+      : presetId === "marketing"
+      ? { ...PERMISSION_PRESETS.marketing.permissions }
+      : {};
+
+  if (rawOverride && typeof rawOverride === "object") {
+    for (const k of ALL_PERMISSION_KEYS) {
+      if (typeof rawOverride[k] === "boolean") {
+        base[k] = rawOverride[k];
+      }
+    }
+  }
+  for (const locked of NON_DELEGABLE_PERMISSIONS) {
+    delete base[locked];
+  }
+  return base;
+}
+
+function mapIncomingRole(rawRole: string | undefined): {
+  dbRole: "admin" | "atendente";
+  preset: PermissionPresetId;
+} {
+  if (rawRole === "admin") return { dbRole: "admin", preset: "admin" };
+  if (rawRole === "supervisor") return { dbRole: "atendente", preset: "supervisor" };
+  if (rawRole === "marketing") return { dbRole: "atendente", preset: "marketing" };
+  return { dbRole: "atendente", preset: "atendente" };
+}
+
 export const listTeam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     const { companyId } = await getOwnedCompanyId(supabase, userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: members, error } = await supabaseAdmin
-      .from("company_user")
-      .select("id, user_id, role, ativo, created_at, max_chats, custom_role_id, last_login_at, last_login_ip")
-      .eq("company_id", companyId)
-      .order("created_at", { ascending: true });
+    const { getCompanyPlan } = await import("./plan-limits.server");
+
+    const [{ data: members, error }, limits] = await Promise.all([
+      (supabaseAdmin as any)
+        .from("company_user")
+        .select("id, user_id, role, ativo, created_at, max_chats, custom_role_id, permissions_override, last_login_at, last_login_ip")
+        .eq("company_id", companyId)
+        .order("created_at", { ascending: true }),
+      getCompanyPlan(companyId).catch(() => null),
+    ]);
     if (error) throw error;
 
     const ids = (members ?? []).map((m: any) => m.user_id);
@@ -105,17 +144,27 @@ export const listTeam = createServerFn({ method: "POST" })
       });
     }
 
+    const list = (members ?? []).map((m: any) => ({
+      ...m,
+      permissions_override: (m.permissions_override && typeof m.permissions_override === "object")
+        ? m.permissions_override
+        : {},
+      email: profilesById.get(m.user_id)?.email ?? null,
+      nome: profilesById.get(m.user_id)?.nome ?? null,
+      avatar_url: profilesById.get(m.user_id)?.avatar_url ?? null,
+      last_seen_at: profilesById.get(m.user_id)?.last_seen_at ?? null,
+      departments: depsByUser.get(m.user_id) ?? [],
+      instances: instByUser.get(m.user_id) ?? [],
+      pipeline_ids: pipesByUser.get(m.user_id) ?? [],
+    }));
+
+    const usedSeats = list.filter((m: any) => m.ativo !== false).length;
+    const maxSeats = Number(limits?.limites?.usuarios ?? 1);
+
     return {
-      members: (members ?? []).map((m: any) => ({
-        ...m,
-        email: profilesById.get(m.user_id)?.email ?? null,
-        nome: profilesById.get(m.user_id)?.nome ?? null,
-        avatar_url: profilesById.get(m.user_id)?.avatar_url ?? null,
-        last_seen_at: profilesById.get(m.user_id)?.last_seen_at ?? null,
-        departments: depsByUser.get(m.user_id) ?? [],
-        instances: instByUser.get(m.user_id) ?? [],
-        pipeline_ids: pipesByUser.get(m.user_id) ?? [],
-      })),
+      members: list,
+      usedSeats,
+      maxSeats,
     };
   });
 
@@ -240,10 +289,11 @@ type UpsertMemberInput = {
   nome: string;
   email: string;
   password: string;
-  role: "admin" | "supervisor" | "atendente";
+  role: "admin" | "supervisor" | "marketing" | "atendente";
   avatarBase64?: string | null;
   max_chats?: number;
   custom_role_id?: string | null;
+  permissions_override?: Record<string, boolean> | null;
   department_ids?: string[];
   instance_ids?: string[];
   pipeline_ids?: string[];
@@ -258,12 +308,20 @@ export const inviteMember = createServerFn({ method: "POST" })
     if (!nome) throw new Error("Informe o nome");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Email inválido");
     if (password.length < 8) throw new Error("Senha deve ter no mínimo 8 caracteres");
-    if (d.role !== "admin" && d.role !== "supervisor" && d.role !== "atendente") throw new Error("Função inválida");
+    if (!["admin", "supervisor", "marketing", "atendente"].includes(d.role)) {
+      throw new Error("Função inválida");
+    }
+    const { dbRole, preset } = mapIncomingRole(d.role);
     return {
-      nome, email, password, role: d.role,
+      nome,
+      email,
+      password,
+      dbRole,
+      preset,
       avatarBase64: d.avatarBase64 || null,
       max_chats: Math.max(1, Math.min(999, Number(d.max_chats ?? 5))),
       custom_role_id: d.custom_role_id || null,
+      permissions_override: sanitizePermissionsOverride(dbRole, preset, d.permissions_override),
       department_ids: Array.isArray(d.department_ids) ? d.department_ids : [],
       instance_ids: Array.isArray(d.instance_ids) ? d.instance_ids : [],
       pipeline_ids: Array.isArray(d.pipeline_ids) ? d.pipeline_ids : [],
@@ -273,7 +331,7 @@ export const inviteMember = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const memberInfo = await getOwnedCompanyId(supabase, userId);
     await assertCanManageTeam(supabase, memberInfo);
-    if (memberInfo.role !== "owner" && memberInfo.role !== "admin" && data.role === "admin") {
+    if (memberInfo.role !== "owner" && memberInfo.role !== "admin" && data.dbRole === "admin") {
       throw new Error("Apenas administradores podem convidar outros administradores.");
     }
     const { companyId } = memberInfo;
@@ -291,11 +349,11 @@ export const inviteMember = createServerFn({ method: "POST" })
         .eq("company_id", companyId).eq("user_id", targetUserId).maybeSingle();
       if (!alreadyLinked?.ativo) {
         const { assertWithinLimit } = await import("./plan-limits.server");
-        await assertWithinLimit(companyId, "usuarios");
+        await assertWithinLimit(companyId, "usuarios", 1, userId);
       }
     } else {
       const { assertWithinLimit } = await import("./plan-limits.server");
-      await assertWithinLimit(companyId, "usuarios");
+      await assertWithinLimit(companyId, "usuarios", 1, userId);
     }
 
     if (!targetUserId) {
@@ -317,13 +375,18 @@ export const inviteMember = createServerFn({ method: "POST" })
       { onConflict: "user_id" },
     );
 
-    const { error: linkErr } = await supabaseAdmin
+    const { error: linkErr } = await (supabaseAdmin as any)
       .from("company_user")
       .upsert(
         {
-          company_id: companyId, user_id: targetUserId, role: data.role as any,
-          ativo: true, forcar_troca_senha: false,
-          max_chats: data.max_chats, custom_role_id: data.custom_role_id,
+          company_id: companyId,
+          user_id: targetUserId,
+          role: data.dbRole,
+          ativo: true,
+          forcar_troca_senha: false,
+          max_chats: data.max_chats,
+          custom_role_id: data.custom_role_id,
+          permissions_override: data.permissions_override,
         },
         { onConflict: "user_id,company_id" },
       );
@@ -344,23 +407,63 @@ export const setMemberActive = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const memberInfo = await getOwnedCompanyId(supabase, userId);
     await assertCanManageTeam(supabase, memberInfo);
-    if (data.ativo) {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: target } = await supabaseAdmin
+      .from("company_user")
+      .select("id, company_id, role, ativo")
+      .eq("id", data.memberId)
+      .maybeSingle();
+    if (!target || target.company_id !== memberInfo.companyId) throw new Error("Membro não encontrado.");
+    if (target.role === "owner" && !data.ativo) throw new Error("Não é possível desativar o proprietário.");
+
+    if (data.ativo && !target.ativo) {
       const { assertWithinLimit } = await import("./plan-limits.server");
-      await assertWithinLimit(memberInfo.companyId, "usuarios");
+      await assertWithinLimit(memberInfo.companyId, "usuarios", 1, userId);
     }
-    const { error } = await supabase.from("company_user").update({ ativo: data.ativo }).eq("id", data.memberId);
+    const { error } = await supabaseAdmin
+      .from("company_user")
+      .update({ ativo: data.ativo })
+      .eq("id", data.memberId)
+      .eq("company_id", memberInfo.companyId);
     if (error) throw error;
     return { ok: true };
   });
 
 export const setMemberRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { memberId: string; role: "owner" | "admin" | "supervisor" | "atendente" }) => d)
+  .inputValidator((d: { memberId: string; role: "owner" | "admin" | "supervisor" | "marketing" | "atendente" }) => d)
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const { role } = await getOwnedCompanyId(supabase, userId);
+    const { companyId, role } = await getOwnedCompanyId(supabase, userId);
     if (role !== "owner" && role !== "admin") throw new Error("Apenas administradores podem alterar papéis.");
-    const { error } = await supabase.from("company_user").update({ role: data.role as any }).eq("id", data.memberId);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: target } = await supabaseAdmin
+      .from("company_user")
+      .select("id, role, company_id")
+      .eq("id", data.memberId)
+      .maybeSingle();
+    if (!target || target.company_id !== companyId) throw new Error("Membro não encontrado.");
+    if (target.role === "owner") throw new Error("Não é possível alterar o papel do proprietário.");
+    if (data.role === "owner" && role !== "owner") {
+      throw new Error("Apenas o proprietário pode transferir propriedade.");
+    }
+
+    const mapped =
+      data.role === "owner"
+        ? { dbRole: "owner" as const, preset: "admin" as const }
+        : mapIncomingRole(data.role);
+    const patch: Record<string, any> = { role: mapped.dbRole };
+    if (data.role === "supervisor" || data.role === "marketing") {
+      patch.permissions_override = sanitizePermissionsOverride("atendente", mapped.preset, {});
+    }
+
+    const { error } = await (supabaseAdmin as any)
+      .from("company_user")
+      .update(patch)
+      .eq("id", data.memberId)
+      .eq("company_id", companyId);
     if (error) throw error;
     return { ok: true };
   });
@@ -421,10 +524,11 @@ export const updateMember = createServerFn({ method: "POST" })
     memberId: string;
     nome?: string;
     password?: string;
-    role?: "admin" | "supervisor" | "atendente";
+    role?: "admin" | "supervisor" | "marketing" | "atendente";
     avatarBase64?: string | null;
     max_chats?: number;
     custom_role_id?: string | null;
+    permissions_override?: Record<string, boolean> | null;
     department_ids?: string[];
     instance_ids?: string[];
     pipeline_ids?: string[];
@@ -436,22 +540,48 @@ export const updateMember = createServerFn({ method: "POST" })
     const { companyId, role } = memberInfo;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: mem, error: mErr } = await supabaseAdmin
-      .from("company_user").select("user_id, role, company_id")
-      .eq("id", data.memberId).maybeSingle();
+    const { data: mem, error: mErr } = await (supabaseAdmin as any)
+      .from("company_user")
+      .select("user_id, role, company_id")
+      .eq("id", data.memberId)
+      .maybeSingle();
     if (mErr || !mem) throw new Error("Membro não encontrado");
     if (mem.company_id !== companyId) throw new Error("Sem permissão");
-    if (mem.role === "owner") data.role = undefined;
 
+    const isTargetOwner = mem.role === "owner";
     const patchCU: any = {};
-    if (data.role && data.role !== mem.role) {
-      if (role !== "owner" && data.role === "admin") throw new Error("Apenas o owner pode promover a admin");
-      patchCU.role = data.role;
+    let nextDbRole: "owner" | "admin" | "atendente" = mem.role;
+    let nextPreset: PermissionPresetId = "atendente";
+
+    if (!isTargetOwner && data.role) {
+      const mapped = mapIncomingRole(data.role);
+      nextDbRole = mapped.dbRole;
+      nextPreset = mapped.preset;
+      if (nextDbRole !== mem.role) {
+        if (role !== "owner" && nextDbRole === "admin") {
+          throw new Error("Apenas o proprietário pode promover a administrador.");
+        }
+        patchCU.role = nextDbRole;
+      }
     }
+
+    if (!isTargetOwner && data.permissions_override !== undefined) {
+      patchCU.permissions_override = sanitizePermissionsOverride(
+        nextDbRole === "owner" ? "admin" : nextDbRole,
+        nextPreset,
+        data.permissions_override,
+      );
+    }
+
     if (typeof data.max_chats === "number") patchCU.max_chats = Math.max(1, Math.min(999, data.max_chats));
-    if (data.custom_role_id !== undefined) patchCU.custom_role_id = data.custom_role_id;
+    if (!isTargetOwner && data.custom_role_id !== undefined) patchCU.custom_role_id = data.custom_role_id;
     if (Object.keys(patchCU).length) {
-      await supabaseAdmin.from("company_user").update(patchCU).eq("id", data.memberId);
+      const { error: uErr } = await (supabaseAdmin as any)
+        .from("company_user")
+        .update(patchCU)
+        .eq("id", data.memberId)
+        .eq("company_id", companyId);
+      if (uErr) throw uErr;
     }
 
     if (data.password && data.password.length >= 8) {

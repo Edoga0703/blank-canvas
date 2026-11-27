@@ -10,7 +10,7 @@ import {
   type CrmCopilotActionProposal,
   type CrmCopilotTurnResult,
 } from "./crm-copilot.server";
-import { lovableAiChat, type ChatMsg } from "./lovable-ai.server";
+import type { ChatMsg } from "./lovable-ai.server";
 import { moveCardToStage, pickLeadOwner } from "./crm-engine.server";
 import { extractCleanStageName, resolveStageAiMeta, packStageAiMeta } from "./crm-stage-meta";
 import { globalAiLimiter } from "./ai-limiter.server";
@@ -867,6 +867,7 @@ export const askCrmCopilot = createServerFn({ method: "POST" })
       if (agent?.ai_model) model = agent.ai_model;
     }
 
+    const { lovableAiChat } = await import("./lovable-ai.server");
     const rawOutput = await globalAiLimiter.schedule(
       () =>
         lovableAiChat(
@@ -874,7 +875,16 @@ export const askCrmCopilot = createServerFn({ method: "POST" })
             { role: "system", content: systemPrompt },
             ...historyMsgs,
           ],
-          { provider, model }
+          {
+            provider,
+            model,
+            telemetry: {
+              companyId,
+              userId,
+              agentId: crmCtx.pipeline?.agent_id || null,
+              feature: "crm_copilot",
+            },
+          }
         ),
       1
     );

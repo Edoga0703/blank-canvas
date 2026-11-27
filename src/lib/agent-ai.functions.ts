@@ -556,19 +556,14 @@ export const indexAgentKnowledge = createServerFn({ method: "POST" })
 async function requireAdminCompany(supabase: any, userId: string) {
   const { resolveCompanyIdCached } = await import("./company-cache");
   const companyId = await resolveCompanyIdCached(supabase, userId);
-  const { data: isSuper } = await supabase.rpc("is_super_admin");
-  if (!isSuper) {
-    const { data: cu } = await supabase
-      .from("company_user")
-      .select("role")
-      .eq("company_id", companyId)
-      .eq("user_id", userId)
-      .eq("ativo", true)
-      .maybeSingle();
-    if (!cu || (cu.role !== "owner" && cu.role !== "admin")) {
-      throw new Error("Somente o dono ou administradores podem editar os agentes de IA.");
-    }
-  }
+  const { assertPermission } = await import("./permissions.server");
+  await assertPermission(
+    supabase,
+    companyId,
+    userId,
+    "agente.manage",
+    "Sem permissão para gerenciar agentes de IA e base de conhecimento.",
+  );
   return companyId as string;
 }
 

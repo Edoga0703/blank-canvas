@@ -1,7 +1,9 @@
 // src/routes/app/automacoes.tsx
 import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/route-guards";
 
 export const Route = createFileRoute("/app/automacoes")({
+  beforeLoad: ({ context }) => requirePermission(context, "automacoes.manage"),
   head: () => ({
     meta: [
       { title: "Automações & Workflows — Capi Conversa" },

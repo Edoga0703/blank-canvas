@@ -41,6 +41,7 @@ import { AgentCopilotSheet } from "@/components/agente/agent-copilot-sheet";
 import { useLanguage } from "@/lib/i18n/context";
 
 import { cn } from "@/lib/utils";
+import { requirePermission } from "@/lib/route-guards";
 
 const searchSchema = z.object({
   id: z.string().optional(),
@@ -48,6 +49,7 @@ const searchSchema = z.object({
 });
 
 export const Route = createFileRoute("/app/agente")({
+  beforeLoad: ({ context }) => requirePermission(context, "agente.manage"),
   head: () => ({ meta: [{ title: `${brand.name} — Agente IA Studio` }] }),
   validateSearch: (search: Record<string, unknown>) => searchSchema.parse(search),
   component: AgentePage,

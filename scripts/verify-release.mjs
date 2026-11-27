@@ -42,6 +42,10 @@ const migrationPairs = [
   "20261121100000_automation_quick_rules_and_ui_mode.sql",
   "20261122160000_automation_sprint1_core_fixes.sql",
   "20261124100000_automation_sprint3_inbound_webhooks.sql",
+  "20261126120000_ai_pool_and_usage_telemetry.sql",
+  "20261126150000_unified_plans_and_master_storage.sql",
+  "20261126180000_granular_user_permissions.sql",
+  "20261127010000_fix_seed_fixed_agents_on_conflict.sql",
 ];
 
 let migrationsOk = true;
@@ -84,6 +88,7 @@ const blacklistedPatterns = [
   /capiversa-mtproto-dev-secret-2026/,     // Hardcoded Gateway Secret
   /capiconversa_cron_secret_7f8a9b2c3d4e5f60/, // Hardcoded Cron Secret
   /capiconversa_media_signing_secret_998877/,  // Hardcoded Media Secret
+  /098aeda184429bc8201ba60d88116821906397caa5fd5b935b615318a245da03/, // Hardcoded D-API Secret
 ];
 
 function scanCodeDir(dir, exts = [".ts", ".tsx", ".js", ".mjs"]) {

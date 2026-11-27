@@ -28,8 +28,10 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { useLanguage, formatCurrency, formatDate } from "@/lib/i18n/context";
+import { requirePermission } from "@/lib/route-guards";
 
 export const Route = createFileRoute("/app/comercial")({
+  beforeLoad: ({ context }) => requirePermission(context, "relatorios.view"),
   head: () => ({
     meta: [
       { title: `${brand.name} — Comercial` },

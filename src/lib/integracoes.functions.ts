@@ -129,7 +129,7 @@ export const testarAvisoIntegracao = createServerFn({ method: "POST" })
     const { getAdapter } = await import("@/lib/integracoes/adapters.server");
     const adapter = getAdapter(data.servico);
     if (!adapter.notificar) throw new Error("Esta integração não envia avisos.");
-    await adapter.notificar(campos, "Teste do Metrix CRM: a integração está funcionando.", {
+    await adapter.notificar(campos, "Teste do Capiversa CRM: a integração está funcionando.", {
       evento: "teste",
     });
     return { ok: true, resumo: "aviso de teste enviado" };

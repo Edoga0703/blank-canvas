@@ -18,15 +18,15 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "Metrix CRM"
-const ROOT_DOMAIN = "metrixcrm.com.br"
+const SITE_NAME = "Capiversa"
+const ROOT_DOMAIN = "capiconversa.com"
 
 // Sample data for preview mode ONLY (not used in actual email sending).
 // URLs are baked in at scaffold time from the project's real data.
 // The sample email uses a fixed placeholder (RFC 6761 .test TLD) so the Go backend
 // can always find-and-replace it with the actual recipient when sending test emails,
 // even if the project's domain has changed since the template was scaffolded.
-const SAMPLE_PROJECT_URL = "https://metrixcrm.com.br"
+const SAMPLE_PROJECT_URL = "https://capiconversa.com"
 const SAMPLE_EMAIL = "user@example.test"
 const SAMPLE_DATA: Record<string, object> = {
   signup: {

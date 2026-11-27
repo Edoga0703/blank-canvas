@@ -13,8 +13,8 @@ export function TrainingLayout({ children }: { children: ReactNode }) {
 
   const navItems = [
     { icon: Home, label: t("academy.home", undefined, "Início"), to: "/app/treinamentos" },
-    { icon: MessageSquare, label: t("academy.support", undefined, "Suporte"), to: "https://metrixcrm.com.br/suporte", external: true },
-    { icon: Users, label: t("academy.community", undefined, "Comunidade"), to: "https://comunidade.metrixcrm.com.br", external: true },
+    { icon: MessageSquare, label: t("academy.support", undefined, "Suporte"), to: "https://capiconversa.com/suporte", external: true },
+    { icon: Users, label: t("academy.community", undefined, "Comunidade"), to: "https://comunidade.capiconversa.com", external: true },
     { icon: Heart, label: t("academy.favorites", undefined, "Favoritos"), to: "/app/treinamentos?filter=favorites" },
   ];
 

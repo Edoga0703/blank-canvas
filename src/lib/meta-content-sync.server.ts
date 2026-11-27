@@ -365,29 +365,97 @@ export function normalizeComment(network: "facebook" | "instagram", c: any) {
   };
 }
 
+function isCommentByOwner(
+  comment: any,
+  ownerExternalId: string | null | undefined,
+  ownerUsername?: string | null,
+): boolean {
+  const authorId = comment?.from?.id ? String(comment.from.id) : null;
+  const authorUsername = String(comment?.username ?? comment?.from?.username ?? "").trim().toLowerCase();
+  if (ownerExternalId && authorId === String(ownerExternalId)) return true;
+  if (ownerUsername && authorUsername && authorUsername === ownerUsername.trim().toLowerCase()) return true;
+  return false;
+}
+
+export async function markContentCommentReplied(
+  admin: Admin,
+  companyId: string,
+  externalCommentId: string,
+) {
+  if (!companyId || !externalCommentId) return;
+  await admin
+    .from("meta_content_comments")
+    .update({ status: "replied", updated_at: new Date().toISOString() })
+    .eq("company_id", companyId)
+    .eq("external_comment_id", externalCommentId)
+    .neq("status", "hidden")
+    .catch(() => null);
+}
+
 /**
  * Guarda un comentario público en el histórico de Contenido (nunca en mensagens).
- * Usado por la sincronización y por meta-sync.server.persistComment.
+ * Usado por la sincronización, webhook en tiempo real y meta-sync.server.persistComment.
  */
 export async function persistContentComment(admin: Admin, input: {
   companyId: string;
   network: "facebook" | "instagram";
   externalPostId: string | null;
   ownerExternalId: string | null;
+  ownerUsername?: string | null;
   comment: any;
   parentExternalId?: string | null;
   postRowId?: string | null;
   socialAccountId?: string | null;
+  isOwnOverride?: boolean;
+  markReplied?: boolean;
+  repliedCommentIds?: Set<string>;
 }) {
   if (!input.comment?.id) return false;
   let postId = input.postRowId ?? null;
   let accountId = input.socialAccountId ?? null;
-  if (!postId && input.externalPostId) {
+  if ((!postId || !accountId) && input.externalPostId) {
     const { data } = await admin.from("meta_content_posts").select("id,social_account_id").eq("company_id", input.companyId).eq("network", input.network).eq("external_post_id", input.externalPostId).maybeSingle();
-    postId = data?.id ?? null;
+    postId = postId ?? data?.id ?? null;
     accountId = accountId ?? data?.social_account_id ?? null;
   }
+  if (!accountId) {
+    const { data: acc } = await admin
+      .from("meta_social_accounts")
+      .select("id")
+      .eq("company_id", input.companyId)
+      .eq("network", input.network)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    accountId = acc?.id ?? null;
+  }
+
   const n = normalizeComment(input.network, input.comment);
+  const parentExternalId = n.parent_external_id ?? input.parentExternalId ?? null;
+  const isOwn = Boolean(input.isOwnOverride || isCommentByOwner(input.comment, input.ownerExternalId, input.ownerUsername));
+  const nestedReplies = Array.isArray(input.comment?.replies?.data)
+    ? input.comment.replies.data
+    : Array.isArray(input.comment?.comments?.data)
+      ? input.comment.comments.data
+      : [];
+  const hasOwnReply = nestedReplies.some((r: any) => isCommentByOwner(r, input.ownerExternalId, input.ownerUsername));
+
+  let wasAlreadyReplied = Boolean(input.markReplied || hasOwnReply || input.repliedCommentIds?.has(n.external_comment_id));
+  if (!wasAlreadyReplied && !input.repliedCommentIds) {
+    const { data: existing } = await admin
+      .from("meta_content_comments")
+      .select("status")
+      .eq("company_id", input.companyId)
+      .eq("network", input.network)
+      .eq("external_comment_id", n.external_comment_id)
+      .maybeSingle();
+    if (existing?.status === "replied") {
+      wasAlreadyReplied = true;
+    }
+  }
+
+  const status = n.is_hidden ? "hidden" : (wasAlreadyReplied || isOwn) ? "replied" : "visible";
+
   const { error } = await admin.from("meta_content_comments").upsert({
     company_id: input.companyId,
     post_id: postId,
@@ -395,12 +463,18 @@ export async function persistContentComment(admin: Admin, input: {
     network: input.network,
     external_post_id: input.externalPostId,
     ...n,
-    parent_external_id: n.parent_external_id ?? input.parentExternalId ?? null,
-    is_own: Boolean(input.ownerExternalId && n.author_id === input.ownerExternalId),
-    status: n.is_hidden ? "hidden" : "visible",
+    parent_external_id: parentExternalId,
+    is_own: isOwn,
+    status,
     updated_at: new Date().toISOString(),
   }, { onConflict: "company_id,network,external_comment_id" });
   if (error) throw new Error(error.message);
+
+  // Si la propia cuenta respondió a otro comentario, marcar el comentario padre como respondido
+  if (isOwn && parentExternalId) {
+    await markContentCommentReplied(admin, input.companyId, String(parentExternalId));
+  }
+
   return true;
 }
 
@@ -620,6 +694,15 @@ async function runAccountSync(admin: Admin, account: SocialAccount, options: Con
   const maxMediaArchives = Math.min(Math.max(options.maxMediaArchives ?? (options.full ? 50 : 10), 0), 100);
   let mediaArchiveAttempts = 0;
 
+  const { data: repliedRows } = await admin
+    .from("meta_content_comments")
+    .select("external_comment_id")
+    .eq("company_id", account.company_id)
+    .eq("network", account.network)
+    .eq("status", "replied")
+    .limit(5000);
+  const repliedCommentIds = new Set<string>((repliedRows ?? []).map((r: any) => String(r.external_comment_id)));
+
   // Estado del circuit breaker por cuenta.
   let halt: Issue | null = null; // token vencido / rate limit: corta todo lo opcional
   let insightsBreaker: Issue | null = null;
@@ -706,7 +789,18 @@ async function runAccountSync(admin: Admin, account: SocialAccount, options: Con
     if (!commentsBreaker && !halt) {
       const persist = async (c: any, parent?: string) => {
         try {
-          await persistContentComment(admin, { companyId: account.company_id, network: account.network, externalPostId: String(item.id), ownerExternalId: ownerId, comment: c, parentExternalId: parent ?? null, postRowId: saved.id, socialAccountId: account.id });
+          await persistContentComment(admin, {
+            companyId: account.company_id,
+            network: account.network,
+            externalPostId: String(item.id),
+            ownerExternalId: ownerId,
+            ownerUsername: account.username,
+            comment: c,
+            parentExternalId: parent ?? null,
+            postRowId: saved.id,
+            socialAccountId: account.id,
+            repliedCommentIds,
+          });
           counts.comments += 1;
         } catch (e) {
           dbErrors.push(`comentário ${c?.id}: ${e instanceof Error ? e.message : String(e)}`);

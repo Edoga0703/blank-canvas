@@ -1,8 +1,10 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { EquipeTab } from "@/components/config/equipe-tab";
 import { brand } from "@/config/brand";
+import { requirePermission } from "@/lib/route-guards";
 
 export const Route = createFileRoute("/app/usuarios")({
+  beforeLoad: ({ context }) => requirePermission(context, "configuracoes.team"),
   head: () => ({
     meta: [
       { title: `${brand.name} — Usuários` },
@@ -15,6 +17,5 @@ export const Route = createFileRoute("/app/usuarios")({
 function UsuariosPage() {
   const ctx = Route.useRouteContext();
   const role = (ctx as any).membership?.role;
-  // Acesso liberado para atendentes verem a equipe
   return <EquipeTab isOwner={role === "owner"} role={role} showHeader />;
 }

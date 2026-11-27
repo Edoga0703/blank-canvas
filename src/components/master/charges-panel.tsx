@@ -9,6 +9,15 @@ import { Loader2, RefreshCw, CheckCircle2, Search } from "lucide-react";
 import { listChargesMaster, markChargePaidMaster, syncChargeMaster } from "@/lib/billing-checkout.functions";
 
 const brl = (c: number) => ((c ?? 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const usd = (c: number) => ((c ?? 0) / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
+function metodoLabel(metodo: string | null | undefined) {
+  if (metodo === "pix") return "PIX";
+  if (metodo === "card") return "Cartão";
+  if (metodo === "binance_usdt") return "Binance Pay USDT";
+  if (metodo === "zelle") return "Zelle (USD)";
+  if (metodo === "pago_movil") return "Pago Móvil";
+  return metodo || "Manual";
+}
 
 const STATUS: { id: string | null; label: string }[] = [
   { id: null, label: "Todas" },
@@ -88,15 +97,24 @@ export function ChargesPanel() {
           {rows.map((c) => (
             <Card key={c.id} className="p-4 flex items-center gap-3 flex-wrap rounded-2xl border-[color:var(--hairline)]">
               <div className="min-w-0 flex-1">
-                <div className="font-medium truncate">{c.company?.nome ?? "—"}</div>
+                <div className="font-medium truncate flex items-center gap-2">
+                  <span>{c.company?.nome ?? "—"}</span>
+                  {c.provider === "manual_usd" && (
+                    <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-700 bg-amber-500/10">
+                      USD Manual
+                    </Badge>
+                  )}
+                </div>
                 <div className="text-xs text-muted-foreground truncate">
-                  {c.descricao} · {c.metodo === "pix" ? "PIX" : "Cartão"} · {c.origem}
+                  {c.descricao} · {metodoLabel(c.metodo)} · {c.origem}
                   {c.ciclo_ref ? ` · ciclo ${c.ciclo_ref}` : ""}
                 </div>
                 {c.erro && <div className="text-xs text-destructive truncate">{c.erro}</div>}
               </div>
               <div className="text-sm text-muted-foreground">{new Date(c.created_at).toLocaleDateString("pt-BR")}</div>
-              <div className="font-semibold">{brl(c.total_cents)}</div>
+              <div className="font-semibold">
+                {c.provider === "manual_usd" ? usd(c.total_cents) : brl(c.total_cents)}
+              </div>
               <Badge
                 variant={c.status === "paid" ? "default" : "outline"}
                 className={c.status === "paid" ? "bg-emerald-600 hover:bg-emerald-600" : ""}
@@ -105,25 +123,27 @@ export function ChargesPanel() {
               </Badge>
               {c.status !== "paid" && (
                 <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={busyId === c.id}
-                    onClick={async () => {
-                      setBusyId(c.id);
-                      try {
-                        const r: any = await syncFn({ data: { id: c.id } });
-                        toast.success(`Status: ${r?.status}`);
-                        await load();
-                      } catch (e: any) {
-                        toast.error(e?.message ?? "Erro");
-                      } finally {
-                        setBusyId(null);
-                      }
-                    }}
-                  >
-                    <RefreshCw className="size-3.5" />
-                  </Button>
+                  {c.provider !== "manual_usd" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busyId === c.id}
+                      onClick={async () => {
+                        setBusyId(c.id);
+                        try {
+                          const r: any = await syncFn({ data: { id: c.id } });
+                          toast.success(`Status: ${r?.status}`);
+                          await load();
+                        } catch (e: any) {
+                          toast.error(e?.message ?? "Erro");
+                        } finally {
+                          setBusyId(null);
+                        }
+                      }}
+                    >
+                      <RefreshCw className="size-3.5" />
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"

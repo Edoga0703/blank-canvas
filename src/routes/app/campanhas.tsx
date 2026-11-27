@@ -26,8 +26,10 @@ import {
 } from "lucide-react";
 import { brand } from "@/config/brand";
 import { useLanguage } from "@/lib/i18n/context";
+import { requirePermission } from "@/lib/route-guards";
 
 export const Route = createFileRoute("/app/campanhas")({
+  beforeLoad: ({ context }) => requirePermission(context, "campanhas.manage"),
   head: () => ({ meta: [{ title: `${brand.name} — Campanhas` }] }),
   component: CampanhasPage,
 });

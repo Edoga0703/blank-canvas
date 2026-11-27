@@ -227,7 +227,7 @@ export const testGoogleCalendar = createServerFn({ method: "POST" })
       method: "POST",
       headers: { Authorization: `Bearer ${auth.token}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        summary: "Teste de integração — Metrix CRM",
+        summary: "Teste de integração — Capiversa CRM",
         description: "Evento de teste criado pelo plugin Google Calendar.",
         start: { dateTime: inicio.toISOString() },
         end: { dateTime: fim.toISOString() },

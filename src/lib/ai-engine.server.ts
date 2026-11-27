@@ -626,6 +626,12 @@ export async function processAiResponse(
         provider: cfg.ai_provider || "gemini",
         model: cfg.ai_model || undefined,
         jsonMode: true,
+        telemetry: {
+          companyId,
+          userId: card?.owner_id || card?.user_id || null,
+          agentId: cfg.id || null,
+          feature: "chat_agent",
+        },
       }
     );
 

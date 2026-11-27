@@ -15,7 +15,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useLanguage } from "@/lib/i18n/context";
 import { LanguageProvider } from "@/lib/i18n/context";
 
-import metrixLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
+import capiversaLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import mascotLogin from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 
 function NotFoundComponent() {
@@ -47,7 +47,7 @@ function NotFoundComponent() {
 
       <header className="relative z-10 px-5 sm:px-8 py-5">
         <Link to="/" className="inline-flex items-center">
-           <img src={metrixLogo.url} alt="Capiversa" className="h-8 sm:h-9 w-auto" />
+           <img src={capiversaLogo.url} alt="Capiversa" className="h-8 sm:h-9 w-auto" />
         </Link>
       </header>
 

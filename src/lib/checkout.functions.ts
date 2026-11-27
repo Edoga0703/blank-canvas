@@ -13,23 +13,30 @@ export const createCheckoutCompany = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Trial days: do plano escolhido (ou starter como fallback).
+    // Trial days e créditos iniciais do plano escolhido (ou starter como fallback).
     let trialDays = 7;
+    let creditosTrial = 300;
     let planSlug = data.plano_slug;
     if (planSlug) {
       const { data: plan } = await supabaseAdmin
         .from("plan")
-        .select("trial_days, slug")
+        .select("trial_days, slug, creditos_trial")
         .eq("slug", planSlug)
         .maybeSingle();
       if (plan?.trial_days != null) trialDays = Number(plan.trial_days) || trialDays;
+      if ((plan as any)?.creditos_trial != null && Number((plan as any).creditos_trial) > 0) {
+        creditosTrial = Number((plan as any).creditos_trial);
+      }
     } else {
       const { data: starter } = await supabaseAdmin
         .from("plan")
-        .select("trial_days, slug")
+        .select("trial_days, slug, creditos_trial")
         .eq("slug", "starter")
         .maybeSingle();
       if (starter?.trial_days != null) trialDays = Number(starter.trial_days) || trialDays;
+      if ((starter as any)?.creditos_trial != null && Number((starter as any).creditos_trial) > 0) {
+        creditosTrial = Number((starter as any).creditos_trial);
+      }
       planSlug = starter?.slug ?? null;
     }
 
@@ -48,6 +55,21 @@ export const createCheckoutCompany = createServerFn({ method: "POST" })
     if (provisionError || !companyId) {
       throw new Error(provisionError?.message || "Falha ao criar empresa");
     }
+
+    // Garantir saldo inicial de créditos de IA no trial caso provision_company_atomic tenha deixado em 0
+    try {
+      const { data: compRow } = await supabaseAdmin
+        .from("company")
+        .select("creditos_saldo")
+        .eq("id", companyId)
+        .maybeSingle();
+      if (Number(compRow?.creditos_saldo ?? 0) <= 0 && creditosTrial > 0) {
+        await supabaseAdmin
+          .from("company")
+          .update({ creditos_saldo: creditosTrial })
+          .eq("id", companyId);
+      }
+    } catch {}
 
     return { companyId: companyId as string };
   });

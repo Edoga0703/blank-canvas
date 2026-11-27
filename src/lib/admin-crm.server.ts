@@ -1,8 +1,8 @@
 /**
- * CRM Interno do Admin (Metrix) — reaproveita o CRM existente.
+ * CRM Interno do Admin (Capiversa) — reaproveita o CRM existente.
  *
  * Ideia: existe UMA empresa marcada como `is_internal = true` (o workspace
- * "Metrix Admin"). Os clientes da plataforma viram cards de CRM dentro dessa
+ * "Capiversa Admin"). Os clientes da plataforma viram cards de CRM dentro dessa
  * empresa, e as automações administrativas (boas-vindas, fim de trial,
  * inadimplência, inatividade) disparam pela conexão WhatsApp dessa empresa.
  *
@@ -57,8 +57,8 @@ export async function ensureInternalCompany(ownerUserId: string): Promise<Intern
   const { data: comp, error } = await supabaseAdmin
     .from("company")
     .insert({
-      nome: "Metrix Admin",
-      slug: `metrix-admin-${Math.random().toString(36).slice(2, 6)}`,
+      nome: "Capiversa Admin",
+      slug: `capiversa-admin-${Math.random().toString(36).slice(2, 6)}`,
       is_internal: true,
       status_cobranca: "ativo",
       created_by: ownerUserId,
@@ -113,7 +113,7 @@ async function resolvePhone(c: ClientRow): Promise<string | null> {
 }
 
 function tagsFor(c: ClientRow): string[] {
-  const t = ["metrix"];
+  const t = ["capiversa"];
   if (c.status_cobranca === "trial") t.push("lead", "trial");
   else t.push("cliente", c.status_cobranca);
   if (c.selected_plan_slug) t.push(`plano:${c.selected_plan_slug}`);
@@ -157,7 +157,7 @@ export async function syncAdminContacts(): Promise<SyncResult> {
       numero,
       nome: c.nome,
       empresa: c.nome,
-      origem: "metrix-admin",
+      origem: "capiversa-admin",
       tags: tagsFor(c),
       observacao: `company:${c.id}`,
     };

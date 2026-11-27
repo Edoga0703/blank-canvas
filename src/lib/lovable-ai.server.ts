@@ -1,9 +1,23 @@
-// Multi-provider AI chat: Drael AI (drael.sh), OpenAI direto, Anthropic direto, ou Google Gemini direto.
+// Multi-provider AI chat: Drael AI (drael.sh + Pool PostgreSQL), OpenAI direto, Anthropic direto, ou Google Gemini direto.
 // Conexão ao gateway do Lovable permanentemente bloqueada para eliminar dependências e consumo de créditos.
+
+import {
+  acquirePoolSlotWithWait,
+  cooldownPoolKey,
+  recordAiUsageEvent,
+  releasePoolSlot,
+} from "./ai-pool.server";
 
 export interface ChatMsg {
   role: "system" | "user" | "assistant";
   content: string;
+}
+
+export interface AiTelemetryContext {
+  companyId?: string | null;
+  userId?: string | null;
+  agentId?: string | null;
+  feature?: string;
 }
 
 export interface AiProviderConfig {
@@ -15,6 +29,24 @@ export interface AiProviderConfig {
   temperature?: number;
   maxTokens?: number;
   jsonMode?: boolean;
+  telemetry?: AiTelemetryContext;
+}
+
+interface ChatCompletionResult {
+  text: string;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+class AiHttpStatusError extends Error {
+  status: number;
+  bodyText: string;
+  constructor(message: string, status: number, bodyText = "") {
+    super(message);
+    this.name = "AiHttpStatusError";
+    this.status = status;
+    this.bodyText = bodyText;
+  }
 }
 
 const MAX_TENTATIVAS = 3;
@@ -24,7 +56,6 @@ function sanitizeMessages(messages: ChatMsg[]): ChatMsg[] {
   const out = messages
     .map((m) => ({ role: m.role, content: String(m?.content ?? "").trim() }))
     .filter((m) => m.content.length > 0);
-  // garante que exista pelo menos uma mensagem de usuário
   if (!out.some((m) => m.role === "user")) out.push({ role: "user", content: "Olá" });
   return out;
 }
@@ -44,7 +75,6 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export function sanitizeGatewayGeminiModel(model?: string): string {
   if (!model) return "gemini-3.5-flash-lite";
   const m = model.trim().replace(/^google\//, "");
-  // Si se solicita un modelo obsoleto de Gemini (1.5, 2.0, 2.5), migrar al actual de alta velocidad
   if (
     m === "gemini-1.5-flash" ||
     m === "gemini-1.5-pro" ||
@@ -58,14 +88,28 @@ export function sanitizeGatewayGeminiModel(model?: string): string {
   return m || "gemini-3.5-flash-lite";
 }
 
+function classifyDraelCooldownSeconds(errText: string): number {
+  if (/in_flight|concurrent/i.test(errText)) return 12;
+  if (/limit|quota|window/i.test(errText)) return 600;
+  return 15;
+}
+
 export async function lovableAiChat(
   messages: ChatMsg[],
   modelOrConfig: string | AiProviderConfig = "drael-v1",
+  telemetryArg?: AiTelemetryContext,
 ): Promise<string> {
   const cfg: AiProviderConfig =
     typeof modelOrConfig === "string"
       ? { provider: "drael", model: modelOrConfig }
       : modelOrConfig;
+  const telemetry: AiTelemetryContext = {
+    companyId: telemetryArg?.companyId ?? cfg.telemetry?.companyId ?? null,
+    userId: telemetryArg?.userId ?? cfg.telemetry?.userId ?? null,
+    agentId: telemetryArg?.agentId ?? cfg.telemetry?.agentId ?? null,
+    feature: telemetryArg?.feature ?? cfg.telemetry?.feature ?? "chat_agent",
+  };
+
   const msgs = sanitizeMessages(messages);
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -80,38 +124,167 @@ export async function lovableAiChat(
   const globalModel = gVal.ai_model || process.env.GLOBAL_AI_MODEL;
   const globalOpenAiKey = gVal.openai_api_key || process.env.OPENAI_API_KEY;
   const globalAnthropicKey = gVal.anthropic_api_key || process.env.ANTHROPIC_API_KEY;
-  const globalGeminiKey = gVal.gemini_api_key || process.env.GEMINI_API_KEY;
+  const globalGeminiKey = cfg.geminiKey?.trim() || gVal.gemini_api_key || process.env.GEMINI_API_KEY;
 
   const globalDraelKey =
     gVal.drael_api_key ||
     (globalOpenAiKey?.startsWith("dk-") ? globalOpenAiKey : "") ||
     process.env.DRAEL_API_KEY;
 
-  // Prioridade: provedor especificado pelo agente/chamada ou o padrão do Master. Padrão geral = "drael".
   const provider = (
     cfg.provider && cfg.provider !== "default"
       ? cfg.provider
       : globalProvider || (globalDraelKey ? "drael" : globalOpenAiKey ? "openai" : "drael")
   ).toLowerCase();
 
-  // 1. Provedor Drael AI (drael.sh / drael-v1)
-  if (provider === "drael") {
-    const key =
-      globalDraelKey?.trim() ||
-      (globalOpenAiKey?.startsWith("dk-") ? globalOpenAiKey.trim() : null) ||
-      cfg.openaiKey?.trim();
+  const recordOk = (
+    usedProvider: string,
+    usedModel: string,
+    res: ChatCompletionResult,
+    startedAt: number,
+    meta?: { keyId?: string | null; keyAlias?: string | null },
+  ) =>
+    recordAiUsageEvent({
+      companyId: telemetry.companyId,
+      userId: telemetry.userId,
+      agentId: telemetry.agentId,
+      provider: usedProvider,
+      model: usedModel,
+      keyId: meta?.keyId ?? null,
+      keyAlias: meta?.keyAlias ?? null,
+      feature: telemetry.feature,
+      inputTokens: res.inputTokens,
+      outputTokens: res.outputTokens,
+      latencyMs: Date.now() - startedAt,
+      status: "ok",
+    });
 
-    if (!key) {
-      throw new Error("Chave Drael (dk-...) não configurada no painel Master (Sistema > Inteligência Artificial).");
+  const recordFail = (
+    usedProvider: string,
+    usedModel: string,
+    err: any,
+    startedAt: number,
+    meta?: { keyId?: string | null; keyAlias?: string | null; status?: "rate_limited" | "error" },
+  ) =>
+    recordAiUsageEvent({
+      companyId: telemetry.companyId,
+      userId: telemetry.userId,
+      agentId: telemetry.agentId,
+      provider: usedProvider,
+      model: usedModel,
+      keyId: meta?.keyId ?? null,
+      keyAlias: meta?.keyAlias ?? null,
+      feature: telemetry.feature,
+      latencyMs: Date.now() - startedAt,
+      status: meta?.status ?? (err?.status === 429 ? "rate_limited" : "error"),
+      errorMessage: String(err?.message || err),
+      creditsCharged: 0,
+    });
+
+  const runGeminiDirect = async (key: string, requestedModel?: string, temp = 0.2): Promise<string> => {
+    const model = sanitizeGatewayGeminiModel(requestedModel);
+    const t0 = Date.now();
+    try {
+      const res = await directGeminiChat(key, model, msgs, temp, cfg.maxTokens ?? 8192, cfg.jsonMode ?? false);
+      await recordOk("gemini", model, res, t0);
+      return res.text;
+    } catch (err: any) {
+      await recordFail("gemini", model, err, t0);
+      throw err;
     }
+  };
+
+  const runDraelWithPool = async (requestedModel?: string): Promise<string> => {
     const baseUrl = (gVal.drael_base_url || gVal.base_url || process.env.DRAEL_BASE_URL || "https://drael.sh/v1").trim();
     const model =
+      requestedModel && requestedModel !== "default" && !requestedModel.startsWith("google/")
+        ? requestedModel
+        : "drael-v1";
+
+    const excludeKeyIds: string[] = [];
+    let lastError: Error | null = null;
+    let triedAnyKey = false;
+
+    for (let keyAttempt = 1; keyAttempt <= 3; keyAttempt++) {
+      const slot = await acquirePoolSlotWithWait("drael", {
+        maxWaitMs: 8000,
+        excludeKeyIds,
+        leaseSeconds: 45,
+      });
+
+      // Fallback final a chave passada explicitamente em cfg se o pool e legacy estiverem vazios
+      const activeKey = slot?.apiKey || (!triedAnyKey ? cfg.openaiKey?.trim() : "");
+      if (!activeKey) break;
+
+      triedAnyKey = true;
+      const t0 = Date.now();
+      try {
+        const res = await openAiChat(
+          activeKey,
+          model,
+          msgs,
+          cfg.temperature ?? 0.1,
+          baseUrl,
+          cfg.maxTokens ?? 8192,
+          cfg.jsonMode ?? false,
+          { disable429InternalRetries: true },
+        );
+        await recordOk("drael", model, res, t0, {
+          keyId: slot?.keyId ?? null,
+          keyAlias: slot?.alias ?? null,
+        });
+        return res.text;
+      } catch (err: any) {
+        lastError = err;
+        const statusCode = err?.status;
+        if (statusCode === 429) {
+          const rawErr = String(err?.bodyText || err?.message || "");
+          const cooldownSeconds = classifyDraelCooldownSeconds(rawErr);
+          if (slot?.keyId) {
+            await cooldownPoolKey(slot.keyId, cooldownSeconds, rawErr);
+            excludeKeyIds.push(slot.keyId);
+          } else {
+            excludeKeyIds.push("legacy-master");
+          }
+          await recordFail("drael", model, err, t0, {
+            keyId: slot?.keyId ?? null,
+            keyAlias: slot?.alias ?? null,
+            status: "rate_limited",
+          });
+          if (!slot?.keyId) break;
+          continue;
+        }
+
+        await recordFail("drael", model, err, t0, {
+          keyId: slot?.keyId ?? null,
+          keyAlias: slot?.alias ?? null,
+          status: "error",
+        });
+        throw err;
+      } finally {
+        await releasePoolSlot(slot?.leaseId);
+      }
+    }
+
+    // Failover transparente para Gemini Direto se todas as contas Drael estiverem em cooldown/ocupadas
+    if (globalGeminiKey) {
+      console.warn("[ai-pool] Todas as contas Drael indisponíveis ou em cooldown. Acionando failover transparente para Gemini.");
+      return runGeminiDirect(globalGeminiKey, "gemini-3.5-flash-lite", cfg.temperature ?? 0.2);
+    }
+
+    if (lastError) throw lastError;
+    throw new Error("Chave Drael (dk-...) não configurada no painel Master (Sistema > Inteligência Artificial ou Pool Drael).");
+  };
+
+  // 1. Provedor Drael AI (drael.sh / pool por turnos)
+  if (provider === "drael") {
+    const reqModel =
       cfg.model && cfg.model !== "default" && !cfg.model.startsWith("google/")
         ? cfg.model
         : globalModel && !globalModel.startsWith("google/")
-        ? globalModel
-        : "drael-v1";
-    return openAiChat(key, model, msgs, cfg.temperature ?? 0.1, baseUrl, cfg.maxTokens ?? 8192, cfg.jsonMode ?? false);
+          ? globalModel
+          : "drael-v1";
+    return runDraelWithPool(reqModel);
   }
 
   // 2. Provedor OpenAI direto (api.openai.com)
@@ -120,21 +293,24 @@ export async function lovableAiChat(
       (globalOpenAiKey && !globalOpenAiKey.startsWith("dk-") ? globalOpenAiKey.trim() : null) ||
       cfg.openaiKey?.trim();
     if (!customKey) {
-      // Se não tem chave OpenAI, tenta chave Drael como fallback
-      if (globalDraelKey) {
-        const baseUrl = (gVal.drael_base_url || "https://drael.sh/v1").trim();
-        return openAiChat(globalDraelKey, "drael-v1", msgs, cfg.temperature ?? 0.1, baseUrl, cfg.maxTokens ?? 8192, cfg.jsonMode ?? false);
-      }
-      throw new Error("Chave OpenAI (sk-...) não configurada no painel Master.");
+      return runDraelWithPool("drael-v1");
     }
     const baseUrl = (gVal.base_url || process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").trim();
     const model =
       cfg.model && cfg.model !== "default" && !cfg.model.startsWith("google/") && !cfg.model.startsWith("openai/")
         ? cfg.model
         : globalModel && !globalModel.startsWith("google/")
-        ? globalModel
-        : "gpt-4o-mini";
-    return openAiChat(customKey, model, msgs, cfg.temperature ?? 0.1, baseUrl, cfg.maxTokens ?? 8192, cfg.jsonMode ?? false);
+          ? globalModel
+          : "gpt-4o-mini";
+    const t0 = Date.now();
+    try {
+      const res = await openAiChat(customKey, model, msgs, cfg.temperature ?? 0.1, baseUrl, cfg.maxTokens ?? 8192, cfg.jsonMode ?? false);
+      await recordOk("openai", model, res, t0);
+      return res.text;
+    } catch (err: any) {
+      await recordFail("openai", model, err, t0);
+      throw err;
+    }
   }
 
   // 3. Provedor Anthropic direto (api.anthropic.com)
@@ -144,39 +320,46 @@ export async function lovableAiChat(
       throw new Error("Chave Anthropic (Claude) não configurada no painel Master.");
     }
     const model = cfg.model || globalModel || "claude-3-5-sonnet-latest";
-    return anthropicChat(customKey, model, msgs);
+    const t0 = Date.now();
+    try {
+      const res = await anthropicChat(customKey, model, msgs);
+      await recordOk("anthropic", model, res, t0);
+      return res.text;
+    } catch (err: any) {
+      await recordFail("anthropic", model, err, t0);
+      throw err;
+    }
   }
 
   // 4. Provedor Google Gemini direto (generativelanguage.googleapis.com)
   if (provider === "gemini") {
-    const directGeminiKey = cfg.geminiKey?.trim() || globalGeminiKey?.trim();
-    if (directGeminiKey) {
+    if (globalGeminiKey) {
       const rawModel = cfg.model || globalModel || "gemini-3.5-flash-lite";
-      const model = sanitizeGatewayGeminiModel(rawModel);
-      return directGeminiChat(directGeminiKey, model, msgs, cfg.temperature ?? 0.2, cfg.maxTokens ?? 8192, cfg.jsonMode ?? false);
+      return runGeminiDirect(globalGeminiKey, rawModel, cfg.temperature ?? 0.2);
     }
-    // Se não há chave direta do Gemini, tenta fallback para Drael ou OpenAI para não interromper o sistema
-    if (globalDraelKey) {
-      const baseUrl = (gVal.drael_base_url || "https://drael.sh/v1").trim();
-      return openAiChat(globalDraelKey, "drael-v1", msgs, cfg.temperature ?? 0.1, baseUrl, cfg.maxTokens ?? 8192, cfg.jsonMode ?? false);
+    try {
+      return await runDraelWithPool("drael-v1");
+    } catch (draelErr: any) {
+      if (globalOpenAiKey && !globalOpenAiKey.startsWith("dk-")) {
+        const t0 = Date.now();
+        try {
+          const res = await openAiChat(globalOpenAiKey, "gpt-4o-mini", msgs, cfg.temperature ?? 0.1, "https://api.openai.com/v1", cfg.maxTokens ?? 8192, cfg.jsonMode ?? false);
+          await recordOk("openai", "gpt-4o-mini", res, t0);
+          return res.text;
+        } catch (err: any) {
+          await recordFail("openai", "gpt-4o-mini", err, t0);
+          throw err;
+        }
+      }
+      throw new Error(
+        draelErr?.message ||
+          "Chave do Google Gemini (GEMINI_API_KEY) não configurada no Master. A conexão ao gateway do Lovable está permanentemente bloqueada para proteger seus créditos.",
+      );
     }
-    if (globalOpenAiKey && !globalOpenAiKey.startsWith("dk-")) {
-      return openAiChat(globalOpenAiKey, "gpt-4o-mini", msgs, cfg.temperature ?? 0.1, "https://api.openai.com/v1", cfg.maxTokens ?? 8192, cfg.jsonMode ?? false);
-    }
-    throw new Error(
-      "Chave do Google Gemini (GEMINI_API_KEY) não configurada no Master. A conexão ao gateway do Lovable está permanentemente bloqueada para proteger seus créditos.",
-    );
   }
 
-  // 5. Fallback final para Drael se houver chave
-  if (globalDraelKey) {
-    const baseUrl = (gVal.drael_base_url || "https://drael.sh/v1").trim();
-    return openAiChat(globalDraelKey, "drael-v1", msgs, 0.1, baseUrl, 8192, cfg.jsonMode ?? false);
-  }
-
-  throw new Error(
-    "Nenhum provedor de IA independente ativo (Drael, OpenAI, Anthropic ou Gemini direto). Configure a chave no Painel Master.",
-  );
+  // 5. Fallback final para Drael (com pool)
+  return runDraelWithPool("drael-v1");
 }
 
 /** Chamada direta à API do Google Gemini (generativelanguage.googleapis.com) - Zero dependência do Lovable */
@@ -187,7 +370,7 @@ async function directGeminiChat(
   temperature = 0.2,
   maxOutputTokens = 8192,
   jsonMode = false,
-): Promise<string> {
+): Promise<ChatCompletionResult> {
   let cleanModel = sanitizeGatewayGeminiModel(model);
   const getUrl = (m: string) => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(key)}`;
 
@@ -234,7 +417,6 @@ async function directGeminiChat(
         30_000,
       );
 
-      // Auto-fallback para gemini-3.5-flash-lite caso o modelo experimental retorne 404 Not Found ou 503
       if ((res.status === 404 || res.status === 503) && cleanModel !== "gemini-3.5-flash-lite") {
         console.warn(`[Gemini Direct] Modelo '${cleanModel}' retornou ${res.status} no Google AI Studio. Fazendo fallback automático para 'gemini-3.5-flash-lite'...`);
         cleanModel = "gemini-3.5-flash-lite";
@@ -251,7 +433,7 @@ async function directGeminiChat(
 
       if (!res.ok) {
         const errText = await res.text().catch(() => "");
-        throw new Error(`Google Gemini Direto: ${res.status} ${errText.slice(0, 200)}`);
+        throw new AiHttpStatusError(`Google Gemini Direto: ${res.status} ${errText.slice(0, 200)}`, res.status, errText);
       }
 
       const data: any = await res.json();
@@ -262,7 +444,11 @@ async function directGeminiChat(
         const finishReason = candidate?.finishReason;
         throw new Error(`Google Gemini: resposta vazia (finishReason: ${finishReason || "desconhecido"}).`);
       }
-      return text;
+      return {
+        text,
+        inputTokens: Number(data?.usageMetadata?.promptTokenCount ?? 0),
+        outputTokens: Number(data?.usageMetadata?.candidatesTokenCount ?? 0),
+      };
     } catch (err: any) {
       if (tentativa === MAX_TENTATIVAS) throw err;
       await sleep(600 * tentativa);
@@ -280,7 +466,8 @@ async function openAiChat(
   baseUrl = "https://api.openai.com/v1",
   maxTokens = 8192,
   jsonMode = false,
-): Promise<string> {
+  opts?: { disable429InternalRetries?: boolean },
+): Promise<ChatCompletionResult> {
   const url = `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
   const isDrael = baseUrl.includes("drael.sh") || key.startsWith("dk-");
   const payload: Record<string, any> = {
@@ -295,7 +482,7 @@ async function openAiChat(
     payload.response_format = { type: "json_object" };
   }
   if (isDrael) {
-    payload.tools = []; // Evita activar herramientas implícitas en Drael
+    payload.tools = [];
   }
 
   const MAX_RETRIES = 3;
@@ -314,16 +501,37 @@ async function openAiChat(
         25_000,
       );
 
-      if (res.status === 429 || res.status >= 500) {
+      if (res.status === 429) {
+        const errBody = await res.text().catch(() => "");
+        const err429 = new AiHttpStatusError(
+          `${providerName}: 429 (${errBody.slice(0, 140) || "límite de velocidad"})`,
+          429,
+          errBody,
+        );
+        if (opts?.disable429InternalRetries) {
+          throw err429;
+        }
+        const retryHeader = res.headers.get("retry-after");
+        const delayMs = retryHeader
+          ? parseInt(retryHeader, 10) * 1000
+          : Math.pow(2, attempt) * 800 + Math.floor(Math.random() * 400);
+        console.warn(`[AI RateLimit] ${providerName} retornó 429. Reintento ${attempt}/${MAX_RETRIES} en ${delayMs}ms...`);
+        lastError = err429;
+        if (attempt < MAX_RETRIES) {
+          await sleep(delayMs);
+          continue;
+        }
+        throw err429;
+      }
+
+      if (res.status >= 500) {
         const retryHeader = res.headers.get("retry-after");
         const delayMs = retryHeader
           ? parseInt(retryHeader, 10) * 1000
           : Math.pow(2, attempt) * 800 + Math.floor(Math.random() * 400);
 
-        console.warn(
-          `[AI RateLimit] ${providerName} retornó ${res.status}. Reintento ${attempt}/${MAX_RETRIES} en ${delayMs}ms...`,
-        );
-        lastError = new Error(`${providerName}: ${res.status} (límite de velocidad o sobrecarga temporal)`);
+        console.warn(`[AI RateLimit] ${providerName} retornó ${res.status}. Reintento ${attempt}/${MAX_RETRIES} en ${delayMs}ms...`);
+        lastError = new AiHttpStatusError(`${providerName}: ${res.status} (sobrecarga temporal)`, res.status);
 
         if (attempt < MAX_RETRIES) {
           await sleep(delayMs);
@@ -335,11 +543,13 @@ async function openAiChat(
       if (!res.ok) {
         const t = await res.text().catch(() => "");
         if (isDrael && (res.status === 403 || t.includes("plan_required"))) {
-          throw new Error(
+          throw new AiHttpStatusError(
             "Drael AI (403 plan_required): O plano Pro/Max de 4 semanas no drael.sh precisa ser ativado ou renovado para utilizar a API. Nenhuma chamada foi enviada ao Lovable.",
+            403,
+            t,
           );
         }
-        throw new Error(`${providerName}: ${res.status} ${t.slice(0, 200)}`);
+        throw new AiHttpStatusError(`${providerName}: ${res.status} ${t.slice(0, 200)}`, res.status, t);
       }
 
       const data = await res.json();
@@ -349,8 +559,15 @@ async function openAiChat(
         await sleep(500 * attempt);
         continue;
       }
-      return content;
+      return {
+        text: content,
+        inputTokens: Number(data?.usage?.prompt_tokens ?? 0),
+        outputTokens: Number(data?.usage?.completion_tokens ?? 0),
+      };
     } catch (err: any) {
+      if (err instanceof AiHttpStatusError && err.status === 429 && opts?.disable429InternalRetries) {
+        throw err;
+      }
       lastError = err;
       const isRecoverable = /429|500|502|503|504|timeout|aborted|fetch failed/i.test(String(err?.message));
       if (!isRecoverable || attempt === MAX_RETRIES) break;
@@ -363,7 +580,7 @@ async function openAiChat(
   throw lastError ?? new Error(`Fallo desconocido al conectar con ${providerName}.`);
 }
 
-async function anthropicChat(key: string, model: string, messages: ChatMsg[]): Promise<string> {
+async function anthropicChat(key: string, model: string, messages: ChatMsg[]): Promise<ChatCompletionResult> {
   const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
   const conv = messages
     .filter((m) => m.role !== "system")
@@ -379,7 +596,7 @@ async function anthropicChat(key: string, model: string, messages: ChatMsg[]): P
   });
   if (!res.ok) {
     const t = await res.text();
-    throw new Error(`Anthropic: ${res.status} ${t.slice(0, 200)}`);
+    throw new AiHttpStatusError(`Anthropic: ${res.status} ${t.slice(0, 200)}`, res.status, t);
   }
   const data = await res.json();
   const txt = (data?.content || [])
@@ -387,7 +604,11 @@ async function anthropicChat(key: string, model: string, messages: ChatMsg[]): P
     .map((p: any) => p.text)
     .join("\n")
     .trim();
-  return txt;
+  return {
+    text: txt,
+    inputTokens: Number(data?.usage?.input_tokens ?? 0),
+    outputTokens: Number(data?.usage?.output_tokens ?? 0),
+  };
 }
 
 export async function lovableAiImage(prompt: string): Promise<string> {
@@ -430,7 +651,6 @@ export async function lovableAiImage(prompt: string): Promise<string> {
     }
   }
 
-  // Fallback 100% seguro: avatar SVG gerado via Dicebear (Zero consumo de créditos, alta disponibilidade)
   const safeSeed = encodeURIComponent(prompt.slice(0, 30).trim() || "capiversa");
   return `https://api.dicebear.com/7.x/bottts/svg?seed=${safeSeed}`;
 }

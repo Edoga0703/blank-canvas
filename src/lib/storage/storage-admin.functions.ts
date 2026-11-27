@@ -1,7 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { resolveCompanyIdCached } from "@/lib/company-cache";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type {
   StorageProvider,
   StorageRole,
@@ -53,53 +51,40 @@ export interface StoragePoolSummary {
 }
 
 /**
- * Validação rigorosa de autorização: exige que o usuário seja 'owner' ou 'admin' da empresa,
- * ou pertença ao papel global 'super_admin'. Atendentes e usuários comuns são terminantemente bloqueados.
+ * Infraestrutura de armazenamento híbrido (R2 Cache + Google Drive Cold Vault) é global e exclusiva do Master.
  */
-async function requireCompanyAdminOrSuper(supabase: any, userId: string, companyId: string): Promise<boolean> {
-  const { data: roleData } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "super_admin")
-    .maybeSingle();
-
-  if (roleData?.role === "super_admin") return true;
-
-  const { data: cu, error } = await supabase
-    .from("company_user")
-    .select("role")
-    .eq("company_id", companyId)
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (error || !cu || !["owner", "admin"].includes(cu.role)) {
-    throw new Error("Acesso negado: requer privilégios de administrador ou proprietário da empresa.");
+async function assertSuperAdmin(supabase: any): Promise<void> {
+  const { data, error } = await supabase.rpc("is_super_admin");
+  if (error) throw new Error(error.message);
+  if (!data) {
+    throw new Error("Acesso negado: apenas o Master pode gerenciar bóvedas globais de armazenamento.");
   }
-  return true;
 }
 
 export const getStoragePoolSummary = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<StoragePoolSummary> => {
-    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
+    await assertSuperAdmin(context.supabase);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // 1. Cuentas R2 / Hot Pool aisladas por tenant (o fallback global)
     const { data: accounts } = await (supabaseAdmin as any)
       .from("storage_accounts")
       .select("*")
-      .or(`company_id.eq.${companyId},company_id.is.null`)
+      .is("company_id", null)
       .order("priority", { ascending: true });
 
     const allAccounts = accounts || [];
-    const r2Accounts = allAccounts.filter((a: any) => a.provider === "cloudflare_r2" || a.role === "hot_pool");
-    const driveAccounts = allAccounts.filter((a: any) => a.provider === "google_drive" || a.role === "cold_archive");
+    const r2Accounts = allAccounts.filter(
+      (a: any) => a.provider === "cloudflare_r2" || a.role === "hot_pool",
+    );
+    const driveAccounts = allAccounts.filter(
+      (a: any) => a.provider === "google_drive" || a.role === "cold_archive",
+    );
 
-    // Configuración del pool para la empresa específica
     const { data: poolSettings } = await (supabaseAdmin as any)
       .from("storage_pool_settings")
       .select("*")
-      .eq("company_id", companyId)
+      .is("company_id", null)
       .limit(1)
       .maybeSingle();
 
@@ -134,7 +119,8 @@ export const getStoragePoolSummary = createServerFn({ method: "GET" })
     const driveCapacity = Number(driveAcc?.max_capacity_bytes || 5 * 1024 * 1024 * 1024 * 1024);
     const driveUsage = Number(driveAcc?.current_usage_bytes || 0);
     const driveFiles = Number(driveAcc?.file_count || 0);
-    const driveUsagePercent = driveCapacity > 0 ? Number(((driveUsage / driveCapacity) * 100).toFixed(2)) : 0;
+    const driveUsagePercent =
+      driveCapacity > 0 ? Number(((driveUsage / driveCapacity) * 100).toFixed(2)) : 0;
 
     return {
       hotPool: {
@@ -147,7 +133,7 @@ export const getStoragePoolSummary = createServerFn({ method: "GET" })
       },
       coldVault: {
         connected: driveConnected,
-        provider: "Google Drive (5 TB)",
+        provider: "Google Drive (5 TB+)",
         totalCapacityBytes: driveCapacity,
         totalUsageBytes: driveUsage,
         usagePercent: driveUsagePercent,
@@ -166,17 +152,20 @@ export const getStoragePoolSummary = createServerFn({ method: "GET" })
 export const listStorageAccounts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<StorageAccountView[]> => {
-    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
+    await assertSuperAdmin(context.supabase);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: accounts, error } = await (supabaseAdmin as any)
       .from("storage_accounts")
-      .select("id,provider,label,role,is_active,priority,bucket_name,public_domain,max_capacity_bytes,current_usage_bytes,file_count,status,health_status,last_health_check_at,company_id")
-      .or(`company_id.eq.${companyId},company_id.is.null`)
+      .select(
+        "id,provider,label,role,is_active,priority,bucket_name,public_domain,max_capacity_bytes,current_usage_bytes,file_count,status,health_status,last_health_check_at,company_id",
+      )
+      .is("company_id", null)
       .order("priority", { ascending: true })
       .order("created_at", { ascending: true });
 
     if (error) {
-      console.error("[StorageAdmin] Error listando contas:", error);
+      console.error("[StorageAdmin] Error listando contas globais:", error);
     }
 
     const list: StorageAccountView[] = (accounts || []).map((acc: any) => ({
@@ -225,7 +214,7 @@ export const listStorageAccounts = createServerFn({ method: "GET" })
 
 export const saveR2StorageAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator(
+  .inputValidator(
     (input: {
       id?: string | null;
       label: string;
@@ -249,8 +238,7 @@ export const saveR2StorageAccount = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ context, data }) => {
-    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
-    await requireCompanyAdminOrSuper(context.supabase, context.userId, companyId);
+    await assertSuperAdmin(context.supabase);
 
     if (!data.accountId || !data.accessKeyId || !data.secretAccessKey || !data.bucketName) {
       throw new Error("Todos os campos de Cloudflare R2 são obrigatórios.");
@@ -268,10 +256,11 @@ export const saveR2StorageAccount = createServerFn({ method: "POST" })
       throw new Error(`Teste de conexão falhou: ${testResult.message}`);
     }
 
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const maxCapacityBytes = Math.round(data.maxCapacityGb * 1024 * 1024 * 1024);
 
     const payload = {
-      company_id: companyId,
+      company_id: null,
       provider: "cloudflare_r2",
       label: data.label,
       role: "hot_pool",
@@ -290,19 +279,18 @@ export const saveR2StorageAccount = createServerFn({ method: "POST" })
     };
 
     if (data.id && data.id !== "system-default-r2") {
-      // Isolamento estrito: só atualiza se pertencer à empresa autenticada
       const { data: updated, error } = await (supabaseAdmin as any)
         .from("storage_accounts")
         .update(payload)
         .eq("id", data.id)
-        .eq("company_id", companyId)
+        .is("company_id", null)
         .select("id")
         .maybeSingle();
 
       if (error || !updated) {
-        throw new Error("Conta não encontrada ou sem permissão de alteração.");
+        throw new Error("Conta global não encontrada ou erro ao atualizar.");
       }
-      return { ok: true, message: "Conta Cloudflare R2 atualizada com sucesso." };
+      return { ok: true, message: "Conta global Cloudflare R2 atualizada com sucesso." };
     } else {
       const { data: inserted, error } = await (supabaseAdmin as any)
         .from("storage_accounts")
@@ -311,15 +299,15 @@ export const saveR2StorageAccount = createServerFn({ method: "POST" })
         .single();
 
       if (error || !inserted) {
-        throw new Error(error?.message || "Erro ao adicionar conta R2 ao pool.");
+        throw new Error(error?.message || "Erro ao adicionar conta R2 ao pool global.");
       }
-      return { ok: true, message: "Nova conta Cloudflare R2 adicionada ao pool com sucesso." };
+      return { ok: true, message: "Nova conta global Cloudflare R2 adicionada ao pool." };
     }
   });
 
 export const saveGoogleDriveAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator(
+  .inputValidator(
     (input: {
       id?: string | null;
       label: string;
@@ -328,15 +316,14 @@ export const saveGoogleDriveAccount = createServerFn({ method: "POST" })
       maxCapacityTb?: number;
     }) => ({
       id: input?.id || null,
-      label: input?.label?.trim() || "Bóveda Google Drive",
+      label: input?.label?.trim() || "Bóveda Global Google Drive",
       credentialsJson: input?.credentialsJson?.trim() || "",
       rootFolderId: input?.rootFolderId?.trim() || null,
       maxCapacityTb: Number(input?.maxCapacityTb || 5),
     }),
   )
   .handler(async ({ context, data }) => {
-    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
-    await requireCompanyAdminOrSuper(context.supabase, context.userId, companyId);
+    await assertSuperAdmin(context.supabase);
 
     let parsedJson: any = null;
     try {
@@ -348,10 +335,11 @@ export const saveGoogleDriveAccount = createServerFn({ method: "POST" })
       throw new Error("O arquivo ou texto fornecido não é um JSON válido de Google Service Account.");
     }
 
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const maxCapacityBytes = Math.round(data.maxCapacityTb * 1024 * 1024 * 1024 * 1024);
 
     const payload = {
-      company_id: companyId,
+      company_id: null,
       provider: "google_drive",
       label: data.label,
       role: "cold_archive",
@@ -371,14 +359,14 @@ export const saveGoogleDriveAccount = createServerFn({ method: "POST" })
         .from("storage_accounts")
         .update(payload)
         .eq("id", data.id)
-        .eq("company_id", companyId)
+        .is("company_id", null)
         .select("id")
         .maybeSingle();
 
       if (error || !updated) {
-        throw new Error("Bóveda não encontrada ou sem permissão de alteração.");
+        throw new Error("Bóveda global não encontrada ou erro ao atualizar.");
       }
-      return { ok: true, message: "Conexão com Google Drive atualizada com sucesso." };
+      return { ok: true, message: "Conexão global com Google Drive atualizada com sucesso." };
     } else {
       const { data: inserted, error } = await (supabaseAdmin as any)
         .from("storage_accounts")
@@ -387,15 +375,15 @@ export const saveGoogleDriveAccount = createServerFn({ method: "POST" })
         .single();
 
       if (error || !inserted) {
-        throw new Error(error?.message || "Erro ao conectar bóveda Google Drive.");
+        throw new Error(error?.message || "Erro ao conectar bóveda global Google Drive.");
       }
-      return { ok: true, message: "Bóveda Google Drive conectada com sucesso para armazenamento frio." };
+      return { ok: true, message: "Bóveda global Google Drive conectada com sucesso para arquivo frio." };
     }
   });
 
 export const updatePoolSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator(
+  .inputValidator(
     (input: {
       rotationStrategy: RotationStrategy;
       hotRetentionDays: number;
@@ -407,22 +395,21 @@ export const updatePoolSettings = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ context, data }) => {
-    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
-    await requireCompanyAdminOrSuper(context.supabase, context.userId, companyId);
+    await assertSuperAdmin(context.supabase);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const payload = {
-      company_id: companyId,
+      company_id: null,
       rotation_strategy: data.rotationStrategy,
       hot_retention_days: data.hotRetentionDays,
       auto_archive_enabled: data.autoArchiveEnabled,
       updated_at: new Date().toISOString(),
     };
 
-    // Consulta estrita por company_id (impede sobrescrever ou capturar a configuração global de outra empresa)
     const { data: existing } = await (supabaseAdmin as any)
       .from("storage_pool_settings")
       .select("id")
-      .eq("company_id", companyId)
+      .is("company_id", null)
       .maybeSingle();
 
     if (existing?.id) {
@@ -430,43 +417,42 @@ export const updatePoolSettings = createServerFn({ method: "POST" })
         .from("storage_pool_settings")
         .update(payload)
         .eq("id", existing.id)
-        .eq("company_id", companyId);
+        .is("company_id", null);
 
-      if (error) throw new Error(`Falha ao salvar configurações do pool: ${error.message}`);
+      if (error) throw new Error(`Falha ao salvar configurações globais do pool: ${error.message}`);
     } else {
       const { error } = await (supabaseAdmin as any)
         .from("storage_pool_settings")
         .insert(payload);
 
-      if (error) throw new Error(`Falha ao registrar configurações do pool: ${error.message}`);
+      if (error) throw new Error(`Falha ao registrar configurações globais do pool: ${error.message}`);
     }
 
-    return { ok: true, message: "Estratégia do pool e regras de retenção salvas com sucesso." };
+    return { ok: true, message: "Estratégia global do pool e retenção salvas com sucesso." };
   });
 
 export const deleteStorageAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: { id: string }) => ({ id: String(input?.id || "") }))
+  .inputValidator((input: { id: string }) => ({ id: String(input?.id || "") }))
   .handler(async ({ context, data }) => {
     if (data.id === "system-default-r2") {
       throw new Error("A conta primária de sistema não pode ser removida.");
     }
 
-    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
-    await requireCompanyAdminOrSuper(context.supabase, context.userId, companyId);
+    await assertSuperAdmin(context.supabase);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Exclusão estritamente restrita à company_id do usuário autenticado
     const { data: deleted, error } = await (supabaseAdmin as any)
       .from("storage_accounts")
       .delete()
       .eq("id", data.id)
-      .eq("company_id", companyId)
+      .is("company_id", null)
       .select("id")
       .maybeSingle();
 
     if (error || !deleted) {
-      throw new Error("Conta não encontrada ou sem permissão para exclusão.");
+      throw new Error("Conta global não encontrada ou erro ao excluir.");
     }
 
-    return { ok: true, message: "Conta removida do pool com sucesso." };
+    return { ok: true, message: "Conta removida do pool global com sucesso." };
   });

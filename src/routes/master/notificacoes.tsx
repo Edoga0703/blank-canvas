@@ -114,7 +114,7 @@ export function NotificacoesPage() {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <Input placeholder="ex: metrix-pro" value={targetValue} onChange={(e) => setTargetValue(e.target.value)} />
+                  <Input placeholder="ex: capiversa-pro" value={targetValue} onChange={(e) => setTargetValue(e.target.value)} />
                 )}
               </div>
             )}

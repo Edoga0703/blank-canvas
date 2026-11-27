@@ -1,8 +1,167 @@
-// Feature flags por plano. Client-safe (sem segredos).
-// Os limites numéricos vivem na tabela `plan` (limite_*); este arquivo cobre
-// features booleanas que o front precisa ler para esconder/bloquear UI.
+// Feature flags e catálogo canônico de módulos por plano. Client-safe (sem segredos).
 
 export type PlanSlug = "starter" | "pro" | "business" | "cortesia" | "enterprise";
+
+export type PlanModuleDef = {
+  key: string;
+  label: string;
+  description: string;
+  category: "canais" | "ia" | "operacao" | "controle";
+};
+
+export const PLAN_MODULES: readonly PlanModuleDef[] = [
+  { key: "whatsapp_dapi", label: "WhatsApp QR (D-API)", description: "Conexão por QR Code / pareamento com custo por linha ativa.", category: "canais" },
+  { key: "whatsapp_oficial", label: "WhatsApp API Oficial Meta", description: "Meta Cloud API oficial sem custo adicional de conexão.", category: "canais" },
+  { key: "instagram", label: "Instagram Direct", description: "Mensagens e comentários do Instagram no CRM.", category: "canais" },
+  { key: "facebook", label: "Facebook Messenger", description: "Mensagens de páginas do Facebook integradas.", category: "canais" },
+  { key: "telegram", label: "Telegram MTProto", description: "Canais, grupos e atendimento direto no Telegram.", category: "canais" },
+  { key: "ia", label: "Agente de IA", description: "Atendimento inteligente 24/7 com qualificação no funil.", category: "ia" },
+  { key: "automacoes", label: "Automações & Fluxos", description: "Construtor visual de fluxos, gatilhos e webhooks.", category: "operacao" },
+  { key: "campanhas", label: "Campanhas em Massa", description: "Disparos segmentados por etapa ou tag do CRM.", category: "operacao" },
+  { key: "meta_publicacoes", label: "Publicações & Feed Social", description: "Agendamento e resposta de comentários Meta.", category: "operacao" },
+  { key: "meta_capi", label: "Meta Conversions API (CAPI)", description: "Envio de eventos de conversão de volta ao Meta Ads.", category: "operacao" },
+  { key: "api_webhooks", label: "API & Webhooks", description: "Integrações externas, tokens de API e disparos.", category: "operacao" },
+  { key: "radar", label: "Radar de Prospecção B2B", description: "Captação e qualificação ativa de leads B2B.", category: "operacao" },
+  { key: "r2_storage", label: "Mídia & Armazenamento", description: "Arquivamento de mídias e anexos das conversas.", category: "operacao" },
+  { key: "treinamentos", label: "Capiversa Academy", description: "Acesso à trilha de treinamentos e vídeos.", category: "operacao" },
+  { key: "permite_dapi_trial", label: "Permitir WhatsApp QR (D-API) no Trial", description: "Libera conexão D-API com custo já durante o teste grátis.", category: "controle" },
+] as const;
+
+export const PLAN_MODULE_MAP: Record<string, PlanModuleDef> = Object.fromEntries(
+  PLAN_MODULES.map((m) => [m.key, m]),
+);
+
+const DEFAULT_MODULES_BY_SLUG: Record<PlanSlug, Record<string, boolean>> = {
+  starter: {
+    whatsapp_dapi: true,
+    whatsapp_oficial: true,
+    instagram: true,
+    facebook: true,
+    telegram: true,
+    ia: true,
+    automacoes: true,
+    campanhas: true,
+    meta_publicacoes: false,
+    meta_capi: false,
+    api_webhooks: false,
+    radar: false,
+    r2_storage: true,
+    treinamentos: true,
+    permite_dapi_trial: false,
+  },
+  pro: {
+    whatsapp_dapi: true,
+    whatsapp_oficial: true,
+    instagram: true,
+    facebook: true,
+    telegram: true,
+    ia: true,
+    automacoes: true,
+    campanhas: true,
+    meta_publicacoes: true,
+    meta_capi: false,
+    api_webhooks: true,
+    radar: true,
+    r2_storage: true,
+    treinamentos: true,
+    permite_dapi_trial: false,
+  },
+  business: {
+    whatsapp_dapi: true,
+    whatsapp_oficial: true,
+    instagram: true,
+    facebook: true,
+    telegram: true,
+    ia: true,
+    automacoes: true,
+    campanhas: true,
+    meta_publicacoes: true,
+    meta_capi: true,
+    api_webhooks: true,
+    radar: true,
+    r2_storage: true,
+    treinamentos: true,
+    permite_dapi_trial: false,
+  },
+  cortesia: {
+    whatsapp_dapi: true,
+    whatsapp_oficial: true,
+    instagram: true,
+    facebook: true,
+    telegram: true,
+    ia: true,
+    automacoes: true,
+    campanhas: true,
+    meta_publicacoes: true,
+    meta_capi: true,
+    api_webhooks: true,
+    radar: true,
+    r2_storage: true,
+    treinamentos: true,
+    permite_dapi_trial: true,
+  },
+  enterprise: {
+    whatsapp_dapi: true,
+    whatsapp_oficial: true,
+    instagram: true,
+    facebook: true,
+    telegram: true,
+    ia: true,
+    automacoes: true,
+    campanhas: true,
+    meta_publicacoes: true,
+    meta_capi: true,
+    api_webhooks: true,
+    radar: true,
+    r2_storage: true,
+    treinamentos: true,
+    permite_dapi_trial: true,
+  },
+};
+
+export function normalizePlanFeatures(
+  rawFeatures: unknown,
+  slug?: string | null,
+): Record<string, boolean> {
+  const base: Record<string, boolean> = { ...DEFAULT_MODULES_BY_SLUG[normalizePlanSlug(slug)] };
+
+  if (!rawFeatures) return base;
+
+  if (typeof rawFeatures === "string") {
+    try {
+      const parsed = JSON.parse(rawFeatures);
+      return normalizePlanFeatures(parsed, slug);
+    } catch {
+      return base;
+    }
+  }
+
+  if (Array.isArray(rawFeatures)) {
+    for (const item of rawFeatures) {
+      const k = String(item || "").trim();
+      if (k in base || PLAN_MODULE_MAP[k]) {
+        base[k] = true;
+      }
+    }
+    return base;
+  }
+
+  if (typeof rawFeatures === "object") {
+    for (const [k, v] of Object.entries(rawFeatures as Record<string, unknown>)) {
+      base[k] = Boolean(v);
+    }
+    return base;
+  }
+
+  return base;
+}
+
+export function extractEnabledModuleLabels(rawFeatures: unknown, slug?: string | null): string[] {
+  const map = normalizePlanFeatures(rawFeatures, slug);
+  return PLAN_MODULES
+    .filter((m) => m.category !== "controle" && map[m.key])
+    .map((m) => m.label);
+}
 
 export type PlanFeatures = {
   providersIA: Array<"gemini" | "openai" | "anthropic" | "drael">;
@@ -92,7 +251,7 @@ export function allowsProvider(slug: string | null | undefined, provider: string
     slug === "business" ||
     slug === "master"
   ) {
-    return true; // Acceso total irrestrito para planes Pro, Business, Cortesia y Enterprise
+    return true;
   }
   const f = featuresFor(slug);
   return f.providersIA.includes(provider as any);

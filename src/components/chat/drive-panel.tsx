@@ -146,7 +146,7 @@ export function DrivePanel({
   }, [numero]);
 
   async function conectar() {
-    const popup = window.open("", "metrix-drive-oauth", "width=600,height=720");
+    const popup = window.open("", "capiversa-drive-oauth", "width=600,height=720");
     if (!popup) {
       toast.error("Libere os pop-ups do navegador e tente de novo.");
       return;

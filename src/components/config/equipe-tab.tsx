@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,12 +24,20 @@ import { toast } from "sonner";
 import {
   Loader2, UserPlus, Upload, Eye, EyeOff, Pencil, Trash2, ShieldCheck, Shield, User,
   Users as UsersIcon, ShieldAlert, ScrollText, Search, MessageSquare, Filter,
-  KeyRound, Circle, ListOrdered, Target,
+  KeyRound, Circle, ListOrdered, Target, ChevronDown, ChevronUp, Lock,
 } from "lucide-react";
 import {
   listTeam, inviteMember, updateMember, removeMember, setMemberActive,
   listCompanyInstances, listCompanyRoles, listCompanyPipelines, type CompanyRole,
 } from "@/lib/team.functions";
+import {
+  PERMISSION_GROUPS,
+  PERMISSION_PRESETS,
+  NON_DELEGABLE_PERMISSIONS,
+  resolveEffectivePermissions,
+  detectPresetFromPermissions,
+  type PermissionPresetId,
+} from "@/lib/permissions";
 import { listDepartments, type Department } from "@/lib/departments.functions";
 import { usePlanFeatures } from "@/hooks/use-plan-features";
 import { PlanUsageBadge } from "@/components/plan-usage-badge";
@@ -41,13 +51,14 @@ import { useLanguage } from "@/lib/i18n/context";
 type Member = {
   id: string;
   user_id: string;
-  role: "owner" | "admin" | "supervisor" | "atendente";
+  role: "owner" | "admin" | "atendente";
   ativo: boolean;
   email: string | null;
   nome: string | null;
   avatar_url?: string | null;
   max_chats?: number | null;
   custom_role_id?: string | null;
+  permissions_override?: Record<string, boolean> | null;
   last_login_at?: string | null;
   last_login_ip?: string | null;
   last_seen_at?: string | null;
@@ -173,6 +184,7 @@ function UsuariosPanel({
   const plan = usePlanFeatures();
 
   const [members, setMembers] = useState<Member[]>([]);
+  const [seatsInfo, setSeatsInfo] = useState<{ used: number; max: number }>({ used: 0, max: 0 });
   const [instances, setInstances] = useState<any[]>([]);
   const [roles, setRoles] = useState<CompanyRole[]>([]);
   const [deps, setDeps] = useState<Department[]>([]);
@@ -194,8 +206,12 @@ function UsuariosPanel({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
-  const [role, setRole] = useState<"admin" | "supervisor" | "atendente">("atendente");
+  const [role, setRole] = useState<PermissionPresetId>("atendente");
   const [customRoleId, setCustomRoleId] = useState<string>("__none__");
+  const [permOverride, setPermOverride] = useState<Record<string, boolean>>(() => ({
+    ...PERMISSION_PRESETS.atendente.permissions,
+  }));
+  const [permsExpanded, setPermsExpanded] = useState(false);
   const [maxChats, setMaxChats] = useState<number>(5);
   const [selDeps, setSelDeps] = useState<string[]>([]);
   const [selInsts, setSelInsts] = useState<string[]>([]);
@@ -209,7 +225,11 @@ function UsuariosPanel({
     setLoading(true);
     try {
       const [r, i, cr, dp, pp] = await Promise.all([list(), listInst(), listRoles(), listDeps(), listPipes()]);
-      setMembers(r.members as any);
+      setMembers((r as any).members as any);
+      setSeatsInfo({
+        used: Number((r as any).usedSeats ?? (r as any).members?.filter((m: any) => m.ativo !== false).length ?? 0),
+        max: Number((r as any).maxSeats ?? plan.limites.usuarios ?? 1),
+      });
       setInstances((i as any).instances || []);
       setRoles(cr as any);
       setDeps(dp as any);
@@ -229,18 +249,44 @@ function UsuariosPanel({
   function resetForm() {
     setEditing(null);
     setNome(""); setEmail(""); setPassword(""); setRole("atendente");
-    setCustomRoleId("__none__"); setMaxChats(5); setSelDeps([]); setSelInsts([]); setSelPipes([]);
+    setCustomRoleId("__none__");
+    setPermOverride({ ...PERMISSION_PRESETS.atendente.permissions });
+    setPermsExpanded(false);
+    setMaxChats(5); setSelDeps([]); setSelInsts([]); setSelPipes([]);
     setAvatarPreview(null); setExistingAvatar(null);
     if (fileRef.current) fileRef.current.value = "";
   }
 
-  function openCreate() { resetForm(); setDlgOpen(true); }
+  function applyPreset(presetId: PermissionPresetId) {
+    setRole(presetId);
+    setPermOverride({ ...PERMISSION_PRESETS[presetId].permissions });
+  }
+
+  function openCreate() {
+    const used = seatsInfo.max > 0 ? seatsInfo.used : plan.usage.usuarios;
+    const limit = seatsInfo.max > 0 ? seatsInfo.max : plan.limites.usuarios;
+    if (limit < 999999 && used >= limit) {
+      toast.error("Limite de usuários do plano atingido. Faça upgrade em Configurações → Plano.");
+      return;
+    }
+    resetForm();
+    setDlgOpen(true);
+  }
   function openEdit(m: Member) {
     resetForm();
     setEditing(m);
     setNome(m.nome || "");
     setEmail(m.email || "");
-    setRole((m.role === "owner" ? "admin" : m.role) as any);
+    const detected = detectPresetFromPermissions(m.role, m.permissions_override);
+    const customRolePerms = roles.find((r) => r.id === m.custom_role_id)?.permissions ?? null;
+    setRole(detected);
+    setPermOverride(
+      resolveEffectivePermissions({
+        role: m.role,
+        customRolePermissions: customRolePerms,
+        permissionsOverride: m.permissions_override ?? null,
+      }),
+    );
     setCustomRoleId(m.custom_role_id || "__none__");
     setMaxChats(m.max_chats ?? 5);
     setSelDeps(m.departments.map((d) => d.id));
@@ -272,6 +318,7 @@ function UsuariosPanel({
         avatarBase64: avatarPreview,
         max_chats: maxChats,
         custom_role_id: customRoleId === "__none__" ? null : customRoleId,
+        permissions_override: role === "admin" ? {} : permOverride,
         department_ids: selDeps,
         instance_ids: selInsts,
         pipeline_ids: selPipes,
@@ -398,17 +445,31 @@ function UsuariosPanel({
           </PopoverContent>
         </Popover>
 
-        <div className="ml-auto flex items-center gap-2 sm:gap-3">
-          {!plan.loading && (
-            <div className="hidden sm:block">
-              <PlanUsageBadge label="usuários" used={plan.usage.usuarios} limit={plan.limites.usuarios} />
-            </div>
-          )}
-          {showInlineCreate && (userRole === "owner" || userRole === "admin") && (
-            <Button size="sm" className="h-9 sm:h-10" onClick={openCreate}>
-              <UserPlus className="size-4 sm:mr-1.5" /> <span className="hidden sm:inline">Novo Usuário</span>
-            </Button>
-          )}
+        <div className="ml-auto flex items-center gap-2 sm:gap-3 flex-wrap">
+          {(() => {
+            const used = seatsInfo.max > 0 ? seatsInfo.used : plan.usage.usuarios;
+            const limit = seatsInfo.max > 0 ? seatsInfo.max : plan.limites.usuarios;
+            const atLimit = limit < 999999 && used >= limit;
+            return (
+              <>
+                <div className="flex items-center gap-2">
+                  <Badge variant={atLimit ? "destructive" : "outline"} className="text-xs font-medium">
+                    {used} / {limit >= 999999 ? "∞" : limit} usuários utilizados
+                  </Badge>
+                  {atLimit && (
+                    <Link to="/app/configuracoes" search={{ tab: "plano" } as any} className="text-xs text-primary underline font-medium">
+                      Ampliar plano
+                    </Link>
+                  )}
+                </div>
+                {showInlineCreate && (userRole === "owner" || userRole === "admin") && (
+                  <Button size="sm" className="h-9 sm:h-10" disabled={atLimit} onClick={openCreate}>
+                    <UserPlus className="size-4 sm:mr-1.5" /> <span className="hidden sm:inline">Novo Usuário</span>
+                  </Button>
+                )}
+              </>
+            );
+          })()}
         </div>
 
       </div>
@@ -444,8 +505,14 @@ function UsuariosPanel({
                     <div className="text-[12px] text-muted-foreground truncate">{m.email}</div>
                     <div className="flex flex-wrap items-center gap-1 mt-1.5">
                       <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
-                        {(isOwnerRow || m.role === "admin") ? <ShieldCheck className="size-3 text-primary" /> : m.role === "supervisor" ? <Shield className="size-3 text-amber-600" /> : <User className="size-3" />}
-                        {isOwnerRow ? "Super Admin" : m.role === "admin" ? "Admin" : m.role === "supervisor" ? "Supervisor" : "Sub-agente"}
+                        {(() => {
+                          const pId = detectPresetFromPermissions(m.role, m.permissions_override);
+                          if (isOwnerRow) return <><ShieldCheck className="size-3 text-primary" /> Proprietário</>;
+                          if (m.role === "admin") return <><ShieldCheck className="size-3 text-primary" /> Admin</>;
+                          if (pId === "supervisor") return <><Shield className="size-3 text-amber-600" /> Supervisor</>;
+                          if (pId === "marketing") return <><Target className="size-3 text-violet-600" /> Marketing</>;
+                          return <><User className="size-3" /> Atendente</>;
+                        })()}
                       </span>
                       {m.instances.length > 0 && (
                         <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600">
@@ -584,12 +651,27 @@ function UsuariosPanel({
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex flex-col gap-1">
-                          <span className="inline-flex items-center gap-1.5 text-xs">
-                            {(isOwnerRow || m.role === "admin")
-                              ? <ShieldCheck className="size-3.5 text-primary" />
-                              : <User className="size-3.5 text-muted-foreground" />}
-                            {isOwnerRow ? "Super Admin" : m.role === "admin" ? "Admin" : "Atendente"}
-                          </span>
+                          {(() => {
+                            const pId = detectPresetFromPermissions(m.role, m.permissions_override);
+                            return (
+                              <span className="inline-flex items-center gap-1.5 text-xs">
+                                {(isOwnerRow || m.role === "admin")
+                                  ? <ShieldCheck className="size-3.5 text-primary" />
+                                  : pId === "supervisor"
+                                  ? <Shield className="size-3.5 text-amber-600" />
+                                  : <User className="size-3.5 text-muted-foreground" />}
+                                {isOwnerRow
+                                  ? "Proprietário"
+                                  : m.role === "admin"
+                                  ? "Admin"
+                                  : pId === "supervisor"
+                                  ? "Supervisor"
+                                  : pId === "marketing"
+                                  ? "Marketing"
+                                  : "Atendente"}
+                              </span>
+                            );
+                          })()}
                           {customRole && (
                             <span className="inline-flex items-center gap-1 text-[11px] text-primary bg-primary/10 rounded px-1.5 py-0.5 w-fit">
                               <KeyRound className="size-3" /> {customRole.nome}
@@ -698,15 +780,23 @@ function UsuariosPanel({
               </div>
 
               <div>
-                <Label>Nível de Acesso / Função base</Label>
-                <Select value={role} onValueChange={(v) => setRole(v as any)}>
+                <Label>Perfil Rápido (Preset)</Label>
+                <Select
+                  value={role}
+                  disabled={editing?.role === "owner"}
+                  onValueChange={(v) => applyPreset(v as PermissionPresetId)}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="atendente">Sub-agente / Atendente</SelectItem>
-                    <SelectItem value="supervisor">Supervisor / Gerente</SelectItem>
-                    <SelectItem value="admin" disabled={!isOwner}>Administrador</SelectItem>
+                    <SelectItem value="atendente">Atendente / Vendedor</SelectItem>
+                    <SelectItem value="supervisor">Supervisor Comercial</SelectItem>
+                    <SelectItem value="marketing">Marketing &amp; Social</SelectItem>
+                    <SelectItem value="admin" disabled={!isOwner}>Administrador da Empresa</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {PERMISSION_PRESETS[role]?.description}
+                </p>
               </div>
 
               <div>
@@ -797,6 +887,79 @@ function UsuariosPanel({
                       </button>
                     );
                   })}
+                </div>
+              )}
+            </div>
+
+            {/* Permissões individuais colapsáveis */}
+            <div className="rounded-lg border">
+              <button
+                type="button"
+                onClick={() => setPermsExpanded((v) => !v)}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 text-left text-xs font-semibold hover:bg-muted/40 transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <KeyRound className="size-3.5 text-primary" />
+                  Permissões individuais deste usuário
+                </span>
+                {permsExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+              </button>
+
+              {permsExpanded && (
+                <div className="p-3.5 border-t space-y-3 bg-muted/15">
+                  <div className="rounded-md bg-amber-500/10 border border-amber-500/25 px-3 py-2 text-[11px] text-amber-800 flex items-start gap-2">
+                    <Lock className="size-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      <b>Plano / Faturamento</b>, <b>Gestão de Equipe</b> e <b>Resetar Sistema</b> ficam sempre restritos ao Proprietário e Administradores.
+                    </span>
+                  </div>
+
+                  {PERMISSION_GROUPS.map((group) => (
+                    <div key={group.id} className="space-y-1.5">
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {group.label}
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {group.items.map((item) => {
+                          const isLocked =
+                            Boolean(item.adminOnly) ||
+                            NON_DELEGABLE_PERMISSIONS.includes(item.key) ||
+                            role === "admin" ||
+                            editing?.role === "owner";
+                          const checked =
+                            role === "admin" || editing?.role === "owner"
+                              ? true
+                              : isLocked
+                              ? false
+                              : Boolean(permOverride[item.key]);
+                          return (
+                            <label
+                              key={item.key}
+                              className={`flex items-start gap-2 rounded-md border px-2.5 py-2 text-xs bg-background ${
+                                isLocked ? "opacity-65 cursor-not-allowed" : "cursor-pointer hover:bg-muted/30"
+                              }`}
+                            >
+                              <Checkbox
+                                checked={checked}
+                                disabled={isLocked}
+                                onCheckedChange={(val) => {
+                                  setPermOverride((prev) => ({
+                                    ...prev,
+                                    [item.key]: Boolean(val),
+                                  }));
+                                }}
+                                className="mt-0.5"
+                              />
+                              <div className="min-w-0 leading-tight">
+                                <div className="font-medium">{item.label}</div>
+                                <div className="text-[10px] text-muted-foreground mt-0.5">{item.description}</div>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

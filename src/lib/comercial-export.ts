@@ -1,6 +1,6 @@
 // Exportações do módulo Comercial (client-side).
 import { brand } from "@/config/brand";
-import logoAsset from "@/assets/metrix-receipt-white.png.asset.json";
+import logoAsset from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 
 type Cell = string | number;
 type SummaryItem = { label: string; value: string };

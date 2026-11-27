@@ -164,20 +164,20 @@ export async function criarPedidoIaOlist(
   const pedido = {
     pedido: {
       cliente: {
-        nome: dados.clienteNome.slice(0, 120) || "Cliente Metrix",
+        nome: dados.clienteNome.slice(0, 120) || "Cliente Capiversa",
         tipo_pessoa: "F",
         fone: dados.clienteFone ?? "",
       },
       itens: dados.itens.map((i) => ({
         item: {
-          codigo: i.codigo || "METRIX",
+          codigo: i.codigo || "CAPIVERSA",
           descricao: i.descricao.slice(0, 120),
           unidade: "UN",
           quantidade: Math.max(1, Number(i.quantidade) || 1),
           valor_unitario: Math.max(0, Number(i.valorUnitario) || 0),
         },
       })),
-      obs: `Pedido fechado pelo Agente de IA do Metrix CRM. Entrega: ${dados.entrega}. Pagamento: ${dados.pagamento}.`,
+      obs: `Pedido fechado pelo Agente de IA do Capiversa CRM. Entrega: ${dados.entrega}. Pagamento: ${dados.pagamento}.`,
     },
   };
 

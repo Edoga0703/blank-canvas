@@ -58,7 +58,7 @@ function Guia({
 }
 
 export function IntegracaoGuias() {
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://metrixcrm.com.br";
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://capiconversa.com";
   const leadCapture = `${origin}/api/public/lead-capture`;
   const metaWebhook = `${origin}/api/public/meta-leads-webhook`;
 
@@ -104,9 +104,9 @@ export function IntegracaoGuias() {
           resumo="Formulário do site enviando direto para o CRM, com UTMs e origem do anúncio.">
           <Passos itens={[
             <>Copie o <strong>Script</strong> na aba “Captura de leads no seu site” e cole antes do <code>&lt;/body&gt;</code> de todas as páginas (no WordPress: Aparência → Editor de tema, ou um plugin de scripts no rodapé).</>,
-            <>No seu formulário, adicione o atributo <code>data-metrix-form</code> na tag <code>&lt;form&gt;</code>.</>,
+            <>No seu formulário, adicione o atributo <code>data-capiversa-form</code> na tag <code>&lt;form&gt;</code>.</>,
             <>Renomeie os campos para <code>nome</code>, <code>numero</code> e (opcional) <code>mensagem</code>.</>,
-            <>Opcional: adicione <code>data-metrix-redirect="/obrigado"</code> para levar o visitante a uma página de agradecimento.</>,
+            <>Opcional: adicione <code>data-capiversa-redirect="/obrigado"</code> para levar o visitante a uma página de agradecimento.</>,
             <>Publique, preencha o formulário no próprio site e confira o lead no <strong>CRM → Kanban Comercial</strong>.</>,
           ]} />
           <p className="text-xs text-muted-foreground">O script captura sozinho utm_source, utm_medium, utm_campaign, gclid, fbclid, página de entrada e site de origem.</p>
@@ -163,7 +163,7 @@ export function IntegracaoGuias() {
             <>Acesse <strong>developers.facebook.com</strong> e abra (ou crie) o seu App do tipo Empresa.</>,
             <>No menu, adicione o produto <strong>Webhooks</strong> e escolha o objeto <strong>Page</strong>.</>,
             <>Em <strong>Callback URL</strong>, cole: <code className="break-all">{metaWebhook}</code></>,
-            <>Em <strong>Verify Token</strong>, informe: <code>metrix_crm_leads_verify</code> e clique em Verificar e salvar.</>,
+            <>Em <strong>Verify Token</strong>, informe: <code>capiconversa_meta_verify_2026</code> e clique em Verificar e salvar.</>,
             <>Assine o campo <strong>leadgen</strong>.</>,
             <>Em <strong>Permissões</strong>, solicite <code>leads_retrieval</code>, <code>pages_show_list</code> e <code>pages_manage_metadata</code>.</>,
             <>Conecte a página do cliente e teste pelo <strong>Lead Ads Testing Tool</strong> da Meta.</>,

@@ -9,7 +9,7 @@ export const transcribeAudio = createServerFn({ method: "POST" })
     }
     return { base64: input.base64, mime: input.mime || "audio/webm" };
   })
-  .handler(async ({ data }) => {
+  .handler(async ({ context, data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: globalSettings } = await (supabaseAdmin as any)
       .from("master_settings")
@@ -22,6 +22,14 @@ export const transcribeAudio = createServerFn({ method: "POST" })
 
     if (!openAiKey || openAiKey.startsWith("dk-")) {
       return { text: "(Áudio recebido. Transcrição automática de áudio requer chave OpenAI Whisper configurada no Master.)" };
+    }
+
+    let companyId: string | null = null;
+    try {
+      const { resolveCompanyIdCached } = await import("./company-cache");
+      companyId = await resolveCompanyIdCached(context.supabase, context.userId);
+    } catch {
+      companyId = null;
     }
 
     const bin = Uint8Array.from(atob(data.base64), (c) => c.charCodeAt(0));
@@ -41,8 +49,11 @@ export const transcribeAudio = createServerFn({ method: "POST" })
 
     const form = new FormData();
     form.append("model", "whisper-1");
+    form.append("response_format", "verbose_json");
     form.append("file", new Blob([bin], { type: mime }), `audio.${ext}`);
 
+    const t0 = Date.now();
+    const { recordAiUsageEvent } = await import("./ai-pool.server");
     const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
       headers: { Authorization: `Bearer ${openAiKey}` },
@@ -51,9 +62,32 @@ export const transcribeAudio = createServerFn({ method: "POST" })
 
     if (!res.ok) {
       const t = await res.text().catch(() => "");
+      await recordAiUsageEvent({
+        companyId,
+        userId: context.userId,
+        provider: "openai",
+        model: "whisper-1",
+        feature: "audio_transcribe",
+        latencyMs: Date.now() - t0,
+        status: res.status === 429 ? "rate_limited" : "error",
+        errorMessage: `HTTP ${res.status}: ${t.slice(0, 200)}`,
+        creditsCharged: 0,
+      });
       throw new Error(`Falha ao transcrever: ${res.status} ${t.slice(0, 200)}`);
     }
     const json = await res.json();
+    const audioSeconds = Math.max(1, Math.round(Number(json?.duration) || bin.byteLength / 6000));
+    await recordAiUsageEvent({
+      companyId,
+      userId: context.userId,
+      provider: "openai",
+      model: "whisper-1",
+      feature: "audio_transcribe",
+      audioSeconds,
+      creditsCharged: Math.max(1, Math.ceil(audioSeconds / 60) * 4),
+      latencyMs: Date.now() - t0,
+      status: "ok",
+    });
     return { text: String(json?.text || "").trim() };
   });
 
@@ -175,8 +209,11 @@ export const transcribeChatAudio = createServerFn({ method: "POST" })
 
     const form = new FormData();
     form.append("model", "whisper-1");
+    form.append("response_format", "verbose_json");
     form.append("file", new Blob([buf as any], { type: mime }), `audio.${ext}`);
 
+    const t0 = Date.now();
+    const { recordAiUsageEvent } = await import("./ai-pool.server");
     const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
       headers: { Authorization: `Bearer ${openAiKey}` },
@@ -184,9 +221,32 @@ export const transcribeChatAudio = createServerFn({ method: "POST" })
     });
     if (!res.ok) {
       const t = await res.text().catch(() => "");
+      await recordAiUsageEvent({
+        companyId,
+        userId,
+        provider: "openai",
+        model: "whisper-1",
+        feature: "audio_transcribe",
+        latencyMs: Date.now() - t0,
+        status: res.status === 429 ? "rate_limited" : "error",
+        errorMessage: `HTTP ${res.status}: ${t.slice(0, 200)}`,
+        creditsCharged: 0,
+      });
       throw new Error(`Falha ao transcrever: ${res.status} ${t.slice(0, 200)}`);
     }
     const json = await res.json();
+    const audioSeconds = Math.max(1, Math.round(Number(json?.duration) || buf.byteLength / 6000));
+    await recordAiUsageEvent({
+      companyId,
+      userId,
+      provider: "openai",
+      model: "whisper-1",
+      feature: "audio_transcribe",
+      audioSeconds,
+      creditsCharged: Math.max(1, Math.ceil(audioSeconds / 60) * 4),
+      latencyMs: Date.now() - t0,
+      status: "ok",
+    });
     const text = String(json?.text || "").trim();
     if (!text) throw new Error("Não entendi o áudio.");
     return { text };

@@ -279,7 +279,7 @@ export const sincronizarProdutosOlist = createServerFn({ method: "POST" })
 
 // ---------- pedidos ----------
 
-/** Cria (ou recria) o pedido na Olist a partir de uma venda da Metrix. */
+/** Cria (ou recria) o pedido na Olist a partir de uma venda do Capiversa. */
 export const enviarVendaParaOlist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { vendaId: string }) => d)
@@ -306,7 +306,7 @@ export const enviarVendaParaOlist = createServerFn({ method: "POST" })
     return { ok: true, pedido: r.numero || r.id };
   });
 
-/** Importa pedidos da Olist como vendas na Metrix e dispara automações. */
+/** Importa pedidos da Olist como vendas no Capiversa e dispara automações. */
 export const importarPedidosOlist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { paginas?: number }) => d)

@@ -24,7 +24,7 @@ import appleIcon from "@/assets/apple.svg.asset.json";
 import androidIcon from "@/assets/android2.svg.asset.json";
 import { brand } from "@/config/brand";
 import { Button } from "@/components/ui/button";
-import metrixLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
+import capiversaLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import mascotMobile from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import iphoneStep1 from "@/assets/iphone-step-1.png.asset.json";
 import iphoneStep2 from "@/assets/iphone-step-2.png.asset.json";
@@ -38,10 +38,10 @@ import androidStep4 from "@/assets/android-step-4.png.asset.json";
 
 const TITLE = "Capi Conversa no celular: CRM e WhatsApp na palma da mão";
 const DESC = "Instale o Capi Conversa no seu celular em 30 segundos. Responda leads, mova cards no Kanban e receba notificações onde você estiver.";
-const URL = "https://metrixcrm.com.br/mobile";
+const URL = "https://capiconversa.com/mobile";
 
 const IOS_STEPS = [
-  { text: "1. Abra metrixcrm.com.br no Safari ou Chrome.", img: iphoneStep1.url },
+  { text: "1. Abra capiconversa.com no Safari ou Chrome.", img: iphoneStep1.url },
   { text: "2. Toque no botão de opções ou compartilhar.", img: iphoneStep2.url },
   { text: "3. Escolha “Adicionar à Tela de Início”.", img: iphoneStep3.url },
   { text: "4. Confirme em “Adicionar”.", img: iphoneStep4.url },
@@ -49,7 +49,7 @@ const IOS_STEPS = [
 ];
 
 const ANDROID_STEPS = [
-  { text: "1. Abra metrixcrm.com.br no navegador e toque no menu ⋮ no canto superior.", img: androidStep1.url },
+  { text: "1. Abra capiconversa.com no navegador e toque no menu ⋮ no canto superior.", img: androidStep1.url },
   { text: "2. Escolha “Instalar e criar atalho” ou “Instalar aplicativo”.", img: androidStep2.url },
   { text: "3. Confirme a instalação clicando em “Instalar”.", img: androidStep3.url },
   { text: "4. O Capi Conversa agora aparecerá junto aos seus apps instalados.", img: androidStep4.url },
@@ -93,7 +93,7 @@ function MobilePage() {
           }} />
 
           <div className="lg:col-span-7 z-10 text-center lg:text-left space-y-6">
-            <img src={metrixLogo.url} alt="Capi Conversa" className="h-12 md:h-16 w-auto mx-auto lg:mx-0 transition-all" />
+            <img src={capiversaLogo.url} alt="Capi Conversa" className="h-12 md:h-16 w-auto mx-auto lg:mx-0 transition-all" />
             
             <div className="space-y-6">
               <h1 className="font-display font-black leading-[1.05] tracking-tight" style={{ fontSize: "clamp(2.5rem, 5vw, 5.5rem)" }}>
@@ -214,7 +214,7 @@ function MobilePage() {
                  {/* Mock UI transitions based on active feature */}
                  <div className="absolute inset-0 bg-[#F4F5F9] flex flex-col animate-in fade-in duration-500">
                     <div className="h-14 bg-white border-b border-slate-100 flex items-center px-4 justify-between">
-                       <img src={metrixLogo.url} className="h-4 w-auto" alt="" />
+                       <img src={capiversaLogo.url} className="h-4 w-auto" alt="" />
                        <Bell className="size-4 text-slate-400" />
                     </div>
                     <div className="flex-1 p-4 space-y-4">
@@ -356,7 +356,7 @@ function MobilePage() {
         </section>
         
         <footer className="text-center pb-12 border-t border-slate-200 pt-12">
-          <img src={metrixLogo.url} alt="Capi Conversa" className="h-6 w-auto mx-auto mb-6 opacity-30 grayscale" />
+          <img src={capiversaLogo.url} alt="Capi Conversa" className="h-6 w-auto mx-auto mb-6 opacity-30 grayscale" />
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">© {new Date().getFullYear()} {brand.name}. Todos os direitos reservados.</p>
         </footer>
       </main>

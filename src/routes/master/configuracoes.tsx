@@ -38,7 +38,7 @@ function ConfigPage() {
   const [loading, setLoading] = useState(true);
   const [tokens, setTokens] = useState<Record<string, string> | null>(null);
   const [events, setEvents] = useState<any[]>([]);
-  const [gateway, setGateway] = useState<string>("kiwify");
+  const [gateway, setGateway] = useState<string>("abacatepay");
   const [portalUrl, setPortalUrl] = useState<string>("");
   const [savingGateway, setSavingGateway] = useState(false);
 
@@ -50,7 +50,7 @@ function ConfigPage() {
       if (e.status === "fulfilled") setEvents(e.value);
       else toast.error(`Eventos: ${e.reason?.message ?? e.reason}`);
       if (g.status === "fulfilled") {
-        setGateway((g.value as any).gateway ?? "kiwify");
+        setGateway((g.value as any).gateway ?? "abacatepay");
         setPortalUrl((g.value as any).portalUrl ?? "");
       }
       setLoading(false);

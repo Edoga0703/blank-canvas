@@ -153,7 +153,7 @@ export async function createCharge(params: {
   );
 
   const customer = await customerFor(params.companyId);
-  const base = params.baseUrl || "https://metrixcrm.com.br";
+  const base = params.baseUrl || "https://capiconversa.com";
 
   try {
     if (params.metodo === "pix") {
@@ -210,14 +210,18 @@ export async function settleCharge(chargeId: string, opts?: { manual?: boolean }
     .from("billing_charge_item").select("*").eq("charge_id", chargeId);
 
   const agora = new Date();
-  const periodEnd = new Date(agora.getTime() + 30 * 86400000).toISOString();
+  const isAnnual = String(charge.ciclo_ref || "").startsWith("annual:");
+  const periodDays = isAnnual ? 365 : 30;
+  const periodEnd = new Date(agora.getTime() + periodDays * 86400000).toISOString();
 
   for (const item of items ?? []) {
-    if (item.tipo === "plan") {
-      await supabase.from("subscription").upsert({
+    if (item.tipo === "plan" || item.tipo === "plano") {
+      await (supabase as any).from("subscription").upsert({
         company_id: charge.company_id,
         plan_id: item.ref_id,
-        provider: "abacatepay",
+        provider: charge.provider || "abacatepay",
+        moeda: charge.provider === "manual_usd" ? "USD" : "BRL",
+        ciclo: isAnnual ? "anual" : "mensal",
         status: "active",
         current_period_start: agora.toISOString(),
         current_period_end: periodEnd,
@@ -226,19 +230,44 @@ export async function settleCharge(chargeId: string, opts?: { manual?: boolean }
         updated_at: agora.toISOString(),
       }, { onConflict: "company_id" });
       await supabase.from("company").update({ status_cobranca: "ativo" }).eq("id", charge.company_id);
+      let creditsTopped = false;
       if (item.ref_slug) {
         const { data: novoSaldo, error: creditError } = await supabase.rpc("topup_plan_credits", {
           _company_id: charge.company_id,
           _plan_slug: item.ref_slug,
         });
-        // A cobrança precisa ser concluída mesmo se o plano não tiver créditos.
-        if (creditError || novoSaldo == null) {
-          console.warn("[billing] créditos não renovados", {
+        if (!creditError && novoSaldo != null) {
+          creditsTopped = true;
+        } else {
+          console.warn("[billing] créditos não renovados via RPC, aplicando fallback do plano", {
             companyId: charge.company_id,
             slug: item.ref_slug,
             motivo: creditError?.message ?? "plano sem créditos configurados",
           });
         }
+      }
+      if (!creditsTopped && item.ref_id) {
+        try {
+          const { data: pl } = await (supabase as any)
+            .from("plan")
+            .select("creditos_mensais")
+            .eq("id", item.ref_id)
+            .maybeSingle();
+          const creditosMensais = Number(pl?.creditos_mensais ?? 0);
+          if (creditosMensais > 0) {
+            const { data: comp } = await (supabase as any)
+              .from("company")
+              .select("creditos_saldo")
+              .eq("id", charge.company_id)
+              .maybeSingle();
+            if (Number(comp?.creditos_saldo ?? 0) < creditosMensais) {
+              await (supabase as any)
+                .from("company")
+                .update({ creditos_saldo: creditosMensais })
+                .eq("id", charge.company_id);
+            }
+          }
+        } catch {}
       }
     } else if (item.tipo === "addon" && item.ref_id) {
       const { data: existing } = await supabase
@@ -354,8 +383,8 @@ async function notifyCharge(companyId: string, charge: any) {
     const supabase = await admin();
     const valor = (Number(charge?.total_cents ?? 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     const texto = charge?.metodo === "pix"
-      ? `Sua mensalidade Metrix CRM de ${valor} está disponível para pagamento via PIX. Acesse Meu plano no sistema para pagar.`
-      : `Sua mensalidade Metrix CRM de ${valor} foi gerada. Acesse Meu plano no sistema para concluir o pagamento.`;
+      ? `Sua mensalidade Capiversa de ${valor} está disponível para pagamento via PIX. Acesse Meu plano no sistema para pagar.`
+      : `Sua mensalidade Capiversa de ${valor} foi gerada. Acesse Meu plano no sistema para concluir o pagamento.`;
     await supabase.rpc("push_notificacao", {
       _company_id: companyId,
       _tipo: "cobranca",
@@ -405,6 +434,30 @@ export async function resolveInternalCharge(body: any, evt: any): Promise<string
   const tipo = evt?.eventType as string;
   if (tipo === "purchase_approved" || tipo === "subscription_renewed") {
     if (charge.status !== "paid") await settleCharge(charge.id);
+    try {
+      const { data: full } = await (supabase as any)
+        .from("billing_charge")
+        .select("id, company_id, ciclo_ref")
+        .eq("id", charge.id)
+        .maybeSingle();
+      if (full && String(full.ciclo_ref || "").startsWith("annual:")) {
+        const { data: item } = await (supabase as any)
+          .from("billing_charge_item")
+          .select("ref_id")
+          .eq("charge_id", charge.id)
+          .in("tipo", ["plan", "plano"])
+          .maybeSingle();
+        await (supabase as any)
+          .from("subscription")
+          .update({
+            ...(item?.ref_id ? { plan_id: item.ref_id } : {}),
+            ciclo: "anual",
+            current_period_end: new Date(Date.now() + 365 * 86400000).toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("company_id", full.company_id);
+      }
+    } catch { /* best-effort annual extend */ }
   } else if (tipo === "payment_failed") {
     if (charge.status !== "paid") {
       await supabase.from("billing_charge").update({ status: "failed", erro: "pagamento recusado" }).eq("id", charge.id);
@@ -415,4 +468,202 @@ export async function resolveInternalCharge(body: any, evt: any): Promise<string
       .eq("id", charge.id);
   }
   return charge.id;
+}
+
+/** Cria cobrança BRL (AbacatePay PIX ou Cartão) para um plano específico e ciclo mensal/anual. */
+export async function createPlanChargeBrl(params: {
+  companyId: string;
+  planSlug: string;
+  cycle: "month" | "annual";
+  metodo: "pix" | "card";
+  baseUrl?: string;
+}) {
+  const supabase = await admin();
+  const { data: plan, error: planErr } = await (supabase as any)
+    .from("plan")
+    .select("id, slug, nome, preco_cents, preco_anual_brl_cents, desconto_anual_pct, ativo")
+    .eq("slug", params.planSlug)
+    .maybeSingle();
+  if (planErr || !plan || plan.ativo === false) {
+    throw new Error("Plano não encontrado ou inativo.");
+  }
+
+  const isAnnual = params.cycle === "annual";
+  const pct = Number(plan.desconto_anual_pct ?? 20);
+  const monthlyAnnualCents =
+    Number(plan.preco_anual_brl_cents || 0) > 0
+      ? Number(plan.preco_anual_brl_cents)
+      : Math.round(Number(plan.preco_cents || 0) * (1 - pct / 100));
+  const total_cents = isAnnual ? monthlyAnnualCents * 12 : Number(plan.preco_cents || 0);
+  if (total_cents <= 0) throw new Error("Valor do plano inválido.");
+
+  const cicloLabel = isAnnual ? "Anual (12 meses)" : "Mensal";
+  const descricao = `${plan.nome} · ${cicloLabel}`;
+  const vencimento = new Date(Date.now() + 3 * 86400000).toISOString();
+
+  const { data: charge, error } = await (supabase as any)
+    .from("billing_charge")
+    .insert({
+      company_id: params.companyId,
+      provider: "abacatepay",
+      metodo: params.metodo,
+      status: "pending",
+      total_cents,
+      ciclo_ref: isAnnual ? `annual:${cicloAtualRef()}` : cicloAtualRef(),
+      descricao,
+      vencimento,
+      origem: "checkout",
+    })
+    .select("id")
+    .single();
+  if (error || !charge) throw new Error(error?.message || "Falha ao criar cobrança.");
+
+  const { error: itemErr } = await (supabase as any).from("billing_charge_item").insert([
+    {
+      charge_id: charge.id,
+      tipo: "plan",
+      ref_id: plan.id,
+      ref_slug: plan.slug,
+      nome: descricao,
+      quantidade: 1,
+      preco_unit_cents: total_cents,
+      total_cents,
+    },
+  ]);
+  if (itemErr) {
+    throw new Error(itemErr.message || "Falha ao registrar item da cobrança.");
+  }
+
+  const customer = await customerFor(params.companyId);
+  const base = params.baseUrl || "https://capiconversa.com";
+
+  try {
+    if (params.metodo === "pix") {
+      const pix = await createPixQrCode({
+        amountCents: total_cents,
+        description: descricao,
+        customer,
+        metadata: { externalId: charge.id },
+      });
+      await (supabase as any)
+        .from("billing_charge")
+        .update({
+          external_id: pix.id,
+          pix_qrcode: pix.brCodeBase64,
+          pix_copia_cola: pix.brCode,
+        })
+        .eq("id", charge.id);
+    } else {
+      const billing = await createBilling({
+        products: [
+          {
+            externalId: `plano:${plan.slug}:${params.cycle}`,
+            name: descricao,
+            quantity: 1,
+            price: total_cents,
+          },
+        ],
+        returnUrl: `${base}/app/meu-plano`,
+        completionUrl: `${base}/app/meu-plano?pago=1`,
+        customer,
+        methods: ["PIX", "CARD"],
+        externalId: charge.id,
+      });
+      await (supabase as any)
+        .from("billing_charge")
+        .update({
+          external_id: billing.id,
+          payment_url: billing.url,
+        })
+        .eq("id", charge.id);
+    }
+  } catch (e: any) {
+    await (supabase as any)
+      .from("billing_charge")
+      .update({ status: "failed", erro: String(e?.message || e) })
+      .eq("id", charge.id);
+    throw e;
+  }
+
+  const { data: full } = await (supabase as any)
+    .from("billing_charge")
+    .select("*")
+    .eq("id", charge.id)
+    .single();
+  return full;
+}
+
+/** Cria solicitação de pagamento manual em USD (Binance Pay USDT, Zelle ou Pago Móvil) para conciliação no Master. */
+export async function createManualUsdCharge(params: {
+  companyId: string;
+  planSlug: string;
+  cycle: "month" | "annual";
+  metodo: "binance_usdt" | "zelle" | "pago_movil";
+  reference: string;
+  notes?: string;
+}) {
+  const supabase = await admin();
+  const { data: plan, error: planErr } = await (supabase as any)
+    .from("plan")
+    .select("id, slug, nome, preco_usd_cents, preco_anual_usd_cents, desconto_anual_pct, ativo")
+    .eq("slug", params.planSlug)
+    .maybeSingle();
+  if (planErr || !plan || plan.ativo === false) {
+    throw new Error("Plano não encontrado ou inativo.");
+  }
+
+  const isAnnual = params.cycle === "annual";
+  const pct = Number(plan.desconto_anual_pct ?? 20);
+  const monthlyAnnualUsd =
+    Number(plan.preco_anual_usd_cents || 0) > 0
+      ? Number(plan.preco_anual_usd_cents)
+      : Math.round(Number(plan.preco_usd_cents || 0) * (1 - pct / 100));
+  const total_cents = isAnnual ? monthlyAnnualUsd * 12 : Number(plan.preco_usd_cents || 0);
+  if (total_cents <= 0) throw new Error("Valor em USD não configurado para este plano.");
+
+  const methodNames: Record<string, string> = {
+    binance_usdt: "Binance Pay (USDT)",
+    zelle: "Zelle (USD)",
+    pago_movil: "Pago Móvil (VE)",
+  };
+  const cicloLabel = isAnnual ? "Anual (12 meses)" : "Mensal";
+  const refClean = params.reference.trim().slice(0, 120);
+  const noteClean = params.notes?.trim().slice(0, 200);
+  const descricao = `${plan.nome} · ${cicloLabel} · USD · ${methodNames[params.metodo] || params.metodo} · Ref: ${refClean}${noteClean ? ` (${noteClean})` : ""}`;
+
+  const { data: charge, error } = await (supabase as any)
+    .from("billing_charge")
+    .insert({
+      company_id: params.companyId,
+      provider: "manual_usd",
+      metodo: params.metodo,
+      status: "pending",
+      total_cents,
+      ciclo_ref: isAnnual ? `annual:${cicloAtualRef()}` : cicloAtualRef(),
+      external_id: refClean,
+      descricao,
+      vencimento: new Date(Date.now() + 7 * 86400000).toISOString(),
+      origem: "checkout",
+    })
+    .select("*")
+    .single();
+  if (error || !charge) throw new Error(error?.message || "Falha ao registrar comprovante USD.");
+
+  const { error: itemErr } = await (supabase as any).from("billing_charge_item").insert([
+    {
+      charge_id: charge.id,
+      tipo: "plan",
+      ref_id: plan.id,
+      ref_slug: plan.slug,
+      nome: `${plan.nome} · ${cicloLabel} (USD)`,
+      quantidade: 1,
+      preco_unit_cents: total_cents,
+      total_cents,
+    },
+  ]);
+  if (itemErr) {
+    throw new Error(itemErr.message || "Falha ao registrar item da cobrança USD.");
+  }
+
+  return charge;
 }

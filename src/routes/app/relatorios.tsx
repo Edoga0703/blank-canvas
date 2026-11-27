@@ -19,8 +19,10 @@ import {
 } from "@/lib/atendimento-relatorios.functions";
 import { sendWhatsappMedia } from "@/lib/whatsapp.functions";
 import { brand } from "@/config/brand";
+import { requirePermission } from "@/lib/route-guards";
 
 export const Route = createFileRoute("/app/relatorios")({
+  beforeLoad: ({ context }) => requirePermission(context, "relatorios.view"),
   head: () => ({ meta: [
     { title: `${brand.name} — Relatórios de atendimento` },
     { name: "description", content: "Acompanhamento em tempo real e relatório diário dos atendimentos." },

@@ -554,12 +554,16 @@ export const listOmnichannelComments = createServerFn({ method: "POST" })
       platform?: string;
       status?: "all" | "pending" | "replied";
       search?: string;
+      postId?: string;
+      includeOwn?: boolean;
       limit?: number;
       offset?: number;
     }) => ({
       platform: d?.platform || "all",
       status: d?.status || "all",
       search: d?.search?.trim() || "",
+      postId: d?.postId?.trim() || "",
+      includeOwn: Boolean(d?.includeOwn),
       limit: Math.min(Math.max(d?.limit ?? 50, 1), 100),
       offset: Math.max(d?.offset ?? 0, 0),
     }),
@@ -571,13 +575,22 @@ export const listOmnichannelComments = createServerFn({ method: "POST" })
 
     let q = admin
       .from("meta_content_comments")
-      .select("id,company_id,post_id,social_account_id,network,external_comment_id,external_post_id,author_name,author_username,text,like_count,reply_count,status,commented_at,created_at,meta_content_posts(caption,permalink)", { count: "exact" })
+      .select(
+        "id,company_id,post_id,social_account_id,network,external_comment_id,external_post_id,parent_external_id,author_id,author_name,author_username,text,like_count,reply_count,is_own,status,commented_at,created_at,updated_at,meta_content_posts(caption,permalink,media_url,thumbnail_url)",
+        { count: "exact" },
+      )
       .eq("company_id", companyId)
       .order("commented_at", { ascending: false, nullsFirst: false })
       .range(data.offset, data.offset + data.limit - 1);
 
+    if (!data.includeOwn) {
+      q = q.or("is_own.is.null,is_own.eq.false");
+    }
     if (data.platform && data.platform !== "all") {
       q = q.eq("network", data.platform);
+    }
+    if (data.postId) {
+      q = q.or(`external_post_id.eq.${data.postId},post_id.eq.${data.postId}`);
     }
     if (data.status === "pending") {
       q = q.or("status.is.null,status.eq.pending,status.eq.visible");
@@ -588,34 +601,236 @@ export const listOmnichannelComments = createServerFn({ method: "POST" })
       q = q.or(`text.ilike.%${data.search}%,author_name.ilike.%${data.search}%,author_username.ilike.%${data.search}%`);
     }
 
-    const { data: rows, count, error } = await q;
+    const [
+      { data: rows, count, error },
+      { data: socialAccounts },
+      { data: metaInstances },
+      pendingRes,
+      repliedRes,
+    ] = await Promise.all([
+      q,
+      admin
+        .from("meta_social_accounts")
+        .select("id,network,instance_id,username,display_name,status")
+        .eq("company_id", companyId),
+      admin
+        .from("whatsapp_instances")
+        .select("id,instance_name,provider,status")
+        .eq("company_id", companyId)
+        .in("provider", ["meta_instagram", "meta_messenger"]),
+      admin
+        .from("meta_content_comments")
+        .select("id", { count: "exact", head: true })
+        .eq("company_id", companyId)
+        .or("is_own.is.null,is_own.eq.false")
+        .or("status.is.null,status.eq.pending,status.eq.visible"),
+      admin
+        .from("meta_content_comments")
+        .select("id", { count: "exact", head: true })
+        .eq("company_id", companyId)
+        .or("is_own.is.null,is_own.eq.false")
+        .eq("status", "replied"),
+    ]);
+
+    const hasConnectedAccounts = Boolean((socialAccounts?.length ?? 0) > 0 || (metaInstances?.length ?? 0) > 0);
+
     if (error) {
-      return { comments: [], total: 0, hasMore: false, error: error.message };
+      return {
+        comments: [],
+        total: 0,
+        hasMore: false,
+        hasConnectedAccounts,
+        counts: {
+          pending: pendingRes?.count ?? 0,
+          replied: repliedRes?.count ?? 0,
+          all: (pendingRes?.count ?? 0) + (repliedRes?.count ?? 0),
+        },
+        error: error.message,
+      };
     }
 
-    const comments = (rows ?? []).map((r: any) => ({
-      id: r.id,
-      platform: r.network as SocialPlatform,
-      external_comment_id: r.external_comment_id,
-      external_post_id: r.external_post_id,
-      author_name: r.author_name || "Usuário",
-      author_username: r.author_username || "",
-      text: r.text || "",
-      like_count: Number(r.like_count) || 0,
-      isLiked: false,
-      intent: (r.text || "").toLowerCase().match(/preço|valor|plano|comprar|quanto|pix|contrat/i) ? "commercial" : "general",
-      status: r.status === "replied" ? "replied" : "pending",
-      commented_at: r.commented_at || r.created_at || new Date().toISOString(),
-      postCaption: r.meta_content_posts?.caption,
-      permalink: r.meta_content_posts?.permalink,
-    }));
+    const instById = new Map<string, any>((metaInstances ?? []).map((i: any) => [i.id, i]));
+    const instByNetwork = new Map<string, any>();
+    for (const i of metaInstances ?? []) {
+      const net = i.provider === "meta_instagram" ? "instagram" : "facebook";
+      if (!instByNetwork.has(net) || i.status === "connected") {
+        instByNetwork.set(net, i);
+      }
+    }
+    const accountById = new Map<string, any>((socialAccounts ?? []).map((a: any) => [a.id, a]));
+
+    // Consultar estado de automatizaciones recientes para los comentarios visibles
+    const externalCommentIds = (rows ?? []).map((r: any) => r.external_comment_id).filter(Boolean);
+    const autoByCommentId = new Map<string, { status: string; reason?: string | null; workflowId?: string | null }>();
+
+    if (externalCommentIds.length > 0) {
+      const { data: evts } = await admin
+        .from("automation_events")
+        .select("id,entity_id,payload,created_at")
+        .eq("company_id", companyId)
+        .eq("event_name", "meta.comment_received.v1")
+        .in("entity_id", externalCommentIds)
+        .order("created_at", { ascending: false });
+
+      const evtIds = (evts ?? []).map((e: any) => e.id).filter(Boolean);
+      const execByEventId = new Map<string, any>();
+      if (evtIds.length > 0) {
+        const { data: execs } = await admin
+          .from("automation_executions")
+          .select("id,trigger_event_id,workflow_id,status,error_message")
+          .eq("company_id", companyId)
+          .in("trigger_event_id", evtIds);
+        for (const ex of execs ?? []) {
+          if (ex.trigger_event_id && !execByEventId.has(ex.trigger_event_id)) {
+            execByEventId.set(ex.trigger_event_id, ex);
+          }
+        }
+      }
+
+      for (const ev of evts ?? []) {
+        if (!ev.entity_id || autoByCommentId.has(ev.entity_id)) continue;
+        const exec = execByEventId.get(ev.id);
+        if (exec) {
+          autoByCommentId.set(ev.entity_id, {
+            status: exec.status || "triggered",
+            reason: exec.error_message || null,
+            workflowId: exec.workflow_id || null,
+          });
+        } else if (ev.payload?.skippedReason) {
+          autoByCommentId.set(ev.entity_id, {
+            status: "skipped",
+            reason: ev.payload.skippedReason,
+            workflowId: null,
+          });
+        }
+      }
+    }
+
+    const comments = (rows ?? []).map((r: any) => {
+      const acc = r.social_account_id ? accountById.get(r.social_account_id) : null;
+      const inst = (acc?.instance_id ? instById.get(acc.instance_id) : null) || instByNetwork.get(r.network);
+      const autoInfo = r.external_comment_id ? autoByCommentId.get(r.external_comment_id) : undefined;
+      return {
+        id: r.id,
+        post_id: r.post_id ?? null,
+        social_account_id: r.social_account_id ?? acc?.id ?? null,
+        instance_name: inst?.instance_name ?? null,
+        platform: r.network as SocialPlatform,
+        external_comment_id: r.external_comment_id,
+        external_post_id: r.external_post_id,
+        parent_external_id: r.parent_external_id ?? null,
+        author_id: r.author_id ?? null,
+        author_name: r.author_name || (r.author_username ? `@${r.author_username}` : "Usuario"),
+        author_username: r.author_username || "",
+        text: r.text || "",
+        like_count: Number(r.like_count) || 0,
+        reply_count: Number(r.reply_count) || 0,
+        is_own: Boolean(r.is_own),
+        intent: (r.text || "").toLowerCase().match(/precio|preço|valor|plan|plano|comprar|cuanto|quanto|pix|binance|pago|info|informaci[oó]n|disponible|contrat/i)
+          ? "commercial"
+          : "general",
+        status: r.status === "replied" ? "replied" : "pending",
+        commented_at: r.commented_at || r.created_at || new Date().toISOString(),
+        replied_at: r.status === "replied" ? (r.updated_at || null) : null,
+        postCaption: r.meta_content_posts?.caption ?? null,
+        permalink: r.meta_content_posts?.permalink ?? null,
+        postMediaUrl: r.meta_content_posts?.media_url ?? null,
+        postThumbnailUrl: r.meta_content_posts?.thumbnail_url ?? r.meta_content_posts?.media_url ?? null,
+        automationStatus: autoInfo?.status ?? null,
+        automationReason: autoInfo?.reason ?? null,
+        automationWorkflowId: autoInfo?.workflowId ?? null,
+      };
+    });
+
+    const pendingCount = pendingRes?.count ?? 0;
+    const repliedCount = repliedRes?.count ?? 0;
 
     return {
       comments,
       total: count ?? comments.length,
-      hasMore: (data.offset + comments.length) < (count ?? comments.length),
+      hasMore: data.offset + comments.length < (count ?? comments.length),
+      hasConnectedAccounts,
+      counts: {
+        pending: pendingCount,
+        replied: repliedCount,
+        all: pendingCount + repliedCount,
+      },
       error: null,
     };
+  });
+
+/**
+ * 4.1b Genera una sugerencia real de respuesta con IA para un comentario (pública o DM privado).
+ */
+export const suggestCommentReplyFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: {
+    commentText: string;
+    authorName?: string;
+    platform?: string;
+    postCaption?: string | null;
+    mode?: "public" | "dm";
+  }) => {
+    const commentText = String(d?.commentText ?? "").trim();
+    if (!commentText) throw new Error("El comentario no tiene texto para analizar.");
+    return {
+      commentText,
+      authorName: String(d?.authorName ?? "").trim(),
+      platform: String(d?.platform ?? "instagram").trim(),
+      postCaption: d?.postCaption ? String(d.postCaption).trim().slice(0, 500) : "",
+      mode: d?.mode === "dm" ? ("dm" as const) : ("public" as const),
+    };
+  })
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const admin = supabaseAdmin as any;
+
+    const { data: comp } = await admin
+      .from("company")
+      .select("nome")
+      .eq("id", companyId)
+      .maybeSingle();
+    const companyName = comp?.nome || "nuestro equipo";
+
+    const modeHint = data.mode === "dm"
+      ? "Redacta un mensaje privado directo (DM) amable, claro y orientado a ayudar o cerrar la venta."
+      : "Redacta una respuesta pública breve para el comentario en la publicación (máximo 2-3 frases) invitando si corresponde a continuar por DM o WhatsApp.";
+
+    try {
+      const { lovableAiChat } = await import("@/lib/lovable-ai.server");
+      const suggestion = await lovableAiChat(
+        [
+          {
+            role: "system",
+            content:
+              `Eres el asistente comercial de "${companyName}". Responde en el mismo idioma del comentario (español por defecto si es ambiguo). ` +
+              `${modeHint} No inventes precios ni enlaces si no aparecen en el contexto. Devuelve únicamente el texto listo para enviar, sin comillas.`,
+          },
+          {
+            role: "user",
+            content:
+              `Red: ${data.platform}\n` +
+              `Usuario: ${data.authorName || "Cliente"}\n` +
+              (data.postCaption ? `Publicación: ${data.postCaption}\n` : "") +
+              `Comentario: ${data.commentText}`,
+          },
+        ],
+        { temperature: 0.5, maxTokens: 220 },
+      );
+
+      if (suggestion && suggestion.trim()) {
+        return { ok: true, suggestion: suggestion.trim(), source: "ai" as const };
+      }
+    } catch (err: any) {
+      console.warn("[suggestCommentReplyFn] Fallback por error de IA:", err?.message);
+    }
+
+    const namePart = data.authorName ? ` ${data.authorName.replace(/^@/, "")}` : "";
+    const fallback = data.mode === "dm"
+      ? `¡Hola${namePart}! Gracias por escribirnos desde ${data.platform}. Con gusto te comparto toda la información por aquí, ¿qué necesitas consultar específicamente?`
+      : `¡Hola${namePart}! Con mucho gusto te ayudamos, te escribimos por mensaje directo o puedes escribirnos a nuestro WhatsApp de atención.`;
+    return { ok: true, suggestion: fallback, source: "fallback" as const };
   });
 
 /**

@@ -144,7 +144,7 @@ function PartnerClientDashboard() {
             variant="secondary" 
             size="sm" 
             className="w-full mt-3 h-8 text-xs font-bold" 
-            disabled={partner.saldo_atual_cents < 5000}
+            disabled={partner.saldo_atual_cents < Number(data?.minWithdrawCents ?? 5000)}
             onClick={async () => {
               try {
                 await reqWithdraw({ data: { amountCents: partner.saldo_atual_cents } });

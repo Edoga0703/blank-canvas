@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Smartphone, X, ArrowRight } from "lucide-react";
 
-const KEY = "metrix-mobile-banner-dismissed";
+const KEY = "capiversa-mobile-banner-dismissed";
 
 export function MobileAppBanner() {
   const [show, setShow] = useState(false);

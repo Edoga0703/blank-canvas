@@ -192,7 +192,7 @@ export async function analyzeLeadInternal(
   // Resolver el agente del embudo o el predeterminado de la empresa para idioma y proveedor IA
   let agentQuery = supabaseAdmin
     .from("agent_config")
-    .select("idioma, ai_provider, ai_model")
+    .select("id, idioma, ai_provider, ai_model")
     .eq("company_id", companyId);
 
   if (pipeline?.agent_id) {
@@ -302,6 +302,12 @@ Responde OBLIGATORIAMENTE con un único bloque JSON válido con el siguiente for
         lovableAiChat(chatMessages, {
           provider: activeAgent?.ai_provider || "gemini",
           model: activeAgent?.ai_model || "google/gemini-2.5-flash",
+          telemetry: {
+            companyId,
+            userId: (card as any)?.owner_id || (card as any)?.user_id || null,
+            agentId: (activeAgent as any)?.id || pipeline?.agent_id || null,
+            feature: "crm_lead_analyzer",
+          },
         }),
       priority,
     );

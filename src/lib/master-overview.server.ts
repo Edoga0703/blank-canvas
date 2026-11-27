@@ -25,7 +25,8 @@ export async function computeMasterOverview() {
     billingOpenRes,
     agendOverdueRes,
     zeroCreditRes,
-    lovableCreditsRes,
+    aiUsage24hRes,
+    draelPoolRes,
   ] = await Promise.all([
     supabaseAdmin.from("company").select("id, status_cobranca, trial_ate, created_at, creditos_saldo, admin_bloqueado"),
     supabaseAdmin
@@ -47,13 +48,25 @@ export async function computeMasterOverview() {
       .select("id", { count: "exact", head: true })
       .eq("status_cobranca", "ativo")
       .lte("creditos_saldo", 0),
-    supabaseAdmin.from("lovable_credit_balance").select("*").maybeSingle(),
+    (supabaseAdmin as any)
+      .from("ai_usage_events")
+      .select("cost_usd_micros, status")
+      .gte("created_at", dayAgo),
+    (supabaseAdmin as any)
+      .from("ai_provider_keys")
+      .select("id, active, cooldown_until")
+      .eq("provider", "drael"),
   ]);
 
   const all = (companiesRes.data ?? []) as any[];
   const subs = (subsRes.data ?? []) as any[];
   const instances = (instancesRes.data ?? []) as any[];
-  const lovableCredits = lovableCreditsRes.data;
+  const aiEvents24h = (aiUsage24hRes.data ?? []) as any[];
+  const draelPool = (draelPoolRes.data ?? []) as any[];
+  const aiRequests24h = aiEvents24h.length;
+  const aiMicros24h = aiEvents24h.reduce((sum, e) => sum + Number(e.cost_usd_micros ?? 0), 0);
+  const aiRateLimits24h = aiEvents24h.filter((e) => e.status === "rate_limited").length;
+  const activeDraelAccounts = draelPool.filter((k) => k.active).length;
 
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
   // Só entra no MRR quem realmente paga: assinatura ativa, não-cortesia,
@@ -88,14 +101,13 @@ export async function computeMasterOverview() {
     churn: subs.filter((s) => s.status === "canceled").length,
     conexoesTotal: instances.length,
     conexoesConectadas: conectadas,
-    lovableCredits: lovableCredits ? {
-      remaining: lovableCredits.remaining,
-      total: lovableCredits.total_granted,
-      used: lovableCredits.billing_period_used,
-      daily_remaining: lovableCredits.daily_remaining,
-      updated_at: lovableCredits.updated_at,
-      estimated_responses: Math.floor(lovableCredits.remaining * 100) // Estimativa conservadora: 1 crédito ≈ 100 respostas
-    } : null
+    ai24h: {
+      requests: aiRequests24h,
+      costUsd: Number((aiMicros24h / 1_000_000).toFixed(4)),
+      rateLimits24h: aiRateLimits24h,
+      activeDraelAccounts,
+      totalDraelAccounts: draelPool.length,
+    },
 
   };
 
@@ -179,18 +191,6 @@ export async function computeMasterOverview() {
       value: stats.emAtraso,
       hint: "Cobrança pendente",
       to: "/master/clientes",
-    });
-  }
-
-  // Alerta de créditos Lovable baixos
-  if (lovableCredits && lovableCredits.remaining <= 2) {
-    alerts.push({
-      id: "lovable-credits",
-      level: lovableCredits.remaining <= 0.5 ? "critical" : "warning",
-      label: "Créditos Lovable Críticos",
-      value: lovableCredits.remaining,
-      hint: lovableCredits.remaining <= 0 ? "IA PARADA: créditos esgotados na Lovable" : "Créditos quase acabando no AI Gateway",
-      to: "/master/sistema",
     });
   }
 

@@ -51,7 +51,15 @@ export const resumirConversa = createServerFn({ method: "POST" })
         },
         { role: "user", content: linhas },
       ],
-      "gpt-4o-mini",
+      {
+        provider: "openai",
+        model: "gpt-4o-mini",
+        telemetry: {
+          companyId: cid,
+          userId: context.userId,
+          feature: "chat_summary",
+        },
+      },
     );
 
     return { ok: true as const, resumo };

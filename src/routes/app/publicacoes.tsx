@@ -33,8 +33,10 @@ import {
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
+import { requirePermission } from "@/lib/route-guards";
 
 export const Route = createFileRoute("/app/publicacoes")({
+  beforeLoad: ({ context }) => requirePermission(context, "conteudo.publish"),
   component: PublicacoesPage,
 });
 

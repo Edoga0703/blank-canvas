@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Loader2, Search, Eye, CalendarPlus, Ban, Mail, KeyRound, Save, Copy, Gift, ShieldCheck, Trash2, Rocket, RotateCcw, BadgeDollarSign, MoreHorizontal } from "lucide-react";
+import { Loader2, Search, Eye, CalendarPlus, Ban, Mail, KeyRound, Save, Copy, Gift, ShieldCheck, Trash2, Rocket, RotateCcw, BadgeDollarSign, MoreHorizontal, UserPlus, Power, AlertTriangle } from "lucide-react";
 import {
   listMasterSubscriptions,
   listPlansBasic,
@@ -29,6 +29,10 @@ import {
   provisionSignupCompany,
   reopenOnboarding,
   markCompanyPaidManual,
+  masterAddCompanyUserFn,
+  masterUpdateCompanyUserFn,
+  masterRemoveCompanyUserFn,
+  masterResetAnyUserPasswordFn,
 } from "@/lib/master.functions";
 import { listCompanyAddonsMaster, setCompanyAddonAccess } from "@/lib/addons.functions";
 import { toast } from "sonner";
@@ -559,6 +563,7 @@ export function ClientesLista({ onStats }: { onStats?: (s: { mrr: number; active
           row={selected}
           onClose={() => setSelected(null)}
           onSaved={() => { setSelected(null); load(); }}
+          onRefresh={() => { void load(); }}
         />
       )}
     </div>
@@ -644,19 +649,32 @@ function Stat({ label, value, hint, tone = "slate" }: { label: string; value: st
 
 
 /* ------------- Ficha do cliente ------------- */
-function ClienteDialog({ row, onClose, onSaved }: { row: ClienteRow; onClose: () => void; onSaved: () => void }) {
+function ClienteDialog({ row, onClose, onSaved, onRefresh }: { row: ClienteRow; onClose: () => void; onSaved: () => void; onRefresh?: () => void }) {
   const fetchProfile = useServerFn(getSubscriberProfile);
   const fetchDetails = useServerFn(getCompanyDetails);
   const fetchPlans = useServerFn(listPlansBasic);
   const saveSub = useServerFn(updateSubscriberSubscription);
   const sendReset = useServerFn(sendSubscriberResetLink);
   const setPassword = useServerFn(resetCompanyOwnerPassword);
+  const addCompanyUser = useServerFn(masterAddCompanyUserFn);
+  const updateCompanyUser = useServerFn(masterUpdateCompanyUserFn);
+  const removeCompanyUser = useServerFn(masterRemoveCompanyUserFn);
+  const resetAnyPassword = useServerFn(masterResetAnyUserPasswordFn);
 
-  const [tab, setTab] = useState<"cadastro" | "assinatura" | "acesso">("cadastro");
+  const [tab, setTab] = useState<"cadastro" | "assinatura" | "usuarios" | "acesso">("cadastro");
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [details, setDetails] = useState<any>(null);
   const [plans, setPlans] = useState<any[]>([]);
+
+  // Usuários & Equipe (Master)
+  const [userBusyId, setUserBusyId] = useState<string | null>(null);
+  const [addingUser, setAddingUser] = useState(false);
+  const [newUserNome, setNewUserNome] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserRole, setNewUserRole] = useState<"owner" | "admin" | "atendente">("atendente");
+  const [newUserPass, setNewUserPass] = useState("");
+  const [lastTempPass, setLastTempPass] = useState<{ email: string; password: string } | null>(null);
 
   const [planId, setPlanId] = useState<string>("");
   const [ciclo, setCiclo] = useState<string>("mensal");
@@ -767,22 +785,66 @@ function ClienteDialog({ row, onClose, onSaved }: { row: ClienteRow; onClose: ()
   const nome = profile?.company?.nome ?? row.company?.nome ?? profile?.owner?.nome ?? "—";
   const c = details?.company;
 
+  async function refreshDetails() {
+    try {
+      const d = await fetchDetails({ data: { companyId: row.company_id } });
+      setDetails(d);
+    } catch {}
+  }
+
+  async function handleAddCompanyUser(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newUserEmail.trim()) return toast.error("Informe o e-mail");
+    setAddingUser(true);
+    try {
+      const res: any = await addCompanyUser({
+        data: {
+          companyId: row.company_id,
+          email: newUserEmail.trim(),
+          nome: newUserNome.trim() || undefined,
+          role: newUserRole,
+          password: newUserPass.trim() || undefined,
+        },
+      });
+      toast.success("Usuário adicionado à empresa!");
+      if (res?.tempPassword) {
+        setLastTempPass({ email: newUserEmail.trim(), password: res.tempPassword });
+      }
+      setNewUserNome("");
+      setNewUserEmail("");
+      setNewUserPass("");
+      setNewUserRole("atendente");
+      await refreshDetails();
+      onRefresh?.();
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao adicionar usuário");
+    } finally {
+      setAddingUser(false);
+    }
+  }
+
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[88vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{nome}</DialogTitle>
-          <DialogDescription>Ficha completa do cliente: cadastro, assinatura e acesso.</DialogDescription>
+          <DialogDescription>Ficha completa do cliente: cadastro, assinatura, usuários e acesso.</DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-3 rounded-lg bg-muted p-1 text-sm font-medium">
-          {(["cadastro", "assinatura", "acesso"] as const).map((t) => (
+        <div className="grid grid-cols-4 rounded-lg bg-muted p-1 text-xs sm:text-sm font-medium">
+          {[
+            { id: "cadastro", label: "Cadastro" },
+            { id: "assinatura", label: "Assinatura" },
+            { id: "usuarios", label: "Usuários & Equipe" },
+            { id: "acesso", label: "Acesso" },
+          ].map((t) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`py-2 rounded-md transition capitalize ${tab === t ? "bg-background shadow-sm" : "text-muted-foreground"}`}
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id as any)}
+              className={`py-2 rounded-md transition ${tab === t.id ? "bg-background shadow-sm" : "text-muted-foreground"}`}
             >
-              {t}
+              {t.label}
             </button>
           ))}
         </div>
@@ -944,6 +1006,237 @@ function ClienteDialog({ row, onClose, onSaved }: { row: ClienteRow; onClose: ()
             <Button className="w-full" onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Save className="size-4 mr-2" />} Salvar alterações
             </Button>
+          </div>
+        ) : tab === "usuarios" ? (
+          <div className="space-y-4 py-2 text-sm">
+            {(() => {
+              const membersList = details?.members ?? [];
+              const used = Number(details?.seats?.used ?? membersList.filter((m: any) => m.ativo !== false).length);
+              const max = Number(details?.seats?.max ?? details?.subscription?.plan?.limite_usuarios ?? 1);
+              const overLimit = max < 999999 && used > max;
+              return (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 bg-muted/25">
+                  <div>
+                    <div className="font-semibold text-sm">Assentos da empresa</div>
+                    <div className="text-xs text-muted-foreground">
+                      {used} / {max >= 999999 ? "∞" : max} usuários ativos (limite do plano + extras)
+                    </div>
+                  </div>
+                  {overLimit && (
+                    <Badge className="bg-amber-500/15 text-amber-800 border-amber-500/30 gap-1">
+                      <AlertTriangle className="size-3.5" /> Acima do limite do plano
+                    </Badge>
+                  )}
+                </div>
+              );
+            })()}
+
+            {lastTempPass && (
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-50/70 p-3 flex items-center justify-between gap-2 text-xs">
+                <div>
+                  <span className="font-semibold text-emerald-900">Nova senha gerada para {lastTempPass.email}:</span>{" "}
+                  <code className="font-mono bg-white px-2 py-0.5 rounded border">{lastTempPass.password}</code>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard?.writeText(lastTempPass.password);
+                    toast.success("Senha copiada!");
+                  }}
+                >
+                  <Copy className="size-3.5 mr-1" /> Copiar
+                </Button>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {(details?.members ?? []).length === 0 ? (
+                <div className="text-xs text-muted-foreground py-4 text-center border rounded-lg">
+                  Nenhum usuário vinculado à empresa.
+                </div>
+              ) : (
+                (details?.members ?? []).map((m: any) => (
+                  <div
+                    key={m.user_id}
+                    className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 ${
+                      m.ativo === false ? "opacity-60 bg-muted/20" : "bg-background"
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate flex items-center gap-2">
+                        <span>{m.profile?.nome || m.profile?.email || m.user_id}</span>
+                        <Badge variant={m.ativo === false ? "secondary" : "outline"} className="text-[10px]">
+                          {m.ativo === false ? "Inativo" : "Ativo"}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {m.profile?.email || "sem email"}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Select
+                        value={m.role}
+                        disabled={userBusyId === m.user_id}
+                        onValueChange={async (newRole) => {
+                          setUserBusyId(m.user_id);
+                          try {
+                            await updateCompanyUser({
+                              data: { companyId: row.company_id, userId: m.user_id, role: newRole as any },
+                            });
+                            toast.success("Papel atualizado");
+                            await refreshDetails();
+                            onRefresh?.();
+                          } catch (err: any) {
+                            toast.error(err?.message || "Erro ao atualizar papel");
+                          } finally {
+                            setUserBusyId(null);
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="h-8 w-28 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="owner">owner</SelectItem>
+                          <SelectItem value="admin">admin</SelectItem>
+                          <SelectItem value="atendente">atendente</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 px-2"
+                        title={m.ativo === false ? "Ativar usuário" : "Desativar usuário"}
+                        disabled={userBusyId === m.user_id}
+                        onClick={async () => {
+                          setUserBusyId(m.user_id);
+                          try {
+                            await updateCompanyUser({
+                              data: { companyId: row.company_id, userId: m.user_id, ativo: m.ativo === false },
+                            });
+                            toast.success(m.ativo === false ? "Usuário ativado" : "Usuário desativado");
+                            await refreshDetails();
+                          } catch (err: any) {
+                            toast.error(err?.message || "Erro ao alterar status");
+                          } finally {
+                            setUserBusyId(null);
+                          }
+                        }}
+                      >
+                        <Power className="size-3.5" />
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 px-2"
+                        title="Redefinir senha"
+                        disabled={userBusyId === m.user_id}
+                        onClick={async () => {
+                          setUserBusyId(m.user_id);
+                          try {
+                            const r: any = await resetAnyPassword({
+                              data: { companyId: row.company_id, userId: m.user_id },
+                            });
+                            if (r?.tempPassword) {
+                              setLastTempPass({ email: r.userEmail || m.user_id, password: r.tempPassword });
+                              navigator.clipboard?.writeText(r.tempPassword);
+                              toast.success("Senha temporária gerada e copiada!");
+                            }
+                          } catch (err: any) {
+                            toast.error(err?.message || "Erro ao redefinir senha");
+                          } finally {
+                            setUserBusyId(null);
+                          }
+                        }}
+                      >
+                        <KeyRound className="size-3.5" />
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 px-2 text-destructive hover:text-destructive"
+                        title="Remover da empresa"
+                        disabled={userBusyId === m.user_id}
+                        onClick={async () => {
+                          if (!confirm(`Remover ${m.profile?.email || m.user_id} desta empresa?`)) return;
+                          setUserBusyId(m.user_id);
+                          try {
+                            await removeCompanyUser({
+                              data: { companyId: row.company_id, userId: m.user_id },
+                            });
+                            toast.success("Usuário removido");
+                            await refreshDetails();
+                            onRefresh?.();
+                          } catch (err: any) {
+                            toast.error(err?.message || "Erro ao remover");
+                          } finally {
+                            setUserBusyId(null);
+                          }
+                        }}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* + Adicionar usuário à empresa */}
+            <form onSubmit={handleAddCompanyUser} className="rounded-lg border p-3.5 space-y-3 bg-muted/15">
+              <div className="font-semibold text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <UserPlus className="size-3.5" /> Adicionar usuário à empresa
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <Label className="text-xs">Nome</Label>
+                  <Input
+                    value={newUserNome}
+                    onChange={(e) => setNewUserNome(e.target.value)}
+                    placeholder="Nome completo"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">E-mail</Label>
+                  <Input
+                    type="email"
+                    required
+                    value={newUserEmail}
+                    onChange={(e) => setNewUserEmail(e.target.value)}
+                    placeholder="usuario@empresa.com"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Papel</Label>
+                  <Select value={newUserRole} onValueChange={(v) => setNewUserRole(v as any)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="owner">Proprietário (owner)</SelectItem>
+                      <SelectItem value="admin">Administrador (admin)</SelectItem>
+                      <SelectItem value="atendente">Sub-usuário (atendente)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Senha inicial (opcional)</Label>
+                  <Input
+                    type="password"
+                    value={newUserPass}
+                    onChange={(e) => setNewUserPass(e.target.value)}
+                    placeholder="Vazio gera senha temporária"
+                  />
+                </div>
+              </div>
+              <Button type="submit" size="sm" disabled={addingUser} className="gap-1.5">
+                {addingUser ? <Loader2 className="size-3.5 animate-spin" /> : <UserPlus className="size-3.5" />}
+                Vincular usuário
+              </Button>
+            </form>
           </div>
         ) : (
           <div className="space-y-4 py-2">

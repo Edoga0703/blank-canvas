@@ -89,7 +89,7 @@ export const getMyBillingSummary = createServerFn({ method: "GET" })
     return {
       companyId,
       company,
-      gateway: (cfgGateway?.gateway_padrao as string) ?? "kiwify",
+      gateway: (cfgGateway?.gateway_padrao as string) ?? "abacatepay",
       gatewayPortalUrl: (cfgGateway?.gateway_portal_url as string) ?? null,
       subscription: sub,
       plano,
@@ -194,7 +194,7 @@ export const listChargesMaster = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let q = supabaseAdmin
       .from("billing_charge")
-      .select("id, company_id, status, metodo, total_cents, descricao, ciclo_ref, origem, vencimento, paid_at, created_at, erro, company(nome)")
+      .select("id, company_id, provider, external_id, status, metodo, total_cents, descricao, ciclo_ref, origem, vencimento, paid_at, created_at, erro, company(nome)")
       .order("created_at", { ascending: false })
       .limit(200);
     if (data.status) q = q.eq("status", data.status);
@@ -213,7 +213,60 @@ export const markChargePaidMaster = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await assertSuperAdmin(context.supabase);
     const { settleCharge } = await import("@/lib/billing/charges.server");
-    return settleCharge(data.id, { manual: true });
+    const res = await settleCharge(data.id, { manual: true });
+
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: charge } = await (supabaseAdmin as any)
+        .from("billing_charge")
+        .select("id, company_id, provider, ciclo_ref, status")
+        .eq("id", data.id)
+        .maybeSingle();
+      if (charge && charge.status === "paid") {
+        const { data: item } = await (supabaseAdmin as any)
+          .from("billing_charge_item")
+          .select("ref_id")
+          .eq("charge_id", charge.id)
+          .in("tipo", ["plan", "plano"])
+          .maybeSingle();
+        const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (charge.provider === "manual_usd") {
+          updates.moeda = "USD";
+          updates.provider = "manual_usd";
+        }
+        if (String(charge.ciclo_ref || "").startsWith("annual:")) {
+          updates.current_period_end = new Date(Date.now() + 365 * 86400000).toISOString();
+        }
+        if (item?.ref_id) updates.plan_id = item.ref_id;
+        await (supabaseAdmin as any)
+          .from("subscription")
+          .update(updates)
+          .eq("company_id", charge.company_id);
+
+        if (item?.ref_id) {
+          const { data: plan } = await (supabaseAdmin as any)
+            .from("plan")
+            .select("creditos_mensais")
+            .eq("id", item.ref_id)
+            .maybeSingle();
+          if (plan?.creditos_mensais) {
+            const { data: comp } = await (supabaseAdmin as any)
+              .from("company")
+              .select("creditos_saldo")
+              .eq("id", charge.company_id)
+              .maybeSingle();
+            if (Number(comp?.creditos_saldo ?? 0) < Number(plan.creditos_mensais)) {
+              await (supabaseAdmin as any)
+                .from("company")
+                .update({ creditos_saldo: Number(plan.creditos_mensais) })
+                .eq("id", charge.company_id);
+            }
+          }
+        }
+      }
+    } catch { /* melhor esforço na conciliação anual/USD */ }
+
+    return res;
   });
 
 export const syncChargeMaster = createServerFn({ method: "POST" })
@@ -317,7 +370,7 @@ export const requestPaymentLink = createServerFn({ method: "POST" })
       (supabaseAdmin as any).from("subscription").select("plan_id").eq("company_id", companyId).maybeSingle(),
     ]);
 
-    const gateway = (cfg?.gateway_padrao as string) ?? "kiwify";
+    const gateway = (cfg?.gateway_padrao as string) ?? "abacatepay";
 
     if (gateway !== "kiwify") {
       const { createCharge } = await import("@/lib/billing/charges.server");

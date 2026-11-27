@@ -166,16 +166,50 @@ export const updateWithdrawalStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+const DEFAULT_PARTNER_CONFIG = {
+  min_withdraw_cents: 5000,
+  default_commission: 20,
+};
+
+export const getPartnerConfig = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await (supabaseAdmin as any)
+      .from("master_settings")
+      .select("value")
+      .eq("key", "partner_config")
+      .maybeSingle();
+    const val = (row?.value ?? {}) as Record<string, unknown>;
+    return {
+      min_withdraw_cents: Number(val.min_withdraw_cents ?? DEFAULT_PARTNER_CONFIG.min_withdraw_cents),
+      default_commission: Number(val.default_commission ?? DEFAULT_PARTNER_CONFIG.default_commission),
+    };
+  });
+
 export const updatePartnerConfig = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({
-    min_withdraw_cents: z.number().min(0),
+    min_withdraw_cents: z.number().int().min(0),
     default_commission: z.number().min(0).max(100),
   }))
   .handler(async ({ context, data }) => {
     await assertSuper(context.supabase, context.userId);
-    // In a real app, this would update a 'config' or 'settings' table.
-    // Since we don't have one yet for partners, we'll simulate success.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await (supabaseAdmin as any)
+      .from("master_settings")
+      .upsert(
+        {
+          key: "partner_config",
+          value: {
+            min_withdraw_cents: Math.round(data.min_withdraw_cents),
+            default_commission: Number(data.default_commission),
+          },
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "key" },
+      );
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
 

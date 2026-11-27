@@ -189,7 +189,7 @@ export async function consultarCnpj(cnpjRaw: string): Promise<EmpresaEncontrada>
   };
 }
 
-// ===================== Análise de site (Fábrica de Site / Metrix) =====================
+// ===================== Análise de site (Fábrica de Site / Capiversa) =====================
 
 export type AnaliseSite = {
   /** ativo | lento | problema | desatualizado | offline | sem_site */
@@ -221,7 +221,7 @@ async function coletarSite(url: string) {
     const r = await fetch(url, {
       redirect: "follow",
       signal: ctrl.signal,
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; MetrixBot/1.0)" },
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; CapiversaBot/1.0)" },
     });
     const html = (await r.text()).slice(0, 120000);
     const ms = Date.now() - inicio;
@@ -363,7 +363,7 @@ export async function coletarPerfilOnline(siteRaw: string | null | undefined): P
     const r = await fetch(url, {
       redirect: "follow",
       signal: ctrl.signal,
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; MetrixBot/1.0)" },
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; CapiversaBot/1.0)" },
     });
     const html = (await r.text()).slice(0, 150000);
     const redes = [

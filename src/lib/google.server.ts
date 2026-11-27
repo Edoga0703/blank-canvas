@@ -137,7 +137,7 @@ export function buildEventBody(a: {
   const start = new Date(a.inicio);
   const end = new Date(start.getTime() + (a.duracaoMin || 30) * 60_000);
   return {
-    summary: a.titulo || "Compromisso Metrix CRM",
+    summary: a.titulo || "Compromisso Capiversa CRM",
     description: [a.mensagem || "", a.link ? `Link: ${a.link}` : ""].filter(Boolean).join("\n"),
     location: a.local || undefined,
     start: { dateTime: start.toISOString() },
@@ -383,7 +383,7 @@ export async function ensureMeetLink(
     }),
     conferenceData: {
       createRequest: {
-        requestId: `metrix-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        requestId: `capiversa-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         conferenceSolutionKey: { type: "hangoutsMeet" },
       },
     },

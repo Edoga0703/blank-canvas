@@ -26,7 +26,7 @@ import {
   type CopilotActionProposal,
   type CopilotTurnResult,
 } from "./agent-copilot.server";
-import { lovableAiChat, type ChatMsg } from "./lovable-ai.server";
+import type { ChatMsg } from "./lovable-ai.server";
 
 export interface CopilotChatMessage {
   role: "user" | "assistant";
@@ -68,6 +68,7 @@ export const askAgentCopilot = createServerFn({ method: "POST" })
     }));
 
     // 3. Executa chat com a IA nativa do sistema (garante até 8192 tokens para respostas completas)
+    const { lovableAiChat } = await import("./lovable-ai.server");
     const rawOutput = await lovableAiChat(
       [
         { role: "system", content: systemPrompt },
@@ -78,6 +79,12 @@ export const askAgentCopilot = createServerFn({ method: "POST" })
         model: agentCtx.agent?.ai_model || "gemini-3.5-flash-lite",
         maxTokens: 8192,
         temperature: 0.2,
+        telemetry: {
+          companyId,
+          userId,
+          agentId: data.agentId || (agentCtx.agent as any)?.id || null,
+          feature: "agent_copilot",
+        },
       }
     );
 
@@ -379,12 +386,22 @@ Responda em formato JSON:
   ]
 }`;
 
+    const { lovableAiChat } = await import("./lovable-ai.server");
     const raw = await lovableAiChat(
       [
         { role: "system", content: system },
         { role: "user", content: `REGRAS RÍGIDAS ATUAIS:\n${cfg.regras_rigidas}` },
       ],
-      { provider: "gemini", model: "gemini-3.5-flash-lite" }
+      {
+        provider: "gemini",
+        model: "gemini-3.5-flash-lite",
+        telemetry: {
+          companyId,
+          userId,
+          agentId: data.agentId || cfg?.id || null,
+          feature: "agent_rules_audit",
+        },
+      }
     );
 
     let result = { has_conflicts: false, summary: "Regras analisadas com sucesso.", recommendations: [] };

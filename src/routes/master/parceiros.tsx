@@ -34,6 +34,7 @@ import {
   getAllProfiles, 
   getWithdrawalRequests, 
   updateWithdrawalStatus,
+  getPartnerConfig,
   updatePartnerConfig,
   getPartnersWithMetrics,
   getPartnerDetails,
@@ -541,7 +542,7 @@ function AddPartnerModal({ onClose, onSave }: { onClose: () => void; onSave: () 
               value={codigo}
               onChange={(e) => setCodigo(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ""))}
             />
-            <p className="text-[10px] text-muted-foreground">Usado no link: metrixcrm.com.br/entrar?ref=<b>{codigo || "codigo"}</b></p>
+            <p className="text-[10px] text-muted-foreground">Usado no link: capiconversa.com/entrar?ref=<b>{codigo || "codigo"}</b></p>
           </div>
 
           <div className="space-y-1.5">
@@ -670,10 +671,22 @@ function WithdrawalsList() {
 }
 
 function PartnerSettings() {
+  const loadConfig = useServerFn(getPartnerConfig);
   const update = useServerFn(updatePartnerConfig);
   const [minWithdraw, setMinWithdraw] = useState(50);
   const [defCommission, setDefCommission] = useState(20);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    void loadConfig()
+      .then((cfg: any) => {
+        if (cfg) {
+          setMinWithdraw(Math.round(Number(cfg.min_withdraw_cents ?? 5000) / 100));
+          setDefCommission(Number(cfg.default_commission ?? 20));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();

@@ -22,6 +22,8 @@ export const previewContactsImportFn = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
     if (!companyId) throw new Error("Empresa no encontrada");
+    const { assertPermission } = await import("@/lib/permissions.server");
+    await assertPermission(context.supabase, companyId, context.userId, "crm.import_export");
 
     const rawList = Array.isArray(data.rawList) ? data.rawList : [];
     const defaultCountryDdi = (data.defaultCountryDdi || "58").replace(/\D/g, "") || "58";
@@ -41,6 +43,8 @@ export const executeContactsImportFn = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
     if (!companyId) throw new Error("Empresa no encontrada");
+    const { assertPermission } = await import("@/lib/permissions.server");
+    await assertPermission(context.supabase, companyId, context.userId, "crm.import_export");
 
     const contacts = Array.isArray(data.normalizedContacts) ? data.normalizedContacts : [];
     if (contacts.length === 0) {
@@ -86,6 +90,8 @@ export const syncGoogleContactsNowFn = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
     if (!companyId) throw new Error("Empresa no encontrada");
+    const { assertPermission } = await import("@/lib/permissions.server");
+    await assertPermission(context.supabase, companyId, context.userId, "crm.import_export");
 
     const { fetchGoogleContacts } = await import("@/lib/google.server");
     const fetchRes = await fetchGoogleContacts(supabaseAdmin, companyId);

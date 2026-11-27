@@ -70,6 +70,8 @@ const PATH_TO_NAV_KEY: Record<string, string> = {
 
 
 
+import { hasPermission, resolveEffectivePermissions, type GranularPermissionKey } from "@/lib/permissions";
+
 type NavItem = {
   to?: string;
   search?: Record<string, any>;
@@ -77,6 +79,7 @@ type NavItem = {
   icon: any;
   adminOnly?: boolean;
   superOnly?: boolean;
+  permission?: GranularPermissionKey;
   tag?: string;
   badge?: boolean;
   capacidade?: string;
@@ -90,32 +93,32 @@ const sections: { label: string; items: (NavItem & { flag?: string })[] }[] = [
     label: "Atendimento",
     items: [
       { to: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard, flag: "module.dashboard" },
-      { to: "/app/conversas", label: "Conversas", icon: Inbox, badge: true, flag: "module.conversas" },
-      { to: "/app/crm", label: "CRM Kanban", icon: KanbanSquare, flag: "module.crm" },
-      { to: "/app/automacoes", label: "Flujos", icon: Workflow, flag: "module.automacoes" },
-      { to: "/app/comercial", label: "Comercial", icon: TrendingUp, flag: "module.comercial" },
-      { to: "/app/contatos", label: "Contatos", icon: Contact, flag: "module.contatos" },
-      { to: "/app/prospeccao", label: "Prospecção", icon: Radar, capacidade: "prospeccao" },
-      { to: "/app/agente", label: "Agente IA", icon: Bot, tag: "IA", flag: "module.agente" },
-      { to: "/app/respostas-rapidas", label: "Respostas Rápidas", icon: Bolt, flag: "module.respostas" },
-      { to: "/app/agendamentos", label: "Agendamentos", icon: CalendarClock, flag: "module.agendamentos" },
-      { to: "/app/campanhas", label: "Campanhas", icon: Megaphone, flag: "module.campanhas" },
-      { to: "/app/templates", label: "Templates", icon: FileText, tag: "Meta", flag: "module.templates" },
-      { to: "/app/catalogo", label: "Catálogo", icon: Package, flag: "module.catalogo" },
-      { to: "/app/publicacoes", label: "Publicações", icon: Share2, tag: "Meta", flag: "module.publicacoes" },
-      { to: "/app/conteudo", label: "Conteúdo", icon: Images, tag: "Social" },
+      { to: "/app/conversas", label: "Conversas", icon: Inbox, badge: true, flag: "module.conversas", permission: "conversas.view" },
+      { to: "/app/crm", label: "CRM Kanban", icon: KanbanSquare, flag: "module.crm", permission: "crm.view" },
+      { to: "/app/automacoes", label: "Flujos", icon: Workflow, flag: "module.automacoes", permission: "automacoes.manage" },
+      { to: "/app/comercial", label: "Comercial", icon: TrendingUp, flag: "module.comercial", permission: "relatorios.view" },
+      { to: "/app/contatos", label: "Contatos", icon: Contact, flag: "module.contatos", permission: "crm.view" },
+      { to: "/app/prospeccao", label: "Prospecção", icon: Radar, capacidade: "prospeccao", permission: "prospeccao.view" },
+      { to: "/app/agente", label: "Agente IA", icon: Bot, tag: "IA", flag: "module.agente", permission: "agente.manage" },
+      { to: "/app/respostas-rapidas", label: "Respostas Rápidas", icon: Bolt, flag: "module.respostas", permission: "conversas.view" },
+      { to: "/app/agendamentos", label: "Agendamentos", icon: CalendarClock, flag: "module.agendamentos", permission: "crm.view" },
+      { to: "/app/campanhas", label: "Campanhas", icon: Megaphone, flag: "module.campanhas", permission: "campanhas.manage" },
+      { to: "/app/templates", label: "Templates", icon: FileText, tag: "Meta", flag: "module.templates", permission: "campanhas.manage" },
+      { to: "/app/catalogo", label: "Catálogo", icon: Package, flag: "module.catalogo", permission: "catalogo.manage" },
+      { to: "/app/publicacoes", label: "Publicações", icon: Share2, tag: "Meta", flag: "module.publicacoes", permission: "conteudo.publish" },
+      { to: "/app/conteudo", label: "Conteúdo", icon: Images, tag: "Social", permission: "conteudo.publish" },
       { to: "/app/treinamentos", label: "Capi Conversa Academy", icon: GraduationCap, tag: "Interno", superOnly: true, flag: "module.treinamentos" },
     ],
   },
   {
     label: "Gestão",
     items: [
-      { to: "/app/usuarios", label: "Usuários", icon: Users, flag: "module.usuarios" },
-      { to: "/app/conexao", label: "Conexão", icon: Smartphone, flag: "module.conexao" },
-      { to: "/app/conexao", search: { tab: "tracking" }, label: "Tracking", icon: Activity, tag: "Meta", flag: "module.conexao" },
-      { to: "/app/plugins", label: "Plugins", icon: Puzzle, flag: "module.plugins" },
+      { to: "/app/usuarios", label: "Usuários", icon: Users, flag: "module.usuarios", permission: "configuracoes.team" },
+      { to: "/app/conexao", label: "Conexão", icon: Smartphone, flag: "module.conexao", permission: "conexao.manage" },
+      { to: "/app/conexao", search: { tab: "tracking" }, label: "Tracking", icon: Activity, tag: "Meta", flag: "module.conexao", permission: "conexao.manage" },
+      { to: "/app/plugins", label: "Plugins", icon: Puzzle, flag: "module.plugins", permission: "integracoes.manage" },
       { to: "/app/configuracoes", label: "Configurações", icon: Settings, flag: "module.configuracoes" },
-      { to: "/app/relatorios", label: "Relatórios", icon: BarChart3 },
+      { to: "/app/relatorios", label: "Relatórios", icon: BarChart3, permission: "relatorios.view" },
       { to: "/app/parceiro", label: "Portal do Parceiro", icon: Users, capacidade: "parceiro" },
     ],
   },
@@ -165,6 +168,7 @@ export function AppShell({
   children,
   company,
   membership,
+  permissions,
   email,
   userId,
   isSuperAdmin,
@@ -172,6 +176,7 @@ export function AppShell({
   children: ReactNode;
   company: CompanyRow | null;
   membership?: Membership | null;
+  permissions?: Record<string, boolean>;
   email?: string | null;
   userId?: string | null;
   isSuperAdmin?: boolean;
@@ -268,45 +273,65 @@ export function AppShell({
   const companyName = companyBrand.nome || "Sua empresa";
   const companyLogo = companyBrand.logo_url || "";
 
+  const effectivePerms =
+    permissions && typeof permissions === "object"
+      ? permissions
+      : resolveEffectivePermissions({
+          role: membership?.role,
+          isSuperAdmin: Boolean(isSuperAdmin),
+          customRolePermissions: membership?.custom_permissions ?? null,
+          permissionsOverride: membership?.permissions_override ?? null,
+        });
+  const canUsePerm = (key?: GranularPermissionKey) =>
+    !key || Boolean(isSuperAdmin) || hasPermission(effectivePerms, key);
+
   const [moreOpen, setMoreOpen] = useState(false);
   const { capacidades: capsAtivas, carregando: capsCarregando } = useCapacidades();
   const capOk = (slug?: string) => !slug || capsCarregando || capsAtivas.includes(slug);
-  const moreItems: { to: string; label: string; icon: any; adminOnly?: boolean; capacidade?: string; mobileHidden?: boolean; search?: Record<string, any> }[] = [
+  const rawMoreItems: { to: string; label: string; icon: any; adminOnly?: boolean; permission?: GranularPermissionKey; capacidade?: string; mobileHidden?: boolean; search?: Record<string, any> }[] = [
     { to: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { to: "/app/conversas", label: "Conversas", icon: Inbox },
-    { to: "/app/crm", label: "CRM Kanban", icon: KanbanSquare },
-    { to: "/app/automacoes", label: "Flujos", icon: Workflow },
-    { to: "/app/contatos", label: "Contatos", icon: Contact },
-    { to: "/app/agendamentos", label: "Agendamentos", icon: CalendarClock },
-    { to: "/app/respostas-rapidas", label: "Respostas Rápidas", icon: Bolt },
+    { to: "/app/conversas", label: "Conversas", icon: Inbox, permission: "conversas.view" },
+    { to: "/app/crm", label: "CRM Kanban", icon: KanbanSquare, permission: "crm.view" },
+    { to: "/app/automacoes", label: "Flujos", icon: Workflow, permission: "automacoes.manage" },
+    { to: "/app/contatos", label: "Contatos", icon: Contact, permission: "crm.view" },
+    { to: "/app/agendamentos", label: "Agendamentos", icon: CalendarClock, permission: "crm.view" },
+    { to: "/app/respostas-rapidas", label: "Respostas Rápidas", icon: Bolt, permission: "conversas.view" },
     { to: "/app/configuracoes", label: "Configurações", icon: Settings },
-    { to: "/app/comercial", label: "Comercial", icon: TrendingUp },
-    { to: "/app/agente", label: "Agente IA", icon: Bot, mobileHidden: true },
-    { to: "/app/campanhas", label: "Campanhas", icon: Megaphone, mobileHidden: true },
-    { to: "/app/conteudo", label: "Conteúdo", icon: Images },
-    { to: "/app/templates", label: "Templates", icon: FileText, mobileHidden: true },
-    { to: "/app/catalogo", label: "Catálogo", icon: Package, mobileHidden: true },
-    { to: "/app/usuarios", label: "Usuários", icon: Users, mobileHidden: true },
-    { to: "/app/conexao", label: "Conexão", icon: Smartphone, mobileHidden: true },
-    { to: "/app/plugins", label: "Plugins", icon: Puzzle, mobileHidden: true },
-  ]
-    .filter((i: any) => (i.adminOnly ? isAdmin : true))
-    .filter((i: any) => capOk(i.capacidade))
-    .filter((i: any) => !i.mobileHidden);
+    { to: "/app/comercial", label: "Comercial", icon: TrendingUp, permission: "relatorios.view" },
+    { to: "/app/agente", label: "Agente IA", icon: Bot, mobileHidden: true, permission: "agente.manage" },
+    { to: "/app/campanhas", label: "Campanhas", icon: Megaphone, mobileHidden: true, permission: "campanhas.manage" },
+    { to: "/app/conteudo", label: "Conteúdo", icon: Images, permission: "conteudo.publish" },
+    { to: "/app/templates", label: "Templates", icon: FileText, mobileHidden: true, permission: "campanhas.manage" },
+    { to: "/app/catalogo", label: "Catálogo", icon: Package, mobileHidden: true, permission: "catalogo.manage" },
+    { to: "/app/usuarios", label: "Usuários", icon: Users, mobileHidden: true, permission: "configuracoes.team" },
+    { to: "/app/conexao", label: "Conexão", icon: Smartphone, mobileHidden: true, permission: "conexao.manage" },
+    { to: "/app/plugins", label: "Plugins", icon: Puzzle, mobileHidden: true, permission: "integracoes.manage" },
+  ];
+  const moreItems = rawMoreItems
+    .filter((i) => (i.adminOnly ? isAdmin : true))
+    .filter((i) => canUsePerm(i.permission))
+    .filter((i) => capOk(i.capacidade))
+    .filter((i) => !i.mobileHidden);
 
 
-  // Usuários não-admin (atendentes, vendedores) só contam as conversas designadas a eles.
-  const soMinhasConversas = !isAdmin && !isSuperAdmin;
+  // Usuários sem 'conversas.view_all' só contam as conversas designadas a eles.
+  const soMinhasConversas = !isSuperAdmin && !hasPermission(effectivePerms, "conversas.view_all");
   const unreadConversationsCount = useUnreadConversations(company?.id, {
     onlyOwnerId: soMinhasConversas ? userId ?? null : null,
   });
 
-  const crmOculto = !!(company as any)?.funcoes_individuais && (company as any)?.atendimento_operacional !== true && !isAdmin && !isSuperAdmin;
+  const crmOculto =
+    !canUsePerm("crm.view") ||
+    (!!(company as any)?.funcoes_individuais && (company as any)?.atendimento_operacional !== true && !isAdmin && !isSuperAdmin);
   const mobileItems: MobileNavItem[] = [
     { to: "/app/dashboard", label: t("nav.dashboard", undefined, "Início"), icon: LayoutDashboard },
-    { to: "/app/conversas", label: t("nav.conversations", undefined, "Conversas"), icon: Inbox, badge: unreadConversationsCount },
+    ...(canUsePerm("conversas.view")
+      ? [{ to: "/app/conversas", label: t("nav.conversations", undefined, "Conversas"), icon: Inbox, badge: unreadConversationsCount } as MobileNavItem]
+      : []),
     ...(crmOculto ? [] : [{ to: "/app/crm", label: t("nav.crm", undefined, "CRM"), icon: KanbanSquare } as MobileNavItem]),
-    { to: "/app/contatos", label: t("nav.contacts", undefined, "Contatos"), icon: Contact },
+    ...(canUsePerm("crm.view")
+      ? [{ to: "/app/contatos", label: t("nav.contacts", undefined, "Contatos"), icon: Contact } as MobileNavItem]
+      : []),
     { label: t("common.more", undefined, "Mais"), icon: MoreHorizontal, onClick: () => setMoreOpen(true), active: moreOpen },
   ];
 
@@ -376,6 +401,7 @@ export function AppShell({
             company={company}
             isSuperAdmin={isSuperAdmin}
             isAdmin={isAdmin}
+            permissions={effectivePerms}
             isPartner={isPartner}
             primary={primary}
             companyName={companyName}
@@ -484,7 +510,7 @@ export function AppShell({
 }
 
 function Sidebar({
-  activePath, company, isSuperAdmin, isAdmin, isPartner, primary, companyName, companyLogo, signOut, collapsed, onToggleCollapsed, unreadConversations, onNavigateStart, userName, userEmail, userAvatar, userId,
+  activePath, company, isSuperAdmin, isAdmin, permissions, isPartner, primary, companyName, companyLogo, signOut, collapsed, onToggleCollapsed, unreadConversations, onNavigateStart, userName, userEmail, userAvatar, userId,
 }: any) {
   const loc = useLocation();
   const { t, language, setLanguage, languages } = useLanguage();
@@ -541,12 +567,22 @@ function Sidebar({
 
 
         <nav aria-label="Menu principal" className={`${collapsed ? "px-2" : "px-3"} py-3 flex-1 overflow-y-auto overflow-x-hidden space-y-4`}>
-        {sections.map((sec, i) => (
+        {sections.map((sec, i) => {
+          const visibleItems = sec.items.filter(
+            (it: any) =>
+              (!it.adminOnly || isAdmin) &&
+              (!it.superOnly || isSuperAdmin) &&
+              (!it.permission || Boolean(isSuperAdmin) || hasPermission(permissions, it.permission)) &&
+              isFeatureVisible(it.flag) &&
+              isCapacidadeVisible(it.capacidade),
+          );
+          if (visibleItems.length === 0) return null;
+          return (
           <div key={sec.label}>
             {i > 0 && <div className="h-px bg-border mx-2 mb-3" />}
              {!collapsed && <div className="px-3 pb-2 text-[10px] font-bold uppercase text-muted-foreground">{sec.label === "Atendimento" ? t("nav.attendance", undefined, "Atendimento") : sec.label === "Gestão" ? t("nav.management", undefined, "Gestão") : sec.label}</div>}
             <div className="flex flex-col gap-[3px]">
-              {sec.items.filter((i: any) => (!i.adminOnly || isAdmin) && (!i.superOnly || isSuperAdmin) && isFeatureVisible(i.flag) && isCapacidadeVisible(i.capacidade)).map((item: any) => {
+              {visibleItems.map((item: any) => {
                 const itemKey = (item.to || "") + (item.search?.tab ? "?tab=" + item.search.tab : "") + item.label;
                 const isTrackingItem = item.search?.tab === "tracking";
                 const isConexaoItem = item.to === "/app/conexao" && !isTrackingItem;
@@ -562,7 +598,8 @@ function Sidebar({
               })}
             </div>
           </div>
-        ))}
+          );
+        })}
       </nav>
 
        <div className={`shrink-0 border-t border-border ${collapsed ? "p-3" : "p-3"}`}>

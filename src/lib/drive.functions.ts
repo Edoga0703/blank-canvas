@@ -9,7 +9,7 @@ const DRIVE_SCOPES = [
   "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/drive.file",
 ];
-const ROOT_FOLDER_NAME = "Metrix CRM";
+const ROOT_FOLDER_NAME = "Capiversa CRM";
 
 export type DriveItem = {
   id: string;
@@ -266,7 +266,7 @@ export const uploadDriveFile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { parentId: string; nome: string; mime: string; base64: string }) => d)
   .handler(async ({ context, data }) => {
-    const boundary = `metrix${Date.now()}`;
+    const boundary = `capiversa${Date.now()}`;
     const meta = JSON.stringify({ name: data.nome, parents: [data.parentId] });
     const bin = Buffer.from(data.base64, "base64");
     const body = Buffer.concat([

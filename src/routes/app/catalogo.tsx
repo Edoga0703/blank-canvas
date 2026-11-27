@@ -12,8 +12,10 @@ import { HelpTip } from "@/components/help-tip";
 import { ProdutoEditDialog } from "@/components/catalogo/produto-edit-dialog";
 import { brand } from "@/config/brand";
 import { useLanguage } from "@/lib/i18n/context";
+import { requirePermission } from "@/lib/route-guards";
 
 export const Route = createFileRoute("/app/catalogo")({
+  beforeLoad: ({ context }) => requirePermission(context, "catalogo.manage"),
   head: () => ({ meta: [{ title: `${brand.name} — Catálogo` }] }),
   component: Page,
 });

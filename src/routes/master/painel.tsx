@@ -72,7 +72,7 @@ function Painel() {
   const s = {
     mrr: 0, arpu: 0, assinaturasAtivas: 0, total: 0, trial: 0, novasMes: 0,
     mensagens24h: 0, mensagens: 0, conexoesConectadas: 0, conexoesTotal: 0,
-    lovableCredits: null as any,
+    ai24h: null as { requests?: number; costUsd?: number; rateLimits24h?: number; activeDraelAccounts?: number; totalDraelAccounts?: number } | null,
     ...(data.stats ?? {}),
   };
   const alerts = (data.alerts ?? []) as any[];
@@ -151,11 +151,11 @@ function Painel() {
           <Kpi label="Workspaces ativos" value={s.assinaturasAtivas} hint={`${s.total} no total`} icon={<Building2 className="size-4" />} iconBg="bg-indigo-50 text-[color:var(--brand-text)]" />
           <Kpi label="Em trial" value={s.trial} hint={`${s.novasMes} novos no mês`} icon={<Sparkles className="size-4" />} iconBg="bg-blue-50 text-blue-600" />
           <Kpi
-            label="Créditos Lovable (IA)"
-            value={s.lovableCredits ? Number(s.lovableCredits.remaining ?? 0).toFixed(1) : "---"}
-            hint={s.lovableCredits ? `${Number(s.lovableCredits.daily_remaining ?? 0).toFixed(1)} diários (${s.lovableCredits.estimated_responses ?? 0}+ respostas estimadas)` : "Não configurado"}
+            label="IA (24h) · Pool Drael"
+            value={Number(s.ai24h?.requests ?? 0).toLocaleString("pt-BR")}
+            hint={`$${Number(s.ai24h?.costUsd ?? 0).toFixed(3)} USD · ${Number(s.ai24h?.activeDraelAccounts ?? 0)} conta(s) Drael`}
             icon={<Cpu className="size-4" />}
-            iconBg={Number(s.lovableCredits?.remaining ?? 99) <= 1 ? "bg-red-50 text-red-600" : "bg-cyan-50 text-cyan-600"}
+            iconBg="bg-cyan-50 text-cyan-600"
           />
           <Kpi label="Mensagens 24h" value={Number(s.mensagens24h ?? 0).toLocaleString("pt-BR")} hint={`${Number(s.mensagens ?? 0).toLocaleString("pt-BR")} no total`} icon={<MessageSquare className="size-4" />} iconBg="bg-sky-50 text-sky-600" />
           <Kpi label="Conexões ativas" value={`${s.conexoesConectadas}/${s.conexoesTotal}`} hint="WhatsApp conectado" icon={<PlugZap className="size-4" />} iconBg="bg-violet-50 text-violet-600" />

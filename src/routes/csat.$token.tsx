@@ -15,10 +15,10 @@ export const Route = createFileRoute("/csat/$token")({
       { property: "og:title", content: "Avalie nosso atendimento" },
       { property: "og:description", content: "Leva 1 minuto: dê sua nota e deixe um comentário sobre o atendimento." },
       { property: "og:type", content: "website" },
-      { property: "og:url", content: `https://metrixcrm.com.br/csat/${params.token}` },
+      { property: "og:url", content: `https://capiconversa.com/csat/${params.token}` },
       { name: "twitter:card", content: "summary" },
     ],
-    links: [{ rel: "canonical", href: `https://metrixcrm.com.br/csat/${params.token}` }],
+    links: [{ rel: "canonical", href: `https://capiconversa.com/csat/${params.token}` }],
   }),
   component: CsatPage,
 });

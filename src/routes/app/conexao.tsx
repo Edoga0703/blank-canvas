@@ -33,8 +33,10 @@ import { listStorePlugins } from "@/lib/plugin-store.functions";
 import { TelegramConnectDialog } from "@/components/conexao/telegram-connect-dialog";
 import { MetaConnectDialog } from "@/components/conexao/meta-connect-dialog";
 import { MetaCapiCard } from "@/components/config/meta-capi-card";
+import { requirePermission } from "@/lib/route-guards";
 
 export const Route = createFileRoute("/app/conexao")({
+  beforeLoad: ({ context }) => requirePermission(context, "conexao.manage"),
   validateSearch: (search: Record<string, unknown>): { tab?: string } => ({
     tab: typeof search?.tab === "string" ? search.tab : undefined,
   }),

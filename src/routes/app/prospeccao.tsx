@@ -63,6 +63,7 @@ import { sendWhatsappText, sendWhatsappMedia, sendWhatsappAudio } from "@/lib/wh
 import { transcribeAudio } from "@/lib/transcribe.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/lib/i18n/context";
+import { requirePermission } from "@/lib/route-guards";
 
 
 const SITE_BADGE: Record<string, { label: string; cls: string }> = {
@@ -75,6 +76,7 @@ const SITE_BADGE: Record<string, { label: string; cls: string }> = {
 };
 
 export const Route = createFileRoute("/app/prospeccao")({
+  beforeLoad: ({ context }) => requirePermission(context, "prospeccao.view"),
   head: () => ({
     meta: [
       { title: "Radar de Prospecção | Capi Conversa" },

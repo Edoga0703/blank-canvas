@@ -42,7 +42,7 @@ export function IntegracoesTab() {
   useEffect(() => { refresh(); }, []);
 
   const activeToken = useMemo(() => tokens.find((t) => !t.revogado)?.token ?? "SEU_TOKEN", [tokens]);
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://metrixcrm.com.br";
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://capiconversa.com";
   const endpoint = `${origin}/api/public/lead-capture`;
 
   async function handleCreate() {
@@ -80,26 +80,26 @@ export function IntegracoesTab() {
     gclid: p.get("gclid"), fbclid: p.get("fbclid"),
     referrer: document.referrer, first_page: location.href
   };
-  try { sessionStorage.setItem("metrix_track", JSON.stringify(t)); } catch(e){}
+  try { sessionStorage.setItem("capiversa_track", JSON.stringify(t)); } catch(e){}
 
-  // Marque seus formulários com data-metrix-form e inputs com name="numero" e name="nome"
+  // Marque seus formulários com data-capiversa-form e inputs com name="numero" e name="nome"
   document.addEventListener("submit", function(ev){
     var f = ev.target;
-    if (!f || !f.matches || !f.matches("[data-metrix-form]")) return;
+    if (!f || !f.matches || !f.matches("[data-capiversa-form]")) return;
     ev.preventDefault();
     var data = new FormData(f);
     var body = Object.assign({ company_token: TOKEN,
       numero: (data.get("numero")||"").toString(),
       nome: (data.get("nome")||"").toString(),
       mensagem: (data.get("mensagem")||"").toString()
-    }, JSON.parse(sessionStorage.getItem("metrix_track")||"{}"));
+    }, JSON.parse(sessionStorage.getItem("capiversa_track")||"{}"));
     fetch(ENDPOINT, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body) })
-      .then(function(r){ if(r.ok){ f.reset(); (f.dataset.metrixRedirect ? location.href = f.dataset.metrixRedirect : alert("Recebemos seu contato!")); } else { alert("Erro ao enviar."); } });
+      .then(function(r){ if(r.ok){ f.reset(); (f.dataset.capiversaRedirect ? location.href = f.dataset.capiversaRedirect : alert("Recebemos seu contato!")); } else { alert("Erro ao enviar."); } });
   });
 })();
 </script>`;
 
-  const snippetForm = `<form data-metrix-form data-metrix-redirect="/obrigado">
+  const snippetForm = `<form data-capiversa-form data-capiversa-redirect="/obrigado">
   <input name="nome" placeholder="Seu nome" required />
   <input name="numero" placeholder="Seu WhatsApp (com DDD)" required />
   <textarea name="mensagem" placeholder="Como podemos ajudar?"></textarea>
@@ -193,17 +193,17 @@ export function IntegracoesTab() {
               <p className="text-xs text-muted-foreground mt-2">Captura UTMs, gclid, fbclid, referrer e página de entrada automaticamente.</p>
               <Passos itens={[
                 <>Copie o script acima e cole antes de <code>&lt;/body&gt;</code> em todas as páginas do site (no WordPress: plugin de scripts no rodapé ou editor de tema).</>,
-                <>Marque seu formulário com <code>data-metrix-form</code> e use os campos <code>nome</code> e <code>numero</code> (opcional: <code>mensagem</code>).</>,
+                <>Marque seu formulário com <code>data-capiversa-form</code> e use os campos <code>nome</code> e <code>numero</code> (opcional: <code>mensagem</code>).</>,
                 <>Publique, envie um teste pelo próprio site e confira o lead no <strong>CRM → Kanban Comercial</strong>.</>,
               ]} />
             </TabsContent>
             <TabsContent value="form" className="mt-3">
               <SnippetBox code={snippetForm} onCopy={() => copy(snippetForm)} />
-              <p className="text-xs text-muted-foreground mt-2">Marque com <code>data-metrix-form</code> e use os campos <code>nome</code>, <code>numero</code>, <code>mensagem</code>.</p>
+              <p className="text-xs text-muted-foreground mt-2">Marque com <code>data-capiversa-form</code> e use os campos <code>nome</code>, <code>numero</code>, <code>mensagem</code>.</p>
               <Passos itens={[
                 <>Garanta que o <strong>Script</strong> (aba anterior) já está instalado no site — é ele quem envia os dados.</>,
-                <>Use o HTML de exemplo ou adapte o seu formulário mantendo o atributo <code>data-metrix-form</code> e os <code>name</code> dos campos.</>,
-                <>Opcional: adicione <code>data-metrix-redirect="/obrigado"</code> para levar o visitante a uma página de agradecimento.</>,
+                <>Use o HTML de exemplo ou adapte o seu formulário mantendo o atributo <code>data-capiversa-form</code> e os <code>name</code> dos campos.</>,
+                <>Opcional: adicione <code>data-capiversa-redirect="/obrigado"</code> para levar o visitante a uma página de agradecimento.</>,
                 <>Envie um teste e veja o lead aparecer no <strong>CRM → Kanban Comercial</strong>.</>,
               ]} />
             </TabsContent>
@@ -231,10 +231,10 @@ export function IntegracoesTab() {
               <div className="rounded-lg border border-border p-4 bg-muted/20">
                 <h4 className="text-xs font-semibold mb-2">Webhook de Formulários Nativos (Meta Lead Ads)</h4>
                 <SnippetBox code={origin + "/api/public/meta-leads-webhook"} onCopy={() => copy(origin + "/api/public/meta-leads-webhook")} />
-                <p className="text-xs text-muted-foreground mt-2">Use esta URL como Webhook nas configurações do seu App na Meta (campo "leadgen"). O Token de Verificação padrão é <code>metrix_crm_leads_verify</code>.</p>
+                <p className="text-xs text-muted-foreground mt-2">Use esta URL como Webhook nas configurações do seu App na Meta (campo "leadgen"). O Token de Verificação padrão é <code>capiconversa_meta_verify_2026</code>.</p>
                 <Passos itens={[
                   <>Acesse <strong>developers.facebook.com</strong>, abra (ou crie) um App do tipo Empresa e adicione o produto <strong>Webhooks</strong> (objeto <em>Page</em>).</>,
-                  <>Em <strong>Callback URL</strong> cole a URL acima; em <strong>Verify Token</strong> informe <code>metrix_crm_leads_verify</code> e salve.</>,
+                  <>Em <strong>Callback URL</strong> cole a URL acima; em <strong>Verify Token</strong> informe <code>capiconversa_meta_verify_2026</code> e salve.</>,
                   <>Assine o campo <code>leadgen</code> e solicite as permissões <code>leads_retrieval</code>, <code>pages_show_list</code> e <code>pages_manage_metadata</code>.</>,
                   <>Conecte a página e teste pelo <strong>Lead Ads Testing Tool</strong> da Meta.</>,
                 ]} />

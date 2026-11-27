@@ -305,9 +305,9 @@ Se o e-mail não chegar em alguns minutos, confira a caixa de spam. Marcar **"Ma
   {
     id: "instalar-app",
     categoria: "Conta",
-    titulo: "Instalar o Metrix no celular",
+    titulo: "Instalar o Capiversa no celular",
     palavrasChave: ["app", "aplicativo", "celular", "instalar", "android", "iphone", "pwa"],
-    conteudo: `O Metrix funciona como aplicativo:
+    conteudo: `O Capiversa funciona como aplicativo:
 
 - **Android (Chrome):** menu ⋮ → **Instalar aplicativo**.
 - **iPhone (Safari):** botão compartilhar → **Adicionar à Tela de Início**.
@@ -362,7 +362,7 @@ export function artigosPorCategoria(cat: KbCategoria): KbArtigo[] {
   return SUPPORT_KB.filter((a) => a.categoria === cat);
 }
 
-const DEFLECT_KEY = "metrix_support_deflect";
+const DEFLECT_KEY = "capiversa_support_deflect";
 
 export function registrarFeedback(artigoId: string, resolveu: boolean) {
   try {

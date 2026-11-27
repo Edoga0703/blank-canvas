@@ -2,10 +2,17 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
+async function assertSuperAdmin(supabase: any) {
+  const { data, error } = await supabase.rpc("is_super_admin");
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Acesso negado");
+}
+
 export const getMasterTrainingData = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }: any) => {
     const supabase = context.supabase;
+    await assertSuperAdmin(supabase);
     const { data: categories } = await supabase
       .from('training_categories')
       .select('*, courses:training_courses(id, title)')
@@ -37,6 +44,7 @@ export const saveTrainingCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ data, context }: any) => {
     const supabase = context.supabase;
+    await assertSuperAdmin(supabase);
     let res;
     if (data.id) {
       res = await supabase.from('training_categories').update(data).eq('id', data.id);
@@ -53,6 +61,7 @@ export const deleteTrainingCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ data, context }: any) => {
     const supabase = context.supabase;
+    await assertSuperAdmin(supabase);
     const { error } = await supabase.from('training_categories').delete().eq('id', data.id);
     if (error) throw new Error(error.message);
     return { success: true };
@@ -71,6 +80,7 @@ export const saveTrainingCourse = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ data, context }: any) => {
     const supabase = context.supabase;
+    await assertSuperAdmin(supabase);
     let res;
     if (data.id) {
       res = await supabase.from('training_courses').update(data).eq('id', data.id);
@@ -87,6 +97,7 @@ export const deleteTrainingCourse = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ data, context }: any) => {
     const supabase = context.supabase;
+    await assertSuperAdmin(supabase);
     const { error } = await supabase.from('training_courses').delete().eq('id', data.id);
     if (error) throw new Error(error.message);
     return { success: true };
@@ -103,6 +114,7 @@ export const saveTrainingBanner = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ data, context }: any) => {
     const supabase = context.supabase;
+    await assertSuperAdmin(supabase);
     let res;
     if (data.id) {
       res = await supabase.from('training_banners').update(data).eq('id', data.id);
@@ -119,6 +131,7 @@ export const deleteTrainingBanner = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ data, context }: any) => {
     const supabase = context.supabase;
+    await assertSuperAdmin(supabase);
     const { error } = await supabase.from('training_banners').delete().eq('id', data.id);
     if (error) throw new Error(error.message);
     return { success: true };
@@ -130,6 +143,7 @@ export const saveTrainingSettings = createServerFn({ method: "POST" })
     immersive_mode: z.boolean().optional()
   }).parse(data))
   .middleware([requireSupabaseAuth])
-  .handler(async ({ data }: any) => {
+  .handler(async ({ data, context }: any) => {
+    await assertSuperAdmin(context.supabase);
     return { success: true, settings: data };
   });

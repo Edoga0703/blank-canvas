@@ -26,9 +26,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/lib/i18n/context";
+import { requirePermission } from "@/lib/route-guards";
 
 
 export const Route = createFileRoute("/app/plugins")({
+  beforeLoad: ({ context }) => requirePermission(context, "integracoes.manage"),
   head: () => ({
     meta: [
       { title: `Plugins — ${brand.name}` },

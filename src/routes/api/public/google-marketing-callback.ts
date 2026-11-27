@@ -33,7 +33,7 @@ export const Route = createFileRoute("/api/public/google-marketing-callback")({
 <body style="font-family:system-ui;background:#0B1020;color:#eef2ff;display:grid;place-items:center;min-height:100vh;margin:0">
 <div style="text-align:center;padding:24px">
 <h1>✅ ${nome} conectado</h1>
-<p>Pode voltar para o Metrix CRM.</p>
+<p>Pode voltar para o Capi Conversa.</p>
 <script>setTimeout(()=>{ if(window.opener){window.close()} else {location.href="/app/plugins"} },1500)</script>
 </div></body>`,
           { status: 200, headers: { "content-type": "text/html; charset=utf-8" } },

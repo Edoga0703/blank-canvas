@@ -23,14 +23,14 @@ export function AnnouncementManager() {
     load();
     
     // Load dismissed from local storage
-    const saved = localStorage.getItem("metrix_dismissed_announcements");
+    const saved = localStorage.getItem("capiversa_dismissed_announcements");
     if (saved) setDismissed(JSON.parse(saved));
   }, []);
 
   const dismiss = (id: string) => {
     const next = [...dismissed, id];
     setDismissed(next);
-    localStorage.setItem("metrix_dismissed_announcements", JSON.stringify(next));
+    localStorage.setItem("capiversa_dismissed_announcements", JSON.stringify(next));
   };
 
   useEffect(() => {

@@ -148,7 +148,7 @@ export function exportarCompromissosPdf({ itens, servicos, profissionais, filtro
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(...CINZA);
-    doc.text("Metrix CRM · Central de Agendamentos", M, alt - 24);
+    doc.text("Capiversa · Central de Agendamentos", M, alt - 24);
     doc.text(`Página ${p} de ${total}`, larg - M, alt - 24, { align: "right" });
   }
 

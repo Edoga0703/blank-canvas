@@ -99,13 +99,13 @@ const slack = notificador((texto) => ({ text: texto }));
 const teams = notificador((texto) => ({
   "@type": "MessageCard",
   "@context": "https://schema.org/extensions",
-  summary: "Metrix CRM",
+  summary: "Capiversa CRM",
   themeColor: "0B22FE",
-  title: "Metrix CRM",
+  title: "Capiversa CRM",
   text: texto,
 }));
 const automacao = notificador((texto, payload) => ({
-  origem: "Metrix CRM",
+  origem: "Capiversa CRM",
   mensagem: texto,
   ...payload,
 }));
@@ -131,15 +131,15 @@ const bling: Adapter = {
   criarVenda: async (c, v) => {
     const r = await req("https://api.bling.com.br/Api/v3/pedidos/vendas", {
       ...json({
-        contato: { nome: v.contato_nome || "Cliente Metrix" },
+        contato: { nome: v.contato_nome || "Cliente Capiversa" },
         itens: [
           {
-            descricao: (v.item_nome || v.descricao || "Venda Metrix CRM").slice(0, 120),
+            descricao: (v.item_nome || v.descricao || "Venda Capiversa CRM").slice(0, 120),
             quantidade: 1,
             valor: reais(v.valor_cents),
           },
         ],
-        observacoes: "Pedido gerado pelo Metrix CRM",
+        observacoes: "Pedido gerado pelo Capiversa CRM",
       }),
       headers: {
         "content-type": "application/json",
@@ -219,7 +219,7 @@ async function asaasClienteId(c: Campos, nome: string, numero: string | null) {
     if (achado) return String(achado);
   }
   const novo = await req(`${ASAAS}/customers`, {
-    ...json({ name: nome || "Cliente Metrix", mobilePhone: numero ? numero.slice(2) : undefined }),
+    ...json({ name: nome || "Cliente Capiversa", mobilePhone: numero ? numero.slice(2) : undefined }),
     headers: { ...asaasHeaders(c["api_key"]!), "content-type": "application/json" },
   });
   return String(novo?.id ?? "");
@@ -248,7 +248,7 @@ function asaasAdapter(billingType: "UNDEFINED" | "PIX"): Adapter {
           billingType,
           value: reais(v.valor_cents),
           dueDate: hoje(3),
-          description: (v.item_nome || v.descricao || "Venda Metrix CRM").slice(0, 120),
+          description: (v.item_nome || v.descricao || "Venda Capiversa CRM").slice(0, 120),
         }),
         headers: { ...asaasHeaders(c["api_key"]!), "content-type": "application/json" },
       });
@@ -270,7 +270,7 @@ const mercadoPago: Adapter = {
       ...json({
         items: [
           {
-            title: (v.item_nome || v.descricao || "Venda Metrix CRM").slice(0, 120),
+            title: (v.item_nome || v.descricao || "Venda Capiversa CRM").slice(0, 120),
             quantity: 1,
             currency_id: "BRL",
             unit_price: reais(v.valor_cents),
@@ -308,7 +308,7 @@ const stripe: Adapter = {
   criarVenda: async (c, v) => {
     const h = { ...stripeHeaders(c["api_key"]!) };
     const cliente = await req(`${STRIPE}/customers`, {
-      ...form({ name: v.contato_nome || "Cliente Metrix", phone: v.contato_numero ?? "" }),
+      ...form({ name: v.contato_nome || "Cliente Capiversa", phone: v.contato_numero ?? "" }),
       headers: { ...h, "content-type": "application/x-www-form-urlencoded" },
     });
     await req(`${STRIPE}/invoiceitems`, {
@@ -316,7 +316,7 @@ const stripe: Adapter = {
         customer: String(cliente?.id ?? ""),
         amount: String(Math.max(0, Math.round(v.valor_cents))),
         currency: "brl",
-        description: (v.item_nome || v.descricao || "Venda Metrix CRM").slice(0, 120),
+        description: (v.item_nome || v.descricao || "Venda Capiversa CRM").slice(0, 120),
       }),
       headers: { ...h, "content-type": "application/x-www-form-urlencoded" },
     });
@@ -337,7 +337,7 @@ const stripe: Adapter = {
 function nuvemHeaders(c: Campos) {
   return {
     authentication: `bearer ${c["token"]}`,
-    "user-agent": "Metrix CRM (contato@metrixcrm.com.br)",
+    "user-agent": "Capiversa CRM (contato@capiconversa.com)",
     "content-type": "application/json",
   };
 }
@@ -464,11 +464,11 @@ const rdStation: Adapter = {
         event_type: "CONVERSION",
         event_family: "CDP",
         payload: {
-          conversion_identifier: "Metrix CRM",
+          conversion_identifier: "Capiversa CRM",
           email: ct.email,
           name: ct.nome ?? undefined,
           mobile_phone: ct.numero ?? undefined,
-          cf_etapa_metrix: ct.etapa ?? undefined,
+          cf_etapa_capiversa: ct.etapa ?? undefined,
         },
       }),
       headers: { authorization: `Bearer ${c["token"]}`, "content-type": "application/json" },
@@ -485,7 +485,7 @@ function mailchimpBase(key: string) {
 }
 
 function mailchimpAuth(key: string) {
-  return { authorization: `Basic ${btoa(`metrix:${key}`)}`, "content-type": "application/json" };
+  return { authorization: `Basic ${btoa(`capiversa:${key}`)}`, "content-type": "application/json" };
 }
 
 const mailchimp: Adapter = {
@@ -547,7 +547,7 @@ const trello: Adapter = {
       key: c["key"] ?? "",
       token: c["token"] ?? "",
       idList: c["list_id"] ?? "",
-      name: (ct.nome || ct.numero || "Lead Metrix").slice(0, 180),
+      name: (ct.nome || ct.numero || "Lead Capiversa").slice(0, 180),
       desc,
     });
     await req(`https://api.trello.com/1/cards?${q.toString()}`, { method: "POST" });

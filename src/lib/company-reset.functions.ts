@@ -9,17 +9,14 @@ export const resetCompanyData = createServerFn({ method: "POST" })
     const { companyId } = data;
     const userId = context.userId;
 
-    // Verificar se o usuário é admin/owner da empresa
-    const { data: membership, error: mErr } = await context.supabase
-      .from("company_user")
-      .select("role, ativo")
-      .eq("company_id", companyId)
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (mErr || !membership?.ativo || !["owner", "admin"].includes(membership.role)) {
-      throw new Error("Apenas administradores podem resetar os dados da empresa.");
-    }
+    const { assertPermission } = await import("@/lib/permissions.server");
+    await assertPermission(
+      context.supabase,
+      companyId,
+      userId,
+      "configuracoes.danger_zone",
+      "Apenas administradores podem resetar os dados da empresa.",
+    );
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 

@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, Save, CreditCard, Sparkles, AlertTriangle, Download, Shield, Wallet, Lock, User, Palette, Users, Clock, Star, ChevronDown, Search, MapPin, KeyRound, Upload, Webhook, Lightbulb, Send, Link2, ImageIcon, X, Tag, Building2, FileText, ListOrdered, Infinity, HardDrive, Coins } from "lucide-react";
+import { Loader2, Save, CreditCard, Sparkles, AlertTriangle, Download, Shield, Wallet, Lock, User, Palette, Users, Clock, Star, ChevronDown, Search, MapPin, KeyRound, Upload, Webhook, Lightbulb, Send, Link2, ImageIcon, X, Tag, Building2, FileText, ListOrdered, Infinity, Coins } from "lucide-react";
 import { submitFeedback } from "@/lib/admin-broadcast.functions";
 import { brand } from "@/config/brand";
 import { trialDaysLeft } from "@/lib/tenant";
@@ -18,7 +18,9 @@ import { HorariosTab } from "@/components/config/horarios-tab";
 import { TagsTab } from "@/components/config/tags-tab";
 import { CsatRespostasTab } from "@/components/config/csat-respostas-tab";
 import { DepartamentosTab } from "@/components/config/departamentos-tab";
-import { StorageVaultsTab } from "@/components/config/storage-vaults-tab";
+import { extractEnabledModuleLabels } from "@/lib/plan-features";
+import { getMyCompanyAiUsageFn } from "@/lib/ai-admin.functions";
+import { hasPermission, resolveEffectivePermissions } from "@/lib/permissions";
 
 import { DistribuicaoTab } from "@/components/config/distribuicao-tab";
 
@@ -319,6 +321,18 @@ function ConfigPage() {
   const [enderecoOpen, setEnderecoOpen] = useState(true);
 
   const isAtendente = ctx.membership?.role === "atendente";
+  const effectivePerms =
+    (ctx as any)?.permissions && typeof (ctx as any).permissions === "object"
+      ? (ctx as any).permissions
+      : resolveEffectivePermissions({
+          role: ctx.membership?.role,
+          isSuperAdmin: Boolean((ctx as any)?.isSuperAdmin),
+          customRolePermissions: ctx.membership?.custom_permissions ?? null,
+          permissionsOverride: ctx.membership?.permissions_override ?? null,
+        });
+  const canBilling = Boolean((ctx as any)?.isSuperAdmin) || hasPermission(effectivePerms, "configuracoes.billing");
+  const canViewAiUsage = Boolean((ctx as any)?.isSuperAdmin) || hasPermission(effectivePerms, "ai_usage.view");
+  const canDangerZone = Boolean((ctx as any)?.isSuperAdmin) || hasPermission(effectivePerms, "configuracoes.danger_zone");
   const formulariosOn = useFeatureEnabled("feature.formularios", { isSuperAdmin: (ctx as any)?.isSuperAdmin });
 
   return (
@@ -340,8 +354,8 @@ function ConfigPage() {
           <StyledTab value="sugestoes" icon={<Lightbulb className="size-4" />}>{t("config.suggestions_tab", undefined, "Sugestões")}</StyledTab>
           {!isAtendente && <StyledTab value="integracoes" icon={<Webhook className="size-4" />}>{t("config.integrations_tab", undefined, "Integrações")}</StyledTab>}
           {!isAtendente && formulariosOn && <StyledTab value="formularios" icon={<FileText className="size-4" />}>{t("config.forms_tab", undefined, "Formulários")}</StyledTab>}
-          {!isAtendente && <StyledTab value="storage" icon={<HardDrive className="size-4" />}>{t("config.storage_tab", undefined, "Armazenamento")}</StyledTab>}
-          {!isAtendente && <StyledTab value="plano" icon={<CreditCard className="size-4" />}>{t("config.plan_tab", undefined, "Plano")}</StyledTab>}
+          {canBilling && <StyledTab value="plano" icon={<CreditCard className="size-4" />}>{t("config.plan_tab", undefined, "Plano")}</StyledTab>}
+          {!canBilling && canViewAiUsage && <StyledTab value="consumo-ia" icon={<Coins className="size-4" />}>Consumo IA</StyledTab>}
 
         </TabsList>
 
@@ -602,6 +616,7 @@ function ConfigPage() {
 
 
               {/* Zona de Perigo - Resetar Dados */}
+              {canDangerZone && (
               <Card className="p-4 sm:p-5 border-destructive/20 bg-destructive/5 space-y-4">
                 <div>
                   <h3 className="font-semibold text-destructive flex items-center gap-2">
@@ -647,6 +662,7 @@ function ConfigPage() {
                   </AlertDialog>
                 </div>
               </Card>
+              )}
             </div>
 
             )}
@@ -656,9 +672,9 @@ function ConfigPage() {
 
 
         
-        <TabsContent value="tags"><TagsTab /></TabsContent>
-        <TabsContent value="departamentos"><DepartamentosTab /></TabsContent>
-        <TabsContent value="horarios"><HorariosTab /></TabsContent>
+        {!isAtendente && <TabsContent value="tags"><TagsTab /></TabsContent>}
+        {!isAtendente && <TabsContent value="departamentos"><DepartamentosTab /></TabsContent>}
+        {!isAtendente && <TabsContent value="horarios"><HorariosTab /></TabsContent>}
         <TabsContent value="csat">
           <Tabs defaultValue="config" className="space-y-4">
             <TabsList>
@@ -670,11 +686,11 @@ function ConfigPage() {
           </Tabs>
         </TabsContent>
         <TabsContent value="sugestoes"><SugestoesCard companyId={companyId} userId={userId} /></TabsContent>
-        <TabsContent value="integracoes"><IntegracoesTab /></TabsContent>
-        <TabsContent value="formularios"><FormulariosTab /></TabsContent>
-        <TabsContent value="distribuicao"><DistribuicaoTab /></TabsContent>
-        <TabsContent value="storage"><StorageVaultsTab /></TabsContent>
-        <TabsContent value="plano"><PlanoCard company={company} sub={sub} /></TabsContent>
+        {!isAtendente && <TabsContent value="integracoes"><IntegracoesTab /></TabsContent>}
+        {!isAtendente && formulariosOn && <TabsContent value="formularios"><FormulariosTab /></TabsContent>}
+        {!isAtendente && <TabsContent value="distribuicao"><DistribuicaoTab /></TabsContent>}
+        {canBilling && <TabsContent value="plano"><PlanoCard company={company} sub={sub} /></TabsContent>}
+        {!canBilling && canViewAiUsage && <TabsContent value="consumo-ia"><AiUsageReadOnlyCard companyId={companyId} /></TabsContent>}
 
         <TabsContent value="idioma" className="mt-4 sm:mt-5 space-y-4">
           <Card className="p-5 sm:p-6 space-y-6 max-w-4xl">
@@ -828,11 +844,62 @@ function UsageBar({ used, total, label, loaded = true, tone = "primary" }: { use
   );
 }
 
+function AiUsageReadOnlyCard({ companyId }: { companyId?: string | null }) {
+  const fetchAiUsage = useServerFn(getMyCompanyAiUsageFn);
+  const [aiUsage, setAiUsage] = useState<any | null>(null);
+  const [saldo, setSaldo] = useState<number>(0);
+
+  useEffect(() => {
+    if (!companyId) return;
+    void fetchAiUsage({ data: { days: 30 } })
+      .then((res) => setAiUsage(res))
+      .catch(() => {});
+    void supabase
+      .from("company")
+      .select("creditos_saldo")
+      .eq("id", companyId)
+      .maybeSingle()
+      .then(({ data }) => setSaldo(Number(data?.creditos_saldo ?? 0)));
+  }, [companyId]);
+
+  return (
+    <Card className="p-4 sm:p-5 space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-semibold flex items-center gap-2">
+          <Coins className="size-4 text-primary" />
+          Consumo de Inteligência Artificial (Últimos 30 dias)
+        </h3>
+        <Badge variant="outline" className="text-xs">
+          Saldo atual: {saldo.toLocaleString("pt-BR")} créditos
+        </Badge>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="rounded-lg border p-3 bg-muted/20">
+          <div className="text-xs text-muted-foreground">Chamadas de IA</div>
+          <div className="text-xl font-bold mt-0.5">{Number(aiUsage?.totals?.requests ?? 0).toLocaleString("pt-BR")}</div>
+        </div>
+        <div className="rounded-lg border p-3 bg-muted/20">
+          <div className="text-xs text-muted-foreground">Créditos consumidos</div>
+          <div className="text-xl font-bold mt-0.5">{Number(aiUsage?.totals?.credits_charged ?? 0).toLocaleString("pt-BR")}</div>
+        </div>
+        <div className="rounded-lg border p-3 bg-muted/20">
+          <div className="text-xs text-muted-foreground">Tokens processados</div>
+          <div className="text-xl font-bold mt-0.5">
+            {(Number(aiUsage?.totals?.input_tokens ?? 0) + Number(aiUsage?.totals?.output_tokens ?? 0)).toLocaleString("pt-BR")}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function PlanoCard({ company, sub }: { company: any; sub: any }) {
+  const fetchAiUsage = useServerFn(getMyCompanyAiUsageFn);
   const [creditos, setCreditos] = useState<{ saldo: number; resetam_em: string | null }>({ saldo: 0, resetam_em: null });
   const [consumidos, setConsumidos] = useState(0);
   const [usuarios, setUsuarios] = useState(0);
   const [conexoes, setConexoes] = useState(0);
+  const [aiUsage, setAiUsage] = useState<any | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -850,7 +917,7 @@ function PlanoCard({ company, sub }: { company: any; sub: any }) {
         ? new Date(reset.getTime() - 30 * 24 * 60 * 60 * 1000)
         : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
-      const [led, u, i] = await Promise.all([
+      const [led, u, i, usageRes] = await Promise.all([
         supabase
           .from("credit_ledger")
           .select("delta")
@@ -860,12 +927,14 @@ function PlanoCard({ company, sub }: { company: any; sub: any }) {
           .limit(5000),
         supabase.from("company_user").select("user_id", { count: "exact", head: true }).eq("company_id", company.id).eq("ativo", true),
         supabase.from("whatsapp_instances").select("instance_name", { count: "exact", head: true }).eq("company_id", company.id),
+        fetchAiUsage({ data: { days: 30 } }).catch(() => null),
       ]);
 
       setCreditos({ saldo: comp.data?.creditos_saldo ?? 0, resetam_em: comp.data?.creditos_resetam_em ?? null });
       setConsumidos((led.data ?? []).reduce((acc: number, r: any) => acc + Math.abs(Number(r.delta ?? 0)), 0));
       setUsuarios(u.count ?? 0);
       setConexoes(i.count ?? 0);
+      if (usageRes) setAiUsage(usageRes);
       setLoaded(true);
     })();
   }, [company?.id]);
@@ -879,8 +948,8 @@ function PlanoCard({ company, sub }: { company: any; sub: any }) {
 
   const plan = sub?.plan;
   const planoCreditos = isTrial
-    ? (plan?.creditos_trial ?? 2147483647)
-    : (plan?.creditos_mensais ?? plan?.limite_mensagens ?? 2147483647);
+    ? Number(plan?.creditos_trial ?? 300)
+    : Number(plan?.creditos_mensais ?? plan?.limite_mensagens ?? 1500);
   const usados = consumidos;
   // O total considera o saldo real disponível (pode incluir créditos extras comprados)
   const totalCreditos = Math.max(planoCreditos, usados + creditos.saldo);
@@ -891,9 +960,7 @@ function PlanoCard({ company, sub }: { company: any; sub: any }) {
 
   const proximaCobranca = sub?.current_period_end || sub?.renova_em || null;
   const resetIA = creditos.resetam_em || proximaCobranca;
-  const features: string[] = (Array.isArray(plan?.features) ? plan.features : []).filter(
-    (f: string) => typeof f === "string" && f.trim() && !/^(unlimited|ilimitado)$/i.test(f.trim()),
-  );
+  const features = extractEnabledModuleLabels(plan?.features, plan?.slug);
 
   return (
     <div className="space-y-4">
@@ -906,8 +973,8 @@ function PlanoCard({ company, sub }: { company: any; sub: any }) {
             {isExpired ? <AlertTriangle className="size-4 mt-0.5" /> : <Sparkles className="size-4 mt-0.5" />}
             <div>
               {isExpired
-                ? <>Seu período de teste terminou. Cadastre o cartão para continuar usando.</>
-                : <>Restam <b>{days} {days === 1 ? "dia" : "dias"}</b> de teste gratuito. Cadastre o cartão antes do fim do prazo.</>}
+                ? <>Seu período de teste terminou. Ative um plano para continuar usando.</>
+                : <>Restam <b>{days} {days === 1 ? "dia" : "dias"}</b> de teste gratuito. Ative seu plano antes do fim do prazo.</>}
             </div>
           </div>
         )}
@@ -925,6 +992,82 @@ function PlanoCard({ company, sub }: { company: any; sub: any }) {
 
       </Card>
       )}
+
+      {/* Consumo de Inteligência Artificial (Últimos 30 dias) */}
+      <Card className="p-4 sm:p-5 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Coins className="size-4 text-primary" />
+            Consumo de Inteligência Artificial (Últimos 30 dias)
+          </h3>
+          <Badge variant="outline" className="text-xs">
+            Saldo atual: {Number(creditos.saldo ?? 0).toLocaleString("pt-BR")} créditos
+          </Badge>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-lg border p-3 bg-muted/20">
+            <div className="text-xs text-muted-foreground">Chamadas de IA</div>
+            <div className="text-xl font-bold mt-0.5">
+              {Number(aiUsage?.totals?.requests ?? 0).toLocaleString("pt-BR")}
+            </div>
+          </div>
+          <div className="rounded-lg border p-3 bg-muted/20">
+            <div className="text-xs text-muted-foreground">Créditos consumidos</div>
+            <div className="text-xl font-bold mt-0.5">
+              {Number(aiUsage?.totals?.credits_charged ?? 0).toLocaleString("pt-BR")}
+            </div>
+          </div>
+          <div className="rounded-lg border p-3 bg-muted/20">
+            <div className="text-xs text-muted-foreground">Tokens processados</div>
+            <div className="text-xl font-bold mt-0.5">
+              {(
+                Number(aiUsage?.totals?.input_tokens ?? 0) +
+                Number(aiUsage?.totals?.output_tokens ?? 0)
+              ).toLocaleString("pt-BR")}
+            </div>
+          </div>
+        </div>
+
+        {aiUsage && ((aiUsage.by_feature?.length ?? 0) > 0 || (aiUsage.by_user?.length ?? 0) > 0) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+            {(aiUsage.by_feature?.length ?? 0) > 0 && (
+              <div className="rounded-lg border p-3 space-y-2">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Por módulo / recurso
+                </div>
+                <div className="space-y-1.5">
+                  {aiUsage.by_feature.slice(0, 6).map((row: any) => (
+                    <div key={row.feature} className="flex items-center justify-between text-xs">
+                      <span className="font-medium truncate pr-2">{row.feature}</span>
+                      <span className="text-muted-foreground shrink-0">
+                        {Number(row.requests ?? 0)}x · {Number(row.credits_charged ?? 0)} créd.
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {(aiUsage.by_user?.length ?? 0) > 0 && (
+              <div className="rounded-lg border p-3 space-y-2">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Por usuário / automação
+                </div>
+                <div className="space-y-1.5">
+                  {aiUsage.by_user.slice(0, 6).map((row: any, idx: number) => (
+                    <div key={row.user_id ?? idx} className="flex items-center justify-between text-xs">
+                      <span className="font-medium truncate pr-2">{row.user_name || "Sistema / Automático"}</span>
+                      <span className="text-muted-foreground shrink-0">
+                        {Number(row.requests ?? 0)}x · {Number(row.credits_charged ?? 0)} créd.
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
 
       {features.length > 0 && (
         <Card className="p-4 sm:p-5 space-y-2">
@@ -945,7 +1088,7 @@ function PlanoCard({ company, sub }: { company: any; sub: any }) {
       {!isActive && (
         <Button asChild>
           <Link to="/app/checkout" search={{ plano: (plan?.slug ?? "pro") } as any}>
-            <CreditCard className="size-4 mr-1.5" /> Cadastrar cartão e ativar
+            <CreditCard className="size-4 mr-1.5" /> Ativar assinatura
           </Link>
         </Button>
       )}

@@ -100,7 +100,7 @@ export function FormBuilderDialog({
     }
   }
 
-  const origin = "https://metrixcrm.com.br";
+  const origin = "https://capiconversa.com";
   const slugPreview = slugifyForm(d.slug || d.nome || "");
 
   return (

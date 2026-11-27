@@ -16,6 +16,15 @@ export class DapiHttpError extends Error {
   }
 }
 
+export function getDapiEnvConfig(): { baseUrl: string; apiKey: string } {
+  const baseUrl = String(process.env.DAPI_BASE_URL || DEFAULT_BASE_URL).trim().replace(/\/+$/, "");
+  const apiKey = String(process.env.DAPI_API_KEY || "").trim();
+  if (!apiKey) {
+    throw new Error("DAPI_API_KEY não configurada");
+  }
+  return { baseUrl, apiKey };
+}
+
 function getApiKey(customKey?: string | null): string {
   const candidate = String(customKey || "").trim();
   // En sesiones dapi_official (Cloud API), instance_token almacena el token de Meta (EAA... / IGAA... / IGQV...),
@@ -25,12 +34,8 @@ function getApiKey(customKey?: string | null): string {
     candidate.startsWith("IGAA") ||
     candidate.startsWith("IGQV");
   const validCustomKey = candidate && !isMetaGraphToken ? candidate : "";
-  const envKey = String(process.env.DAPI_API_KEY || "098aeda184429bc8201ba60d88116821906397caa5fd5b935b615318a245da03").trim();
-  const key = validCustomKey || envKey;
-  if (!key) {
-    throw new Error("DAPI_API_KEY no está configurada en las variables de entorno del servidor.");
-  }
-  return key;
+  if (validCustomKey) return validCustomKey;
+  return getDapiEnvConfig().apiKey;
 }
 
 export function extractDapiResponseId(res: unknown): string {

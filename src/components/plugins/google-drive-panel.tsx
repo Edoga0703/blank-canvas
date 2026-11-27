@@ -38,7 +38,7 @@ function waitForOAuth(popup: Window) {
   });
 }
 
-/** Conexão da conta do Google Drive — uma por usuário do Metrix. */
+/** Conexão da conta do Google Drive — uma por usuário do Capiversa. */
 export function GoogleDrivePanel() {
   const status = useServerFn(getDriveStatus);
   const start = useServerFn(startDriveConnect);
@@ -65,7 +65,7 @@ export function GoogleDrivePanel() {
   useEffect(() => { void load(); }, []);
 
   async function conectar() {
-    const popup = window.open("", "metrix-drive-oauth", "width=600,height=720");
+    const popup = window.open("", "capiversa-drive-oauth", "width=600,height=720");
     if (!popup) return toast.error("Libere os pop-ups do navegador e tente de novo.");
     setBusy(true);
     try {

@@ -46,6 +46,7 @@ export const masterGroups: { id: string; tabs: MasterTab[] }[] = [
     tabs: [
       { to: "/master/diagnostico", label: "Monitoramento WhatsApp" },
       { to: "/master/sistema", label: "Inteligência Artificial" },
+      { to: "/master/sistema", label: "Armazenamento", search: { v: "armazenamento" } },
       { to: "/master/sistema", label: "Popups e Avisos", search: { v: "popups" } },
       { to: "/master/configuracoes", label: "Webhooks" },
       { to: "/master/feature-flags", label: "Feature flags" },

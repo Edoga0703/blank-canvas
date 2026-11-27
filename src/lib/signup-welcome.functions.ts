@@ -9,7 +9,7 @@ export type SignupWelcomeConfig = {
 };
 
 export const DEFAULT_WELCOME_MESSAGE =
-  "Olá {nome}! 👋 Aqui é a Metrix CRM. Sua conta foi criada com sucesso. Qualquer dúvida, é só responder por aqui que a gente te ajuda a começar.";
+  "Olá {nome}! 👋 Aqui é a Capiversa. Sua conta foi criada com sucesso. Qualquer dúvida, é só responder por aqui que a gente te ajuda a começar.";
 
 function renderMessage(tpl: string, vars: { nome: string; email: string; telefone: string }) {
   let out = tpl || DEFAULT_WELCOME_MESSAGE;
@@ -23,7 +23,7 @@ function renderMessage(tpl: string, vars: { nome: string; email: string; telefon
 /**
  * Fonte única: a régua "boas_vindas" do CRM Admin.
  * Liga/desliga e texto vêm de `admin_automation`; o envio usa a conexão do
- * workspace interno (Metrix Admin).
+ * workspace interno (Capiversa Admin).
  */
 async function loadConfig(): Promise<SignupWelcomeConfig> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -139,7 +139,7 @@ export const testSignupWelcome = createServerFn({ method: "POST" })
     await waSendText(
       inst,
       parsed.numero,
-      renderMessage(cfg.mensagem, { nome: data.nome || "Teste", email: "teste@metrixcrm.com.br", telefone: parsed.numero }),
+      renderMessage(cfg.mensagem, { nome: data.nome || "Teste", email: "teste@capiconversa.com", telefone: parsed.numero }),
     );
     return { ok: true };
   });

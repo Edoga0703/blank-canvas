@@ -34,6 +34,8 @@ export const connectWhatsapp = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
+    const { assertPermission } = await import("./permissions.server");
+    await assertPermission(supabase, companyId, userId, "conexao.manage");
 
     if (data.createNew) {
       const { assertWithinLimit } = await import("./plan-limits.server");
@@ -333,6 +335,8 @@ export const disconnectWhatsapp = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
+    const { assertPermission } = await import("./permissions.server");
+    await assertPermission(supabase, companyId, userId, "conexao.manage");
     const { supabaseAdmin: sbAdminTok } = await import("@/integrations/supabase/client.server");
     const q = (sbAdminTok as any)
       .from("whatsapp_instances")
@@ -365,6 +369,8 @@ export const deleteWhatsapp = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
+    const { assertPermission } = await import("./permissions.server");
+    await assertPermission(supabase, companyId, userId, "conexao.manage");
     const { supabaseAdmin: sbAdminTok } = await import("@/integrations/supabase/client.server");
     const q = (sbAdminTok as any)
       .from("whatsapp_instances")
@@ -1003,9 +1009,14 @@ export const testEvolutionConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async () => {
     const started = Date.now();
-    const url = (process.env.DAPI_BASE_URL || "https://api.d-api.cloud/api/v1").replace(/\/+$/, "");
-    const key = (process.env.DAPI_API_KEY || "098aeda184429bc8201ba60d88116821906397caa5fd5b935b615318a245da03").trim();
-    if (!key) {
+    let url = "";
+    let key = "";
+    try {
+      const { getDapiEnvConfig } = await import("./dapi.server");
+      const cfg = getDapiEnvConfig();
+      url = cfg.baseUrl;
+      key = cfg.apiKey;
+    } catch {
       return {
         ok: false,
         status: 0,
@@ -1232,6 +1243,8 @@ export const connectDapiOfficial = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
+    const { assertPermission } = await import("./permissions.server");
+    await assertPermission(supabase, companyId, userId, "conexao.manage");
     const { dapiCreateOfficialConnection, dapiGetCloudAccessToken, dapiGetCloudConnection } = await import("./dapi.server");
     const { supabaseAdmin: sbAdminTok } = await import("@/integrations/supabase/client.server");
 
@@ -1239,6 +1252,19 @@ export const connectDapiOfficial = createServerFn({ method: "POST" })
       data.connectionId?.trim() ||
       data.sessionId?.trim() ||
       `dapi_meta_${companyId.replace(/-/g, "").slice(0, 8)}_${crypto.randomUUID().slice(0, 4)}`;
+
+    const { data: existingOfficial } = await (sbAdminTok as any)
+      .from("whatsapp_instances")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("instance_name", instanceName)
+      .maybeSingle();
+
+    if (!existingOfficial) {
+      const { assertWithinLimit } = await import("./plan-limits.server");
+      await assertWithinLimit(companyId, "instancias_oficiais", 1, userId);
+    }
+
     const webhookToken = crypto.randomUUID();
     const webhookUrl = buildWebhookUrl(webhookToken, "dapi_official");
 

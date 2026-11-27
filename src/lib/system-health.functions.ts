@@ -200,21 +200,32 @@ export const pingDapiApi = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertSuper(context.supabase, context.userId);
-    const url = process.env.DAPI_BASE_URL || "https://api.d-api.net";
-    const key = process.env.DAPI_API_KEY || "098aeda184429bc8201ba60d88116821906397caa5fd5b935b615318a245da03";
-    if (!key) {
+    let baseUrl = "";
+    let key = "";
+    try {
+      const { getDapiEnvConfig } = await import("@/lib/dapi.server");
+      const cfg = getDapiEnvConfig();
+      baseUrl = cfg.baseUrl;
+      key = cfg.apiKey;
+    } catch {
       return { ok: false, status: 0, latencyMs: 0, error: "DAPI_API_KEY não configurada", instances: null, checkedAt: new Date().toISOString() };
     }
     const started = Date.now();
     try {
-      const res = await fetch(`${url.replace(/\/$/, "")}/instance/fetchInstances`, {
-        headers: { apikey: key, "Content-Type": "application/json" },
+      const res = await fetch(`${baseUrl}/sessions`, {
+        headers: { Authorization: key, Accept: "application/json" },
         signal: AbortSignal.timeout(8000),
       });
       const latencyMs = Date.now() - started;
       let body: any = null;
       try { body = await res.json(); } catch { /* ignore */ }
-      const instances = Array.isArray(body) ? body.length : (Array.isArray(body?.instances) ? body.instances.length : null);
+      const instances = Array.isArray(body)
+        ? body.length
+        : Array.isArray(body?.sessions)
+          ? body.sessions.length
+          : Array.isArray(body?.data)
+            ? body.data.length
+            : null;
       return {
         ok: res.ok,
         status: res.status,

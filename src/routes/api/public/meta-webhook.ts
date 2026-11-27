@@ -424,7 +424,34 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                 String(value?.from?.id ?? "") === inst.phone_number_id;
 
               if (!senderId || ((isComment || isMention) && isSelfComment)) {
-                if (isSelfComment) {
+                if (isSelfComment && isComment) {
+                  const selfCommentId = String(value?.comment_id ?? value?.id ?? "");
+                  if (selfCommentId && (field !== "feed" || !value?.verb || value.verb === "add")) {
+                    const selfPostId = String(value?.post_id ?? value?.media?.id ?? value?.media_id ?? "");
+                    const selfParentId = value?.parent_id ? String(value.parent_id) : null;
+                    const selfText = textFor(value);
+                    const contentNetwork = channel === "instagram" ? "instagram" : "facebook";
+                    try {
+                      const { persistContentComment } = await import("@/lib/meta-content-sync.server");
+                      await persistContentComment(supabaseAdmin as any, {
+                        companyId: inst.company_id,
+                        network: contentNetwork,
+                        externalPostId: selfPostId || null,
+                        ownerExternalId: inst.phone_number_id || pageId || null,
+                        isOwnOverride: true,
+                        parentExternalId: selfParentId && selfParentId !== selfPostId ? selfParentId : null,
+                        comment: {
+                          id: selfCommentId,
+                          text: selfText,
+                          message: selfText,
+                          timestamp: new Date().toISOString(),
+                          created_time: new Date().toISOString(),
+                          from: { id: senderId, name: value?.from?.name ?? value?.from?.username ?? null, username: value?.from?.username ?? null },
+                          parent_id: selfParentId,
+                        },
+                      });
+                    } catch {}
+                  }
                   console.log(`[meta-webhook] Auto-comentario ignorado para evitar bucles infinitos (senderId: ${senderId}, pageId: ${pageId}, entryId: ${entry?.id})`);
                 }
                 continue;
@@ -499,7 +526,42 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                   author = channel === "instagram" ? `Instagram ${senderId.slice(-4)}` : `Messenger ${senderId.slice(-4)}`;
                 }
 
-                // 3. Notificación en campana / panel para visibilidad del operador
+                // 3. Persistir comentario en meta_content_comments en tiempo real para ?tab=comments
+                try {
+                  const contentNetwork = channel === "instagram" ? "instagram" : "facebook";
+                  const { persistContentComment } = await import("@/lib/meta-content-sync.server");
+                  const rawTs = ev?.timestamp ?? value?.created_time;
+                  const numTs = typeof rawTs === "number" ? rawTs : (typeof rawTs === "string" && /^\d+$/.test(rawTs.trim()) ? Number(rawTs.trim()) : NaN);
+                  const tsIso = !isNaN(numTs) && numTs > 0
+                    ? new Date(numTs < 10_000_000_000 ? numTs * 1000 : numTs).toISOString()
+                    : (rawTs && !isNaN(new Date(rawTs).getTime()) ? new Date(rawTs).toISOString() : new Date().toISOString());
+
+                  await persistContentComment(supabaseAdmin as any, {
+                    companyId: inst.company_id,
+                    network: contentNetwork,
+                    externalPostId: postId || null,
+                    ownerExternalId: inst.phone_number_id || pageId || null,
+                    parentExternalId: isNestedReply ? parentId : null,
+                    comment: {
+                      id: commentId,
+                      text,
+                      message: text,
+                      timestamp: tsIso,
+                      created_time: tsIso,
+                      username: value?.from?.username ?? null,
+                      from: {
+                        id: senderId,
+                        name: author,
+                        username: value?.from?.username ?? null,
+                      },
+                      parent_id: isNestedReply ? parentId : null,
+                    },
+                  });
+                } catch (persistErr: any) {
+                  console.warn("[meta-webhook] Aviso persistiendo comentario en bandeja:", persistErr?.message);
+                }
+
+                // 4. Notificación en campana / panel para visibilidad del operador
                 await pushMetaNotification(supabaseAdmin, {
                   companyId: inst.company_id,
                   tipo: "comentario_meta",

@@ -1,11 +1,14 @@
 // Capiversa - Premium Visual Identity.
 import { createFileRoute } from "@tanstack/react-router";
 import { brand } from "@/config/brand";
-import metrixLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
+import capiversaLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import mascoteNotebook from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import mascoteOferta from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { listPublicPlansFn } from "@/lib/plan-admin.functions";
+import { extractEnabledModuleLabels } from "@/lib/plan-features";
 import {
   Check,
   Bot,
@@ -31,14 +34,14 @@ import {
 const HOME_TITLE = "Capiversa — IA que atende WhatsApp e organiza o CRM";
 const HOME_DESC =
   "Capiversa é uma plataforma de atendimento, vendas e CRM com IA, integrada ao Google Agenda para criar e gerenciar compromissos autorizados pelo usuário.";
-const SITE_URL = "https://metrixcrm.com.br";
+const SITE_URL = "https://capiconversa.com";
 
 const FAQ_QA = [
   { q: "Como o Agente de IA atende meus clientes no WhatsApp?", a: "Você conecta seu WhatsApp por QR Code e treina a IA em uma tela simples, contando sobre sua empresa, produtos e tom de voz. A partir daí ela responde 24/7 no módulo de Conversas, qualifica o lead e só passa pra humano quando precisa." },
   { q: "O CRM Kanban organiza os leads automaticamente?", a: "Sim. Cada conversa vira um card no funil e a IA move o lead pela etapa certa conforme a qualificação avança. Você acompanha vendas, follow-up e pós-venda em um Kanban visual, sem precisar preencher planilha." },
   { q: "Consigo agendar reuniões e compromissos com ajuda da IA?", a: "Consegue. O módulo de Agendamentos tem calendário próprio e a IA marca reuniões, consultas e serviços direto na conversa do WhatsApp — confirma horário, envia lembrete e atualiza o CRM." },
   { q: "Como funcionam as Campanhas e o Catálogo?", a: "Em Campanhas você dispara mensagens em massa segmentando pela etapa do CRM ou por tags de contato. No Catálogo você cadastra produtos e serviços com foto e preço, e a IA usa isso pra recomendar e vender dentro da conversa." },
-  { q: "Posso ter vários atendentes e mais de um WhatsApp?", a: "O plano inclui até 3 usuários e 1 conexão de WhatsApp. Cada atendente entra com login próprio, usa Respostas Rápidas com áudio/vídeo/imagem, e você controla permissões pelo módulo de Configurações." },
+  { q: "Posso ter vários atendentes e mais de um WhatsApp?", a: "Sim! Temos planos flexíveis para equipes de todos os tamanhos, com múltiplas conexões de WhatsApp API Oficial Meta e WhatsApp QR Code, Instagram, Facebook e Telegram, além de permissões granulares por usuário." },
 ];
 
 export const Route = createFileRoute("/")({
@@ -115,21 +118,22 @@ export const Route = createFileRoute("/")({
 
 const BLUE = "#334155";
 
-async function goCta(path: "/entrar" | "#planos", plano: string = "pro") {
+async function goCta(path: string, plano: string = "pro") {
   if (path === "#planos") {
     const el = document.getElementById("planos");
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
-  if (path === "/entrar") {
+  if (path === "/entrar" || path.startsWith("/entrar?")) {
+    const qs = path.includes("?") ? path.slice(path.indexOf("?")) : `?plano=${plano}`;
     try {
       const { data } = await supabase.auth.getUser();
       if (data.user) {
-        window.location.href = `/app/checkout?plano=${plano}`;
+        window.location.href = `/app/checkout${qs}`;
         return;
       }
     } catch {}
-    window.location.href = `/entrar?modo=signup&plano=${plano}`;
+    window.location.href = path === "/entrar" ? `/entrar?modo=signup&plano=${plano}` : path;
     return;
   }
   window.location.href = path;
@@ -176,7 +180,7 @@ function Header() {
     >
       <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-3">
         <a href="/" className="flex items-center min-w-0 shrink">
-          <img src={metrixLogo.url} alt="Capiversa" className="h-7 sm:h-8 md:h-9 w-auto" />
+          <img src={capiversaLogo.url} alt="Capiversa" className="h-7 sm:h-8 md:h-9 w-auto" />
         </a>
         <nav className="hidden lg:flex items-center gap-8 text-sm font-medium text-[#12263A]/70">
           <a href="#como-funciona" className="hover:text-[#334155] transition-colors">Como funciona</a>
@@ -515,75 +519,258 @@ function Features() {
 
 
 
+function formatCurrency(cents: number, currency: "BRL" | "USD") {
+  if (currency === "USD") {
+    return (Number(cents || 0) / 100).toLocaleString("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: Number(cents || 0) % 100 === 0 ? 0 : 2,
+    });
+  }
+  return (Number(cents || 0) / 100).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
 function Pricing() {
-  const perks = [
-    "1 conexão de WhatsApp",
-    "Até 3 usuários",
-    "Todos os módulos inclusos",
-    "Agentes de IA",
-    "CRM Kanban + Automações",
-    "Agendamentos e Campanhas",
-    "Suporte prioritário",
-    "Cancele quando quiser",
-  ];
+  const fetchPublicPlans = useServerFn(listPublicPlansFn);
+  const [plans, setPlans] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currency, setCurrency] = useState<"BRL" | "USD">("BRL");
+  const [cycle, setCycle] = useState<"month" | "annual">("month");
+
+  useEffect(() => {
+    let active = true;
+    fetchPublicPlans()
+      .then((res) => {
+        if (active && Array.isArray(res)) setPlans(res);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const maxDiscount = plans.reduce(
+    (max, p) => Math.max(max, Number(p.desconto_anual_pct ?? 20)),
+    20,
+  );
+
   return (
-    <section id="planos" className="relative flex flex-col items-center gap-12">
-      <div className="text-center max-w-2xl">
-        <div className="text-sm font-bold text-[#334155] uppercase tracking-widest mb-3">Plano único</div>
+    <section id="planos" className="relative flex flex-col items-center gap-10">
+      <div className="text-center max-w-3xl space-y-4">
+        <div className="text-sm font-bold text-[#334155] uppercase tracking-widest">
+          Planos transparentes
+        </div>
         <h2
           className="font-bold font-display leading-[1.05]"
           style={{ fontSize: "clamp(1.75rem, 3.6vw, 3.75rem)" }}
         >
-          Um plano. <span className="text-[#334155]">Tudo incluso.</span>
+          Escolha o plano ideal para sua <span className="text-[#334155]">operação.</span>
         </h2>
-        <p className="text-[#12263A]/60 mt-4">Sem letra miúda, sem upsell escondido. Comece grátis e veja resultado antes de pagar.</p>
-      </div>
+        <p className="text-[#12263A]/60">
+          Comece grátis com créditos de IA inclusos e escale com WhatsApp API Oficial Meta ($0 por conexão), QR Code, Instagram, Facebook e Telegram.
+        </p>
 
-      <div className="relative w-full flex justify-center">
-        {/* Mascote pequeno no canto */}
-        <img
-          src={mascoteOferta.url}
-          alt="Logo Capiversa"
-          className="hidden lg:block absolute right-4 xl:right-16 -bottom-4 w-40 xl:w-48 h-auto rounded-lg bg-white p-2 shadow-sm animate-float pointer-events-none select-none"
-        />
-
-        {/* Card em destaque, centralizado */}
-        <div className="w-full max-w-xl bg-white border border-gray-200 rounded-3xl p-6 sm:p-8 md:p-12 shadow-2xl shadow-[#334155]/10 relative overflow-hidden">
-          <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-[#334155]/10 blur-3xl" />
-          <div className="absolute -bottom-24 -left-24 w-64 h-64 rounded-full bg-[#334155]/5 blur-3xl" />
-          <div className="relative text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#334155]/10 text-[#334155] text-xs font-bold uppercase tracking-widest mb-5">
-              Capi PRO
-            </div>
-            <div className="flex items-baseline justify-center gap-2 mb-2">
-              <div className="text-5xl sm:text-6xl md:text-7xl font-bold font-display text-[#12263A]">R$ 79,90</div>
-              <div className="text-[#12263A]/50 text-sm sm:text-base">/mês</div>
-            </div>
-            <div className="text-xs sm:text-sm text-[#334155] font-bold uppercase tracking-widest mb-6 sm:mb-8">
-              7 dias grátis · sem cartão
-            </div>
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 mb-8 text-left">
-              {perks.map((p) => (
-                <li key={p} className="flex items-center gap-3 text-sm">
-                  <div className="w-5 h-5 rounded-full bg-[#334155]/10 grid place-items-center shrink-0">
-                    <Check className="w-3 h-3 text-[#334155]" />
-                  </div>
-                  <span className="text-[#12263A]/80">{p}</span>
-                </li>
-              ))}
-            </ul>
+        {/* Controles Moeda (Brasil R$ / Venezuela-LATAM US$) + Ciclo (Mensal / Anual) */}
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          <div className="inline-flex rounded-full border border-gray-200 bg-white p-1 shadow-sm">
             <button
-              onClick={() => goCta("/entrar")}
-              className="w-full py-3.5 sm:py-4 bg-primary text-primary-foreground rounded-full font-bold text-base sm:text-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+              type="button"
+              onClick={() => setCurrency("BRL")}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                currency === "BRL"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-[#12263A]/70 hover:text-[#12263A]"
+              }`}
             >
-              Teste grátis por 7 dias <ArrowRight className="w-4 h-4" />
+              Brasil (R$)
             </button>
-            <div className="text-xs text-[#12263A]/50 mt-4">
-              Sem fidelidade · Cancele quando quiser
-            </div>
+            <button
+              type="button"
+              onClick={() => setCurrency("USD")}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                currency === "USD"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-[#12263A]/70 hover:text-[#12263A]"
+              }`}
+            >
+              Venezuela / LATAM (US$)
+            </button>
+          </div>
+
+          <div className="inline-flex rounded-full border border-gray-200 bg-white p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setCycle("month")}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                cycle === "month"
+                  ? "bg-[#12263A] text-white"
+                  : "text-[#12263A]/70 hover:text-[#12263A]"
+              }`}
+            >
+              Mensal
+            </button>
+            <button
+              type="button"
+              onClick={() => setCycle("annual")}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                cycle === "annual"
+                  ? "bg-[#12263A] text-white"
+                  : "text-[#12263A]/70 hover:text-[#12263A]"
+              }`}
+            >
+              Anual
+              <span className="rounded-full bg-emerald-500 text-white text-[10px] px-2 py-0.5 font-bold">
+                -{maxDiscount}%
+              </span>
+            </button>
           </div>
         </div>
       </div>
+
+      {loading && plans.length === 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-[440px] rounded-3xl border border-gray-200 bg-white/70 animate-pulse p-8" />
+          ))}
+        </div>
+      ) : (
+        <div
+          className={`grid grid-cols-1 gap-6 w-full ${
+            plans.length === 1
+              ? "max-w-lg mx-auto"
+              : plans.length === 2
+              ? "md:grid-cols-2 max-w-4xl mx-auto"
+              : "md:grid-cols-3"
+          }`}
+        >
+          {plans.map((plan) => {
+            const pct = Number(plan.desconto_anual_pct ?? 20);
+            const monthlyCents =
+              currency === "USD" ? Number(plan.preco_usd_cents || 0) : Number(plan.preco_cents || 0);
+            const annualMonthlyCents =
+              currency === "USD"
+                ? Number(plan.preco_anual_usd_cents || Math.round(monthlyCents * (1 - pct / 100)))
+                : Number(plan.preco_anual_brl_cents || Math.round(monthlyCents * (1 - pct / 100)));
+            const displayCents = cycle === "annual" ? annualMonthlyCents : monthlyCents;
+            const moduleLabels = extractEnabledModuleLabels(plan.features, plan.slug);
+            const isPopular = Boolean(plan.destaque);
+
+            const perks = [
+              `Até ${plan.limite_usuarios ?? 1} usuários com permissões`,
+              `${plan.limite_conexoes_oficiais ?? 0} conexões WhatsApp API Oficial Meta ($0)`,
+              `${plan.limite_instancias ?? 0} ${Number(plan.limite_instancias ?? 0) === 1 ? "conexão" : "conexões"} WhatsApp QR Code`,
+              `${Number(plan.creditos_mensais ?? 0).toLocaleString("pt-BR")} créditos de IA/mês (${Number(plan.creditos_trial ?? 300)} no trial)`,
+              "Contatos e mensagens ilimitados",
+              ...moduleLabels.filter(
+                (lbl) => !lbl.startsWith("WhatsApp "),
+              ),
+            ];
+
+            return (
+              <div
+                key={plan.id}
+                className={`relative rounded-3xl p-7 sm:p-8 flex flex-col justify-between transition-all ${
+                  isPopular
+                    ? "bg-[#12263A] text-white border-2 border-[#334155] shadow-2xl shadow-[#12263A]/20"
+                    : "bg-white text-[#12263A] border border-gray-200 shadow-lg shadow-[#334155]/5"
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-4">
+                    <div
+                      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${
+                        isPopular ? "bg-white/15 text-white" : "bg-[#334155]/10 text-[#334155]"
+                      }`}
+                    >
+                      {plan.nome}
+                    </div>
+                    {isPopular && (
+                      <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500 text-white">
+                        Mais popular
+                      </span>
+                    )}
+                  </div>
+
+                  {plan.descricao && (
+                    <p
+                      className={`text-sm mb-5 min-h-[40px] ${
+                        isPopular ? "text-white/75" : "text-[#12263A]/65"
+                      }`}
+                    >
+                      {plan.descricao}
+                    </p>
+                  )}
+
+                  <div className="flex items-baseline gap-1.5 mb-1">
+                    <span className="text-4xl sm:text-5xl font-bold font-display">
+                      {formatCurrency(displayCents, currency)}
+                    </span>
+                    <span className={isPopular ? "text-white/60 text-sm" : "text-[#12263A]/50 text-sm"}>
+                      /mês
+                    </span>
+                  </div>
+
+                  <div
+                    className={`text-xs font-medium mb-6 ${
+                      isPopular ? "text-emerald-300" : "text-emerald-700"
+                    }`}
+                  >
+                    {cycle === "annual"
+                      ? `Cobrança anual (${formatCurrency(displayCents * 12, currency)}/ano · -${pct}%)`
+                      : `${plan.trial_days ?? 7} dias grátis · sem cartão`}
+                  </div>
+
+                  <ul className="space-y-2.5 mb-8 text-left">
+                    {perks.map((item) => (
+                      <li key={item} className="flex items-start gap-2.5 text-sm">
+                        <div
+                          className={`w-5 h-5 rounded-full grid place-items-center shrink-0 mt-0.5 ${
+                            isPopular ? "bg-white/15" : "bg-[#334155]/10"
+                          }`}
+                        >
+                          <Check className={`w-3 h-3 ${isPopular ? "text-emerald-300" : "text-[#334155]"}`} />
+                        </div>
+                        <span className={isPopular ? "text-white/90" : "text-[#12263A]/80"}>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      goCta(
+                        `/entrar?modo=signup&plano=${encodeURIComponent(plan.slug)}&moeda=${currency}&ciclo=${cycle}`,
+                      )
+                    }
+                    className={`w-full py-3.5 rounded-full font-bold text-sm sm:text-base transition-colors flex items-center justify-center gap-2 ${
+                      isPopular
+                        ? "bg-white text-[#12263A] hover:bg-white/90"
+                        : "bg-primary text-primary-foreground hover:bg-primary/90"
+                    }`}
+                  >
+                    Começar {plan.trial_days ?? 7} dias grátis <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <div
+                    className={`text-[11px] text-center mt-3 ${
+                      isPopular ? "text-white/60" : "text-[#12263A]/50"
+                    }`}
+                  >
+                    Sem fidelidade · Cancele quando quiser
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
@@ -660,7 +847,7 @@ function Footer() {
     <footer className="border-t border-black/5 bg-white">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="flex items-center gap-3">
-          <img src={metrixLogo.url} alt="Capiversa" className="h-7 w-auto" />
+          <img src={capiversaLogo.url} alt="Capiversa" className="h-7 w-auto" />
           <span className="text-sm text-[#12263A]/40">© {new Date().getFullYear()}</span>
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#12263A]/60">

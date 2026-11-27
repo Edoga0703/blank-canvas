@@ -6,7 +6,7 @@ function publicOrigin() {
   return (
     process.env["PUBLIC_APP_URL"] ||
     process.env["APP_URL"] ||
-    "https://metrixcrm.com.br"
+    "https://capiconversa.com"
   ).replace(/\/+$/, "");
 }
 

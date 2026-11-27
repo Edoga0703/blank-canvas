@@ -11,26 +11,8 @@ import {
 import { getNodeDefinition } from "./registry.server";
 
 async function assertAutomationEditor(companyId: string, userId: string, fallbackClient?: any) {
-  const sb = (supabaseAdmin as any) || fallbackClient;
-  // Bypass para super administradores da plataforma
-  const { data: prof } = await sb.from("profiles").select("is_super_admin").eq("user_id", userId).maybeSingle();
-  if (prof?.is_super_admin) return;
-
-  let { data: member, error } = await sb
-    .from("company_user")
-    .select("role, ativo")
-    .eq("company_id", companyId)
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (error || !member || !member.ativo) {
-    throw new Error("Acceso denegado: membresía inactiva o no encontrada.");
-  }
-
-  const allowedRoles = ["owner", "admin", "super_admin", "gestor"];
-  if (!allowedRoles.includes(member.role)) {
-    throw new Error("Acceso denegado: permisos insuficientes para modificar automatizaciones.");
-  }
+  const { assertPermission } = await import("@/lib/permissions.server");
+  await assertPermission(fallbackClient, companyId, userId, "automacoes.manage", "Acceso denegado: permisos insuficientes para modificar automatizaciones.");
 }
 
 export const listWorkflowsFn = createServerFn({ method: "GET" })
@@ -1413,4 +1395,359 @@ export const simulateWorkflowDryRunFn = createServerFn({ method: "POST" })
       steps,
     };
   });
+
+/**
+ * Lista flujos de automatización de comentarios (Comment-to-DM / respuesta pública)
+ * junto con canales Meta conectados, pipelines/etapas CRM y estadísticas básicas de ejecución.
+ */
+export const listCommentAutomationsFn = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
+    const admin = supabaseAdmin as any;
+
+    const [{ data: workflows }, { data: versions }, { data: instances }, { data: pipelines }, { data: stages }] =
+      await Promise.all([
+        admin
+          .from("automation_workflows")
+          .select("id,name,status,active_version_id,ui_mode,updated_at")
+          .eq("company_id", companyId)
+          .neq("status", "archived")
+          .order("updated_at", { ascending: false }),
+        admin
+          .from("automation_workflow_versions")
+          .select("id,workflow_id,version_number,graph")
+          .eq("company_id", companyId)
+          .order("version_number", { ascending: false }),
+        admin
+          .from("whatsapp_instances")
+          .select("id,instance_name,display_name,provider,status")
+          .eq("company_id", companyId)
+          .in("provider", ["meta_instagram", "meta_messenger"])
+          .order("provider"),
+        admin
+          .from("crm_pipeline")
+          .select("id,nome")
+          .eq("company_id", companyId)
+          .order("ordem", { ascending: true }),
+        admin
+          .from("crm_stage")
+          .select("id,pipeline_id,nome,ordem")
+          .eq("company_id", companyId)
+          .order("ordem", { ascending: true }),
+      ]);
+
+    const versionById = new Map<string, any>();
+    const latestVersionByWf = new Map<string, any>();
+    for (const v of versions ?? []) {
+      if (v.id) versionById.set(v.id, v);
+      if (v.workflow_id && !latestVersionByWf.has(v.workflow_id)) {
+        latestVersionByWf.set(v.workflow_id, v);
+      }
+    }
+
+    const commentWorkflows: any[] = [];
+    for (const wf of workflows ?? []) {
+      const ver = (wf.active_version_id ? versionById.get(wf.active_version_id) : null) || latestVersionByWf.get(wf.id);
+      const nodes: any[] = Array.isArray(ver?.graph?.nodes) ? ver.graph.nodes : [];
+      const triggerNode = nodes.find((n) => n.type === "meta.comment_received");
+      if (!triggerNode) continue;
+
+      const dmNode = nodes.find((n) => n.type === "meta.send_private_reply");
+      const replyNode = nodes.find((n) => n.type === "meta.reply_comment");
+      const leadNode = nodes.find((n) => n.type === "crm.ensure_lead");
+      const tCfg = (triggerNode.config || {}) as Record<string, any>;
+
+      commentWorkflows.push({
+        id: wf.id,
+        name: wf.name,
+        status: wf.status,
+        ui_mode: wf.ui_mode || "quick_rule",
+        updated_at: wf.updated_at,
+        trigger: {
+          connectionMode: tCfg.connectionMode || "any",
+          instanceIds: Array.isArray(tCfg.instanceIds) ? tCfg.instanceIds : [],
+          channels: Array.isArray(tCfg.channels) ? tCfg.channels : ["instagram", "facebook"],
+          postId: tCfg.postId ? String(tCfg.postId) : null,
+          keywords: Array.isArray(tCfg.keywords) ? tCfg.keywords : [],
+          ignoreNestedReplies: Boolean(tCfg.ignoreNestedReplies ?? tCfg.ignoreReplies ?? false),
+          oncePerUserPerPost: Boolean(tCfg.oncePerUserPerPost ?? true),
+        },
+        dmMessage: dmNode?.config?.message ? String(dmNode.config.message) : "",
+        publicReplies: Array.isArray(replyNode?.config?.variants) && replyNode.config.variants.length > 0
+          ? replyNode.config.variants
+          : replyNode?.config?.message
+            ? [String(replyNode.config.message)]
+            : [],
+        crmLead: leadNode
+          ? {
+              pipelineId: leadNode.config?.pipelineId || null,
+              stageId: leadNode.config?.stageId || null,
+              tag: leadNode.config?.tag || null,
+            }
+          : null,
+        executionsCount: 0,
+        lastExecutionAt: null as string | null,
+      });
+    }
+
+    if (commentWorkflows.length > 0) {
+      const wfIds = commentWorkflows.map((w) => w.id);
+      const { data: execs } = await admin
+        .from("automation_executions")
+        .select("workflow_id,created_at")
+        .eq("company_id", companyId)
+        .in("workflow_id", wfIds)
+        .order("created_at", { ascending: false })
+        .limit(500);
+      const countMap = new Map<string, { count: number; last: string | null }>();
+      for (const ex of execs ?? []) {
+        const cur = countMap.get(ex.workflow_id) || { count: 0, last: null };
+        cur.count += 1;
+        if (!cur.last) cur.last = ex.created_at;
+        countMap.set(ex.workflow_id, cur);
+      }
+      for (const cw of commentWorkflows) {
+        const st = countMap.get(cw.id);
+        if (st) {
+          cw.executionsCount = st.count;
+          cw.lastExecutionAt = st.last;
+        }
+      }
+    }
+
+    return {
+      workflows: commentWorkflows,
+      instances: instances ?? [],
+      pipelines: pipelines ?? [],
+      stages: stages ?? [],
+    };
+  });
+
+/**
+ * Crea o actualiza y publica un flujo Comment-to-DM directamente desde /app/conteudo (?tab=live o ?tab=comments).
+ */
+export const upsertCommentAutomationFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: {
+    workflowId?: string | null;
+    name: string;
+    instanceIds?: string[];
+    channels?: string[];
+    postId?: string | null;
+    keywords?: string[];
+    dmMessage?: string | null;
+    publicReplies?: string[];
+    pipelineId?: string | null;
+    stageId?: string | null;
+    tag?: string | null;
+    ignoreNestedReplies?: boolean;
+    oncePerUserPerPost?: boolean;
+    publish?: boolean;
+  }) => {
+    const name = String(d?.name ?? "").trim();
+    if (!name) throw new Error("El nombre de la regla de automatización es obligatorio.");
+    const dmMessage = String(d?.dmMessage ?? "").trim();
+    const publicReplies = Array.isArray(d?.publicReplies)
+      ? d.publicReplies.map((v) => String(v || "").trim()).filter(Boolean)
+      : [];
+    if (!dmMessage && publicReplies.length === 0) {
+      throw new Error("Configura al menos un mensaje privado (DM) o una respuesta pública al comentario.");
+    }
+    return {
+      workflowId: d?.workflowId ? String(d.workflowId).trim() : null,
+      name,
+      instanceIds: Array.isArray(d?.instanceIds) ? d.instanceIds.filter(Boolean) : [],
+      channels: Array.isArray(d?.channels) && d.channels.length > 0 ? d.channels : ["instagram", "facebook"],
+      postId: d?.postId ? String(d.postId).trim() : null,
+      keywords: Array.isArray(d?.keywords) ? d.keywords.map((k) => String(k || "").trim()).filter(Boolean) : [],
+      dmMessage,
+      publicReplies,
+      pipelineId: d?.pipelineId ? String(d.pipelineId).trim() : undefined,
+      stageId: d?.stageId ? String(d.stageId).trim() : undefined,
+      tag: d?.tag ? String(d.tag).trim() : undefined,
+      ignoreNestedReplies: d?.ignoreNestedReplies ?? true,
+      oncePerUserPerPost: d?.oncePerUserPerPost ?? true,
+      publish: d?.publish !== false,
+    };
+  })
+  .handler(async ({ context, data }) => {
+    const companyId = await resolveCompanyIdCached(context.supabase, context.userId);
+    await assertAutomationEditor(companyId, context.userId);
+    const admin = supabaseAdmin as any;
+
+    const nodes: any[] = [
+      {
+        id: "node_trigger_comment",
+        type: "meta.comment_received",
+        name: "Comentario en Instagram/Facebook",
+        version: 1,
+        position: { x: 250, y: 50 },
+        config: {
+          connectionMode: data.instanceIds.length > 0 ? "selected" : "any",
+          instanceIds: data.instanceIds,
+          channels: data.channels,
+          postId: data.postId || undefined,
+          keywords: data.keywords,
+          ignoreNestedReplies: data.ignoreNestedReplies,
+          oncePerUserPerPost: data.oncePerUserPerPost,
+        },
+      },
+    ];
+
+    let y = 200;
+    if (data.pipelineId || data.stageId || data.tag) {
+      nodes.push({
+        id: "node_crm_ensure_lead",
+        type: "crm.ensure_lead",
+        name: "Registrar Lead en CRM",
+        version: 1,
+        position: { x: 250, y },
+        config: {
+          pipelineId: data.pipelineId,
+          stageId: data.stageId,
+          tag: data.tag,
+        },
+      });
+      y += 150;
+    }
+
+    if (data.dmMessage) {
+      nodes.push({
+        id: "node_meta_send_dm",
+        type: "meta.send_private_reply",
+        name: "Enviar Respuesta Privada (DM Meta)",
+        version: 1,
+        position: { x: 250, y },
+        config: { message: data.dmMessage },
+      });
+      y += 150;
+    }
+
+    if (data.publicReplies.length > 0) {
+      nodes.push({
+        id: "node_meta_reply_public",
+        type: "meta.reply_comment",
+        name: "Responder Comentario Público",
+        version: 1,
+        position: { x: 250, y },
+        config: {
+          message: data.publicReplies[0],
+          variants: data.publicReplies,
+          delaySeconds: 0,
+          minDelaySeconds: 5,
+          maxDelaySeconds: 20,
+        },
+      });
+    }
+
+    const edges = nodes.slice(0, -1).map((node, idx) => ({
+      id: `edge_${idx + 1}`,
+      source: node.id,
+      sourcePort: "next",
+      target: nodes[idx + 1].id,
+      targetPort: "input",
+    }));
+
+    const parsedGraph = WorkflowGraphSchema.parse({
+      schemaVersion: 1,
+      nodes,
+      edges,
+      settings: {
+        reentry: "allow",
+        maxRuntimeSeconds: 86400,
+        maxSteps: 100,
+        ui_mode: "quick_rule",
+        stopOnContactReply: false,
+        stopOnStageIds: [],
+        timezone: "America/Sao_Paulo",
+      },
+    });
+
+    const validation = validateWorkflowGraphStructure(parsedGraph);
+    if (!validation.valid) {
+      throw new Error(`Validación de estructura fallida: ${validation.errors.map((e) => e.message).join(" | ")}`);
+    }
+    const nodeErrors = validateWorkflowNodes(parsedGraph);
+    if (nodeErrors.length > 0) {
+      throw new Error(`Configuración inválida: ${nodeErrors.join("; ")}`);
+    }
+
+    let workflowId = data.workflowId;
+    const nowIso = new Date().toISOString();
+
+    if (!workflowId) {
+      const { data: created, error: createErr } = await admin
+        .from("automation_workflows")
+        .insert({
+          company_id: companyId,
+          name: data.name,
+          status: data.publish ? "published" : "paused",
+          ui_mode: "quick_rule",
+          created_by: context.userId,
+          updated_by: context.userId,
+        })
+        .select("id")
+        .single();
+      if (createErr || !created) {
+        throw new Error(createErr?.message || "No se pudo crear el flujo de comentarios.");
+      }
+      workflowId = created.id;
+    } else {
+      const { data: existing } = await admin
+        .from("automation_workflows")
+        .select("id")
+        .eq("id", workflowId)
+        .eq("company_id", companyId)
+        .maybeSingle();
+      if (!existing) {
+        throw new Error("El flujo de automatización no existe o no pertenece a tu empresa.");
+      }
+    }
+
+    const { data: latestVer } = await admin
+      .from("automation_workflow_versions")
+      .select("version_number")
+      .eq("company_id", companyId)
+      .eq("workflow_id", workflowId)
+      .order("version_number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const nextVer = (latestVer?.version_number || 0) + 1;
+    const { data: savedVer, error: verErr } = await admin
+      .from("automation_workflow_versions")
+      .insert({
+        company_id: companyId,
+        workflow_id: workflowId,
+        version_number: nextVer,
+        graph: parsedGraph,
+        schema_version: 1,
+        published_by: data.publish ? context.userId : null,
+        published_at: data.publish ? nowIso : null,
+        created_by: context.userId,
+      })
+      .select("id,version_number")
+      .single();
+
+    if (verErr || !savedVer) {
+      throw new Error(verErr?.message || "No se pudo guardar la versión del flujo.");
+    }
+
+    await admin
+      .from("automation_workflows")
+      .update({
+        name: data.name,
+        status: data.publish ? "published" : "paused",
+        active_version_id: savedVer.id,
+        ui_mode: "quick_rule",
+        updated_at: nowIso,
+        updated_by: context.userId,
+      })
+      .eq("id", workflowId)
+      .eq("company_id", companyId);
+
+    return { ok: true, workflowId, versionNumber: savedVer.version_number };
+  });
+
 

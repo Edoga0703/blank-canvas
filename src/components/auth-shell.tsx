@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ShieldCheck, CheckCircle2, KeyRound } from "lucide-react";
-import metrixLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
+import capiversaLogo from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import mascotLogin from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 
 export function AuthShell({
@@ -55,7 +55,7 @@ export function AuthShell({
 
           <div className="absolute top-8 right-8 xl:top-10 xl:right-10 z-20">
             <img
-              src={metrixLogo.url}
+              src={capiversaLogo.url}
               alt="Capi Conversa"
               className="h-16 xl:h-20 w-auto drop-shadow-sm"
             />
@@ -116,7 +116,7 @@ export function AuthShell({
             >
               <ArrowLeft className="size-4" /> login
             </Link>
-            <img src={metrixLogo.url} alt="Capi Conversa" className="h-9 sm:h-11 w-auto" />
+            <img src={capiversaLogo.url} alt="Capi Conversa" className="h-9 sm:h-11 w-auto" />
           </div>
 
           <div className="lg:hidden mb-3 sm:mb-5 relative">

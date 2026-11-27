@@ -36,10 +36,19 @@ export const getPartnerReferralStats = createServerFn({ method: "POST" })
     const statusOf = (r: any) => (r.company as any)?.status_cobranca as string | undefined;
     const cliquesTotal = (cliques ?? []).length;
 
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: cfgRow } = await (supabaseAdmin as any)
+      .from("master_settings")
+      .select("value")
+      .eq("key", "partner_config")
+      .maybeSingle();
+    const minWithdrawCents = Number((cfgRow?.value as any)?.min_withdraw_cents ?? 5000);
+
     return {
       partner,
       referrals: list,
       totalCount: count ?? 0,
+      minWithdrawCents,
       metrics: {
         cliques: cliquesTotal,
         cliques30d: (cliques ?? []).filter((c: any) => c.created_at >= desde).length,
@@ -68,6 +77,20 @@ export const requestPartnerWithdrawal = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (!partner) throw new Error("Parceiro não encontrado.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: cfgRow } = await (supabaseAdmin as any)
+      .from("master_settings")
+      .select("value")
+      .eq("key", "partner_config")
+      .maybeSingle();
+    const minWithdrawCents = Number((cfgRow?.value as any)?.min_withdraw_cents ?? 5000);
+
+    if (data.amountCents < minWithdrawCents) {
+      throw new Error(
+        `Valor mínimo para saque é ${(minWithdrawCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}.`,
+      );
+    }
     if (partner.saldo_atual_cents < data.amountCents) {
       throw new Error("Saldo insuficiente.");
     }

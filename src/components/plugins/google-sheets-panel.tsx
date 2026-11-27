@@ -44,7 +44,7 @@ function waitForOAuth(popup: Window) {
   });
 }
 
-/** Conexão da conta do Google Sheets — uma por usuário do Metrix. */
+/** Conexão da conta do Google Sheets — uma por usuário do Capiversa. */
 export function GoogleSheetsPanel() {
   const status = useServerFn(getSheetsStatus);
   const start = useServerFn(startSheetsConnect);
@@ -71,7 +71,7 @@ export function GoogleSheetsPanel() {
   useEffect(() => { void load(); }, []);
 
   async function conectar() {
-    const popup = window.open("", "metrix-sheets-oauth", "width=600,height=720");
+    const popup = window.open("", "capiversa-sheets-oauth", "width=600,height=720");
     if (!popup) return toast.error("Libere os pop-ups do navegador e tente de novo.");
     setBusy(true);
     try {

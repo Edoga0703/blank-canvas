@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { slugify } from "@/lib/tenant";
+import { z } from "zod";
 
 async function assertSuper(supabase: any, userId: string) {
   const { data, error } = await supabase
@@ -588,6 +589,19 @@ export const createCompanyWithOwner = createServerFn({ method: "POST" })
       if (!ex) break;
       slug = `${baseSlug}-${i}`;
     }
+    let initialCredits: number | undefined = undefined;
+    if (data.planId) {
+      const { data: planRow } = await (supabaseAdmin as any)
+        .from("plan")
+        .select("creditos_trial, creditos_mensais")
+        .eq("id", data.planId)
+        .maybeSingle();
+      initialCredits =
+        data.trialDays > 0
+          ? Number(planRow?.creditos_trial ?? 300)
+          : Number(planRow?.creditos_mensais ?? 1500);
+    }
+
     const trialMs = data.trialDays * 86400000;
     const trialEnd = new Date(Date.now() + trialMs).toISOString();
     const { data: comp, error: cErr } = await supabaseAdmin
@@ -598,7 +612,8 @@ export const createCompanyWithOwner = createServerFn({ method: "POST" })
         created_by: ownerId,
         status_cobranca: data.trialDays > 0 ? "trial" : "ativo",
         trial_ate: trialEnd,
-      })
+        ...(initialCredits !== undefined ? { creditos_saldo: initialCredits } : {}),
+      } as any)
       .select("id")
       .single();
     if (cErr || !comp) throw new Error(cErr?.message || "Falha ao criar empresa");
@@ -738,7 +753,7 @@ export const getCompanyDetails = createServerFn({ method: "POST" })
 
     const { data: members } = await supabaseAdmin
       .from("company_user")
-      .select("user_id, role, ativo, created_at")
+      .select("id, user_id, role, ativo, created_at")
       .eq("company_id", data.companyId)
       .order("created_at", { ascending: true });
 
@@ -758,9 +773,14 @@ export const getCompanyDetails = createServerFn({ method: "POST" })
 
     const { data: subscription } = await supabaseAdmin
       .from("subscription")
-      .select("*, plan:plan(nome, preco_cents, moeda, intervalo)")
+      .select("*, plan:plan(nome, preco_cents, moeda, intervalo, limite_usuarios)")
       .eq("company_id", data.companyId)
       .maybeSingle();
+
+    const { getCompanyPlan } = await import("./plan-limits.server");
+    const limits = await getCompanyPlan(data.companyId).catch(() => null);
+    const maxSeats = Number(limits?.limites?.usuarios ?? (subscription as any)?.plan?.limite_usuarios ?? 1);
+    const usedSeats = membersFull.filter((m: any) => m.ativo !== false).length;
 
     const [{ count: msgCount }, { count: contactsCount }, { count: cardsCount }] = await Promise.all([
       supabaseAdmin.from("mensagens").select("id", { count: "exact", head: true }).eq("company_id", data.companyId),
@@ -772,6 +792,7 @@ export const getCompanyDetails = createServerFn({ method: "POST" })
       company,
       members: membersFull,
       subscription,
+      seats: { used: usedSeats, max: maxSeats },
       stats: {
         mensagens: msgCount ?? 0,
         contatos: contactsCount ?? 0,
@@ -920,6 +941,42 @@ export const setUserPassword = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+function maskAiKeyPreview(raw?: string | null): { configured: boolean; preview: string } {
+  const val = String(raw || "").trim();
+  if (!val) return { configured: false, preview: "" };
+  if (val.length <= 8) return { configured: true, preview: `••••${val.slice(-2)}` };
+  const prefixLen = Math.min(7, Math.max(3, val.length - 4));
+  return { configured: true, preview: `${val.slice(0, prefixLen)}••••${val.slice(-4)}` };
+}
+
+function buildKeysStatus(val: Record<string, any>) {
+  const rawOpen = String(val.openai_api_key || process.env.OPENAI_API_KEY || "").trim();
+  const openKey = rawOpen.startsWith("dk-") ? "" : rawOpen;
+  const draelKey = String(
+    val.drael_api_key || (rawOpen.startsWith("dk-") ? rawOpen : "") || process.env.DRAEL_API_KEY || "",
+  ).trim();
+  const geminiKey = String(val.gemini_api_key || process.env.GEMINI_API_KEY || "").trim();
+  const anthropicKey = String(val.anthropic_api_key || process.env.ANTHROPIC_API_KEY || "").trim();
+
+  return {
+    drael: maskAiKeyPreview(draelKey),
+    openai: maskAiKeyPreview(openKey),
+    gemini: maskAiKeyPreview(geminiKey),
+    anthropic: maskAiKeyPreview(anthropicKey),
+  };
+}
+
+const GlobalAiConfigSchema = z.object({
+  ai_provider: z.enum(["drael", "gemini", "openai", "anthropic"]).default("drael"),
+  ai_model: z.string().trim().max(120).optional().default("drael-v1"),
+  drael_api_key: z.string().optional(),
+  openai_api_key: z.string().optional(),
+  gemini_api_key: z.string().optional(),
+  anthropic_api_key: z.string().optional(),
+  drael_base_url: z.string().trim().max(300).optional(),
+  base_url: z.string().trim().max(300).optional(),
+});
+
 export const getGlobalAiConfig = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -932,34 +989,61 @@ export const getGlobalAiConfig = createServerFn({ method: "GET" })
       .maybeSingle();
 
     const val = (data?.value as any) || {};
-    const openKey = val.openai_api_key || process.env.OPENAI_API_KEY || "";
-    const draelKey = val.drael_api_key || (openKey.startsWith("dk-") ? openKey : "") || process.env.DRAEL_API_KEY || "";
     return {
-      openai_api_key: openKey.startsWith("dk-") ? "" : openKey,
-      drael_api_key: draelKey,
-      anthropic_api_key: val.anthropic_api_key || process.env.ANTHROPIC_API_KEY || "",
-      gemini_api_key: val.gemini_api_key || process.env.GEMINI_API_KEY || "",
       ai_provider: val.ai_provider || process.env.GLOBAL_AI_PROVIDER || "drael",
       ai_model: val.ai_model || process.env.GLOBAL_AI_MODEL || "drael-v1",
+      keys_status: buildKeysStatus(val),
     };
   });
 
 export const saveGlobalAiConfig = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: any) => data)
+  .inputValidator((data: unknown) => GlobalAiConfigSchema.parse(data))
   .handler(async ({ context, data }) => {
     await assertSuper(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: existingRow } = await (supabaseAdmin as any)
+      .from("master_settings")
+      .select("value")
+      .eq("key", "global_ai_config")
+      .maybeSingle();
+
+    const currentVal = (existingRow?.value as Record<string, any>) || {};
+    const resolveKey = (incoming: string | undefined, currentKey: string) => {
+      const trimmed = String(incoming ?? "").trim();
+      if (!trimmed || trimmed.includes("••••")) {
+        return currentVal[currentKey] ?? "";
+      }
+      return trimmed;
+    };
+
+    const nextValue = {
+      ...currentVal,
+      ai_provider: data.ai_provider,
+      ai_model: data.ai_model || "drael-v1",
+      drael_api_key: resolveKey(data.drael_api_key, "drael_api_key"),
+      openai_api_key: resolveKey(data.openai_api_key, "openai_api_key"),
+      gemini_api_key: resolveKey(data.gemini_api_key, "gemini_api_key"),
+      anthropic_api_key: resolveKey(data.anthropic_api_key, "anthropic_api_key"),
+      ...(data.drael_base_url ? { drael_base_url: data.drael_base_url } : {}),
+      ...(data.base_url ? { base_url: data.base_url } : {}),
+    };
+
     const { error } = await (supabaseAdmin as any)
       .from("master_settings")
-      .upsert({ 
-        key: "global_ai_config", 
-        value: data,
-        updated_at: new Date().toISOString()
+      .upsert({
+        key: "global_ai_config",
+        value: nextValue,
+        updated_at: new Date().toISOString(),
       });
-      
+
     if (error) throw error;
-    return { ok: true };
+    return {
+      ok: true,
+      ai_provider: nextValue.ai_provider,
+      ai_model: nextValue.ai_model,
+      keys_status: buildKeysStatus(nextValue),
+    };
   });
 
 /** Testa a configuração global de IA fazendo uma chamada real ao provedor. */
@@ -1249,4 +1333,301 @@ export const markCompanyPaidManual = createServerFn({ method: "POST" })
     } catch {}
 
     return { ok: true, ate: fim.toISOString(), valor_cents: valor };
+  });
+
+// ============================================================
+// Gestão completa de usuários por empresa no painel Master
+// ============================================================
+
+export const masterAddCompanyUserFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: {
+    companyId: string;
+    email: string;
+    nome?: string;
+    role: "owner" | "admin" | "atendente";
+    password?: string;
+  }) => {
+    const email = String(d.email || "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("E-mail inválido.");
+    if (!["owner", "admin", "atendente"].includes(d.role)) throw new Error("Papel inválido.");
+    const password = d.password?.trim() ? String(d.password.trim()) : undefined;
+    if (password && password.length < 8) throw new Error("Senha deve ter no mínimo 8 caracteres.");
+    return {
+      companyId: String(d.companyId),
+      email,
+      nome: d.nome?.trim() || email.split("@")[0],
+      role: d.role,
+      password,
+    };
+  })
+  .handler(async ({ context, data }) => {
+    await assertSuper(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    let targetUserId: string | null = null;
+    let tempPassword: string | null = null;
+
+    const { data: prof } = await supabaseAdmin
+      .from("profiles")
+      .select("user_id")
+      .eq("email", data.email)
+      .maybeSingle();
+
+    if (prof?.user_id) {
+      targetUserId = prof.user_id;
+    } else {
+      // Fallback: buscar no Auth por e-mail
+      const { data: listData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+      const found = listData?.users?.find((u) => (u.email || "").toLowerCase() === data.email);
+      if (found) targetUserId = found.id;
+    }
+
+    if (!targetUserId) {
+      const generated = data.password || Math.random().toString(36).slice(2, 10) + "A1!";
+      const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+        email: data.email,
+        password: generated,
+        email_confirm: true,
+        user_metadata: { nome: data.nome },
+      });
+      if (createErr || !created.user) throw new Error(createErr?.message || "Falha ao criar usuário.");
+      targetUserId = created.user.id;
+      tempPassword = data.password ? null : generated;
+    } else if (data.password) {
+      await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
+        password: data.password,
+        email_confirm: true,
+      });
+    }
+
+    await supabaseAdmin.from("profiles").upsert(
+      { user_id: targetUserId, email: data.email, nome: data.nome } as any,
+      { onConflict: "user_id" },
+    );
+
+    const { error: linkErr } = await (supabaseAdmin as any)
+      .from("company_user")
+      .upsert(
+        {
+          company_id: data.companyId,
+          user_id: targetUserId,
+          role: data.role,
+          ativo: true,
+          forcar_troca_senha: Boolean(tempPassword),
+        },
+        { onConflict: "user_id,company_id" },
+      );
+    if (linkErr) throw new Error(linkErr.message);
+
+    try {
+      const { data: actor } = await supabaseAdmin.from("profiles").select("email").eq("user_id", context.userId).maybeSingle();
+      await supabaseAdmin.from("audit_log").insert({
+        company_id: data.companyId,
+        user_id: context.userId,
+        actor_email: (actor as any)?.email ?? null,
+        acao: "master_add_company_user",
+        recurso: "company_user",
+        detalhes: { target_user_id: targetUserId, email: data.email, role: data.role } as any,
+      } as any);
+    } catch {}
+
+    return { ok: true, userId: targetUserId, tempPassword };
+  });
+
+export const masterUpdateCompanyUserFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: {
+    companyId: string;
+    userId: string;
+    role?: "owner" | "admin" | "atendente";
+    ativo?: boolean;
+  }) => {
+    if (d.role && !["owner", "admin", "atendente"].includes(d.role)) throw new Error("Papel inválido.");
+    return {
+      companyId: String(d.companyId),
+      userId: String(d.userId),
+      role: d.role,
+      ativo: typeof d.ativo === "boolean" ? d.ativo : undefined,
+    };
+  })
+  .handler(async ({ context, data }) => {
+    await assertSuper(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: current } = await supabaseAdmin
+      .from("company_user")
+      .select("role, ativo")
+      .eq("company_id", data.companyId)
+      .eq("user_id", data.userId)
+      .maybeSingle();
+    if (!current) throw new Error("Vínculo de usuário não encontrado.");
+
+    const leavingOwner =
+      current.role === "owner" &&
+      ((data.role && data.role !== "owner") || data.ativo === false);
+    if (leavingOwner) {
+      const { data: otherOwners } = await supabaseAdmin
+        .from("company_user")
+        .select("user_id")
+        .eq("company_id", data.companyId)
+        .eq("role", "owner")
+        .eq("ativo", true)
+        .neq("user_id", data.userId);
+      if (!otherOwners?.length) {
+        throw new Error("A empresa precisa manter ao menos 1 proprietário (owner) ativo.");
+      }
+    }
+
+    const patch: Record<string, any> = {};
+    if (data.role) patch.role = data.role;
+    if (typeof data.ativo === "boolean") patch.ativo = data.ativo;
+
+    if (Object.keys(patch).length > 0) {
+      const { error } = await supabaseAdmin
+        .from("company_user")
+        .update(patch as any)
+        .eq("company_id", data.companyId)
+        .eq("user_id", data.userId);
+      if (error) throw new Error(error.message);
+    }
+
+    try {
+      const { data: actor } = await supabaseAdmin.from("profiles").select("email").eq("user_id", context.userId).maybeSingle();
+      await supabaseAdmin.from("audit_log").insert({
+        company_id: data.companyId,
+        user_id: context.userId,
+        actor_email: (actor as any)?.email ?? null,
+        acao: "master_update_company_user",
+        recurso: "company_user",
+        detalhes: { target_user_id: data.userId, ...patch } as any,
+      } as any);
+    } catch {}
+
+    return { ok: true };
+  });
+
+export const masterRemoveCompanyUserFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { companyId: string; userId: string }) => ({
+    companyId: String(d.companyId),
+    userId: String(d.userId),
+  }))
+  .handler(async ({ context, data }) => {
+    await assertSuper(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: target } = await supabaseAdmin
+      .from("company_user")
+      .select("role")
+      .eq("company_id", data.companyId)
+      .eq("user_id", data.userId)
+      .maybeSingle();
+    if (!target) throw new Error("Usuário não encontrado na empresa.");
+
+    if (target.role === "owner") {
+      const { data: otherOwners } = await supabaseAdmin
+        .from("company_user")
+        .select("user_id")
+        .eq("company_id", data.companyId)
+        .eq("role", "owner")
+        .eq("ativo", true)
+        .neq("user_id", data.userId);
+      if (!otherOwners?.length) {
+        throw new Error("Não é possível remover o único proprietário ativo da empresa.");
+      }
+    }
+
+    await supabaseAdmin
+      .from("whatsapp_instances")
+      .update({ user_id: null as any })
+      .eq("company_id", data.companyId)
+      .eq("user_id", data.userId);
+    await supabaseAdmin
+      .from("company_user_instance")
+      .delete()
+      .eq("company_id", data.companyId)
+      .eq("user_id", data.userId);
+
+    const { error } = await supabaseAdmin
+      .from("company_user")
+      .delete()
+      .eq("company_id", data.companyId)
+      .eq("user_id", data.userId);
+    if (error) throw new Error(error.message);
+
+    try {
+      const { data: actor } = await supabaseAdmin.from("profiles").select("email").eq("user_id", context.userId).maybeSingle();
+      await supabaseAdmin.from("audit_log").insert({
+        company_id: data.companyId,
+        user_id: context.userId,
+        actor_email: (actor as any)?.email ?? null,
+        acao: "master_remove_company_user",
+        recurso: "company_user",
+        detalhes: { target_user_id: data.userId } as any,
+      } as any);
+    } catch {}
+
+    return { ok: true };
+  });
+
+export const masterResetAnyUserPasswordFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { companyId: string; userId: string; newPassword?: string }) => {
+    const newPassword = d.newPassword?.trim() ? String(d.newPassword.trim()) : undefined;
+    if (newPassword && newPassword.length < 8) {
+      throw new Error("Senha deve ter no mínimo 8 caracteres.");
+    }
+    return {
+      companyId: String(d.companyId),
+      userId: String(d.userId),
+      newPassword,
+    };
+  })
+  .handler(async ({ context, data }) => {
+    await assertSuper(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: member } = await supabaseAdmin
+      .from("company_user")
+      .select("user_id")
+      .eq("company_id", data.companyId)
+      .eq("user_id", data.userId)
+      .maybeSingle();
+    if (!member) throw new Error("Usuário não pertence a esta empresa.");
+
+    const password = data.newPassword || Math.random().toString(36).slice(2, 10) + "A1!";
+    const { error: uErr } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
+      password,
+      email_confirm: true,
+    });
+    if (uErr) throw new Error(uErr.message);
+
+    if (!data.newPassword) {
+      await supabaseAdmin
+        .from("company_user")
+        .update({ forcar_troca_senha: true })
+        .eq("company_id", data.companyId)
+        .eq("user_id", data.userId);
+    }
+
+    const { data: prof } = await supabaseAdmin
+      .from("profiles")
+      .select("email")
+      .eq("user_id", data.userId)
+      .maybeSingle();
+
+    try {
+      const { data: actor } = await supabaseAdmin.from("profiles").select("email").eq("user_id", context.userId).maybeSingle();
+      await supabaseAdmin.from("audit_log").insert({
+        company_id: data.companyId,
+        user_id: context.userId,
+        actor_email: (actor as any)?.email ?? null,
+        acao: "master_reset_user_password",
+        recurso: "company_user",
+        detalhes: { target_user_id: data.userId, email: (prof as any)?.email ?? null } as any,
+      } as any);
+    } catch {}
+
+    return { ok: true, tempPassword: password, userEmail: (prof as any)?.email ?? null };
   });

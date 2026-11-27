@@ -39,6 +39,7 @@ export type Membership = {
   forcar_troca_senha: boolean;
   custom_role_id?: string | null;
   custom_permissions?: Record<string, Record<string, boolean>> | null;
+  permissions_override?: Record<string, boolean> | null;
 };
 
 export function canTransferConversation(

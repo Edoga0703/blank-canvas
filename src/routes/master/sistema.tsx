@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Loader2, AlertTriangle, CheckCircle2, Plus, Trash2, Upload, Eye, EyeOff, Copy,
+  Loader2, AlertTriangle, CheckCircle2, Plus, Trash2, Upload, Eye, EyeOff,
   Settings as SettingsIcon, Sparkles, Key, Save, Power, ShieldCheck,
 } from "lucide-react";
 
@@ -23,7 +23,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 
-import { OpenAiSpendPanel } from "@/components/master/openai-spend-panel";
+import { AiTelemetryPanel } from "@/components/master/ai-telemetry-panel";
+import { StorageVaultsTab } from "@/components/config/storage-vaults-tab";
 
 export const Route = createFileRoute("/master/sistema")({
   head: () => ({
@@ -66,7 +67,12 @@ function SistemaPage() {
 
   const loc = useLocation();
   const search = loc.search as Record<string, unknown> | undefined;
-  const activeTab = search?.v === "popups" ? "popups" : "ia";
+  const activeTab =
+    search?.v === "popups"
+      ? "popups"
+      : search?.v === "armazenamento"
+      ? "armazenamento"
+      : "ia";
 
   const [announcements, setAnnouncements] = useState<any[] | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -83,20 +89,16 @@ function SistemaPage() {
     ai_provider: "drael",
     ai_model: "drael-v1",
   });
-  const [savedKeys, setSavedKeys] = useState({ openai: false, drael: false, anthropic: false, gemini: false });
+  const [keysStatus, setKeysStatus] = useState({
+    openai: { configured: false, preview: "" },
+    drael: { configured: false, preview: "" },
+    anthropic: { configured: false, preview: "" },
+    gemini: { configured: false, preview: "" },
+  });
   const [testing, setTesting] = useState(false);
   const [savingAi, setSavingAi] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
   const [showKeys, setShowKeys] = useState({ openai: false, drael: false, anthropic: false, gemini: false });
-
-  async function copyKey(key: string, provider: string) {
-    try {
-      await navigator.clipboard.writeText(key);
-      toast.success(`Chave ${provider} copiada`);
-    } catch {
-      toast.error("Não foi possível copiar");
-    }
-  }
 
   const [newAnn, setNewAnn] = useState({
     title: "", content: "", image_url: "", button_text: "", button_link: "", size: "md" as any,
@@ -121,13 +123,22 @@ function SistemaPage() {
       void refreshAnnouncements();
       void loadGlobalAi().then((cfg: any) => {
         if (!cfg || !alive) return;
-        setGlobalAi((prev) => ({ ...prev, ...cfg }));
-        setSavedKeys({
-          openai: !!cfg.openai_api_key,
-          drael: !!cfg.drael_api_key,
-          anthropic: !!cfg.anthropic_api_key,
-          gemini: !!cfg.gemini_api_key,
+        setGlobalAi({
+          ai_provider: cfg.ai_provider || "drael",
+          ai_model: cfg.ai_model || "drael-v1",
+          drael_api_key: "",
+          openai_api_key: "",
+          gemini_api_key: "",
+          anthropic_api_key: "",
         });
+        if (cfg.keys_status) {
+          setKeysStatus({
+            drael: cfg.keys_status.drael ?? { configured: false, preview: "" },
+            openai: cfg.keys_status.openai ?? { configured: false, preview: "" },
+            gemini: cfg.keys_status.gemini ?? { configured: false, preview: "" },
+            anthropic: cfg.keys_status.anthropic ?? { configured: false, preview: "" },
+          });
+        }
       }).catch(() => {});
     })();
     return () => { alive = false; };
@@ -224,13 +235,17 @@ function SistemaPage() {
   async function handleSaveAi() {
     setSavingAi(true);
     try {
-      await saveGlobalAi({ data: globalAi });
-      setSavedKeys({
-        openai: !!globalAi.openai_api_key,
-        drael: !!globalAi.drael_api_key,
-        anthropic: !!globalAi.anthropic_api_key,
-        gemini: !!globalAi.gemini_api_key,
-      });
+      const res: any = await saveGlobalAi({ data: globalAi });
+      if (res?.keys_status) {
+        setKeysStatus(res.keys_status);
+      }
+      setGlobalAi((prev) => ({
+        ...prev,
+        drael_api_key: "",
+        openai_api_key: "",
+        gemini_api_key: "",
+        anthropic_api_key: "",
+      }));
       toast.success("Configuração de IA salva com sucesso");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao salvar");
@@ -241,7 +256,15 @@ function SistemaPage() {
     setTesting(true);
     setTestResult(null);
     try {
-      await saveGlobalAi({ data: globalAi });
+      const res: any = await saveGlobalAi({ data: globalAi });
+      if (res?.keys_status) setKeysStatus(res.keys_status);
+      setGlobalAi((prev) => ({
+        ...prev,
+        drael_api_key: "",
+        openai_api_key: "",
+        gemini_api_key: "",
+        anthropic_api_key: "",
+      }));
       const r: any = await testAi();
       setTestResult(r);
       r?.ok ? toast.success("IA respondendo") : toast.error("IA não respondeu");
@@ -250,6 +273,18 @@ function SistemaPage() {
     } finally {
       setTesting(false);
     }
+  }
+
+  if (activeTab === "armazenamento") {
+    return (
+      <div className="space-y-5 w-full animate-in fade-in duration-200">
+        <PageHeader
+          title="Armazenamento & Bóvedas Globais"
+          description="Infraestrutura central de cache quente (Cloudflare R2) e arquivo frio (Google Drive Master)."
+        />
+        <StorageVaultsTab />
+      </div>
+    );
   }
 
   if (activeTab === "popups") {
@@ -389,7 +424,7 @@ function SistemaPage() {
 
       
 
-      <OpenAiSpendPanel />
+      <AiTelemetryPanel />
 
 
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr] items-start">
@@ -437,10 +472,12 @@ function SistemaPage() {
           <div className="pt-4 border-t space-y-4">
             {/* Drael API Key */}
             <div className="space-y-2">
-              <Label className="flex items-center gap-2">
+              <Label className="flex items-center gap-2 flex-wrap">
                 <Key className="size-3 text-purple-600" /> API Key Drael (dk-...)
-                {savedKeys.drael && (
-                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-semibold"><ShieldCheck className="size-3" /> Drael configurado</span>
+                {keysStatus.drael.configured && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-semibold">
+                    <ShieldCheck className="size-3" /> Configurado ({keysStatus.drael.preview})
+                  </span>
                 )}
               </Label>
               <div className="flex items-center gap-2">
@@ -448,7 +485,7 @@ function SistemaPage() {
                   type={showKeys.drael ? "text" : "password"}
                   value={globalAi.drael_api_key}
                   onChange={e => setGlobalAi({ ...globalAi, drael_api_key: e.target.value })}
-                  placeholder="dk-..."
+                  placeholder={keysStatus.drael.configured ? `Manter ${keysStatus.drael.preview} ou colar nova chave...` : "dk-..."}
                   className="flex-1 font-mono text-xs"
                 />
                 <Button
@@ -458,24 +495,18 @@ function SistemaPage() {
                 >
                   {showKeys.drael ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </Button>
-                <Button
-                  type="button" variant="ghost" size="icon" className="size-9 shrink-0"
-                  title="Copiar chave"
-                  disabled={!globalAi.drael_api_key}
-                  onClick={() => copyKey(globalAi.drael_api_key, "Drael")}
-                >
-                  <Copy className="size-4" />
-                </Button>
               </div>
-              <p className="text-[11px] text-muted-foreground">Endpoint: <code className="bg-muted px-1 rounded">https://drael.sh/v1</code> — Nossa IA base independente recomendada.</p>
+              <p className="text-[11px] text-muted-foreground">Endpoint: <code className="bg-muted px-1 rounded">https://drael.sh/v1</code> — Chave padrão caso o Pool Drael esteja vazio.</p>
             </div>
 
             {/* OpenAI API Key */}
             <div className="space-y-2 pt-2 border-t">
-              <Label className="flex items-center gap-2">
+              <Label className="flex items-center gap-2 flex-wrap">
                 <Key className="size-3 text-emerald-600" /> API Key OpenAI Direto (sk-...)
-                {savedKeys.openai && (
-                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-semibold"><ShieldCheck className="size-3" /> OpenAI configurado</span>
+                {keysStatus.openai.configured && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-semibold">
+                    <ShieldCheck className="size-3" /> Configurado ({keysStatus.openai.preview})
+                  </span>
                 )}
               </Label>
               <div className="flex items-center gap-2">
@@ -483,7 +514,7 @@ function SistemaPage() {
                   type={showKeys.openai ? "text" : "password"}
                   value={globalAi.openai_api_key}
                   onChange={e => setGlobalAi({ ...globalAi, openai_api_key: e.target.value })}
-                  placeholder="sk-proj-... ou sk-..."
+                  placeholder={keysStatus.openai.configured ? `Manter ${keysStatus.openai.preview} ou colar nova chave...` : "sk-proj-... ou sk-..."}
                   className="flex-1 font-mono text-xs"
                 />
                 <Button
@@ -493,24 +524,18 @@ function SistemaPage() {
                 >
                   {showKeys.openai ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </Button>
-                <Button
-                  type="button" variant="ghost" size="icon" className="size-9 shrink-0"
-                  title="Copiar chave"
-                  disabled={!globalAi.openai_api_key}
-                  onClick={() => copyKey(globalAi.openai_api_key, "OpenAI")}
-                >
-                  <Copy className="size-4" />
-                </Button>
               </div>
               <p className="text-[11px] text-muted-foreground">Endpoint: <code className="bg-muted px-1 rounded">https://api.openai.com/v1</code> (GPT-4o, GPT-4o mini, Whisper).</p>
             </div>
 
             {/* Google Gemini Direct API Key */}
             <div className="space-y-2 pt-2 border-t">
-              <Label className="flex items-center gap-2">
+              <Label className="flex items-center gap-2 flex-wrap">
                 <Key className="size-3 text-blue-600" /> API Key Google Gemini Direto (AIzaSy...)
-                {savedKeys.gemini && (
-                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-semibold"><ShieldCheck className="size-3" /> Gemini configurado</span>
+                {keysStatus.gemini.configured && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-semibold">
+                    <ShieldCheck className="size-3" /> Configurado ({keysStatus.gemini.preview})
+                  </span>
                 )}
               </Label>
               <div className="flex items-center gap-2">
@@ -518,7 +543,7 @@ function SistemaPage() {
                   type={showKeys.gemini ? "text" : "password"}
                   value={globalAi.gemini_api_key}
                   onChange={e => setGlobalAi({ ...globalAi, gemini_api_key: e.target.value })}
-                  placeholder="AIzaSy..."
+                  placeholder={keysStatus.gemini.configured ? `Manter ${keysStatus.gemini.preview} ou colar nova chave...` : "AIzaSy..."}
                   className="flex-1 font-mono text-xs"
                 />
                 <Button
@@ -528,22 +553,43 @@ function SistemaPage() {
                 >
                   {showKeys.gemini ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </Button>
-                <Button
-                  type="button" variant="ghost" size="icon" className="size-9 shrink-0"
-                  title="Copiar chave"
-                  disabled={!globalAi.gemini_api_key}
-                  onClick={() => copyKey(globalAi.gemini_api_key, "Gemini")}
-                >
-                  <Copy className="size-4" />
-                </Button>
               </div>
-              <p className="text-[11px] text-muted-foreground">Endpoint direto: <code className="bg-muted px-1 rounded">https://generativelanguage.googleapis.com</code> (Google AI Studio — chave própria).</p>
+              <p className="text-[11px] text-muted-foreground">Endpoint direto: <code className="bg-muted px-1 rounded">https://generativelanguage.googleapis.com</code> (também atua como failover automático do Pool Drael).</p>
             </div>
 
-            {/* Zero Lovable Credits Protection Note */}
+            {/* Anthropic Direct API Key */}
+            <div className="space-y-2 pt-2 border-t">
+              <Label className="flex items-center gap-2 flex-wrap">
+                <Key className="size-3 text-amber-600" /> API Key Anthropic Direto (sk-ant-...)
+                {keysStatus.anthropic.configured && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-semibold">
+                    <ShieldCheck className="size-3" /> Configurado ({keysStatus.anthropic.preview})
+                  </span>
+                )}
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type={showKeys.anthropic ? "text" : "password"}
+                  value={globalAi.anthropic_api_key}
+                  onChange={e => setGlobalAi({ ...globalAi, anthropic_api_key: e.target.value })}
+                  placeholder={keysStatus.anthropic.configured ? `Manter ${keysStatus.anthropic.preview} ou colar nova chave...` : "sk-ant-..."}
+                  className="flex-1 font-mono text-xs"
+                />
+                <Button
+                  type="button" variant="ghost" size="icon" className="size-9 shrink-0"
+                  title={showKeys.anthropic ? "Ocultar chave" : "Mostrar chave"}
+                  onClick={() => setShowKeys(s => ({ ...s, anthropic: !s.anthropic }))}
+                >
+                  {showKeys.anthropic ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Endpoint direto: <code className="bg-muted px-1 rounded">https://api.anthropic.com/v1/messages</code> (Claude 3.5 Sonnet).</p>
+            </div>
+
+            {/* Zero External Gateway Note */}
             <div className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/50 text-[11.5px] text-emerald-900 dark:text-emerald-200 flex items-center gap-2">
               <ShieldCheck className="size-4 text-emerald-600 shrink-0" />
-              <span><strong>Independência Total:</strong> As chamadas ao Lovable Gateway estão bloqueadas. Todas as inferências de IA consomem exclusivamente as chaves próprias configuradas acima, com <strong>zero consumo de créditos do workspace Lovable</strong>.</span>
+              <span><strong>Independência Total:</strong> Todas as inferências de IA consomem exclusivamente as chaves configuradas no servidor e no Pool Drael, mantendo segredos protegidos fora do navegador.</span>
             </div>
           </div>
 

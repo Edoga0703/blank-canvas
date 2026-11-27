@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { brand } from "@/config/brand";
 import { useLanguage } from "@/lib/i18n/context";
 import type { SocialAccount } from "@/lib/social-content.types";
+import { requirePermission } from "@/lib/route-guards";
 
 type ContentSearch = {
   tab?: string;
@@ -28,6 +29,7 @@ type ContentSearch = {
 };
 
 export const Route = createFileRoute("/app/conteudo")({
+  beforeLoad: ({ context }) => requirePermission(context, "conteudo.publish"),
   validateSearch: (search: Record<string, unknown>): ContentSearch => ({
     tab: typeof search.tab === "string" && search.tab ? search.tab : undefined,
     channel: typeof search.channel === "string" && search.channel ? search.channel : undefined,

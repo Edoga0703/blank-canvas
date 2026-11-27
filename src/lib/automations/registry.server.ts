@@ -1675,6 +1675,11 @@ registerNode({
       instagram: inst.provider === "meta_instagram",
     });
 
+    try {
+      const { markContentCommentReplied } = await import("@/lib/meta-content-sync.server");
+      await markContentCommentReplied(supabaseAdmin as any, ctx.companyId, commentId);
+    } catch {}
+
     return {
       kind: "next",
       port: "next",
@@ -1729,6 +1734,10 @@ registerNode({
     let apiResult: any = null;
     try {
       apiResult = await metaSendPrivateReply(inst.instance_token, commentId, finalMessage);
+      try {
+        const { markContentCommentReplied } = await import("@/lib/meta-content-sync.server");
+        await markContentCommentReplied(supabaseAdmin as any, ctx.companyId, commentId);
+      } catch {}
     } catch (err: any) {
       // Manejo estricto de errores permanentes de Meta Graph API:
       // Ventana de 7 días expirada, DMs cerrados, comentario inexistente o private reply ya enviado
@@ -2644,6 +2653,11 @@ Responda ESTRITAMENTE em formato JSON com o seguinte formato:
         {
           temperature: 0.15,
           jsonMode: true,
+          telemetry: {
+            companyId: ctx.companyId,
+            agentId: null,
+            feature: "automation_classify",
+          },
           maxTokens: 300,
         }
       );
@@ -2779,6 +2793,11 @@ Exemplo: { "nome": "Maria Silva", "email": "maria@gmail.com", "orcamento": 5000 
           temperature: 0.1,
           jsonMode: true,
           maxTokens: 500,
+          telemetry: {
+            companyId: ctx.companyId,
+            agentId: null,
+            feature: "automation_extract",
+          },
         }
       );
 

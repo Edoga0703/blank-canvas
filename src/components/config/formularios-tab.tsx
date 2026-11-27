@@ -30,7 +30,7 @@ export function FormulariosTab() {
     refresh();
   }, []);
 
-  const origin = "https://metrixcrm.com.br";
+  const origin = "https://capiconversa.com";
 
   function copyLink(slug: string) {
     navigator.clipboard.writeText(`${origin}/f/${slug}`).then(() => toast.success("Link copiado"));

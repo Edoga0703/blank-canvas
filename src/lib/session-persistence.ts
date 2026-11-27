@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
-const REMEMBER_KEY = "metrix.auth.remember";
-const EXPIRES_KEY = "metrix.auth.expires_at";
+const REMEMBER_KEY = "capiversa.auth.remember";
+const EXPIRES_KEY = "capiversa.auth.expires_at";
 
 /** Sessão sem "manter conectado": expira após esse período de inatividade. */
 export const SHORT_SESSION_MS = 12 * 60 * 60 * 1000; // 12h

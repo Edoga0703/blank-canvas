@@ -11,9 +11,9 @@ function appOrigin(): string {
   if (envUrl) return envUrl.replace(/\/$/, "");
   try {
     const u = new URL(getRequest().url);
-    if (u.hostname === "localhost" || u.hostname === "127.0.0.1") return "https://metrixcrm.com.br";
+    if (u.hostname === "localhost" || u.hostname === "127.0.0.1") return "https://capiconversa.com";
     return `${u.protocol}//${u.host}`;
-  } catch { return "https://metrixcrm.com.br"; }
+  } catch { return "https://capiconversa.com"; }
 }
 
 function sortWhatsappInstances<T extends { status?: string | null; updated_at?: string | null }>(rows: T[] = []) {

@@ -30,7 +30,7 @@ export const SignupEmail = ({
     <Preview>Confirme seu e-mail no {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Img src="https://metrixcrm.com.br/__l5e/assets-v1/d704768e-72e1-4139-a5e8-57e2261d0d54/metrix-logo.png" alt={siteName} width="140" height="40" style={{ margin: "0 0 24px", display: "block" }} />
+        <Img src="https://capiconversa.com/capiversa-logo.png" alt={siteName} width="140" height="40" style={{ margin: "0 0 24px", display: "block" }} />
         <Heading style={h1}>Confirme seu e-mail</Heading>
         <Text style={text}>
           Obrigado por criar sua conta no{' '}
@@ -52,8 +52,8 @@ export const SignupEmail = ({
         <Text style={footer}>
           Se você não criou uma conta, pode ignorar este e-mail com segurança.
         </Text>
-        <Img src="https://metrixcrm.com.br/__l5e/assets-v1/4bfe1e97-a38d-45bf-af4a-f5547995e55b/metrix-mascot.png" alt="Metrix mascote" width="120" style={{ margin: '32px auto 8px', display: 'block' }} />
-        <Text style={{ ...footer, textAlign: 'center', margin: '0 0 4px' }}>Time Metrix CRM 🦉</Text>
+        <Img src="https://capiconversa.com/assets/mascote-login.png" alt="Capiversa mascote" width="120" style={{ margin: '32px auto 8px', display: 'block' }} />
+        <Text style={{ ...footer, textAlign: 'center', margin: '0 0 4px' }}>Time Capiversa</Text>
         <Text style={footer}>© {new Date().getFullYear()} {siteName}</Text>
       </Container>
     </Body>

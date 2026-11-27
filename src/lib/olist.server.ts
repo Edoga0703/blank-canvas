@@ -49,7 +49,7 @@ export async function getOlistConfig(supabase: any, cid: string) {
   };
 }
 
-/** Cria o pedido de venda na Olist a partir de uma venda registrada na Metrix. */
+/** Cria o pedido de venda na Olist a partir de uma venda registrada no Capiversa. */
 export async function criarPedidoOlist(
   token: string,
   venda: {
@@ -63,19 +63,19 @@ export async function criarPedidoOlist(
 ) {
   const valor = Math.max(0, Number(venda.valor_cents) || 0) / 100;
   const descricao =
-    (venda.item_nome || venda.descricao || "Venda Metrix CRM").slice(0, 120);
+    (venda.item_nome || venda.descricao || "Venda Capiversa CRM").slice(0, 120);
 
   const pedido = {
     pedido: {
       cliente: {
-        nome: venda.contato_nome?.slice(0, 120) || "Cliente Metrix",
+        nome: venda.contato_nome?.slice(0, 120) || "Cliente Capiversa",
         tipo_pessoa: "F",
         fone: venda.contato_numero ?? "",
       },
       itens: [
         {
           item: {
-            codigo: venda.sku || "METRIX",
+            codigo: venda.sku || "CAPIVERSA",
             descricao,
             unidade: "UN",
             quantidade: 1,
@@ -83,7 +83,7 @@ export async function criarPedidoOlist(
           },
         },
       ],
-      obs: "Pedido gerado automaticamente pelo Metrix CRM",
+      obs: "Pedido gerado automaticamente pelo Capiversa CRM",
     },
   };
 

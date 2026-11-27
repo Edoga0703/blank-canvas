@@ -32,6 +32,8 @@ export const getCampaign = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
+    const { assertPermission } = await import("./permissions.server");
+    await assertPermission(supabase, companyId, userId, "campanhas.manage");
     const { data: c } = await supabase.from("campaign").select("*").eq("id", data.id).eq("company_id", companyId).maybeSingle();
     if (!c) throw new Error("Campanha não encontrada.");
     const { data: targets } = await supabase
@@ -163,6 +165,8 @@ export const saveCampaign = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
+    const { assertPermission } = await import("./permissions.server");
+    await assertPermission(supabase, companyId, userId, "campanhas.manage");
     const cleanCustom = (data.custom_targets ?? [])
       .map((r) => ({ numero: normalizeBr(String(r.numero || "")), nome: r.nome ?? null }))
       .filter((r) => r.numero);
@@ -233,6 +237,8 @@ export const deleteCampaign = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
+    const { assertPermission } = await import("./permissions.server");
+    await assertPermission(supabase, companyId, userId, "campanhas.manage");
     const { error } = await supabase.from("campaign").delete().eq("id", data.id).eq("company_id", companyId);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -244,6 +250,8 @@ export const startCampaign = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
+    const { assertPermission } = await import("./permissions.server");
+    await assertPermission(supabase, companyId, userId, "campanhas.manage");
     const { data: c } = await supabase.from("campaign").select("*").eq("id", data.id).eq("company_id", companyId).maybeSingle();
     if (!c) throw new Error("Campanha não encontrada.");
     if (c.status === "enviando" || c.status === "agendada") throw new Error("Campanha já está em execução.");
@@ -321,6 +329,8 @@ export const pauseCampaign = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
+    const { assertPermission } = await import("./permissions.server");
+    await assertPermission(supabase, companyId, userId, "campanhas.manage");
     const status = data.pause ? "pausada" : "enviando";
     const update: any = { status };
     if (!data.pause) update.proximo_envio_em = new Date().toISOString();
@@ -335,6 +345,8 @@ export const cancelCampaign = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
+    const { assertPermission } = await import("./permissions.server");
+    await assertPermission(supabase, companyId, userId, "campanhas.manage");
     const { error } = await supabase.from("campaign").update({ status: "cancelada", concluido_em: new Date().toISOString() }).eq("id", data.id).eq("company_id", companyId);
     if (error) throw new Error(error.message);
     return { ok: true };

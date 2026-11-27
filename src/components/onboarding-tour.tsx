@@ -10,7 +10,7 @@ import noxPhone from "@/assets/capi-conversa-logo-horizontal-black.png.asset.jso
 import noxCelebrate from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 import { brand } from "@/config/brand";
 
-const TOUR_KEY = (userId?: string | null) => `metrix_tour_done_${userId || "anon"}`;
+const TOUR_KEY = (userId?: string | null) => `capiversa_tour_done_${userId || "anon"}`;
 
 type TourStep = {
   target: string;

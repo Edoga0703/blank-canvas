@@ -30,6 +30,8 @@ export const createContact = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { assertPermission } = await import("./permissions.server");
+    await assertPermission(context.supabase, companyId, context.userId, "crm.view");
     const { assertCompanyCanWrite } = await import("./billing/access.server");
     await assertCompanyCanWrite(companyId);
 
@@ -69,6 +71,8 @@ export const importContacts = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const companyId = await resolveCompanyId(context.supabase, context.userId);
+    const { assertPermission } = await import("./permissions.server");
+    await assertPermission(context.supabase, companyId, context.userId, "crm.import_export");
     const { assertCompanyCanWrite } = await import("./billing/access.server");
     await assertCompanyCanWrite(companyId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

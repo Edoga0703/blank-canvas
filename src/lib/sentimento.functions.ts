@@ -52,7 +52,15 @@ export const analisarSentimento = createServerFn({ method: "POST" })
         },
         { role: "user", content: linhas },
       ],
-      "gpt-4o-mini",
+      {
+        provider: "openai",
+        model: "gpt-4o-mini",
+        telemetry: {
+          companyId: cid,
+          userId: context.userId,
+          feature: "chat_sentiment",
+        },
+      },
     );
 
     let parsed: any = null;

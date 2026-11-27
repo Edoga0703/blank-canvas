@@ -2,8 +2,8 @@
 import { jsPDF } from "jspdf";
 import { brand } from "@/config/brand";
 import type { ReceiptData } from "@/lib/invoices.functions";
-import whiteLogoAsset from "@/assets/metrix-receipt-white.png.asset.json";
-import blueLogoAsset from "@/assets/metrix-receipt-blue.png.asset.json";
+import whiteLogoAsset from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
+import blueLogoAsset from "@/assets/capi-conversa-logo-horizontal-black.png.asset.json";
 
 const BRAND: [number, number, number] = [11, 34, 254];
 const INK: [number, number, number] = [24, 26, 40];
