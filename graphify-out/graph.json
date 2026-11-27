@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-25T23:17:18.430386+00:00",
+  "generated_at": "2026-11-27T05:23:52.996048+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -95,7 +95,7 @@
     },
     {
       "path": "src/routeTree.gen.ts",
-      "bytes": 109472
+      "bytes": 110754
     },
     {
       "path": "src/server.ts",
@@ -170,6 +170,10 @@
       "bytes": 557
     },
     {
+      "path": "supabase/migrations/20261126150000_unified_plans_and_master_storage.sql",
+      "bytes": 3363
+    },
+    {
       "path": "supabase/migrations/20261111000000_multichannel_content_and_social_hub.sql",
       "bytes": 5739
     },
@@ -206,8 +210,16 @@
       "bytes": 7324
     },
     {
+      "path": "supabase/migrations/20261126180000_granular_user_permissions.sql",
+      "bytes": 447
+    },
+    {
       "path": "supabase/migrations/20261122160000_automation_sprint1_core_fixes.sql",
       "bytes": 4185
+    },
+    {
+      "path": "supabase/migrations/20261126120000_ai_pool_and_usage_telemetry.sql",
+      "bytes": 6395
     },
     {
       "path": "supabase/migrations/20261029150000_automation_v1301.sql",
@@ -282,6 +294,10 @@
       "bytes": 2342
     },
     {
+      "path": "supabase/migrations/20261127010000_fix_seed_fixed_agents_on_conflict.sql",
+      "bytes": 1590
+    },
+    {
       "path": "supabase/migrations/20261112010000_telegram_discussion_and_comment_moderation.sql",
       "bytes": 3603
     },
@@ -308,6 +324,10 @@
     {
       "path": "docs/sql/20261121100000_automation_quick_rules_and_ui_mode.sql",
       "bytes": 557
+    },
+    {
+      "path": "docs/sql/20261126150000_unified_plans_and_master_storage.sql",
+      "bytes": 3363
     },
     {
       "path": "docs/sql/20261111000000_multichannel_content_and_social_hub.sql",
@@ -338,8 +358,16 @@
       "bytes": 7324
     },
     {
+      "path": "docs/sql/20261126180000_granular_user_permissions.sql",
+      "bytes": 447
+    },
+    {
       "path": "docs/sql/20261122160000_automation_sprint1_core_fixes.sql",
       "bytes": 4185
+    },
+    {
+      "path": "docs/sql/20261126120000_ai_pool_and_usage_telemetry.sql",
+      "bytes": 6395
     },
     {
       "path": "docs/sql/20261029150000_automation_v1301.sql",
@@ -372,6 +400,10 @@
     {
       "path": "docs/sql/20261115000000_telegram_audit_remediation.sql",
       "bytes": 2723
+    },
+    {
+      "path": "docs/sql/20261127010000_fix_seed_fixed_agents_on_conflict.sql",
+      "bytes": 1590
     },
     {
       "path": "docs/sql/20261112010000_telegram_discussion_and_comment_moderation.sql",
@@ -422,16 +454,8 @@
       "bytes": 412
     },
     {
-      "path": "src/assets/metrix-logo.png.asset.json",
-      "bytes": 404
-    },
-    {
       "path": "src/assets/apple.svg.asset.json",
       "bytes": 389
-    },
-    {
-      "path": "src/assets/metrix-brand.png.asset.json",
-      "bytes": 406
     },
     {
       "path": "src/assets/academy-fave.png.asset.json",
@@ -442,10 +466,6 @@
       "bytes": 410
     },
     {
-      "path": "src/assets/metrix-favicon.png.asset.json",
-      "bytes": 413
-    },
-    {
       "path": "src/assets/nox-phone.png.asset.json",
       "bytes": 400
     },
@@ -454,20 +474,8 @@
       "bytes": 421
     },
     {
-      "path": "src/assets/metrix-mascot.png.asset.json",
-      "bytes": 412
-    },
-    {
-      "path": "src/assets/metrix-bubble-v2.png.asset.json",
-      "bytes": 419
-    },
-    {
       "path": "src/assets/android-step-3.png.asset.json",
       "bytes": 415
-    },
-    {
-      "path": "src/assets/metrix-mark.png.asset.json",
-      "bytes": 404
     },
     {
       "path": "src/assets/iphone-step-4.png.asset.json",
@@ -498,14 +506,6 @@
       "bytes": 409
     },
     {
-      "path": "src/assets/metrix-bubble.png.asset.json",
-      "bytes": 410
-    },
-    {
-      "path": "src/assets/metrix-logo-new.png.asset.json",
-      "bytes": 417
-    },
-    {
       "path": "src/assets/avatar-placeholder.png.asset.json",
       "bytes": 424
     },
@@ -522,40 +522,12 @@
       "bytes": 407
     },
     {
-      "path": "src/assets/metrix-logo-full.png.asset.json",
-      "bytes": 419
-    },
-    {
-      "path": "src/assets/metrix-receipt-white.png.asset.json",
-      "bytes": 431
-    },
-    {
-      "path": "src/assets/metrix-logo-center.png.asset.json",
-      "bytes": 425
-    },
-    {
       "path": "src/assets/android-step-1.png.asset.json",
       "bytes": 415
     },
     {
-      "path": "src/assets/metrix-icon-new.png.asset.json",
-      "bytes": 416
-    },
-    {
-      "path": "src/assets/metrix-bubble-v3.png.asset.json",
-      "bytes": 420
-    },
-    {
       "path": "src/assets/capi-conversa-logo-horizontal-black.png.asset.json",
       "bytes": 448
-    },
-    {
-      "path": "src/assets/metrix-receipt-blue.png.asset.json",
-      "bytes": 428
-    },
-    {
-      "path": "src/assets/metrix-bubble-v4.png.asset.json",
-      "bytes": 420
     },
     {
       "path": "src/assets/android-step-2.png.asset.json",
@@ -622,6 +594,10 @@
       "bytes": 3823
     },
     {
+      "path": "src/routes/comparativo.capiversa-vs-botconversa.tsx",
+      "bytes": 11741
+    },
+    {
       "path": "src/routes/csat.$token.tsx",
       "bytes": 8864
     },
@@ -643,7 +619,7 @@
     },
     {
       "path": "src/routes/master.tsx",
-      "bytes": 14886
+      "bytes": 14844
     },
     {
       "path": "src/routes/reset-senha.tsx",
@@ -659,11 +635,11 @@
     },
     {
       "path": "src/routes/app.tsx",
-      "bytes": 10980
+      "bytes": 12243
     },
     {
       "path": "src/routes/sitemap[.]xml.ts",
-      "bytes": 1722
+      "bytes": 1725
     },
     {
       "path": "src/routes/README.md",
@@ -671,7 +647,7 @@
     },
     {
       "path": "src/routes/comparativo.metrix-vs-botconversa.tsx",
-      "bytes": 11699
+      "bytes": 280
     },
     {
       "path": "src/routes/[.]lovable.oauth.consent.tsx",
@@ -679,11 +655,11 @@
     },
     {
       "path": "src/routes/entrar.tsx",
-      "bytes": 33464
+      "bytes": 33873
     },
     {
       "path": "src/routes/mobile.tsx",
-      "bytes": 23376
+      "bytes": 23388
     },
     {
       "path": "src/routes/esqueci-senha.tsx",
@@ -691,11 +667,11 @@
     },
     {
       "path": "src/routes/__root.tsx",
-      "bytes": 10904
+      "bytes": 10910
     },
     {
       "path": "src/routes/index.tsx",
-      "bytes": 31132
+      "bytes": 38524
     },
     {
       "path": "src/routes/termos.tsx",
@@ -727,7 +703,7 @@
     },
     {
       "path": "src/lib/google.server.ts",
-      "bytes": 18906
+      "bytes": 18912
     },
     {
       "path": "src/lib/tags.functions.ts",
@@ -747,7 +723,7 @@
     },
     {
       "path": "src/lib/prospeccao.server.ts",
-      "bytes": 13918
+      "bytes": 13927
     },
     {
       "path": "src/lib/support-automation.server.ts",
@@ -779,7 +755,7 @@
     },
     {
       "path": "src/lib/crm-lead-analyzer.server.ts",
-      "bytes": 31977
+      "bytes": 32238
     },
     {
       "path": "src/lib/handoff-summary.server.ts",
@@ -795,7 +771,11 @@
     },
     {
       "path": "src/lib/whatsapp.functions.ts",
-      "bytes": 54903
+      "bytes": 55867
+    },
+    {
+      "path": "src/lib/permissions.server.ts",
+      "bytes": 2496
     },
     {
       "path": "src/lib/meta-oauth.functions.ts",
@@ -815,7 +795,7 @@
     },
     {
       "path": "src/lib/billing-checkout.functions.ts",
-      "bytes": 17401
+      "bytes": 19499
     },
     {
       "path": "src/lib/agent-sandbox.server.ts",
@@ -823,11 +803,11 @@
     },
     {
       "path": "src/lib/crm-copilot.functions.ts",
-      "bytes": 30957
+      "bytes": 31227
     },
     {
       "path": "src/lib/lovable-ai.server.ts",
-      "bytes": 16035
+      "bytes": 22305
     },
     {
       "path": "src/lib/sectors.functions.ts",
@@ -835,7 +815,7 @@
     },
     {
       "path": "src/lib/provider-monitor.server.ts",
-      "bytes": 6293
+      "bytes": 6381
     },
     {
       "path": "src/lib/credits.functions.ts",
@@ -847,15 +827,15 @@
     },
     {
       "path": "src/lib/omnichannel-content.functions.ts",
-      "bytes": 29343
+      "bytes": 38202
     },
     {
       "path": "src/lib/comercial-export.ts",
-      "bytes": 7824
+      "bytes": 7839
     },
     {
       "path": "src/lib/plan-features.ts",
-      "bytes": 2853
+      "bytes": 8163
     },
     {
       "path": "src/lib/meta-message-media.server.ts",
@@ -867,11 +847,11 @@
     },
     {
       "path": "src/lib/google.functions.ts",
-      "bytes": 16008
+      "bytes": 16011
     },
     {
       "path": "src/lib/plan-limits.server.ts",
-      "bytes": 7565
+      "bytes": 10357
     },
     {
       "path": "src/lib/ai-limiter.server.ts",
@@ -879,15 +859,15 @@
     },
     {
       "path": "src/lib/master-overview.server.ts",
-      "bytes": 7325
+      "bytes": 7233
     },
     {
       "path": "src/lib/olist.server.ts",
-      "bytes": 3429
+      "bytes": 3444
     },
     {
       "path": "src/lib/master.functions.ts",
-      "bytes": 52527
+      "bytes": 66613
     },
     {
       "path": "src/lib/plugin-gate.server.ts",
@@ -895,11 +875,15 @@
     },
     {
       "path": "src/lib/session-persistence.ts",
-      "bytes": 1809
+      "bytes": 1815
     },
     {
       "path": "src/lib/whatsapp-helpers.ts",
       "bytes": 10563
+    },
+    {
+      "path": "src/lib/ai-pool.server.ts",
+      "bytes": 9631
     },
     {
       "path": "src/lib/inbound-automation.server.ts",
@@ -923,7 +907,7 @@
     },
     {
       "path": "src/lib/dapi.server.ts",
-      "bytes": 41810
+      "bytes": 41937
     },
     {
       "path": "src/lib/support-constants.ts",
@@ -991,11 +975,15 @@
     },
     {
       "path": "src/lib/plan.functions.ts",
-      "bytes": 4442
+      "bytes": 4763
     },
     {
       "path": "src/lib/openai-usage.functions.ts",
       "bytes": 8304
+    },
+    {
+      "path": "src/lib/plan-admin.functions.ts",
+      "bytes": 3474
     },
     {
       "path": "src/lib/dapi-history-backfill.server.ts",
@@ -1022,6 +1010,10 @@
       "bytes": 16702
     },
     {
+      "path": "src/lib/plan-checkout.functions.ts",
+      "bytes": 4670
+    },
+    {
       "path": "src/lib/media-understanding.server.ts",
       "bytes": 10505
     },
@@ -1039,11 +1031,11 @@
     },
     {
       "path": "src/lib/crm-contacts-import.functions.ts",
-      "bytes": 4480
+      "bytes": 4987
     },
     {
       "path": "src/lib/support-kb.ts",
-      "bytes": 14840
+      "bytes": 14849
     },
     {
       "path": "src/lib/master-alerts.server.ts",
@@ -1059,7 +1051,7 @@
     },
     {
       "path": "src/lib/olist-ai.server.ts",
-      "bytes": 5756
+      "bytes": 5765
     },
     {
       "path": "src/lib/grupos.functions.ts",
@@ -1070,12 +1062,16 @@
       "bytes": 43068
     },
     {
+      "path": "src/lib/ai-admin.server.ts",
+      "bytes": 18586
+    },
+    {
       "path": "src/lib/dashboard-ops.functions.ts",
       "bytes": 20838
     },
     {
       "path": "src/lib/system-health.functions.ts",
-      "bytes": 11472
+      "bytes": 11571
     },
     {
       "path": "src/lib/business-hours.ts",
@@ -1099,7 +1095,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 53209
+      "bytes": 53389
     },
     {
       "path": "src/lib/meta-response-window.server.ts",
@@ -1131,7 +1127,7 @@
     },
     {
       "path": "src/lib/integrations.functions.ts",
-      "bytes": 5282
+      "bytes": 5285
     },
     {
       "path": "src/lib/customer-lookup.server.ts",
@@ -1143,11 +1139,11 @@
     },
     {
       "path": "src/lib/drive.functions.ts",
-      "bytes": 14120
+      "bytes": 14126
     },
     {
       "path": "src/lib/master-training.functions.ts",
-      "bytes": 4847
+      "bytes": 5376
     },
     {
       "path": "src/lib/plugins.functions.ts",
@@ -1159,7 +1155,7 @@
     },
     {
       "path": "src/lib/meta-content.functions.ts",
-      "bytes": 15596
+      "bytes": 25838
     },
     {
       "path": "src/lib/audio-remux-browser.ts",
@@ -1167,7 +1163,7 @@
     },
     {
       "path": "src/lib/admin-crm.server.ts",
-      "bytes": 17754
+      "bytes": 17772
     },
     {
       "path": "src/lib/utils.ts",
@@ -1179,7 +1175,7 @@
     },
     {
       "path": "src/lib/meta-content-sync.server.ts",
-      "bytes": 59446
+      "bytes": 62643
     },
     {
       "path": "src/lib/plugin-banners.functions.ts",
@@ -1243,7 +1239,11 @@
     },
     {
       "path": "src/lib/transcribe.functions.ts",
-      "bytes": 7321
+      "bytes": 9430
+    },
+    {
+      "path": "src/lib/plan-admin.server.ts",
+      "bytes": 5180
     },
     {
       "path": "src/lib/templates.functions.ts",
@@ -1251,7 +1251,7 @@
     },
     {
       "path": "src/lib/sentimento.functions.ts",
-      "bytes": 3140
+      "bytes": 3323
     },
     {
       "path": "src/lib/forward.functions.ts",
@@ -1287,7 +1287,7 @@
     },
     {
       "path": "src/lib/google-marketing.server.ts",
-      "bytes": 10454
+      "bytes": 10457
     },
     {
       "path": "src/lib/lead-extract.server.ts",
@@ -1295,7 +1295,7 @@
     },
     {
       "path": "src/lib/campaigns.functions.ts",
-      "bytes": 16797
+      "bytes": 17685
     },
     {
       "path": "src/lib/atendimento-relatorios.functions.ts",
@@ -1303,7 +1303,7 @@
     },
     {
       "path": "src/lib/parceiros-client.functions.ts",
-      "bytes": 2922
+      "bytes": 3852
     },
     {
       "path": "src/lib/agendamentos-dispatch.server.ts",
@@ -1311,11 +1311,11 @@
     },
     {
       "path": "src/lib/signup-welcome.functions.ts",
-      "bytes": 6624
+      "bytes": 6626
     },
     {
       "path": "src/lib/company-reset.functions.ts",
-      "bytes": 2534
+      "bytes": 2354
     },
     {
       "path": "src/lib/plugin-suggestions.functions.ts",
@@ -1335,11 +1335,11 @@
     },
     {
       "path": "src/lib/olist.functions.ts",
-      "bytes": 16848
+      "bytes": 16854
     },
     {
       "path": "src/lib/training.functions.ts",
-      "bytes": 6325
+      "bytes": 6336
     },
     {
       "path": "src/lib/alerts.server.ts",
@@ -1371,7 +1371,7 @@
     },
     {
       "path": "src/lib/agent-copilot.functions.ts",
-      "bytes": 14383
+      "bytes": 14867
     },
     {
       "path": "src/lib/csat-config.functions.ts",
@@ -1383,11 +1383,11 @@
     },
     {
       "path": "src/lib/receipt-pdf.ts",
-      "bytes": 8277
+      "bytes": 8308
     },
     {
       "path": "src/lib/checkout.functions.ts",
-      "bytes": 2198
+      "bytes": 3139
     },
     {
       "path": "src/lib/produtos.functions.ts",
@@ -1407,7 +1407,7 @@
     },
     {
       "path": "src/lib/sheets.functions.ts",
-      "bytes": 7758
+      "bytes": 7761
     },
     {
       "path": "src/lib/dashboard-layout.functions.ts",
@@ -1423,15 +1423,15 @@
     },
     {
       "path": "src/lib/tenant.ts",
-      "bytes": 3804
+      "bytes": 3861
     },
     {
       "path": "src/lib/dapi-test.functions.ts",
-      "bytes": 2777
+      "bytes": 2711
     },
     {
       "path": "src/lib/resumo.functions.ts",
-      "bytes": 2315
+      "bytes": 2496
     },
     {
       "path": "src/lib/agendamentos.functions.ts",
@@ -1455,15 +1455,19 @@
     },
     {
       "path": "src/lib/agent-ai.functions.ts",
-      "bytes": 44146
+      "bytes": 43934
+    },
+    {
+      "path": "src/lib/ai-admin.functions.ts",
+      "bytes": 4087
     },
     {
       "path": "src/lib/team.functions.ts",
-      "bytes": 27727
+      "bytes": 32015
     },
     {
       "path": "src/lib/partners.functions.ts",
-      "bytes": 12857
+      "bytes": 14021
     },
     {
       "path": "src/lib/br-phone.ts",
@@ -1479,7 +1483,7 @@
     },
     {
       "path": "src/lib/route-guards.ts",
-      "bytes": 436
+      "bytes": 1407
     },
     {
       "path": "src/lib/telegram.functions.ts",
@@ -1487,7 +1491,7 @@
     },
     {
       "path": "src/lib/permissions.ts",
-      "bytes": 853
+      "bytes": 13489
     },
     {
       "path": "src/lib/meta-oauth.server.ts",
@@ -1495,7 +1499,7 @@
     },
     {
       "path": "src/lib/test-disparo.functions.ts",
-      "bytes": 3175
+      "bytes": 3178
     },
     {
       "path": "src/lib/admin-broadcast.functions.ts",
@@ -1503,7 +1507,7 @@
     },
     {
       "path": "src/lib/integracoes.functions.ts",
-      "bytes": 13700
+      "bytes": 13703
     },
     {
       "path": "src/lib/master-alerts.functions.ts",
@@ -1511,15 +1515,15 @@
     },
     {
       "path": "src/components/announcement-manager.tsx",
-      "bytes": 4060
+      "bytes": 4066
     },
     {
       "path": "src/components/master-subtabs.tsx",
-      "bytes": 3739
+      "bytes": 3828
     },
     {
       "path": "src/components/mobile-app-banner.tsx",
-      "bytes": 1890
+      "bytes": 1893
     },
     {
       "path": "src/components/legal-shell.tsx",
@@ -1543,7 +1547,7 @@
     },
     {
       "path": "src/components/onboarding-tour.tsx",
-      "bytes": 7510
+      "bytes": 7513
     },
     {
       "path": "src/components/mic-dictate-button.tsx",
@@ -1567,7 +1571,7 @@
     },
     {
       "path": "src/components/app-shell.tsx",
-      "bytes": 39479
+      "bytes": 41893
     },
     {
       "path": "src/components/brand-mark.tsx",
@@ -1575,11 +1579,11 @@
     },
     {
       "path": "src/components/auth-shell.tsx",
-      "bytes": 9943
+      "bytes": 9952
     },
     {
       "path": "src/components/content/omnichannel-comments-inbox.tsx",
-      "bytes": 28350
+      "bytes": 28519
     },
     {
       "path": "src/components/content/meta-social-intelligence.tsx",
@@ -1611,7 +1615,7 @@
     },
     {
       "path": "src/components/plugins/google-sheets-panel.tsx",
-      "bytes": 6133
+      "bytes": 6139
     },
     {
       "path": "src/components/plugins/integracao-panel.tsx",
@@ -1663,7 +1667,7 @@
     },
     {
       "path": "src/components/plugins/google-drive-panel.tsx",
-      "bytes": 4934
+      "bytes": 4940
     },
     {
       "path": "src/components/conexao/nova-conexao-dialog.tsx",
@@ -1755,7 +1759,7 @@
     },
     {
       "path": "src/components/config/integracoes-tab.tsx",
-      "bytes": 14483
+      "bytes": 14531
     },
     {
       "path": "src/components/config/company-logo-dialog.tsx",
@@ -1783,7 +1787,7 @@
     },
     {
       "path": "src/components/config/equipe-tab.tsx",
-      "bytes": 41103
+      "bytes": 48944
     },
     {
       "path": "src/components/config/formularios-tab.tsx",
@@ -1799,7 +1803,7 @@
     },
     {
       "path": "src/components/config/integracao-guias.tsx",
-      "bytes": 13793
+      "bytes": 13805
     },
     {
       "path": "src/components/config/tags-tab.tsx",
@@ -2103,7 +2107,11 @@
     },
     {
       "path": "src/components/master/clientes-lista.tsx",
-      "bytes": 50661
+      "bytes": 64286
+    },
+    {
+      "path": "src/components/master/ai-telemetry-panel.tsx",
+      "bytes": 28418
     },
     {
       "path": "src/components/master/signup-welcome-card.tsx",
@@ -2119,7 +2127,7 @@
     },
     {
       "path": "src/components/master/charges-panel.tsx",
-      "bytes": 6117
+      "bytes": 7063
     },
     {
       "path": "src/components/master/nova-empresa-form.tsx",
@@ -2131,7 +2139,7 @@
     },
     {
       "path": "src/components/crm/lead-drawer.tsx",
-      "bytes": 88201
+      "bytes": 88204
     },
     {
       "path": "src/components/crm/olist-pedidos-tab.tsx",
@@ -2155,7 +2163,7 @@
     },
     {
       "path": "src/components/agenda/export-pdf.ts",
-      "bytes": 5204
+      "bytes": 5203
     },
     {
       "path": "src/components/agenda/block-dialog.tsx",
@@ -2227,7 +2235,7 @@
     },
     {
       "path": "src/components/chat/drive-panel.tsx",
-      "bytes": 22795
+      "bytes": 22798
     },
     {
       "path": "src/components/chat/chat-location.tsx",
@@ -2327,7 +2335,7 @@
     },
     {
       "path": "src/lib/storage/storage-admin.functions.ts",
-      "bytes": 16636
+      "bytes": 15560
     },
     {
       "path": "src/lib/storage/r2.server.ts",
@@ -2347,7 +2355,7 @@
     },
     {
       "path": "src/lib/integracoes/adapters.server.ts",
-      "bytes": 19263
+      "bytes": 19311
     },
     {
       "path": "src/lib/integracoes/catalogo.ts",
@@ -2371,31 +2379,31 @@
     },
     {
       "path": "src/lib/billing/charges.server.ts",
-      "bytes": 16978
+      "bytes": 25589
     },
     {
       "path": "src/lib/email-templates/email-change.tsx",
-      "bytes": 2852
+      "bytes": 2753
     },
     {
       "path": "src/lib/email-templates/invite.tsx",
-      "bytes": 2572
+      "bytes": 2473
     },
     {
       "path": "src/lib/email-templates/signup.tsx",
-      "bytes": 2752
+      "bytes": 2653
     },
     {
       "path": "src/lib/email-templates/reauthentication.tsx",
-      "bytes": 2245
+      "bytes": 2145
     },
     {
       "path": "src/lib/email-templates/recovery.tsx",
-      "bytes": 2443
+      "bytes": 2344
     },
     {
       "path": "src/lib/email-templates/magic-link.tsx",
-      "bytes": 2331
+      "bytes": 2232
     },
     {
       "path": "src/lib/messaging/lovable-connection.functions.ts",
@@ -2423,7 +2431,7 @@
     },
     {
       "path": "src/lib/automations/registry.server.ts",
-      "bytes": 99364
+      "bytes": 100070
     },
     {
       "path": "src/lib/automations/http-security.server.ts",
@@ -2431,7 +2439,7 @@
     },
     {
       "path": "src/lib/automations/functions.ts",
-      "bytes": 53956
+      "bytes": 65949
     },
     {
       "path": "src/lib/automations/conversation-control.server.ts",
@@ -2543,11 +2551,11 @@
     },
     {
       "path": "src/routes/master/parceiros.tsx",
-      "bytes": 30853
+      "bytes": 31218
     },
     {
       "path": "src/routes/master/sistema.tsx",
-      "bytes": 29240
+      "bytes": 31538
     },
     {
       "path": "src/routes/master/cadastros.tsx",
@@ -2571,7 +2579,7 @@
     },
     {
       "path": "src/routes/master/notificacoes.tsx",
-      "bytes": 7900
+      "bytes": 7903
     },
     {
       "path": "src/routes/master/perfil.tsx",
@@ -2579,7 +2587,7 @@
     },
     {
       "path": "src/routes/master/planos.tsx",
-      "bytes": 24052
+      "bytes": 29047
     },
     {
       "path": "src/routes/master/empresas.tsx",
@@ -2591,7 +2599,7 @@
     },
     {
       "path": "src/routes/master/configuracoes.tsx",
-      "bytes": 10983
+      "bytes": 10991
     },
     {
       "path": "src/routes/master/assinaturas.tsx",
@@ -2599,7 +2607,7 @@
     },
     {
       "path": "src/routes/master/painel.tsx",
-      "bytes": 16873
+      "bytes": 16824
     },
     {
       "path": "src/routes/master/billing.tsx",
@@ -2635,7 +2643,7 @@
     },
     {
       "path": "src/routes/app/checkout.tsx",
-      "bytes": 16656
+      "bytes": 28837
     },
     {
       "path": "src/routes/app/agendamentos.tsx",
@@ -2651,7 +2659,7 @@
     },
     {
       "path": "src/routes/app/automacoes.tsx",
-      "bytes": 719
+      "bytes": 855
     },
     {
       "path": "src/routes/app/onboarding.tsx",
@@ -2663,15 +2671,15 @@
     },
     {
       "path": "src/routes/app/campanhas.tsx",
-      "bytes": 38633
+      "bytes": 38768
     },
     {
       "path": "src/routes/app/usuarios.tsx",
-      "bytes": 688
+      "bytes": 763
     },
     {
       "path": "src/routes/app/conexao.tsx",
-      "bytes": 31261
+      "bytes": 31394
     },
     {
       "path": "src/routes/app/contatos.tsx",
@@ -2683,7 +2691,7 @@
     },
     {
       "path": "src/routes/app/catalogo.tsx",
-      "bytes": 9192
+      "bytes": 9326
     },
     {
       "path": "src/routes/app/treinamentos.$courseId.tsx",
@@ -2691,7 +2699,7 @@
     },
     {
       "path": "src/routes/app/integracoes.tsx",
-      "bytes": 15564
+      "bytes": 15596
     },
     {
       "path": "src/routes/app/treinamentos.index.tsx",
@@ -2703,11 +2711,11 @@
     },
     {
       "path": "src/routes/app/configuracoes.tsx",
-      "bytes": 78906
+      "bytes": 86008
     },
     {
       "path": "src/routes/app/parceiro.tsx",
-      "bytes": 13541
+      "bytes": 13575
     },
     {
       "path": "src/routes/app/conversas.tsx",
@@ -2715,27 +2723,27 @@
     },
     {
       "path": "src/routes/app/publicacoes.tsx",
-      "bytes": 24708
+      "bytes": 24843
     },
     {
       "path": "src/routes/app/comercial.tsx",
-      "bytes": 52883
+      "bytes": 53017
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 165437
+      "bytes": 165569
     },
     {
       "path": "src/routes/app/prospeccao.tsx",
-      "bytes": 35044
+      "bytes": 35178
     },
     {
       "path": "src/routes/app/relatorios.tsx",
-      "bytes": 24582
+      "bytes": 24716
     },
     {
       "path": "src/routes/app/conteudo.tsx",
-      "bytes": 7182
+      "bytes": 7317
     },
     {
       "path": "src/routes/app/treinamentos.tsx",
@@ -2747,7 +2755,7 @@
     },
     {
       "path": "src/routes/app/plugins.tsx",
-      "bytes": 16375
+      "bytes": 16512
     },
     {
       "path": "src/routes/app/automacoes.$workflowId.tsx",
@@ -2775,7 +2783,7 @@
     },
     {
       "path": "src/routes/api/public/google-marketing-callback.ts",
-      "bytes": 1911
+      "bytes": 1914
     },
     {
       "path": "src/routes/api/public/meta-leads-webhook.ts",
@@ -2799,7 +2807,7 @@
     },
     {
       "path": "src/routes/api/public/meta-webhook.ts",
-      "bytes": 47923
+      "bytes": 51618
     },
     {
       "path": "src/routes/api/public/ai-health.ts",
@@ -2931,11 +2939,11 @@
     },
     {
       "path": "src/routes/lovable/email/auth/preview.ts",
-      "bytes": 3457
+      "bytes": 3456
     },
     {
       "path": "src/routes/lovable/email/auth/webhook.ts",
-      "bytes": 7236
+      "bytes": 7230
     },
     {
       "path": "src/routes/[.mcp]/invoke-tool/$tool.ts",
@@ -3589,6 +3597,10 @@
     },
     {
       "source": "src/routeTree.gen.ts",
+      "target": "./routes/comparativo.capiversa-vs-botconversa"
+    },
+    {
+      "source": "src/routeTree.gen.ts",
       "target": "./routes/comparativo.metrix-vs-botconversa"
     },
     {
@@ -4136,6 +4148,18 @@
       "target": "@/integrations/supabase/client"
     },
     {
+      "source": "src/routes/comparativo.capiversa-vs-botconversa.tsx",
+      "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/routes/comparativo.capiversa-vs-botconversa.tsx",
+      "target": "lucide-react"
+    },
+    {
+      "source": "src/routes/comparativo.capiversa-vs-botconversa.tsx",
+      "target": "@/config/brand"
+    },
+    {
       "source": "src/routes/csat.$token.tsx",
       "target": "@tanstack/react-router"
     },
@@ -4249,11 +4273,7 @@
     },
     {
       "source": "src/routes/master.tsx",
-      "target": "@/assets/metrix-bubble-v4.png.asset.json"
-    },
-    {
-      "source": "src/routes/master.tsx",
-      "target": "@/assets/metrix-mark.png.asset.json"
+      "target": "@/assets/capi-conversa-logo-horizontal-black.png.asset.json"
     },
     {
       "source": "src/routes/master.tsx",
@@ -4365,6 +4385,10 @@
     },
     {
       "source": "src/routes/app.tsx",
+      "target": "@/lib/permissions"
+    },
+    {
+      "source": "src/routes/app.tsx",
       "target": "@/lib/session-persistence"
     },
     {
@@ -4390,14 +4414,6 @@
     {
       "source": "src/routes/comparativo.metrix-vs-botconversa.tsx",
       "target": "@tanstack/react-router"
-    },
-    {
-      "source": "src/routes/comparativo.metrix-vs-botconversa.tsx",
-      "target": "lucide-react"
-    },
-    {
-      "source": "src/routes/comparativo.metrix-vs-botconversa.tsx",
-      "target": "@/config/brand"
     },
     {
       "source": "src/routes/[.]lovable.oauth.consent.tsx",
@@ -4674,6 +4690,18 @@
     {
       "source": "src/routes/index.tsx",
       "target": "react"
+    },
+    {
+      "source": "src/routes/index.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/routes/index.tsx",
+      "target": "@/lib/plan-admin.functions"
+    },
+    {
+      "source": "src/routes/index.tsx",
+      "target": "@/lib/plan-features"
     },
     {
       "source": "src/routes/index.tsx",
@@ -5049,6 +5077,10 @@
     },
     {
       "source": "src/lib/whatsapp.functions.ts",
+      "target": "./permissions.server"
+    },
+    {
+      "source": "src/lib/whatsapp.functions.ts",
       "target": "./plan-limits.server"
     },
     {
@@ -5089,11 +5121,19 @@
     },
     {
       "source": "src/lib/whatsapp.functions.ts",
+      "target": "./permissions.server"
+    },
+    {
+      "source": "src/lib/whatsapp.functions.ts",
       "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/whatsapp.functions.ts",
       "target": "./dapi.server"
+    },
+    {
+      "source": "src/lib/whatsapp.functions.ts",
+      "target": "./permissions.server"
     },
     {
       "source": "src/lib/whatsapp.functions.ts",
@@ -5213,6 +5253,10 @@
     },
     {
       "source": "src/lib/whatsapp.functions.ts",
+      "target": "./dapi.server"
+    },
+    {
+      "source": "src/lib/whatsapp.functions.ts",
       "target": "./lovable-ai.server"
     },
     {
@@ -5241,6 +5285,10 @@
     },
     {
       "source": "src/lib/whatsapp.functions.ts",
+      "target": "./permissions.server"
+    },
+    {
+      "source": "src/lib/whatsapp.functions.ts",
       "target": "./dapi.server"
     },
     {
@@ -5249,7 +5297,19 @@
     },
     {
       "source": "src/lib/whatsapp.functions.ts",
+      "target": "./plan-limits.server"
+    },
+    {
+      "source": "src/lib/whatsapp.functions.ts",
       "target": "./dapi-history-backfill.server"
+    },
+    {
+      "source": "src/lib/permissions.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/permissions.server.ts",
+      "target": "./permissions"
     },
     {
       "source": "src/lib/meta-oauth.functions.ts",
@@ -5401,6 +5461,10 @@
     },
     {
       "source": "src/lib/billing-checkout.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/billing-checkout.functions.ts",
       "target": "@/lib/billing/charges.server"
     },
     {
@@ -5468,6 +5532,14 @@
       "target": "./agent-sandbox.server"
     },
     {
+      "source": "src/lib/crm-copilot.functions.ts",
+      "target": "./lovable-ai.server"
+    },
+    {
+      "source": "src/lib/lovable-ai.server.ts",
+      "target": "./ai-pool.server"
+    },
+    {
       "source": "src/lib/lovable-ai.server.ts",
       "target": "@/integrations/supabase/client.server"
     },
@@ -5530,6 +5602,10 @@
     {
       "source": "src/lib/provider-monitor.server.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/provider-monitor.server.ts",
+      "target": "./dapi.server"
     },
     {
       "source": "src/lib/credits.functions.ts",
@@ -5629,6 +5705,14 @@
     },
     {
       "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "@/lib/lovable-ai.server"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/omnichannel-content.functions.ts",
       "target": "@/integrations/supabase/client.server"
     },
     {
@@ -5645,7 +5729,7 @@
     },
     {
       "source": "src/lib/comercial-export.ts",
-      "target": "@/assets/metrix-receipt-white.png.asset.json"
+      "target": "@/assets/capi-conversa-logo-horizontal-black.png.asset.json"
     },
     {
       "source": "src/lib/comercial-export.ts",
@@ -5837,6 +5921,10 @@
     },
     {
       "source": "src/lib/master.functions.ts",
+      "target": "zod"
+    },
+    {
+      "source": "src/lib/master.functions.ts",
       "target": "@/integrations/supabase/client.server"
     },
     {
@@ -5905,6 +5993,10 @@
     },
     {
       "source": "src/lib/master.functions.ts",
+      "target": "./plan-limits.server"
+    },
+    {
+      "source": "src/lib/master.functions.ts",
       "target": "@/integrations/supabase/client.server"
     },
     {
@@ -5944,12 +6036,48 @@
       "target": "@/integrations/supabase/client.server"
     },
     {
+      "source": "src/lib/master.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/master.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/master.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/master.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
       "source": "src/lib/session-persistence.ts",
       "target": "@/integrations/supabase/client"
     },
     {
       "source": "src/lib/whatsapp-helpers.ts",
       "target": "./company-cache"
+    },
+    {
+      "source": "src/lib/ai-pool.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/ai-pool.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/ai-pool.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/ai-pool.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/ai-pool.server.ts",
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/inbound-automation.server.ts",
@@ -6205,11 +6333,19 @@
     },
     {
       "source": "src/lib/plan.functions.ts",
+      "target": "./permissions.server"
+    },
+    {
+      "source": "src/lib/plan.functions.ts",
       "target": "./billing/access.server"
     },
     {
       "source": "src/lib/plan.functions.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/plan.functions.ts",
+      "target": "./permissions.server"
     },
     {
       "source": "src/lib/plan.functions.ts",
@@ -6234,6 +6370,38 @@
     {
       "source": "src/lib/openai-usage.functions.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/plan-admin.functions.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/plan-admin.functions.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/plan-admin.functions.ts",
+      "target": "zod"
+    },
+    {
+      "source": "src/lib/plan-admin.functions.ts",
+      "target": "./plan-admin.server"
+    },
+    {
+      "source": "src/lib/plan-admin.functions.ts",
+      "target": "./plan-admin.server"
+    },
+    {
+      "source": "src/lib/plan-admin.functions.ts",
+      "target": "./plan-admin.server"
+    },
+    {
+      "source": "src/lib/plan-admin.functions.ts",
+      "target": "./plan-admin.server"
+    },
+    {
+      "source": "src/lib/plan-admin.functions.ts",
+      "target": "./plan-admin.server"
     },
     {
       "source": "src/lib/dapi-history-backfill.server.ts",
@@ -6344,6 +6512,42 @@
       "target": "./telegram-content-sync.server"
     },
     {
+      "source": "src/lib/plan-checkout.functions.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/plan-checkout.functions.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/plan-checkout.functions.ts",
+      "target": "@/lib/company-cache"
+    },
+    {
+      "source": "src/lib/plan-checkout.functions.ts",
+      "target": "zod"
+    },
+    {
+      "source": "src/lib/plan-checkout.functions.ts",
+      "target": "./permissions.server"
+    },
+    {
+      "source": "src/lib/plan-checkout.functions.ts",
+      "target": "./billing/charges.server"
+    },
+    {
+      "source": "src/lib/plan-checkout.functions.ts",
+      "target": "./permissions.server"
+    },
+    {
+      "source": "src/lib/plan-checkout.functions.ts",
+      "target": "./billing/charges.server"
+    },
+    {
+      "source": "src/lib/plan-checkout.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
       "source": "src/lib/media-understanding.server.ts",
       "target": "@/integrations/supabase/client.server"
     },
@@ -6393,7 +6597,19 @@
     },
     {
       "source": "src/lib/crm-contacts-import.functions.ts",
+      "target": "@/lib/permissions.server"
+    },
+    {
+      "source": "src/lib/crm-contacts-import.functions.ts",
+      "target": "@/lib/permissions.server"
+    },
+    {
+      "source": "src/lib/crm-contacts-import.functions.ts",
       "target": "@/lib/billing/access.server"
+    },
+    {
+      "source": "src/lib/crm-contacts-import.functions.ts",
+      "target": "@/lib/permissions.server"
     },
     {
       "source": "src/lib/crm-contacts-import.functions.ts",
@@ -6568,6 +6784,34 @@
       "target": "@/integrations/supabase/client.server"
     },
     {
+      "source": "src/lib/ai-admin.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/ai-admin.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/ai-admin.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/ai-admin.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/ai-admin.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/ai-admin.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/ai-admin.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
       "source": "src/lib/dashboard-ops.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -6590,6 +6834,10 @@
     {
       "source": "src/lib/system-health.functions.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/system-health.functions.ts",
+      "target": "@/lib/dapi.server"
     },
     {
       "source": "src/lib/outbound-queue.server.ts",
@@ -7089,11 +7337,35 @@
     },
     {
       "source": "src/lib/meta-content.functions.ts",
+      "target": "./meta-content-sync.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
       "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/meta-content.functions.ts",
       "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "./meta-content-sync.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "./meta.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/meta-content.functions.ts",
+      "target": "./meta-sync.server"
     },
     {
       "source": "src/lib/meta-content.functions.ts",
@@ -7545,6 +7817,14 @@
     },
     {
       "source": "src/lib/transcribe.functions.ts",
+      "target": "./ai-pool.server"
+    },
+    {
+      "source": "src/lib/transcribe.functions.ts",
+      "target": "./company-cache"
+    },
+    {
+      "source": "src/lib/transcribe.functions.ts",
       "target": "@/lib/plugin-gate.server"
     },
     {
@@ -7561,6 +7841,34 @@
     },
     {
       "source": "src/lib/transcribe.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/transcribe.functions.ts",
+      "target": "./ai-pool.server"
+    },
+    {
+      "source": "src/lib/plan-admin.server.ts",
+      "target": "./plan-features"
+    },
+    {
+      "source": "src/lib/plan-admin.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/plan-admin.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/plan-admin.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/plan-admin.server.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/plan-admin.server.ts",
       "target": "@/integrations/supabase/client.server"
     },
     {
@@ -7765,7 +8073,31 @@
     },
     {
       "source": "src/lib/campaigns.functions.ts",
+      "target": "./permissions.server"
+    },
+    {
+      "source": "src/lib/campaigns.functions.ts",
+      "target": "./permissions.server"
+    },
+    {
+      "source": "src/lib/campaigns.functions.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/campaigns.functions.ts",
+      "target": "./permissions.server"
+    },
+    {
+      "source": "src/lib/campaigns.functions.ts",
+      "target": "./permissions.server"
+    },
+    {
+      "source": "src/lib/campaigns.functions.ts",
+      "target": "./permissions.server"
+    },
+    {
+      "source": "src/lib/campaigns.functions.ts",
+      "target": "./permissions.server"
     },
     {
       "source": "src/lib/atendimento-relatorios.functions.ts",
@@ -7798,6 +8130,14 @@
     {
       "source": "src/lib/parceiros-client.functions.ts",
       "target": "zod"
+    },
+    {
+      "source": "src/lib/parceiros-client.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/parceiros-client.functions.ts",
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/agendamentos-dispatch.server.ts",
@@ -7854,6 +8194,10 @@
     {
       "source": "src/lib/company-reset.functions.ts",
       "target": "zod"
+    },
+    {
+      "source": "src/lib/company-reset.functions.ts",
+      "target": "@/lib/permissions.server"
     },
     {
       "source": "src/lib/company-reset.functions.ts",
@@ -8045,6 +8389,10 @@
     },
     {
       "source": "src/lib/agent-copilot.functions.ts",
+      "target": "./lovable-ai.server"
+    },
+    {
+      "source": "src/lib/agent-copilot.functions.ts",
       "target": "./agent-sandbox.server"
     },
     {
@@ -8062,6 +8410,10 @@
     {
       "source": "src/lib/agent-copilot.functions.ts",
       "target": "./agent-copilot.server"
+    },
+    {
+      "source": "src/lib/agent-copilot.functions.ts",
+      "target": "./lovable-ai.server"
     },
     {
       "source": "src/lib/csat-config.functions.ts",
@@ -8105,11 +8457,11 @@
     },
     {
       "source": "src/lib/receipt-pdf.ts",
-      "target": "@/assets/metrix-receipt-white.png.asset.json"
+      "target": "@/assets/capi-conversa-logo-horizontal-black.png.asset.json"
     },
     {
       "source": "src/lib/receipt-pdf.ts",
-      "target": "@/assets/metrix-receipt-blue.png.asset.json"
+      "target": "@/assets/capi-conversa-logo-horizontal-black.png.asset.json"
     },
     {
       "source": "src/lib/checkout.functions.ts",
@@ -8356,6 +8708,10 @@
       "target": "@/integrations/supabase/auth-middleware"
     },
     {
+      "source": "src/lib/dapi-test.functions.ts",
+      "target": "./dapi.server"
+    },
+    {
       "source": "src/lib/resumo.functions.ts",
       "target": "@tanstack/react-start"
     },
@@ -8593,11 +8949,63 @@
     },
     {
       "source": "src/lib/agent-ai.functions.ts",
+      "target": "./permissions.server"
+    },
+    {
+      "source": "src/lib/agent-ai.functions.ts",
       "target": "./lovable-ai.server"
     },
     {
       "source": "src/lib/agent-ai.functions.ts",
       "target": "./ai-prompt"
+    },
+    {
+      "source": "src/lib/ai-admin.functions.ts",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/lib/ai-admin.functions.ts",
+      "target": "@/integrations/supabase/auth-middleware"
+    },
+    {
+      "source": "src/lib/ai-admin.functions.ts",
+      "target": "@/lib/company-cache"
+    },
+    {
+      "source": "src/lib/ai-admin.functions.ts",
+      "target": "zod"
+    },
+    {
+      "source": "src/lib/ai-admin.functions.ts",
+      "target": "./ai-admin.server"
+    },
+    {
+      "source": "src/lib/ai-admin.functions.ts",
+      "target": "./ai-admin.server"
+    },
+    {
+      "source": "src/lib/ai-admin.functions.ts",
+      "target": "./ai-admin.server"
+    },
+    {
+      "source": "src/lib/ai-admin.functions.ts",
+      "target": "./ai-admin.server"
+    },
+    {
+      "source": "src/lib/ai-admin.functions.ts",
+      "target": "./ai-admin.server"
+    },
+    {
+      "source": "src/lib/ai-admin.functions.ts",
+      "target": "./ai-admin.server"
+    },
+    {
+      "source": "src/lib/ai-admin.functions.ts",
+      "target": "./permissions.server"
+    },
+    {
+      "source": "src/lib/ai-admin.functions.ts",
+      "target": "./ai-admin.server"
     },
     {
       "source": "src/lib/team.functions.ts",
@@ -8609,7 +9017,7 @@
     },
     {
       "source": "src/lib/team.functions.ts",
-      "target": "@/integrations/supabase/client.server"
+      "target": "@/lib/permissions"
     },
     {
       "source": "src/lib/team.functions.ts",
@@ -8621,11 +9029,27 @@
     },
     {
       "source": "src/lib/team.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/team.functions.ts",
       "target": "./plan-limits.server"
     },
     {
       "source": "src/lib/team.functions.ts",
       "target": "./plan-limits.server"
+    },
+    {
+      "source": "src/lib/team.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/team.functions.ts",
+      "target": "./plan-limits.server"
+    },
+    {
+      "source": "src/lib/team.functions.ts",
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/team.functions.ts",
@@ -8670,6 +9094,14 @@
     {
       "source": "src/lib/partners.functions.ts",
       "target": "zod"
+    },
+    {
+      "source": "src/lib/partners.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/partners.functions.ts",
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/partners.functions.ts",
@@ -8770,6 +9202,10 @@
     {
       "source": "src/lib/route-guards.ts",
       "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/lib/route-guards.ts",
+      "target": "./permissions"
     },
     {
       "source": "src/lib/telegram.functions.ts",
@@ -9270,6 +9706,10 @@
     {
       "source": "src/components/app-shell.tsx",
       "target": "@/lib/i18n/context"
+    },
+    {
+      "source": "src/components/app-shell.tsx",
+      "target": "@/lib/permissions"
     },
     {
       "source": "src/components/brand-mark.tsx",
@@ -11073,6 +11513,10 @@
     },
     {
       "source": "src/components/config/equipe-tab.tsx",
+      "target": "@tanstack/react-router"
+    },
+    {
+      "source": "src/components/config/equipe-tab.tsx",
       "target": "@tanstack/react-start"
     },
     {
@@ -11094,6 +11538,10 @@
     {
       "source": "src/components/config/equipe-tab.tsx",
       "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/components/config/equipe-tab.tsx",
+      "target": "@/components/ui/checkbox"
     },
     {
       "source": "src/components/config/equipe-tab.tsx",
@@ -11130,6 +11578,10 @@
     {
       "source": "src/components/config/equipe-tab.tsx",
       "target": "@/lib/team.functions"
+    },
+    {
+      "source": "src/components/config/equipe-tab.tsx",
+      "target": "@/lib/permissions"
     },
     {
       "source": "src/components/config/equipe-tab.tsx",
@@ -12840,6 +13292,58 @@
       "target": "sonner"
     },
     {
+      "source": "src/components/master/ai-telemetry-panel.tsx",
+      "target": "react"
+    },
+    {
+      "source": "src/components/master/ai-telemetry-panel.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/components/master/ai-telemetry-panel.tsx",
+      "target": "@/components/ui/card"
+    },
+    {
+      "source": "src/components/master/ai-telemetry-panel.tsx",
+      "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/components/master/ai-telemetry-panel.tsx",
+      "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/components/master/ai-telemetry-panel.tsx",
+      "target": "@/components/ui/input"
+    },
+    {
+      "source": "src/components/master/ai-telemetry-panel.tsx",
+      "target": "@/components/ui/label"
+    },
+    {
+      "source": "src/components/master/ai-telemetry-panel.tsx",
+      "target": "@/components/ui/switch"
+    },
+    {
+      "source": "src/components/master/ai-telemetry-panel.tsx",
+      "target": "@/components/ui/select"
+    },
+    {
+      "source": "src/components/master/ai-telemetry-panel.tsx",
+      "target": "@/components/ui/dialog"
+    },
+    {
+      "source": "src/components/master/ai-telemetry-panel.tsx",
+      "target": "lucide-react"
+    },
+    {
+      "source": "src/components/master/ai-telemetry-panel.tsx",
+      "target": "sonner"
+    },
+    {
+      "source": "src/components/master/ai-telemetry-panel.tsx",
+      "target": "@/lib/ai-admin.functions"
+    },
+    {
       "source": "src/components/master/signup-welcome-card.tsx",
       "target": "react"
     },
@@ -14545,7 +15049,11 @@
     },
     {
       "source": "src/lib/storage/storage-admin.functions.ts",
-      "target": "@/lib/company-cache"
+      "target": "./storage-pool.server"
+    },
+    {
+      "source": "src/lib/storage/storage-admin.functions.ts",
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/storage/storage-admin.functions.ts",
@@ -14561,7 +15069,19 @@
     },
     {
       "source": "src/lib/storage/storage-admin.functions.ts",
-      "target": "./storage-pool.server"
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/storage/storage-admin.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/storage/storage-admin.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/storage/storage-admin.functions.ts",
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/storage/r2.server.ts",
@@ -14861,7 +15381,15 @@
     },
     {
       "source": "src/lib/automations/registry.server.ts",
+      "target": "@/lib/meta-content-sync.server"
+    },
+    {
+      "source": "src/lib/automations/registry.server.ts",
       "target": "@/lib/meta.server"
+    },
+    {
+      "source": "src/lib/automations/registry.server.ts",
+      "target": "@/lib/meta-content-sync.server"
     },
     {
       "source": "src/lib/automations/registry.server.ts",
@@ -14910,6 +15438,10 @@
     {
       "source": "src/lib/automations/functions.ts",
       "target": "./registry.server"
+    },
+    {
+      "source": "src/lib/automations/functions.ts",
+      "target": "@/lib/permissions.server"
     },
     {
       "source": "src/lib/automations/functions.ts",
@@ -15449,7 +15981,11 @@
     },
     {
       "source": "src/routes/master/sistema.tsx",
-      "target": "@/components/master/openai-spend-panel"
+      "target": "@/components/master/ai-telemetry-panel"
+    },
+    {
+      "source": "src/routes/master/sistema.tsx",
+      "target": "@/components/config/storage-vaults-tab"
     },
     {
       "source": "src/routes/master/cadastros.tsx",
@@ -15757,7 +16293,7 @@
     },
     {
       "source": "src/routes/master/planos.tsx",
-      "target": "@/integrations/supabase/client"
+      "target": "@tanstack/react-start"
     },
     {
       "source": "src/routes/master/planos.tsx",
@@ -15769,6 +16305,10 @@
     },
     {
       "source": "src/routes/master/planos.tsx",
+      "target": "@/components/ui/badge"
+    },
+    {
+      "source": "src/routes/master/planos.tsx",
       "target": "@/components/ui/input"
     },
     {
@@ -15777,15 +16317,11 @@
     },
     {
       "source": "src/routes/master/planos.tsx",
-      "target": "@/components/ui/textarea"
-    },
-    {
-      "source": "src/routes/master/planos.tsx",
       "target": "@/components/ui/switch"
     },
     {
       "source": "src/routes/master/planos.tsx",
-      "target": "@/components/ui/badge"
+      "target": "@/components/ui/textarea"
     },
     {
       "source": "src/routes/master/planos.tsx",
@@ -15793,7 +16329,7 @@
     },
     {
       "source": "src/routes/master/planos.tsx",
-      "target": "@/config/brand"
+      "target": "lucide-react"
     },
     {
       "source": "src/routes/master/planos.tsx",
@@ -15801,7 +16337,15 @@
     },
     {
       "source": "src/routes/master/planos.tsx",
-      "target": "lucide-react"
+      "target": "@/config/brand"
+    },
+    {
+      "source": "src/routes/master/planos.tsx",
+      "target": "@/lib/plan-admin.functions"
+    },
+    {
+      "source": "src/routes/master/planos.tsx",
+      "target": "@/lib/plan-features"
     },
     {
       "source": "src/routes/master/empresas.tsx",
@@ -16261,11 +16805,31 @@
     },
     {
       "source": "src/routes/app/checkout.tsx",
+      "target": "@tanstack/react-start"
+    },
+    {
+      "source": "src/routes/app/checkout.tsx",
       "target": "@/integrations/supabase/client"
     },
     {
       "source": "src/routes/app/checkout.tsx",
       "target": "@/components/ui/button"
+    },
+    {
+      "source": "src/routes/app/checkout.tsx",
+      "target": "@/components/ui/input"
+    },
+    {
+      "source": "src/routes/app/checkout.tsx",
+      "target": "@/components/ui/label"
+    },
+    {
+      "source": "src/routes/app/checkout.tsx",
+      "target": "@/components/ui/card"
+    },
+    {
+      "source": "src/routes/app/checkout.tsx",
+      "target": "@/components/ui/badge"
     },
     {
       "source": "src/routes/app/checkout.tsx",
@@ -16285,11 +16849,27 @@
     },
     {
       "source": "src/routes/app/checkout.tsx",
-      "target": "@tanstack/react-start"
+      "target": "@/lib/plan-admin.functions"
+    },
+    {
+      "source": "src/routes/app/checkout.tsx",
+      "target": "@/lib/plan-checkout.functions"
+    },
+    {
+      "source": "src/routes/app/checkout.tsx",
+      "target": "@/lib/billing-checkout.functions"
+    },
+    {
+      "source": "src/routes/app/checkout.tsx",
+      "target": "@/lib/plan-features"
     },
     {
       "source": "src/routes/app/checkout.tsx",
       "target": "@/lib/tenant"
+    },
+    {
+      "source": "src/routes/app/checkout.tsx",
+      "target": "@/lib/route-guards"
     },
     {
       "source": "src/routes/app/agendamentos.tsx",
@@ -16480,6 +17060,10 @@
       "target": "@tanstack/react-router"
     },
     {
+      "source": "src/routes/app/automacoes.tsx",
+      "target": "@/lib/route-guards"
+    },
+    {
       "source": "src/routes/app/onboarding.tsx",
       "target": "@tanstack/react-router"
     },
@@ -16621,6 +17205,10 @@
     },
     {
       "source": "src/routes/app/campanhas.tsx",
+      "target": "@/lib/route-guards"
+    },
+    {
+      "source": "src/routes/app/campanhas.tsx",
       "target": "xlsx"
     },
     {
@@ -16634,6 +17222,10 @@
     {
       "source": "src/routes/app/usuarios.tsx",
       "target": "@/config/brand"
+    },
+    {
+      "source": "src/routes/app/usuarios.tsx",
+      "target": "@/lib/route-guards"
     },
     {
       "source": "src/routes/app/conexao.tsx",
@@ -16738,6 +17330,10 @@
     {
       "source": "src/routes/app/conexao.tsx",
       "target": "@/components/config/meta-capi-card"
+    },
+    {
+      "source": "src/routes/app/conexao.tsx",
+      "target": "@/lib/route-guards"
     },
     {
       "source": "src/routes/app/conexao.tsx",
@@ -16914,6 +17510,10 @@
     {
       "source": "src/routes/app/catalogo.tsx",
       "target": "@/lib/i18n/context"
+    },
+    {
+      "source": "src/routes/app/catalogo.tsx",
+      "target": "@/lib/route-guards"
     },
     {
       "source": "src/routes/app/treinamentos.$courseId.tsx",
@@ -17189,7 +17789,15 @@
     },
     {
       "source": "src/routes/app/configuracoes.tsx",
-      "target": "@/components/config/storage-vaults-tab"
+      "target": "@/lib/plan-features"
+    },
+    {
+      "source": "src/routes/app/configuracoes.tsx",
+      "target": "@/lib/ai-admin.functions"
+    },
+    {
+      "source": "src/routes/app/configuracoes.tsx",
+      "target": "@/lib/permissions"
     },
     {
       "source": "src/routes/app/configuracoes.tsx",
@@ -17616,6 +18224,10 @@
       "target": "lucide-react"
     },
     {
+      "source": "src/routes/app/publicacoes.tsx",
+      "target": "@/lib/route-guards"
+    },
+    {
       "source": "src/routes/app/comercial.tsx",
       "target": "@tanstack/react-router"
     },
@@ -17722,6 +18334,10 @@
     {
       "source": "src/routes/app/comercial.tsx",
       "target": "@/lib/i18n/context"
+    },
+    {
+      "source": "src/routes/app/comercial.tsx",
+      "target": "@/lib/route-guards"
     },
     {
       "source": "src/routes/app/agente.tsx",
@@ -17884,6 +18500,10 @@
       "target": "@/lib/utils"
     },
     {
+      "source": "src/routes/app/agente.tsx",
+      "target": "@/lib/route-guards"
+    },
+    {
       "source": "src/routes/app/prospeccao.tsx",
       "target": "@tanstack/react-router"
     },
@@ -17968,6 +18588,10 @@
       "target": "@/lib/i18n/context"
     },
     {
+      "source": "src/routes/app/prospeccao.tsx",
+      "target": "@/lib/route-guards"
+    },
+    {
       "source": "src/routes/app/relatorios.tsx",
       "target": "@tanstack/react-router"
     },
@@ -18022,6 +18646,10 @@
     {
       "source": "src/routes/app/relatorios.tsx",
       "target": "@/config/brand"
+    },
+    {
+      "source": "src/routes/app/relatorios.tsx",
+      "target": "@/lib/route-guards"
     },
     {
       "source": "src/routes/app/relatorios.tsx",
@@ -18086,6 +18714,10 @@
     {
       "source": "src/routes/app/conteudo.tsx",
       "target": "@/lib/social-content.types"
+    },
+    {
+      "source": "src/routes/app/conteudo.tsx",
+      "target": "@/lib/route-guards"
     },
     {
       "source": "src/routes/app/treinamentos.tsx",
@@ -18234,6 +18866,10 @@
     {
       "source": "src/routes/app/plugins.tsx",
       "target": "@/lib/i18n/context"
+    },
+    {
+      "source": "src/routes/app/plugins.tsx",
+      "target": "@/lib/route-guards"
     },
     {
       "source": "src/routes/app/automacoes.$workflowId.tsx",
@@ -18693,11 +19329,19 @@
     },
     {
       "source": "src/routes/api/public/meta-webhook.ts",
+      "target": "@/lib/meta-content-sync.server"
+    },
+    {
+      "source": "src/routes/api/public/meta-webhook.ts",
       "target": "@/lib/meta.server"
     },
     {
       "source": "src/routes/api/public/meta-webhook.ts",
       "target": "@/lib/meta.server"
+    },
+    {
+      "source": "src/routes/api/public/meta-webhook.ts",
+      "target": "@/lib/meta-content-sync.server"
     },
     {
       "source": "src/routes/api/public/meta-webhook.ts",

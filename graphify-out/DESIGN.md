@@ -1,6 +1,6 @@
 # Design system
 
-Generated: 2026-11-25T23:17:18.430386+00:00
+Generated: 2026-11-27T05:23:52.996048+00:00
 
 ## Tokens
 - --radius-sm: calc(var(--radius) - 4px) (src/styles.css)
@@ -354,6 +354,7 @@ Generated: 2026-11-25T23:17:18.430386+00:00
 - src/components/language-switcher.tsx
 - src/components/legal-shell.tsx
 - src/components/master-subtabs.tsx
+- src/components/master/ai-telemetry-panel.tsx
 - src/components/master/alerts-bell.tsx
 - src/components/master/billing-panel.tsx
 - src/components/master/charges-panel.tsx
