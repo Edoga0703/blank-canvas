@@ -2206,7 +2206,13 @@ function AgentePage() {
                       <Textarea
                         value={cfg?.apresentacao || ""}
                         onChange={(e) => setCfg({ ...cfg, apresentacao: e.target.value })}
-                        placeholder={`Ex: Oi! Aqui é a ${cfg?.nome_agente || "Lia"} da ${cfg?.nome_empresa || "sua empresa"}. Vi que você chegou pelo anúncio — me conta rapidinho o que você procura?`}
+                        placeholder={
+                          language === "es"
+                            ? `Ej: ¡Hola! Soy ${cfg?.nome_agente || "Lía"} de ${cfg?.nome_empresa || "tu empresa"}. Vi que llegaste por nuestro anuncio — ¿me cuentas rápido qué estás buscando?`
+                            : language === "en"
+                              ? `Ex: Hi! I'm ${cfg?.nome_agente || "Lia"} from ${cfg?.nome_empresa || "your company"}. Saw you came from our ad — what are you looking for?`
+                              : `Ex: Oi! Aqui é a ${cfg?.nome_agente || "Lia"} da ${cfg?.nome_empresa || "sua empresa"}. Vi que você chegou pelo anúncio — me conta rapidinho o que você procura?`
+                        }
                         rows={3}
                       />
                       <p className="text-[11px] text-muted-foreground">
@@ -2220,7 +2226,11 @@ function AgentePage() {
                       <Textarea
                         value={cfg?.como_vender || ""}
                         onChange={(e) => setCfg({ ...cfg, como_vender: e.target.value })}
-                        placeholder={"1. Confirme o nome do cliente\n2. Pergunte o que ele procura\n3. Pergunte prazo/urgência\n4. Pergunte orçamento\n5. Ofereça a solução e conduza para agendamento"}
+                        placeholder={
+                          language === "es"
+                            ? "1. Confirma el nombre del cliente\n2. Pregunta qué está buscando\n3. Pregunta plazo/urgencia\n4. Pregunta presupuesto\n5. Ofrece la solución y guía hacia la cita o compra"
+                            : "1. Confirme o nome do cliente\n2. Pergunte o que ele procura\n3. Pergunte prazo/urgência\n4. Pergunte orçamento\n5. Ofereça a solução e conduza para agendamento"
+                        }
                         rows={9}
                       />
                       <p className="text-[11px] text-muted-foreground">
@@ -2234,7 +2244,11 @@ function AgentePage() {
                       <Textarea
                         value={cfg?.objecoes || ""}
                         onChange={(e) => setCfg({ ...cfg, objecoes: e.target.value })}
-                        placeholder={'"Tá caro" → mostre o valor e as condições de pagamento\n"Vou pensar" → pergunte qual é a dúvida que ficou'}
+                        placeholder={
+                          language === "es"
+                            ? '"Está caro" → muestra el valor y las facilidades de pago\n"Lo voy a pensar" → pregunta qué duda quedó pendiente'
+                            : '"Tá caro" → mostre o valor e as condições de pagamento\n"Vou pensar" → pergunte qual é a dúvida que ficou'
+                        }
                         rows={7}
                       />
                     </Section>
@@ -2242,7 +2256,11 @@ function AgentePage() {
                       <Textarea
                         value={cfg?.faq || ""}
                         onChange={(e) => setCfg({ ...cfg, faq: e.target.value })}
-                        placeholder={"Vocês atendem em qual região? → ...\nQual a forma de pagamento? → ..."}
+                        placeholder={
+                          language === "es"
+                            ? "¿En qué zonas atienden? → ...\n¿Qué formas de pago aceptan? → ..."
+                            : "Vocês atendem em qual região? → ...\nQual a forma de pagamento? → ..."
+                        }
                         rows={7}
                       />
                     </Section>
@@ -2254,7 +2272,11 @@ function AgentePage() {
                         value={cfg?.posvenda_msg || ""}
                         onChange={(e) => setCfg({ ...cfg, posvenda_msg: e.target.value })}
                         rows={3}
-                        placeholder="Ex: Oi {nome}, tudo certo com o seu pedido? Qualquer coisa é só me chamar por aqui."
+                        placeholder={
+                          language === "es"
+                            ? "Ej: ¡Hola {nombre}! ¿Todo bien con tu pedido? Cualquier duda me escribes por aquí."
+                            : "Ex: Oi {nome}, tudo certo com o seu pedido? Qualquer coisa é só me chamar por aqui."
+                        }
                       />
                     </Section>
                   )}

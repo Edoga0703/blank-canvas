@@ -171,7 +171,9 @@ function UsuariosPanel({
   createSignal: number;
   showInlineCreate: boolean;
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const isEs = language === "es";
+  const isEn = language === "en";
   const list = useServerFn(listTeam);
   const invite = useServerFn(inviteMember);
   const update = useServerFn(updateMember);
@@ -738,9 +740,17 @@ function UsuariosPanel({
       <Dialog open={dlgOpen} onOpenChange={(o) => { setDlgOpen(o); if (!o) resetForm(); }}>
         <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing ? "Editar usuário" : "Novo Usuário"}</DialogTitle>
+            <DialogTitle>
+              {editing
+                ? isEs ? "Editar usuario" : isEn ? "Edit user" : "Editar usuário"
+                : isEs ? "Nuevo Usuario" : isEn ? "New User" : "Novo Usuário"}
+            </DialogTitle>
             <DialogDescription>
-              Vincule o usuário a uma ou mais conexões e departamentos.
+              {isEs
+                ? "Vincula al usuario a una o más conexiones y departamentos."
+                : isEn
+                  ? "Link the user to one or more connections and departments."
+                  : "Vincule o usuário a uma ou mais conexões e departamentos."}
             </DialogDescription>
           </DialogHeader>
 
@@ -753,25 +763,33 @@ function UsuariosPanel({
               <input ref={fileRef} type="file" accept="image/*" className="hidden"
                 onChange={(e) => onPickPhoto(e.target.files?.[0] ?? null)} />
               <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-                <Upload className="size-3.5 mr-1.5" /> Foto (opcional)
+                <Upload className="size-3.5 mr-1.5" /> {isEs ? "Foto (opcional)" : isEn ? "Photo (optional)" : "Foto (opcional)"}
               </Button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2">
-                <Label>Nome</Label>
+                <Label>{isEs ? "Nombre" : isEn ? "Name" : "Nome"}</Label>
                 <Input required value={nome} onChange={(e) => setNome(e.target.value)} />
               </div>
               <div className="sm:col-span-2">
-                <Label>Email</Label>
+                <Label>{isEs ? "Correo electrónico" : "Email"}</Label>
                 <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={!!editing} />
               </div>
               <div className="sm:col-span-2">
-                <Label>{editing ? "Nova senha (opcional)" : "Senha"}</Label>
+                <Label>
+                  {editing
+                    ? isEs ? "Nueva contraseña (opcional)" : isEn ? "New password (optional)" : "Nova senha (opcional)"
+                    : isEs ? "Contraseña" : isEn ? "Password" : "Senha"}
+                </Label>
                 <div className="relative">
                   <Input type={showPwd ? "text" : "password"} required={!editing} minLength={editing ? undefined : 8}
                     value={password} onChange={(e) => setPassword(e.target.value)}
-                    placeholder={editing ? "Deixe em branco para manter" : "Mínimo 8 caracteres"} className="pr-9" />
+                    placeholder={
+                      editing
+                        ? isEs ? "Dejar en blanco para mantener" : isEn ? "Leave blank to keep current" : "Deixe em branco para manter"
+                        : isEs ? "Mínimo 8 caracteres" : isEn ? "Minimum 8 characters" : "Mínimo 8 caracteres"
+                    } className="pr-9" />
                   <button type="button" onClick={() => setShowPwd((v) => !v)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
                     {showPwd ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -780,7 +798,7 @@ function UsuariosPanel({
               </div>
 
               <div>
-                <Label>Perfil Rápido (Preset)</Label>
+                <Label>{isEs ? "Perfil Rápido (Preset)" : isEn ? "Quick Profile (Preset)" : "Perfil Rápido (Preset)"}</Label>
                 <Select
                   value={role}
                   disabled={editing?.role === "owner"}
@@ -788,23 +806,39 @@ function UsuariosPanel({
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="atendente">Atendente / Vendedor</SelectItem>
-                    <SelectItem value="supervisor">Supervisor Comercial</SelectItem>
+                    <SelectItem value="atendente">{isEs ? "Agente / Vendedor" : isEn ? "Agent / Sales" : "Atendente / Vendedor"}</SelectItem>
+                    <SelectItem value="supervisor">{isEs ? "Supervisor Comercial" : isEn ? "Sales Supervisor" : "Supervisor Comercial"}</SelectItem>
                     <SelectItem value="marketing">Marketing &amp; Social</SelectItem>
-                    <SelectItem value="admin" disabled={!isOwner}>Administrador da Empresa</SelectItem>
+                    <SelectItem value="admin" disabled={!isOwner}>{isEs ? "Administrador de la Empresa" : isEn ? "Company Admin" : "Administrador da Empresa"}</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  {PERMISSION_PRESETS[role]?.description}
+                  {isEs
+                    ? role === "atendente"
+                      ? "Atiende sus propios chats, transfiere y sigue sus leads en el CRM."
+                      : role === "supervisor"
+                        ? "Ve todos los chats/leads del equipo, edita embudos, sigue reportes y conexiones."
+                        : role === "marketing"
+                          ? "Gestiona campañas masivas, publicaciones, catálogo, automatizaciones y reportes."
+                          : "Acceso total a todos los módulos, equipo, facturación y configuraciones."
+                    : isEn
+                      ? role === "atendente"
+                        ? "Handles assigned chats, transfers conversations and tracks leads in CRM."
+                        : role === "supervisor"
+                          ? "Sees all team chats/leads, edits funnels, tracks reports and connections."
+                          : role === "marketing"
+                            ? "Manages campaigns, social posts, catalog, automations and reports."
+                            : "Full access to all modules, team, billing and settings."
+                      : PERMISSION_PRESETS[role]?.description}
                 </p>
               </div>
 
               <div>
-                <Label>Função personalizada</Label>
+                <Label>{isEs ? "Rol personalizado" : isEn ? "Custom role" : "Função personalizada"}</Label>
                 <Select value={customRoleId} onValueChange={setCustomRoleId}>
-                  <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={isEs ? "Ninguno" : isEn ? "None" : "Nenhuma"} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">Nenhuma</SelectItem>
+                    <SelectItem value="__none__">{isEs ? "Ninguno" : isEn ? "None" : "Nenhuma"}</SelectItem>
                     {roles.filter((r) => r.ativo).map((r) => (
                       <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
                     ))}
@@ -813,7 +847,10 @@ function UsuariosPanel({
               </div>
 
               <div>
-                <Label className="flex items-center gap-1.5"><MessageSquare className="size-3.5" /> Máx. atendimentos simultâneos</Label>
+                <Label className="flex items-center gap-1.5">
+                  <MessageSquare className="size-3.5" />{" "}
+                  {isEs ? "Máx. atenciones simultáneas" : isEn ? "Max concurrent chats" : "Máx. atendimentos simultâneos"}
+                </Label>
                 <Input type="number" min={1} max={999} value={maxChats}
                   onChange={(e) => setMaxChats(Math.max(1, Number(e.target.value) || 1))} />
               </div>
@@ -821,9 +858,11 @@ function UsuariosPanel({
 
             {/* Departamentos */}
             <div>
-              <Label>Departamentos</Label>
+              <Label>{isEn ? "Departments" : "Departamentos"}</Label>
               {deps.length === 0 ? (
-                <p className="text-xs text-muted-foreground mt-1">Nenhum departamento cadastrado.</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {isEs ? "Ningún departamento registrado." : isEn ? "No departments registered." : "Nenhum departamento cadastrado."}
+                </p>
               ) : (
                 <div className="mt-2 flex flex-wrap gap-1.5 p-3 border rounded-md">
                   {deps.map((d) => {
@@ -847,9 +886,11 @@ function UsuariosPanel({
 
             {/* Conexões */}
             <div>
-              <Label>Conexões vinculadas</Label>
+              <Label>{isEs ? "Conexiones vinculadas" : isEn ? "Linked connections" : "Conexões vinculadas"}</Label>
               {instances.length === 0 ? (
-                <p className="text-xs text-muted-foreground mt-1">Nenhuma conexão disponível.</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {isEs ? "Ninguna conexión disponible." : isEn ? "No connections available." : "Nenhuma conexão disponível."}
+                </p>
               ) : (
                 <div className="mt-2 flex flex-wrap gap-1.5 p-3 border rounded-md">
                   {instances.map((i: any) => {
@@ -869,12 +910,18 @@ function UsuariosPanel({
 
             {/* Funis */}
             <div>
-              <Label>Funis com acesso</Label>
+              <Label>{isEs ? "Embudos con acceso" : isEn ? "Accessible funnels" : "Funis com acesso"}</Label>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Se nenhum for marcado, o usuário vê todos os funis. Donos e administradores sempre veem todos.
+                {isEs
+                  ? "Si no se marca ninguno, el usuario ve todos los embudos. Los dueños y administradores siempre ven todos."
+                  : isEn
+                    ? "If none is selected, the user sees all funnels. Owners and administrators always see all."
+                    : "Se nenhum for marcado, o usuário vê todos os funis. Donos e administradores sempre veem todos."}
               </p>
               {pipes.length === 0 ? (
-                <p className="text-xs text-muted-foreground mt-1">Nenhum funil cadastrado.</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {isEs ? "Ningún embudo registrado." : isEn ? "No funnels registered." : "Nenhum funil cadastrado."}
+                </p>
               ) : (
                 <div className="mt-2 flex flex-wrap gap-1.5 p-3 border rounded-md">
                   {pipes.map((p) => {
@@ -900,17 +947,23 @@ function UsuariosPanel({
               >
                 <span className="flex items-center gap-2">
                   <KeyRound className="size-3.5 text-primary" />
-                  Permissões individuais deste usuário
+                  {isEs ? "Permisos individuales de este usuario" : isEn ? "Individual user permissions" : "Permissões individuais deste usuário"}
                 </span>
                 {permsExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
               </button>
 
               {permsExpanded && (
                 <div className="p-3.5 border-t space-y-3 bg-muted/15">
-                  <div className="rounded-md bg-amber-500/10 border border-amber-500/25 px-3 py-2 text-[11px] text-amber-800 flex items-start gap-2">
+                  <div className="rounded-md bg-amber-500/10 border border-amber-500/25 px-3 py-2 text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-2">
                     <Lock className="size-3.5 mt-0.5 shrink-0" />
                     <span>
-                      <b>Plano / Faturamento</b>, <b>Gestão de Equipe</b> e <b>Resetar Sistema</b> ficam sempre restritos ao Proprietário e Administradores.
+                      {isEs ? (
+                        <><b>Plan / Facturación</b>, <b>Gestión de Equipo</b> y <b>Restablecer Sistema</b> están siempre restringidos a Propietario y Administradores.</>
+                      ) : isEn ? (
+                        <><b>Plan / Billing</b>, <b>Team Management</b> and <b>Reset System</b> are always restricted to Owners and Administrators.</>
+                      ) : (
+                        <><b>Plano / Faturamento</b>, <b>Gestão de Equipe</b> e <b>Resetar Sistema</b> ficam sempre restritos ao Proprietário e Administradores.</>
+                      )}
                     </span>
                   </div>
 
@@ -965,10 +1018,14 @@ function UsuariosPanel({
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setDlgOpen(false)}>Cancelar</Button>
+              <Button type="button" variant="ghost" onClick={() => setDlgOpen(false)}>
+                {isEn ? "Cancel" : "Cancelar"}
+              </Button>
               <Button type="submit" disabled={busy}>
                 {busy ? <Loader2 className="size-4 mr-1.5 animate-spin" /> : null}
-                {editing ? "Salvar" : "Cadastrar"}
+                {editing
+                  ? isEs ? "Guardar" : isEn ? "Save" : "Salvar"
+                  : isEs ? "Registrar" : isEn ? "Create" : "Cadastrar"}
               </Button>
             </DialogFooter>
           </form>

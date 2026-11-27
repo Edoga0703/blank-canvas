@@ -46,7 +46,7 @@ export const saveSecretaryConfig = createServerFn({ method: "POST" })
     timezone?: string;
   }) => {
     if (!d?.agentId || typeof d.agentId !== "string") {
-      throw new Error("ID do agente é obrigatório.");
+      throw new Error("El ID del agente es obligatorio.");
     }
     return {
       agentId: d.agentId.trim(),
@@ -76,10 +76,10 @@ export const saveSecretaryConfig = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (error) {
-      throw new Error(`Falha ao salvar configuração do Secretário: ${error.message}`);
+      throw new Error(error.message || "Error al guardar la configuración del Secretario.");
     }
     if (!updated) {
-      throw new Error("Agente não encontrado para esta empresa.");
+      throw new Error("Agente no encontrado para esta empresa.");
     }
 
     return { ok: true, config: updated };
@@ -108,7 +108,7 @@ export const listPendingApprovals = createServerFn({ method: "POST" })
 
     const { data: rows, error } = await query;
     if (error) {
-      throw new Error(`Falha ao listar aprovações: ${error.message}`);
+      throw new Error(error.message || "Error al listar aprobaciones.");
     }
 
     const sorted = [...(rows ?? [])].sort((a: any, b: any) => {
@@ -126,9 +126,9 @@ export const listPendingApprovals = createServerFn({ method: "POST" })
 export const resolveApprovalFromPanel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { approvalId: string; decision: "approved" | "rejected" }) => {
-    if (!d?.approvalId) throw new Error("ID da aprovação é obrigatório.");
+    if (!d?.approvalId) throw new Error("El ID de la aprobación es obligatorio.");
     if (d.decision !== "approved" && d.decision !== "rejected") {
-      throw new Error("Decisão inválida.");
+      throw new Error("Decisión inválida.");
     }
     return {
       approvalId: String(d.approvalId).trim(),

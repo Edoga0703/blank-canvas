@@ -99,11 +99,21 @@ export async function testExternalWebhook(params: WebhookTestParams): Promise<We
       method,
       headers,
       body: bodyStr,
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(8000), // 8s timeout máximo
     });
 
     const latencyMs = Date.now() - start;
+    if (res.status >= 300 && res.status < 400) {
+      return {
+        ok: false,
+        status: 403,
+        statusText: "Forbidden",
+        latencyMs,
+        responseSample: null,
+        error: `Redirección bloqueada por seguridad SSRF (HTTP ${res.status}).`,
+      };
+    }
     const contentType = res.headers.get("content-type") || "";
 
     let responseSample: any = null;

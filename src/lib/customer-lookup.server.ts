@@ -76,9 +76,14 @@ export async function queryCustomerLookup(
       method,
       headers,
       body,
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(4000), // Timeout de 4s para no ralentizar el bot
     });
+
+    if (res.status >= 300 && res.status < 400) {
+      console.warn(`[customer-lookup] Redirección bloqueada por seguridad SSRF (HTTP ${res.status}): ${url}`);
+      return "";
+    }
 
     if (!res.ok) {
       console.warn(`[customer-lookup] API responded with ${res.status}: ${res.statusText}`);

@@ -603,7 +603,7 @@ export const listAgentTools = createServerFn({ method: "POST" })
       .order("created_at", { ascending: true });
 
     if (error) {
-      throw new Error(`Falha ao listar ferramentas: ${error.message}`);
+      throw new Error(error.message || "Error al listar herramientas.");
     }
 
     return {
@@ -618,7 +618,7 @@ export const listAgentTools = createServerFn({ method: "POST" })
 export const toggleAgentTool = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { toolId: string; active: boolean }) => {
-    if (!d?.toolId) throw new Error("ID da ferramenta é obrigatório.");
+    if (!d?.toolId) throw new Error("El ID de la herramienta es obligatorio.");
     return {
       toolId: String(d.toolId).trim(),
       active: Boolean(d.active),
@@ -641,10 +641,10 @@ export const toggleAgentTool = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (error) {
-      throw new Error(`Falha ao atualizar ferramenta: ${error.message}`);
+      throw new Error(error.message || "Error al actualizar herramienta.");
     }
     if (!updated) {
-      throw new Error("Ferramenta não encontrada.");
+      throw new Error("Herramienta no encontrada.");
     }
 
     return { ok: true, id: updated.id, active: updated.active };
@@ -656,7 +656,7 @@ export const toggleAgentTool = createServerFn({ method: "POST" })
 export const deleteAgentTool = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { toolId: string }) => {
-    if (!d?.toolId) throw new Error("ID da ferramenta é obrigatório.");
+    if (!d?.toolId) throw new Error("El ID de la herramienta es obligatorio.");
     return {
       toolId: String(d.toolId).trim(),
     };
@@ -673,7 +673,7 @@ export const deleteAgentTool = createServerFn({ method: "POST" })
       .eq("id", data.toolId);
 
     if (error) {
-      throw new Error(`Falha ao excluir ferramenta: ${error.message}`);
+      throw new Error(error.message || "Error al eliminar herramienta.");
     }
 
     return { ok: true };

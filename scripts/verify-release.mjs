@@ -51,6 +51,7 @@ const migrationPairs = [
   "20261127040000_agent_verified_tools_and_outbox.sql",
   "20261127050000_agent_secretary_and_hitl_approvals.sql",
   "20261127060000_agent_studio_mode_and_versions.sql",
+  "20261127070000_grant_agent_v2_tables_and_rpcs.sql",
 ];
 
 let migrationsOk = true;

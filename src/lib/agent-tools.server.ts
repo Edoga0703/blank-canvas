@@ -332,11 +332,20 @@ export async function executeVerifiedTool(
       method,
       headers,
       body: bodyStr,
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(8000),
     });
 
     const latencyMs = Date.now() - startedAt;
+    if (res.status >= 300 && res.status < 400) {
+      return {
+        ok: false,
+        status: 403,
+        latencyMs,
+        data: null,
+        error: `Redirección bloqueada por política de seguridad SSRF (HTTP ${res.status}).`,
+      };
+    }
     const contentType = res.headers.get("content-type") || "";
     const text = await res.text();
     const data = truncateToolData(text, contentType);
@@ -424,9 +433,34 @@ export async function dispatchWebhookOutboxItem(
       method,
       headers,
       body: bodyStr,
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(6000),
     });
+
+    if (res.status >= 300 && res.status < 400) {
+      const ssrfErr = `Redirección bloqueada por política SSRF (HTTP ${res.status}).`;
+      try {
+        await admin
+          .from("agent_webhook_outbox")
+          .update({
+            status: "failed",
+            http_status: 403,
+            attempts,
+            last_error: ssrfErr,
+            sent_at: null,
+          })
+          .eq("id", outboxId);
+      } catch (updErr: any) {
+        console.warn("[agent-tools] Failed updating outbox status:", updErr?.message);
+      }
+      return {
+        ok: false,
+        outboxId,
+        status: "failed",
+        httpStatus: 403,
+        error: ssrfErr,
+      };
+    }
 
     let rawText = "";
     try {
