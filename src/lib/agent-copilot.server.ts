@@ -3,7 +3,7 @@ import { buildSystemPrompt, parseAiOutput, type AgentConfig } from "@/lib/ai-pro
 import { redactToolHeaders } from "@/lib/agent-tools.server";
 
 export interface CopilotActionProposal {
-  type: "catalog" | "rule" | "config" | "simulation" | "audit" | "test_webhook" | "webhook" | "tool";
+  type: "catalog" | "rule" | "replace_rules" | "config" | "simulation" | "audit" | "test_webhook" | "webhook" | "tool";
   title: string;
   description: string;
   status: "pending" | "applied" | "rejected";
@@ -129,20 +129,48 @@ export async function getAgentCopilotContext(
     .filter((s: any) => s.status === "pending");
 
   let agentTools: any[] = [];
-  if (agentCfg?.id) {
-    try {
-      const { data: toolsRows } = await supabase
-        .from("agent_tools")
-        .select("id, name, display_name, description, kind, method, url, headers, input_schema, body_template, permission_level, verified, verified_at, last_test_status, last_test_latency_ms, active, updated_at")
-        .eq("company_id", companyId)
-        .eq("agent_id", agentCfg.id)
-        .order("created_at", { ascending: true });
-      agentTools = (toolsRows ?? []).map((t: any) => ({
-        ...t,
-        headers: redactToolHeaders(t.headers),
-      }));
-    } catch {}
-  }
+  let recentTraces: Array<{ route: string; error: string; latency_ms: number | null; created_at: string }> = [];
+
+  await Promise.all([
+    (async () => {
+      if (!agentCfg?.id) return;
+      try {
+        const { data: toolsRows } = await supabase
+          .from("agent_tools")
+          .select("id, name, display_name, description, kind, method, url, headers, input_schema, body_template, permission_level, verified, verified_at, last_test_status, last_test_latency_ms, active, updated_at")
+          .eq("company_id", companyId)
+          .eq("agent_id", agentCfg.id)
+          .order("created_at", { ascending: true });
+        agentTools = (toolsRows ?? []).map((t: any) => ({
+          ...t,
+          headers: redactToolHeaders(t.headers),
+        }));
+      } catch {}
+    })(),
+    (async () => {
+      try {
+        let traceQuery = supabase
+          .from("ai_turn_traces")
+          .select("route, error, latency_ms, created_at")
+          .eq("company_id", companyId)
+          .not("error", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(5);
+        if (agentCfg?.id) {
+          traceQuery = traceQuery.eq("agent_id", agentCfg.id);
+        }
+        const { data: traceRows } = await traceQuery;
+        recentTraces = (traceRows ?? [])
+          .filter((r: any) => String(r?.error || "").trim().length > 0)
+          .map((r: any) => ({
+            route: String(r.route || "general"),
+            error: String(r.error || "").trim(),
+            latency_ms: r.latency_ms ?? null,
+            created_at: String(r.created_at || ""),
+          }));
+      } catch {}
+    })(),
+  ]);
 
   return {
     agent: agentCfg as AgentConfig | null,
@@ -150,10 +178,18 @@ export async function getAgentCopilotContext(
     stages: stages ?? [],
     pendingSuggestions,
     agentTools,
+    recentTraces,
     channels: {
       whatsapp: waInstances ?? [],
     },
   };
+}
+
+function capText(text: unknown, maxChars: number): string {
+  const clean = String(text ?? "").trim();
+  if (!clean) return "";
+  if (clean.length <= maxChars) return clean;
+  return `${clean.slice(0, maxChars).trimEnd()}... [truncado]`;
 }
 
 /**
@@ -165,6 +201,7 @@ export function buildCopilotSystemPrompt(context: {
   stages: any[];
   pendingSuggestions: any[];
   agentTools?: any[];
+  recentTraces?: Array<{ route: string; error: string; latency_ms: number | null; created_at: string }>;
   channels: any;
 }): string {
   const agent = context.agent || {};
@@ -172,7 +209,7 @@ export function buildCopilotSystemPrompt(context: {
   const suggestions = context.pendingSuggestions || [];
 
   const catalogSummary = produtos.length > 0
-    ? produtos.map((p) => `- ${p.nome}: $${p.preco} (${p.categoria || "Geral"}) ${p.ativo ? "[Activo]" : "[Inactivo]"}`).join("\n")
+    ? produtos.map((p) => `- ${p.nome}${p.sku ? ` [SKU: ${p.sku}]` : ""}: $${p.preco} (${p.categoria || "Geral"}) ${p.ativo ? "[Activo]" : "[Inactivo]"}`).join("\n")
     : "Sin productos registrados en el catálogo.";
 
   const pendingSuggestionsSummary = suggestions.length > 0
@@ -196,6 +233,27 @@ export function buildCopilotSystemPrompt(context: {
         .join("\n")
     : "Sin herramientas verificadas registradas aún.";
 
+  const rawKnowledgeFiles = Array.isArray(agent.knowledge_files) ? agent.knowledge_files : [];
+  const ragFilesSummary = rawKnowledgeFiles.length > 0
+    ? rawKnowledgeFiles
+        .map((f: any) => `- ${f?.name || "Archivo"} | textStatus: ${f?.textStatus || "pendiente"} | textChars: ${Number(f?.textChars || 0)}`)
+        .join("\n")
+    : "Sin archivos RAG indexados.";
+
+  const recentTraces = context.recentTraces || [];
+  const recentErrorsSummary = recentTraces.length > 0
+    ? recentTraces
+        .map((t) => `- ${t.created_at} | ${t.route} | ${capText(t.error, 180)}`)
+        .join("\n")
+    : "Sin errores recientes en trazas del motor.";
+
+  const cappedRegras = capText(agent.regras_rigidas, 5000);
+  const cappedComoVender = capText(agent.como_vender, 2500);
+  const cappedNaoPode = capText(agent.nao_pode_fazer, 1200);
+  const cappedFaq = capText(agent.faq, 1200);
+  const cappedObjecoes = capText(agent.objecoes, 1200);
+  const cappedPoliticas = capText(agent.politicas, 1200);
+
   return `Eres el "AI Studio Copilot", el Consultor Senior de Inteligencia Artificial y Arquitecto de Agentes NATIVO dentro del CRM Capiconversa.
 
 CONTEXTO DE TU ENTORNO:
@@ -214,7 +272,8 @@ TUS CAPACIDADES Y ACCESO INTERNO:
 1. Conoces la arquitectura de Capiconversa a fondo:
    - 'regras_rigidas': Directivas estrictas prioritarias que el bot nunca debe romper.
    - 'sobre_empresa' / 'descricao_negocio': Identidad, qué vende, horarios, ubicación y propuesta de valor.
-   - 'produto': Catálogo oficial con precios, categorías y disponibilidad.
+   - 'como_vender', 'nao_pode_fazer', 'faq', 'objecoes', 'politicas': Guion comercial, límites negativos y políticas oficiales.
+   - 'produto': Catálogo oficial con precios, categorías y disponibilidad (soporta upsert por SKU o nombre).
    - 'segundos_buffer': Margen de espera (0 a 30s) para agrupar mensajes continuos y no responder incompleto.
    - 'tamanho_resposta': 'curtas' (1-2 frases), 'medias' (1 párrafo), 'longas' (detalladas).
    - 'formas_pagamento': Métodos aceptados (Pago Móvil, Zelle, Transferencia, Binance, etc.).
@@ -228,8 +287,24 @@ ESTADO ACTUAL DEL AGENTE:
 - Sobre la Empresa: ${agent.sobre_empresa || agent.descricao_negocio || "No configurado"}
 - Tamaño Respuesta: ${agent.tamanho_resposta || "curtas"}
 - Segundos Buffer: ${agent.segundos_buffer ?? 3}s
+- Cómo Vender (guion comercial):
+${cappedComoVender || "(No configurado)"}
+- Qué NO Puede Hacer:
+${cappedNaoPode || "(No configurado)"}
+- FAQ Configuradas:
+${cappedFaq || "(Sin FAQ)"}
+- Manejo de Objeciones:
+${cappedObjecoes || "(Sin objeciones configuradas)"}
+- Políticas:
+${cappedPoliticas || "(Sin políticas configuradas)"}
 - Reglas Rígidas Actuales:
-${agent.regras_rigidas ? agent.regras_rigidas : "(Sin reglas rígidas configuradas)"}
+${cappedRegras || "(Sin reglas rígidas configuradas)"}
+
+ARCHIVOS RAG INDEXADOS (${rawKnowledgeFiles.length}):
+${ragFilesSummary}
+
+ÚLTIMOS ERRORES REALES DEL MOTOR (ai_turn_traces):
+${recentErrorsSummary}
 
 HERRAMIENTAS VERIFICADAS DEL AGENTE (${agentTools.length}):
 ${verifiedToolsSummary}
@@ -260,14 +335,15 @@ CURIOSIDAD PROACTIVA Y PREGUNTAS DE DESCUBRIMIENTO:
 FLUJO ESTRICTO PARA WEBHOOKS Y HERRAMIENTAS EXTERNAS:
 1. PASO 1 (Descubrimiento): Haz las preguntas necesarias para obtener la URL, método, headers/token, parámetros esperados, nivel de permiso ('read_only', 'write_confirm_customer' o 'write_require_owner_approval') y tipo ('http' para consultar/ejecutar datos o 'webhook_out' para notificar eventos salientes).
 2. PASO 2 (Prueba Obligatoria en Sandbox): En cuanto tengas los datos técnicos (o si el usuario te pide probar un endpoint), genera SIEMPRE primero la acción 'test_webhook' para verificar en el sandbox que el endpoint responde con HTTP 2xx y ver la latencia y JSON real.
-3. PASO 3 (Guardar Herramienta Verificada): NUNCA guardes una herramienta nueva sin antes haber propuesto probarla con 'test_webhook' y validar HTTP 2xx. Tras comprobarla en el sandbox, genera la acción 'tool' (o 'webhook' si es consulta heredada customerLookup) con 'name' (slug único en minúsculas con guiones bajos), 'display_name', 'description', 'url', 'method', 'headers', 'input_schema', 'body_template', 'permission_level' y 'kind'.
+3. PASO 3 (Guardar Herramienta Verificada): NUNCA guardes una herramienta nueva sin antes haber propuesto probarla con 'test_webhook' y validar HTTP 2xx. Tras comprobarla en el sandbox, genera la acción 'tool' (o 'webhook' si es consulta heredada customerLookup) con 'name' (slug único en minúsculas con guiones bajos), 'display_name', 'description', 'url', 'method', 'headers', 'input_schema', 'body_template', 'test_body' (payload real de prueba), 'permission_level' y 'kind'.
 
 REGLA CRÍTICA DE TIPADO PARA ACCIONES:
 - Para webhooks, APIs o herramientas externas:
   * Para pruebas previas obligatorias en el sandbox: usa EXCLUSIVAMENTE "type": "test_webhook"
   * Para guardar una herramienta verificada en la librería del agente (agent_tools): usa "type": "tool" (o "type": "webhook" cuando incluya integration: "customerLookup")
   * NUNCA uses "type": "config" para webhooks ni APIs externas. "config" es sólo para campos nativos como segundos_buffer o sobre_empresa.
-- Para las reglas de comportamiento derivadas del webhook (ej: qué decir si está vencida, cómo manejar cliente no registrado, etc.), genera acciones individuales con "type": "rule".
+- Para reglas nuevas puntuales usa "type": "rule".
+- Para LIMPIAR contradicciones, eliminar reglas obsoletas o CONSOLIDAR/REORDENAR todas las 'regras_rigidas', usa "type": "replace_rules" con el texto completo limpio en 'payload.rulesText' (en lugar de seguir apilando parches con "rule").
 
 ESTRUCTURA OBLIGATORIA DE TU RESPUESTA:
 1. RESPUESTA COMPLETA Y SIN CORTES:
@@ -289,13 +365,24 @@ ESTRUCTURA OBLIGATORIA DE TU RESPUESTA:
     }
   },
   {
+    "type": "replace_rules",
+    "title": "Consolidar y limpiar Reglas Rígidas",
+    "description": "Reemplaza las reglas actuales resolviendo contradicciones y duplicados",
+    "payload": {
+      "rulesText": "- Regla 1 limpia...\n- Regla 2 limpia...",
+      "reason": "Elimina conflicto entre reglas y reduce redundancia",
+      "agentId": "${agent.id || ""}"
+    }
+  },
+  {
     "type": "catalog",
     "title": "Agregar / Actualizar Producto(s)",
-    "description": "Detalles de los productos a registrar",
+    "description": "Actualiza productos existentes por SKU/nombre o inserta los nuevos",
     "payload": {
       "items": [
         {
           "nome": "Nombre Producto",
+          "sku": "SKU-OPCIONAL",
           "preco": 10.0,
           "descricao": "Descripción comercial",
           "categoria": "Categoría"
@@ -352,6 +439,9 @@ ESTRUCTURA OBLIGATORIA DE TU RESPUESTA:
       "body_template": {
         "phone": "{{phone}}"
       },
+      "test_body": {
+        "phone": "584120000000"
+      },
       "permission_level": "read_only"
     }
   },
@@ -367,6 +457,12 @@ ESTRUCTURA OBLIGATORIA DE TU RESPUESTA:
       "headers": {
         "Authorization": "Bearer token_aqui"
       },
+      "body_template": {
+        "phone": "{{phone}}"
+      },
+      "test_body": {
+        "phone": "584120000000"
+      },
       "ruleText": "- Al atender al cliente, consulta sus servicios activos y vencimientos reales antes de dar información."
     }
   }
@@ -378,8 +474,8 @@ ESTRUCTURA OBLIGATORIA DE TU RESPUESTA:
 
 REGLAS DE CONDUCTA:
 - Si el usuario te pega una lista desordenada de precios o catálogo, extráela limpiamente y propón la acción 'catalog'.
-- Si el usuario te pregunta por qué el bot falló o cómo mejorar una duda, diagnostica el motivo con precisión y propón la acción 'rule' redactada en formato imperativo claro.
-- Si detectas que una regla nueva entra en conflicto con una regla existente, ALÉRTALO inmediatamente antes de proponerla.
+- Si el usuario te pregunta por qué el bot falló o cómo mejorar una duda, diagnostica el motivo con precisión (apoyándote en las reglas y trazas de error si aplica) y propón la acción 'rule' o 'replace_rules'.
+- Si detectas que una regla nueva entra en conflicto con una regla existente, ALÉRTALO inmediatamente y propón 'replace_rules' para consolidarlas limpiamente.
 - Sé conciso y directo; no aburras al usuario con teoría innecesaria.`;
 }
 
@@ -412,7 +508,7 @@ export function parseCopilotOutput(rawText: string): CopilotTurnResult {
       const candidateText = codeBlockMatch[1].trim();
       if (
         candidateText.includes('"type"') &&
-        /(?:catalog|rule|config|simulation|audit|test_webhook|webhook|tool)/i.test(candidateText)
+        /(?:catalog|rule|replace_rules|config|simulation|audit|test_webhook|webhook|tool)/i.test(candidateText)
       ) {
         rawJson = candidateText;
         reply = rawText.replace(codeBlockMatch[0], "").trim();
@@ -436,7 +532,7 @@ export function parseCopilotOutput(rawText: string): CopilotTurnResult {
       } catch {
         // Intento 2: Recuperación resiliente de objetos de acción individuales si el array fue cortado
         parsed = [];
-        const itemRegex = /{\s*"type"\s*:\s*"(?:catalog|rule|config|simulation|audit|test_webhook|webhook|tool)"[\s\S]*?}(?=\s*,\s*{|\s*\]|\s*$)/g;
+        const itemRegex = /{\s*"type"\s*:\s*"(?:catalog|rule|replace_rules|config|simulation|audit|test_webhook|webhook|tool)"[\s\S]*?}(?=\s*,\s*{|\s*\]|\s*$)/g;
         let m: RegExpExecArray | null;
         while ((m = itemRegex.exec(rawJson)) !== null) {
           try {

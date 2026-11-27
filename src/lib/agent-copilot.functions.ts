@@ -29,6 +29,120 @@ export interface CopilotChatMessage {
   proposals?: CopilotActionProposal[];
 }
 
+const SANDBOX_TEST_VARS: Record<string, string> = {
+  phone: "584120000000",
+  numero: "584120000000",
+  name: "Cliente Prueba",
+  nome: "Cliente Prueba",
+  email: "prueba@example.com",
+};
+
+function resolveSandboxVar(key: string): string {
+  const exact = SANDBOX_TEST_VARS[key];
+  if (exact !== undefined) return exact;
+  const lower = key.toLowerCase();
+  if (lower.includes("phone") || lower.includes("tel") || lower.includes("whats") || lower.includes("num")) {
+    return "584120000000";
+  }
+  if (lower.includes("mail")) return "prueba@example.com";
+  if (lower.includes("name") || lower.includes("nome")) return "Cliente Prueba";
+  return "prueba";
+}
+
+function interpolateSandboxString(template: string, urlEncodeValues: boolean): string {
+  return template.replace(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g, (_, key: string) => {
+    const val = resolveSandboxVar(key);
+    return urlEncodeValues ? encodeURIComponent(val) : val;
+  });
+}
+
+function interpolateSandboxValue(value: any): any {
+  if (typeof value === "string") {
+    const exactMatch = value.match(/^\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}$/);
+    if (exactMatch) {
+      return resolveSandboxVar(exactMatch[1]);
+    }
+    return interpolateSandboxString(value, false);
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => interpolateSandboxValue(item));
+  }
+  if (value && typeof value === "object") {
+    const out: Record<string, any> = {};
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = interpolateSandboxValue(v);
+    }
+    return out;
+  }
+  return value;
+}
+
+function buildToolSandboxRequest(params: {
+  url: string;
+  method: "GET" | "POST" | "PUT";
+  bodyTemplate?: any;
+  testBody?: any;
+  inputSchema?: Record<string, any> | null;
+}): { url: string; method: "GET" | "POST" | "PUT"; body: any } {
+  const method = params.method;
+  let testUrl = String(params.url || "").trim();
+  if (/\{\{[^}]+\}\}/.test(testUrl)) {
+    testUrl = interpolateSandboxString(testUrl, true);
+  }
+
+  const rawCandidate = params.testBody !== undefined ? params.testBody : params.bodyTemplate;
+  let interpolatedBody = rawCandidate !== undefined && rawCandidate !== null
+    ? interpolateSandboxValue(rawCandidate)
+    : undefined;
+
+  if (method === "GET") {
+    if (interpolatedBody && typeof interpolatedBody === "object" && !Array.isArray(interpolatedBody)) {
+      try {
+        const parsedUrl = new URL(testUrl);
+        for (const [k, v] of Object.entries(interpolatedBody)) {
+          if (v === undefined || v === null) continue;
+          if (!parsedUrl.searchParams.has(k)) {
+            parsedUrl.searchParams.set(k, typeof v === "object" ? JSON.stringify(v) : String(v));
+          }
+        }
+        testUrl = parsedUrl.toString();
+      } catch {}
+    }
+    return { url: testUrl, method, body: undefined };
+  }
+
+  const isEmptyObj =
+    interpolatedBody === undefined ||
+    interpolatedBody === null ||
+    (typeof interpolatedBody === "object" && !Array.isArray(interpolatedBody) && Object.keys(interpolatedBody).length === 0) ||
+    (typeof interpolatedBody === "string" && interpolatedBody.trim() === "");
+
+  if (isEmptyObj && params.inputSchema && typeof params.inputSchema === "object") {
+    const schemaKeys = Object.keys(params.inputSchema).map((k) => k.toLowerCase());
+    if (schemaKeys.includes("phone") || schemaKeys.includes("numero")) {
+      interpolatedBody = { phone: "584120000000" };
+    }
+  }
+
+  return {
+    url: testUrl,
+    method,
+    body: interpolatedBody !== undefined ? interpolatedBody : {},
+  };
+}
+
+function formatSandboxSampleExcerpt(sample: any): string {
+  if (sample === null || sample === undefined) return "";
+  try {
+    const raw = typeof sample === "string" ? sample : JSON.stringify(sample);
+    const clean = raw.replace(/\s+/g, " ").trim();
+    if (!clean) return "";
+    return clean.length > 250 ? `${clean.slice(0, 250)}...` : clean;
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Consulta interactiva al Copilot Arquitecto y Entrenador
  */
@@ -56,8 +170,9 @@ export const askAgentCopilot = createServerFn({ method: "POST" })
     const agentCtx = await getAgentCopilotContext(supabase, companyId, data.agentId, data.tipo);
     const systemPrompt = buildCopilotSystemPrompt(agentCtx);
 
-    // 2. Converte histórico do chat
-    const historyMsgs: ChatMsg[] = data.messages.map((m) => ({
+    // 2. Ventana deslizante de los últimos 16 mensajes para evitar degradación y timeouts
+    const windowedMessages = data.messages.slice(-16);
+    const historyMsgs: ChatMsg[] = windowedMessages.map((m) => ({
       role: m.role,
       content: m.content,
     }));
@@ -98,6 +213,11 @@ export const testWebhookInSandbox = createServerFn({ method: "POST" })
     method?: "GET" | "POST" | "PUT";
     headers?: Record<string, string>;
     body?: any;
+    test_body?: any;
+    testBody?: any;
+    sample_body?: any;
+    body_template?: any;
+    input_schema?: Record<string, any> | null;
   }) => {
     if (!d?.url) throw new Error("URL é obrigatória para o teste de sandbox.");
     return d;
@@ -106,7 +226,21 @@ export const testWebhookInSandbox = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await requireAdminCompany(supabase, userId);
     const { testExternalWebhook } = await import("./agent-sandbox.server");
-    return await testExternalWebhook(data);
+    const rawMethod = String(data.method || "POST").toUpperCase();
+    const method = (rawMethod === "GET" || rawMethod === "PUT" ? rawMethod : "POST") as "GET" | "POST" | "PUT";
+    const reqSpec = buildToolSandboxRequest({
+      url: data.url,
+      method,
+      bodyTemplate: data.body_template,
+      testBody: data.test_body ?? data.testBody ?? data.sample_body ?? data.body,
+      inputSchema: data.input_schema,
+    });
+    return await testExternalWebhook({
+      url: reqSpec.url,
+      method: reqSpec.method,
+      headers: data.headers,
+      body: reqSpec.body,
+    });
   });
 
 /**
@@ -150,53 +284,216 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
 
       if (upErr) throw new Error(`Falha ao salvar regra: ${upErr.message}`);
 
+      try {
+        const { recordAgentConfigVersion } = await import("./agent-versions.server");
+        await recordAgentConfigVersion(supabaseAdmin, {
+          companyId,
+          agentId: cfg.id,
+          userId,
+          label: "Copilot: Regla añadida",
+        });
+      } catch {}
+
       // Registrar auditoria
-      await supabaseAdmin.from("audit_log").insert({
-        company_id: companyId,
-        user_id: userId,
-        acao: "copilot_rule_applied",
-        detalhes: {
-          ruleText,
-          agent_id: cfg.id,
-          applied_at: new Date().toISOString(),
-        },
-      });
+      try {
+        await supabaseAdmin.from("audit_log").insert({
+          company_id: companyId,
+          user_id: userId,
+          acao: "copilot_rule_applied",
+          detalhes: {
+            ruleText,
+            agent_id: cfg.id,
+            applied_at: new Date().toISOString(),
+          },
+        });
+      } catch {}
 
       return { ok: true, message: "Regra aplicada com sucesso às Regras Rígidas!" };
+    }
+
+    if (action.type === "replace_rules") {
+      const rulesText = typeof action.payload?.rulesText === "string"
+        ? action.payload.rulesText.trim()
+        : "";
+      if (!rulesText) {
+        throw new Error("El texto consolidado de reglas (rulesText) no puede estar vacío.");
+      }
+
+      const reason = String(action.payload?.reason || "").trim();
+
+      // Guardar snapshot previo antes de reemplazar para permitir rollback en 1 clic
+      try {
+        const { recordAgentConfigVersion } = await import("./agent-versions.server");
+        await recordAgentConfigVersion(supabaseAdmin, {
+          companyId,
+          agentId: cfg.id,
+          userId,
+          label: "Respaldo antes de Copilot (replace_rules)",
+        });
+      } catch {}
+
+      const nowIso = new Date().toISOString();
+      const { error: upErr } = await (supabaseAdmin as any)
+        .from("agent_config")
+        .update({ regras_rigidas: rulesText, updated_at: nowIso })
+        .eq("id", cfg.id);
+
+      if (upErr) throw new Error(`Falha ao substituir regras rígidas: ${upErr.message}`);
+
+      try {
+        await supabaseAdmin.from("audit_log").insert({
+          company_id: companyId,
+          user_id: userId,
+          acao: "copilot_rules_replaced",
+          detalhes: {
+            agent_id: cfg.id,
+            reason: reason || null,
+            prev_chars: String(cfg.regras_rigidas || "").length,
+            new_chars: rulesText.length,
+            applied_at: nowIso,
+          },
+        });
+      } catch {}
+
+      return {
+        ok: true,
+        message: "Reglas Rígidas consolidadas y reemplazadas con respaldo automático de versión.",
+      };
     }
 
     if (action.type === "catalog") {
       const items = Array.isArray(action.payload?.items) ? action.payload.items : [];
       if (items.length === 0) throw new Error("Nenhum produto para inserir.");
 
-      const inserts = items.map((item: any, idx: number) => ({
-        company_id: companyId,
-        nome: String(item.nome || "Produto").trim(),
-        preco: Math.max(0, Number(item.preco) || 0),
-        descricao: item.descricao ? String(item.descricao).trim() : null,
-        categoria: item.categoria ? String(item.categoria).trim() : "Geral",
-        ativo: true,
-        ordem: idx,
-      }));
-
-      const { data: savedProds, error: prodErr } = await supabase
+      const { data: existingProds, error: listProdErr } = await (supabaseAdmin as any)
         .from("produto")
-        .insert(inserts)
-        .select("id, nome, preco");
+        .select("id, nome, sku, ordem")
+        .eq("company_id", companyId)
+        .order("ordem", { ascending: true });
 
-      if (prodErr) throw new Error(`Falha ao salvar produtos: ${prodErr.message}`);
+      if (listProdErr) {
+        throw new Error(`Falha ao consultar catálogo atual: ${listProdErr.message}`);
+      }
 
-      await supabase.from("audit_log").insert({
-        company_id: companyId,
-        user_id: userId,
-        acao: "copilot_catalog_applied",
-        detalhes: {
-          itemsCount: items.length,
-          saved: savedProds,
-        },
-      });
+      const bySku = new Map<string, any>();
+      const byNome = new Map<string, any>();
+      let maxOrdem = -1;
 
-      return { ok: true, message: `${inserts.length} produto(s) adicionados ao catálogo com sucesso!` };
+      for (const row of existingProds || []) {
+        const skuKey = String(row.sku || "").trim().toLowerCase();
+        const nomeKey = String(row.nome || "").trim().toLowerCase();
+        if (skuKey && !bySku.has(skuKey)) bySku.set(skuKey, row);
+        if (nomeKey && !byNome.has(nomeKey)) byNome.set(nomeKey, row);
+        if (typeof row.ordem === "number" && row.ordem > maxOrdem) {
+          maxOrdem = row.ordem;
+        }
+      }
+
+      const nowIso = new Date().toISOString();
+      let updatedCount = 0;
+      let insertedCount = 0;
+      const savedProds: Array<{ id: string; nome: string; preco: number; action: "updated" | "inserted" }> = [];
+
+      for (const item of items) {
+        const nome = String(item?.nome || "Produto").trim();
+        const cleanSku = item?.sku ? String(item.sku).trim() : "";
+        const skuKey = cleanSku.toLowerCase();
+        const nomeKey = nome.toLowerCase();
+        const preco = Math.max(0, Number(item?.preco) || 0);
+        const descricao = item?.descricao ? String(item.descricao).trim() : null;
+        const categoria = item?.categoria ? String(item.categoria).trim() : "Geral";
+
+        const existingMatch = (skuKey ? bySku.get(skuKey) : null) || byNome.get(nomeKey) || null;
+
+        if (existingMatch?.id) {
+          const updatePatch: Record<string, any> = {
+            nome,
+            preco,
+            descricao,
+            categoria,
+            ativo: true,
+            updated_at: nowIso,
+          };
+          if (cleanSku) {
+            updatePatch.sku = cleanSku;
+          }
+
+          const { data: updatedRow, error: updErr } = await (supabaseAdmin as any)
+            .from("produto")
+            .update(updatePatch)
+            .eq("id", existingMatch.id)
+            .eq("company_id", companyId)
+            .select("id, nome, preco")
+            .single();
+
+          if (updErr) {
+            throw new Error(`Falha ao atualizar produto "${nome}": ${updErr.message}`);
+          }
+
+          updatedCount += 1;
+          savedProds.push({
+            id: updatedRow?.id || existingMatch.id,
+            nome: updatedRow?.nome || nome,
+            preco: Number(updatedRow?.preco ?? preco),
+            action: "updated",
+          });
+          if (skuKey) bySku.set(skuKey, { ...existingMatch, ...updatePatch });
+          if (nomeKey) byNome.set(nomeKey, { ...existingMatch, ...updatePatch });
+        } else {
+          maxOrdem += 1;
+          const insertRow: Record<string, any> = {
+            company_id: companyId,
+            nome,
+            preco,
+            descricao,
+            categoria,
+            ativo: true,
+            ordem: maxOrdem,
+          };
+          if (cleanSku) {
+            insertRow.sku = cleanSku;
+          }
+
+          const { data: insertedRow, error: insErr } = await (supabaseAdmin as any)
+            .from("produto")
+            .insert(insertRow)
+            .select("id, nome, preco, sku, ordem")
+            .single();
+
+          if (insErr) {
+            throw new Error(`Falha ao inserir produto "${nome}": ${insErr.message}`);
+          }
+
+          insertedCount += 1;
+          savedProds.push({
+            id: insertedRow.id,
+            nome: insertedRow.nome,
+            preco: Number(insertedRow.preco ?? preco),
+            action: "inserted",
+          });
+          if (skuKey) bySku.set(skuKey, insertedRow);
+          if (nomeKey) byNome.set(nomeKey, insertedRow);
+        }
+      }
+
+      try {
+        await supabaseAdmin.from("audit_log").insert({
+          company_id: companyId,
+          user_id: userId,
+          acao: "copilot_catalog_applied",
+          detalhes: {
+            itemsCount: items.length,
+            updatedCount,
+            insertedCount,
+            saved: savedProds,
+          },
+        });
+      } catch {}
+
+      return {
+        ok: true,
+        message: `Catálogo actualizado: ${updatedCount} actualizado(s), ${insertedCount} nuevo(s).`,
+      };
     }
 
     // Manejo inteligente de herramientas verificadas (type: "tool") e integraciones Webhook (incluso si la IA envió erróneamente type: "config")
@@ -334,15 +631,33 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
         testLatencyMs = Math.max(0, Number(preTested.latencyMs) || 0);
         testSample = preTested.responseSample ?? null;
       } else {
-        const testRes = await testExternalWebhook({
+        const rawTestBody =
+          action.payload?.test_body ??
+          action.payload?.testBody ??
+          action.payload?.sample_body ??
+          action.payload?.body ??
+          action.payload?.updates?.test_body ??
+          action.payload?.updates?.body;
+
+        const sandboxReq = buildToolSandboxRequest({
           url,
           method,
+          bodyTemplate,
+          testBody: rawTestBody,
+          inputSchema,
+        });
+
+        const testRes = await testExternalWebhook({
+          url: sandboxReq.url,
+          method: sandboxReq.method,
           headers,
-          body: action.payload?.test_body ?? action.payload?.body ?? bodyTemplate ?? {},
+          body: sandboxReq.body,
         });
         if (!testRes.ok || testRes.status < 200 || testRes.status >= 300) {
+          const sampleExcerpt = formatSandboxSampleExcerpt(testRes.responseSample);
+          const sampleSuffix = sampleExcerpt ? ` | Respuesta: ${sampleExcerpt}` : "";
           throw new Error(
-            `La prueba previa en Sandbox falló (HTTP ${testRes.status}): ${testRes.error || testRes.statusText}. Corrige la URL o credenciales antes de guardar.`,
+            `La prueba previa en Sandbox falló (HTTP ${testRes.status}): ${testRes.error || testRes.statusText}${sampleSuffix}. Corrige la URL o credenciales antes de guardar.`,
           );
         }
         testStatus = testRes.status;
@@ -485,6 +800,15 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
           const formatted = ruleCandidate.startsWith("-") || /^\d+\./.test(ruleCandidate) ? ruleCandidate : `- ${ruleCandidate}`;
           const updated = current ? `${current}\n${formatted}` : formatted;
           await supabaseAdmin.from("agent_config").update({ regras_rigidas: updated, updated_at: new Date().toISOString() }).eq("id", cfg.id);
+          try {
+            const { recordAgentConfigVersion } = await import("./agent-versions.server");
+            await recordAgentConfigVersion(supabaseAdmin, {
+              companyId,
+              agentId: cfg.id,
+              userId,
+              label: "Copilot: Directiva aplicada",
+            });
+          } catch {}
           return { ok: true, message: "Directiva aplicada con éxito a las Reglas Rígidas!" };
         }
         return { ok: true, message: `Configuración "${action.title}" validada y guardada.` };
@@ -498,6 +822,16 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
         })
         .eq("id", cfg.id);
       if (confErr) throw new Error(`Falha ao atualizar configurações: ${confErr.message}`);
+
+      try {
+        const { recordAgentConfigVersion } = await import("./agent-versions.server");
+        await recordAgentConfigVersion(supabaseAdmin, {
+          companyId,
+          agentId: cfg.id,
+          userId,
+          label: "Copilot: Ajuste de configuración",
+        });
+      } catch {}
 
       return { ok: true, message: "Configurações do agente atualizadas com sucesso!" };
     }
