@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-27T14:20:31.546130+00:00",
+  "generated_at": "2026-11-27T15:30:46.861613+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -771,7 +771,7 @@
     },
     {
       "path": "src/lib/whatsapp.functions.ts",
-      "bytes": 55867
+      "bytes": 60724
     },
     {
       "path": "src/lib/permissions.server.ts",
@@ -879,7 +879,7 @@
     },
     {
       "path": "src/lib/whatsapp-helpers.ts",
-      "bytes": 10563
+      "bytes": 13062
     },
     {
       "path": "src/lib/ai-pool.server.ts",
@@ -1191,7 +1191,7 @@
     },
     {
       "path": "src/lib/wa-dispatch.server.ts",
-      "bytes": 15589
+      "bytes": 15477
     },
     {
       "path": "src/lib/telegram-comments.server.ts",
@@ -2723,7 +2723,7 @@
     },
     {
       "path": "src/routes/app/conversas.tsx",
-      "bytes": 275654
+      "bytes": 294231
     },
     {
       "path": "src/routes/app/publicacoes.tsx",
@@ -5318,6 +5318,10 @@
     {
       "source": "src/lib/whatsapp.functions.ts",
       "target": "./dapi-history-backfill.server"
+    },
+    {
+      "source": "src/lib/whatsapp.functions.ts",
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/permissions.server.ts",
@@ -18322,6 +18326,10 @@
     {
       "source": "src/routes/app/conversas.tsx",
       "target": "@/lib/tenant"
+    },
+    {
+      "source": "src/routes/app/conversas.tsx",
+      "target": "@/lib/permissions"
     },
     {
       "source": "src/routes/app/conversas.tsx",
