@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-27T20:10:51.427029+00:00",
+  "generated_at": "2026-11-27T21:54:59.706343+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -746,6 +746,10 @@
       "bytes": 1425
     },
     {
+      "path": "src/lib/agent-versions.server.ts",
+      "bytes": 4725
+    },
+    {
       "path": "src/lib/comercial.functions.ts",
       "bytes": 11265
     },
@@ -1151,7 +1155,7 @@
     },
     {
       "path": "src/lib/agent-copilot.server.ts",
-      "bytes": 20031
+      "bytes": 23972
     },
     {
       "path": "src/lib/message-actions.functions.ts",
@@ -1435,7 +1439,7 @@
     },
     {
       "path": "src/lib/agent-copilot.functions.ts",
-      "bytes": 24484
+      "bytes": 35854
     },
     {
       "path": "src/lib/csat-config.functions.ts",
@@ -1519,7 +1523,7 @@
     },
     {
       "path": "src/lib/agent-ai.functions.ts",
-      "bytes": 58761
+      "bytes": 54668
     },
     {
       "path": "src/lib/ai-admin.functions.ts",
@@ -2171,7 +2175,7 @@
     },
     {
       "path": "src/components/agente/agent-copilot-sheet.tsx",
-      "bytes": 31506
+      "bytes": 34132
     },
     {
       "path": "src/components/agente/agent-avatar.tsx",
@@ -4894,6 +4898,10 @@
     {
       "source": "src/lib/presence.ts",
       "target": "@/integrations/supabase/client"
+    },
+    {
+      "source": "src/lib/agent-versions.server.ts",
+      "target": "@/integrations/supabase/client.server"
     },
     {
       "source": "src/lib/comercial.functions.ts",
@@ -8665,11 +8673,27 @@
     },
     {
       "source": "src/lib/agent-copilot.functions.ts",
+      "target": "./agent-versions.server"
+    },
+    {
+      "source": "src/lib/agent-copilot.functions.ts",
+      "target": "./agent-versions.server"
+    },
+    {
+      "source": "src/lib/agent-copilot.functions.ts",
       "target": "./agent-sandbox.server"
     },
     {
       "source": "src/lib/agent-copilot.functions.ts",
       "target": "./agent-tools.server"
+    },
+    {
+      "source": "src/lib/agent-copilot.functions.ts",
+      "target": "./agent-versions.server"
+    },
+    {
+      "source": "src/lib/agent-copilot.functions.ts",
+      "target": "./agent-versions.server"
     },
     {
       "source": "src/lib/agent-copilot.functions.ts",
@@ -9257,6 +9281,18 @@
     },
     {
       "source": "src/lib/agent-ai.functions.ts",
+      "target": "./agent-versions.server"
+    },
+    {
+      "source": "src/lib/agent-ai.functions.ts",
+      "target": "./agent-versions.server"
+    },
+    {
+      "source": "src/lib/agent-ai.functions.ts",
+      "target": "./agent-versions.server"
+    },
+    {
+      "source": "src/lib/agent-ai.functions.ts",
       "target": "./lovable-ai.server"
     },
     {
@@ -9273,11 +9309,15 @@
     },
     {
       "source": "src/lib/agent-ai.functions.ts",
-      "target": "@/integrations/supabase/client.server"
+      "target": "./agent-versions.server"
     },
     {
       "source": "src/lib/agent-ai.functions.ts",
       "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/agent-ai.functions.ts",
+      "target": "./agent-versions.server"
     },
     {
       "source": "src/lib/agent-ai.functions.ts",
