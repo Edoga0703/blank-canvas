@@ -19,32 +19,17 @@ export const addAgentExample = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const { data: cu } = await supabase
-      .from("company_user")
-      .select("company_id")
-      .eq("user_id", userId)
-      .eq("ativo", true)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    let companyId = cu?.company_id as string | undefined;
-    if (!companyId) {
-      const { data: isSuper } = await supabase.rpc("is_super_admin");
-      if (isSuper) {
-        const { data: anyC } = await supabase.from("company").select("id").order("created_at", { ascending: true }).limit(1).maybeSingle();
-        companyId = anyC?.id as string | undefined;
-      }
-    }
-    if (!companyId) throw new Error("Empresa não encontrada.");
+    const companyId = await requireAdminCompany(supabase, userId);
 
     const query = supabase
       .from("agent_config")
-      .select("id, exemplos_few_shot");
-    
+      .select("id, exemplos_few_shot")
+      .eq("company_id", companyId);
+
     if (data.agentId) {
       query.eq("id", data.agentId);
     } else {
-      query.eq("company_id", companyId).eq("tipo", data.tipo);
+      query.eq("tipo", data.tipo);
     }
 
     const { data: cfg } = await query.maybeSingle();
@@ -130,7 +115,9 @@ export const analyzeBusinessBrief = createServerFn({ method: "POST" })
       respostas: d?.respostas && typeof d.respostas === "object" ? d.respostas : {},
     };
   })
-  .handler(async ({ data }) => {
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    await requireAdminCompany(supabase, userId);
     const { lovableAiChat } = await import("./lovable-ai.server");
 
     const respostasTxt = Object.entries(data.respostas)
@@ -231,7 +218,9 @@ export const generateAgentConfig = createServerFn({ method: "POST" })
     };
   })
 
-  .handler(async ({ data }) => {
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    await requireAdminCompany(supabase, userId);
     const { lovableAiChat } = await import("./lovable-ai.server");
     const { buildSystemPrompt } = await import("./ai-prompt");
 
@@ -477,6 +466,19 @@ export const updateAgentKnowledgeFiles = createServerFn({ method: "POST" })
       .eq("company_id", companyId);
 
     if (error) throw new Error(error.message);
+
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { syncAgentKnowledgeChunks } = await import("./knowledge-rag.server");
+      await syncAgentKnowledgeChunks(supabaseAdmin, {
+        companyId,
+        agentId: data.agentId,
+        files: Array.isArray(data.files) ? data.files : [],
+      });
+    } catch (ragErr: any) {
+      console.warn("[updateAgentKnowledgeFiles] RAG sync warning:", ragErr?.message);
+    }
+
     return { ok: true };
   });
 
@@ -541,6 +543,18 @@ export const indexAgentKnowledge = createServerFn({ method: "POST" })
       .update({ knowledge_files: out } as any)
       .eq("id", data.agentId);
     if (upErr) throw new Error(upErr.message);
+
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { syncAgentKnowledgeChunks } = await import("./knowledge-rag.server");
+      await syncAgentKnowledgeChunks(supabaseAdmin, {
+        companyId,
+        agentId: data.agentId,
+        files: out,
+      });
+    } catch (ragErr: any) {
+      console.warn("[indexAgentKnowledge] RAG sync warning:", ragErr?.message);
+    }
 
     const chars = out.reduce((a, f) => a + (Number(f?.textChars) || 0), 0);
     return { ok: true, indexed, failed, chars, files: out };
@@ -616,6 +630,12 @@ export const saveAgentConfig = createServerFn({ method: "POST" })
 
     if (data.id) {
       await executeSafeMutation(true, data.id);
+      await recordAgentConfigVersion(supabase, {
+        companyId,
+        agentId: data.id,
+        userId,
+        label: "Guardado manual",
+      });
       return { id: data.id };
     }
 
@@ -629,10 +649,24 @@ export const saveAgentConfig = createServerFn({ method: "POST" })
 
     if (existing?.id) {
       await executeSafeMutation(true, existing.id);
+      await recordAgentConfigVersion(supabase, {
+        companyId,
+        agentId: existing.id,
+        userId,
+        label: "Guardado manual",
+      });
       return { id: existing.id };
     }
 
     const saved = await executeSafeMutation(false);
+    if (saved?.id) {
+      await recordAgentConfigVersion(supabase, {
+        companyId,
+        agentId: saved.id,
+        userId,
+        label: "Versión inicial",
+      });
+    }
     return { id: saved?.id };
   });
 
@@ -1067,5 +1101,397 @@ export const runAutoRegressionTests = createServerFn({ method: "POST" })
       total: pending.length,
       resolved: resolvedCount,
       results,
+    };
+  });
+
+const NON_SNAPSHOT_FIELDS = new Set([
+  "id",
+  "company_id",
+  "user_id",
+  "created_at",
+  "updated_at",
+  "active_version",
+]);
+
+const EDITABLE_RESTORE_FIELDS = [
+  "nome", "nome_agente", "nome_empresa", "tipo", "idioma", "papel_objetivo",
+  "estilo_comunicacao", "sobre_empresa", "descricao_negocio", "diferenciais",
+  "publico_alvo", "regiao_horario", "produtos_servicos", "ofertas", "cupom",
+  "como_vender", "objecoes", "formas_pagamento", "ticket_medio", "faq",
+  "politicas", "posvenda_msg", "pedir_avaliacao", "reativar_cliente",
+  "pode_fazer", "nao_pode_fazer", "regras_rigidas", "exemplos_few_shot",
+  "telefone_transferencia", "palavra_pausar", "palavra_despausar",
+  "segundos_buffer", "responder_em_partes", "tamanho_resposta",
+  "ai_provider", "ai_model", "temperatura", "agendamento_ativo",
+  "servicos_agendaveis", "duracao_padrao", "horarios_disponiveis",
+  "antecedencia_min", "menu_setores_ativo", "menu_setores_texto",
+  "menu_setores_opcoes", "olist_catalogo", "canais_ativos",
+  "knowledge_files", "avatar_url", "avatar_traits", "studio_mode",
+  "secretary_enabled", "secretary_phones", "secretary_briefing_hour", "secretary_timezone",
+];
+
+function buildSafeAgentSnapshot(row: Record<string, any> | null | undefined): Record<string, any> {
+  if (!row || typeof row !== "object") return {};
+  const snap: Record<string, any> = {};
+  for (const [key, val] of Object.entries(row)) {
+    if (NON_SNAPSHOT_FIELDS.has(key)) continue;
+    if (key === "canais_ativos" && val && typeof val === "object" && !Array.isArray(val)) {
+      const cloned = { ...val };
+      if (cloned.integrations && typeof cloned.integrations === "object") {
+        const cleanInt: Record<string, any> = {};
+        for (const [ik, iv] of Object.entries(cloned.integrations)) {
+          if (iv && typeof iv === "object") {
+            const { headers: _h, token: _t, secret: _s, ...safeIv } = iv as any;
+            cleanInt[ik] = safeIv;
+          } else {
+            cleanInt[ik] = iv;
+          }
+        }
+        cloned.integrations = cleanInt;
+      }
+      snap[key] = cloned;
+      continue;
+    }
+    snap[key] = val;
+  }
+  return snap;
+}
+
+async function recordAgentConfigVersion(
+  _supabase: any,
+  params: { companyId: string; agentId: string; userId: string; label: string },
+): Promise<number | null> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [{ data: agentRow }, { data: maxVerRow }] = await Promise.all([
+      (supabaseAdmin as any)
+        .from("agent_config")
+        .select("*")
+        .eq("company_id", params.companyId)
+        .eq("id", params.agentId)
+        .maybeSingle(),
+      (supabaseAdmin as any)
+        .from("agent_config_versions")
+        .select("version_number")
+        .eq("agent_id", params.agentId)
+        .order("version_number", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+    if (!agentRow) return null;
+    const currentActive = Number(agentRow.active_version || 1);
+    const maxStored = Number(maxVerRow?.version_number || 0);
+    const nextVersion = Math.max(currentActive, maxStored) + 1;
+    const snapshot = buildSafeAgentSnapshot(agentRow);
+
+    const { error: insErr } = await (supabaseAdmin as any)
+      .from("agent_config_versions")
+      .insert({
+        company_id: params.companyId,
+        agent_id: params.agentId,
+        version_number: nextVersion,
+        label: params.label.slice(0, 140),
+        snapshot,
+        created_by: params.userId,
+      });
+
+    if (insErr) {
+      console.warn("[agent-versions] insert warning:", insErr.message);
+      return null;
+    }
+
+    await (supabaseAdmin as any)
+      .from("agent_config")
+      .update({ active_version: nextVersion })
+      .eq("company_id", params.companyId)
+      .eq("id", params.agentId);
+
+    // Conservar las últimas 25 versiones por agente
+    const { data: allRows } = await (supabaseAdmin as any)
+      .from("agent_config_versions")
+      .select("id")
+      .eq("agent_id", params.agentId)
+      .order("version_number", { ascending: false })
+      .limit(100);
+
+    if (Array.isArray(allRows) && allRows.length > 25) {
+      const toDelete = allRows.slice(25).map((r: any) => r.id);
+      if (toDelete.length > 0) {
+        await (supabaseAdmin as any)
+          .from("agent_config_versions")
+          .delete()
+          .in("id", toDelete);
+      }
+    }
+
+    return nextVersion;
+  } catch (err: any) {
+    console.warn("[agent-versions] snapshot error:", err?.message);
+    return null;
+  }
+}
+
+export const listAgentVersions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { agentId: string }) => {
+    if (!d?.agentId) throw new Error("ID do agente é obrigatório.");
+    return { agentId: String(d.agentId).trim() };
+  })
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: rows, error } = await (supabaseAdmin as any)
+      .from("agent_config_versions")
+      .select("id, version_number, label, created_at")
+      .eq("company_id", companyId)
+      .eq("agent_id", data.agentId)
+      .order("version_number", { ascending: false })
+      .limit(20);
+
+    if (error) throw new Error(`Falha ao listar versões: ${error.message}`);
+    return { versions: rows ?? [] };
+  });
+
+export const rollbackAgentVersion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { agentId: string; versionId: string }) => {
+    if (!d?.agentId || !d?.versionId) throw new Error("Agente e versão são obrigatórios.");
+    return {
+      agentId: String(d.agentId).trim(),
+      versionId: String(d.versionId).trim(),
+    };
+  })
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: ver, error: verErr } = await (supabaseAdmin as any)
+      .from("agent_config_versions")
+      .select("*")
+      .eq("company_id", companyId)
+      .eq("agent_id", data.agentId)
+      .eq("id", data.versionId)
+      .maybeSingle();
+
+    if (verErr || !ver) {
+      throw new Error("Versão não encontrada para este agente.");
+    }
+
+    const snap = (ver.snapshot && typeof ver.snapshot === "object" ? ver.snapshot : {}) as Record<string, any>;
+    const restorePatch: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+    for (const field of EDITABLE_RESTORE_FIELDS) {
+      if (snap[field] !== undefined) {
+        restorePatch[field] = snap[field];
+      }
+    }
+
+    const { error: updErr } = await (supabaseAdmin as any)
+      .from("agent_config")
+      .update(restorePatch)
+      .eq("company_id", companyId)
+      .eq("id", data.agentId);
+
+    if (updErr) throw new Error(`Falha ao restaurar versão: ${updErr.message}`);
+
+    await recordAgentConfigVersion(supabaseAdmin, {
+      companyId,
+      agentId: data.agentId,
+      userId,
+      label: `Rollback a v${ver.version_number}`,
+    });
+
+    const { data: refreshed } = await (supabaseAdmin as any)
+      .from("agent_config")
+      .select("*")
+      .eq("company_id", companyId)
+      .eq("id", data.agentId)
+      .maybeSingle();
+
+    return { ok: true, config: refreshed, restoredFromVersion: ver.version_number };
+  });
+
+export const setAgentStudioMode = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { agentId: string; mode: "simple" | "advanced"; saveSnapshot?: boolean }) => {
+    if (!d?.agentId) throw new Error("ID do agente é obrigatório.");
+    if (d.mode !== "simple" && d.mode !== "advanced") throw new Error("Modo inválido.");
+    return {
+      agentId: String(d.agentId).trim(),
+      mode: d.mode,
+      saveSnapshot: Boolean(d.saveSnapshot),
+    };
+  })
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: current } = await (supabaseAdmin as any)
+      .from("agent_config")
+      .select("id, studio_mode, active_version")
+      .eq("company_id", companyId)
+      .eq("id", data.agentId)
+      .maybeSingle();
+
+    if (!current) throw new Error("Agente não encontrado.");
+
+    let activeVersion = Number(current.active_version || 1);
+    if (current.studio_mode === "advanced" && data.mode === "simple" && data.saveSnapshot) {
+      const savedVer = await recordAgentConfigVersion(supabaseAdmin, {
+        companyId,
+        agentId: data.agentId,
+        userId,
+        label: "Respaldo antes de cambiar a Modo Simple",
+      });
+      if (savedVer) activeVersion = savedVer;
+    }
+
+    const { error: updErr } = await (supabaseAdmin as any)
+      .from("agent_config")
+      .update({
+        studio_mode: data.mode,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("company_id", companyId)
+      .eq("id", data.agentId);
+
+    if (updErr) throw new Error(`Falha ao atualizar modo do studio: ${updErr.message}`);
+
+    return { ok: true, studioMode: data.mode, activeVersion };
+  });
+
+export const getAgentAnalytics = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d?: { agentId?: string | null; days?: number }) => {
+    const rawDays = Number(d?.days || 14);
+    return {
+      agentId: d?.agentId ? String(d.agentId).trim() : null,
+      days: Number.isFinite(rawDays) ? Math.max(1, Math.min(90, Math.floor(rawDays))) : 14,
+    };
+  })
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const sinceIso = new Date(Date.now() - data.days * 86_400_000).toISOString();
+
+    let tracesQuery = (supabaseAdmin as any)
+      .from("ai_turn_traces")
+      .select("id, agent_id, numero, channel, provider, model, route, chunks_used, tools_used, latency_ms, prompt_chars, handoff, error, created_at")
+      .eq("company_id", companyId)
+      .gte("created_at", sinceIso)
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    if (data.agentId) {
+      tracesQuery = tracesQuery.eq("agent_id", data.agentId);
+    }
+
+    const [{ data: traceRows, error: traceErr }, { data: feedbackRows }] = await Promise.all([
+      tracesQuery,
+      (supabaseAdmin as any)
+        .from("agent_feedback")
+        .select("rating, created_at")
+        .eq("company_id", companyId)
+        .gte("created_at", sinceIso),
+    ]);
+
+    if (traceErr) throw new Error(`Falha ao carregar análises: ${traceErr.message}`);
+
+    const traces = traceRows ?? [];
+    const totalTurns = traces.length;
+    let latencySum = 0;
+    let latencyCount = 0;
+    let handoffCount = 0;
+    let errorCount = 0;
+
+    const routeBreakdown: Record<string, number> = {
+      greeting_simple: 0,
+      catalog_price: 0,
+      scheduling: 0,
+      payment_receipt: 0,
+      general: 0,
+    };
+    const sourceCounts = new Map<string, number>();
+
+    for (const tr of traces) {
+      if (typeof tr.latency_ms === "number" && tr.latency_ms >= 0) {
+        latencySum += tr.latency_ms;
+        latencyCount += 1;
+      }
+      if (tr.handoff) handoffCount += 1;
+      if (tr.error) errorCount += 1;
+
+      const routeKey = String(tr.route || "general");
+      routeBreakdown[routeKey] = (routeBreakdown[routeKey] || 0) + 1;
+
+      if (Array.isArray(tr.chunks_used)) {
+        for (const ch of tr.chunks_used) {
+          const sName = String(ch?.source_name || "").trim();
+          if (sName) {
+            sourceCounts.set(sName, (sourceCounts.get(sName) || 0) + 1);
+          }
+        }
+      }
+    }
+
+    const topSources = Array.from(sourceCounts.entries())
+      .map(([source_name, count]) => ({ source_name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+
+    const fbs = feedbackRows ?? [];
+    const feedbackPositive = fbs.filter((f: any) => f.rating === "up").length;
+    const feedbackNegative = fbs.filter((f: any) => f.rating === "down").length;
+
+    const recentTraces = traces.slice(0, 15).map((tr: any) => ({
+      id: tr.id,
+      numero: tr.numero,
+      channel: tr.channel,
+      provider: tr.provider,
+      model: tr.model,
+      route: tr.route,
+      latency_ms: tr.latency_ms,
+      chunks_used: Array.isArray(tr.chunks_used)
+        ? tr.chunks_used.map((c: any) => ({ id: c?.id, source_name: c?.source_name }))
+        : [],
+      tools_used: Array.isArray(tr.tools_used) ? tr.tools_used : [],
+      handoff: Boolean(tr.handoff),
+      error: tr.error ? String(tr.error).slice(0, 180) : null,
+      created_at: tr.created_at,
+    }));
+
+    return {
+      days: data.days,
+      totalTurns,
+      avgLatencyMs: latencyCount > 0 ? Math.round(latencySum / latencyCount) : 0,
+      handoffRate: totalTurns > 0 ? Math.round((handoffCount / totalTurns) * 1000) / 10 : 0,
+      errorCount,
+      routeBreakdown,
+      topSources,
+      feedbackPositive,
+      feedbackNegative,
+      recentTraces,
+    };
+  });
+
+export const getAgentPlanCapabilities = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
+    const { getCompanyPlan } = await import("./plan-limits.server");
+    const plan = await getCompanyPlan(companyId, userId);
+    return {
+      slug: plan.slug,
+      nome: plan.nome,
+      modules: plan.modules,
     };
   });

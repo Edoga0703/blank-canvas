@@ -708,6 +708,26 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
               }
 
               const contatoNome = profile.name || (channel === "instagram" ? `Instagram ${senderId.slice(-4)}` : `Messenger ${senderId.slice(-4)}`);
+              const providerMediaUrl = attachment?.payload?.url ? String(attachment.payload.url) : null;
+
+              let resolvedText = text;
+              let isUntranscribedAudio = false;
+              if (!resolvedText && mediaType === "audio") {
+                if (providerMediaUrl) {
+                  try {
+                    const { transcribeIncomingAudio } = await import("@/lib/media-understanding.server");
+                    const transcribed = await transcribeIncomingAudio(providerMediaUrl);
+                    if (transcribed && transcribed.trim()) {
+                      resolvedText = transcribed.trim();
+                    }
+                  } catch { /* noop */ }
+                }
+                if (!resolvedText) {
+                  isUntranscribedAudio = true;
+                }
+              }
+
+              const storedTexto = resolvedText || (mediaType === "audio" ? "[ÁUDIO]" : mediaType ? `[${mediaType.toUpperCase()}]` : "");
 
               // 1. Inserir em mensagens
               const { data: insertedMsg, error: insertErr } = await (supabaseAdmin as any)
@@ -720,12 +740,12 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                   contato_nome: contatoNome,
                   direcao: "entrada",
                   autor: "contato",
-                  texto: text || (mediaType ? `[${mediaType.toUpperCase()}]` : ""),
+                  texto: storedTexto,
                   provider: inst.provider,
                   whatsapp_message_id: stableMessageId,
                   provider_timestamp: new Date(safeTimestampMs).toISOString(),
                   created_at: new Date(safeTimestampMs).toISOString(),
-                  midia_url: attachment?.payload?.url || null,
+                  midia_url: providerMediaUrl,
                   midia_tipo: mediaType || null,
                   status_envio: "recebido",
                 })
@@ -742,7 +762,6 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
               }
               if (!insertedMsg?.id) throw new Error(`Mensagem Meta ${stableMessageId} não retornou ID após o INSERT.`);
 
-              const providerMediaUrl = attachment?.payload?.url ? String(attachment.payload.url) : null;
               if (attachment) {
                 const attachmentIdentity = String(attachment?.payload?.attachment_id ?? providerMediaUrl ?? `${stableMessageId}:0`);
                 const attachmentKey = createHash("sha256").update(attachmentIdentity).digest("hex");
@@ -900,7 +919,7 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
               }
 
               // 5. Automação / Atendimento IA (Workflow primero, luego IA con arbitraje)
-              const effectiveText = text || (mediaType ? `[${mediaType.toUpperCase()}]` : "");
+              const effectiveText = resolvedText || (mediaType === "audio" ? "[ÁUDIO]" : mediaType ? `[${mediaType.toUpperCase()}]` : "");
               if (effectiveText) {
                 const channel = inst.provider === "meta_instagram" ? "instagram_dm" : "facebook_messenger";
                 const eventPayload = {
@@ -927,8 +946,8 @@ export const Route = createFileRoute("/api/public/meta-webhook")({
                     ...eventPayload,
                     isGroup: false,
                     stageId: currentCard?.stage_id || null,
-                    responderEmAudio: false,
-                    isAudioMessage: false,
+                    responderEmAudio: mediaType === "audio",
+                    isAudioMessage: isUntranscribedAudio,
                   },
                 });
               }

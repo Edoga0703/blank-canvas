@@ -11,33 +11,89 @@ export async function processAiResponse(
   number: string,
   incomingText: string,
   inboundMessageId: string,
-  opts: { responderEmAudio?: boolean } = {},
+  opts: {
+    responderEmAudio?: boolean;
+    channel?: string | null;
+    provider?: string | null;
+    instanceId?: string | null;
+    externalConversationId?: string | null;
+    skipDebounce?: boolean;
+    existingProcessingId?: string | null;
+  } = {},
 ) {
   console.log(`[ai-engine] EXECUTING for ${number} (Company: ${companyId}) at ${new Date().toISOString()}`);
-  const logDetails = { number, companyId, incomingText: incomingText.slice(0, 50) };
+  const turnStartedAt = Date.now();
+  let traceAgentId: string | null = null;
+  let traceInstId: string | null = opts.instanceId ?? null;
+  let traceProvider: string | null = opts.provider ?? null;
+  let traceModel: string | null = null;
+  let traceRoute = "general";
+  let traceChunksUsed: Array<{ id: string; source_name: string }> = [];
+  const traceToolsUsed: any[] = [];
+  let tracePromptChars: number | null = null;
+  let traceHandoff = false;
 
-  const { data: processing, error: processingError } = await (supabaseAdmin as any)
-    .from("ai_message_processing")
-    .insert({
-      company_id: companyId,
-      inbound_message_id: inboundMessageId,
-      numero: number,
-      status: "processing",
-    })
-    .select("id, created_at")
-    .maybeSingle();
+  const logDetails = {
+    number,
+    companyId,
+    instanceId: opts.instanceId ?? null,
+    channel: opts.channel ?? null,
+    incomingText: incomingText.slice(0, 50),
+  };
 
-  if (processingError?.code === "23505") {
-    console.log(`[ai-engine] Duplicate inbound message ignored: ${inboundMessageId}`);
-    return;
+  let processingRow: { id: string; created_at: string } | null = null;
+  if (opts.existingProcessingId) {
+    const { data: existingProc, error: existingErr } = await (supabaseAdmin as any)
+      .from("ai_message_processing")
+      .select("id, created_at")
+      .eq("id", opts.existingProcessingId)
+      .eq("company_id", companyId)
+      .maybeSingle();
+    if (existingErr || !existingProc?.id) {
+      throw existingErr || new Error("Registro de processamento do debounce não encontrado");
+    }
+    processingRow = existingProc;
+  } else {
+    const { data: insertedProc, error: processingError } = await (supabaseAdmin as any)
+      .from("ai_message_processing")
+      .insert({
+        company_id: companyId,
+        inbound_message_id: inboundMessageId,
+        numero: number,
+        instance_id: opts.instanceId ?? null,
+        channel: opts.channel ?? null,
+        provider: opts.provider ?? null,
+        external_conversation_id: opts.externalConversationId ?? number,
+        responder_em_audio: !!opts.responderEmAudio,
+        incoming_text: incomingText,
+        status: "processing",
+      })
+      .select("id, created_at")
+      .maybeSingle();
+
+    if (processingError?.code === "23505") {
+      console.log(`[ai-engine] Duplicate inbound message ignored: ${inboundMessageId}`);
+      return;
+    }
+    if (processingError || !insertedProc?.id) {
+      throw processingError || new Error("Não foi possível registrar o processamento da mensagem");
+    }
+    processingRow = insertedProc;
   }
-  if (processingError || !processing?.id) {
-    throw processingError || new Error("Não foi possível registrar o processamento da mensagem");
+  if (!processingRow) {
+    throw new Error("Registro de processamento ausente");
   }
+  const processing: { id: string; created_at: string } = processingRow;
 
   // Se a mensagem recebida for áudio, a IA não deve responder ou alucinar.
   // Pausa a IA para este contato e encaminha para atenção humana.
-  if (incomingText === "[ÁUDIO]" || incomingText.startsWith("[ÁUDIO]")) {
+  const upperIncoming = (incomingText || "").trim().toUpperCase();
+  if (
+    upperIncoming === "[ÁUDIO]" ||
+    upperIncoming.startsWith("[ÁUDIO]") ||
+    upperIncoming === "[AUDIO]" ||
+    upperIncoming.startsWith("[AUDIO]")
+  ) {
     console.log(`[ai-engine] Mensagem de áudio recebida para ${number}. IA ignorando áudio e marcando para atenção humana.`);
     try {
       await supabaseAdmin.from("contact_pause").upsert(
@@ -72,6 +128,46 @@ export async function processAiResponse(
   }
 
   try {
+    async function resolveRequiredInstance(targetUserId?: string | null) {
+      try {
+        const resolved = await getActiveInstanceForContact(
+          companyId,
+          number,
+          targetUserId || undefined,
+          opts.instanceId ?? null,
+        );
+        if (!resolved) {
+          if (opts.instanceId) {
+            await (supabaseAdmin as any)
+              .from("ai_message_processing")
+              .update({ status: "skipped", error_message: "connection_changed_or_disconnected" })
+              .eq("id", processing!.id);
+          }
+          return null;
+        }
+        if (opts.instanceId) {
+          const isUp = (resolved.status === "connected" || resolved.status === "open") && !resolved.paused;
+          if (resolved.id !== opts.instanceId || !isUp) {
+            await (supabaseAdmin as any)
+              .from("ai_message_processing")
+              .update({ status: "skipped", error_message: "connection_changed_or_disconnected" })
+              .eq("id", processing!.id);
+            return null;
+          }
+        }
+        return resolved;
+      } catch (instErr: any) {
+        if (opts.instanceId) {
+          console.warn("[ai-engine] Instance constraint rejected reply:", instErr?.message);
+          await (supabaseAdmin as any)
+            .from("ai_message_processing")
+            .update({ status: "skipped", error_message: "connection_changed_or_disconnected" })
+            .eq("id", processing!.id);
+          return null;
+        }
+        throw instErr;
+      }
+    }
 
     // B-02: Resolve o agente dinamicamente pelo estágio/pipeline ou default
     const { data: cardRowsPre } = await (supabaseAdmin as any)
@@ -187,9 +283,46 @@ export async function processAiResponse(
     // Se o agente tem segundos_buffer configurado (> 0), aguarda para agrupar mensagens sucessivas
     // enviadas pelo cliente em rajada (burst), respondendo a todas de uma só vez de forma coerente.
     const bufferSec = Math.max(0, Math.min(60, Number(cfg.segundos_buffer ?? 0)));
-    if (bufferSec > 0) {
-      console.log(`[ai-engine] Buffering message for ${number} (${bufferSec}s) at ${new Date().toISOString()}`);
-      await new Promise((resolve) => setTimeout(resolve, bufferSec * 1000));
+    if (bufferSec > 0 && !opts.skipDebounce) {
+      let useDurableQueue = false;
+      try {
+        const { data: hb } = await (supabaseAdmin as any)
+          .from("master_settings")
+          .select("value")
+          .eq("key", "ai_debounce_dispatcher_heartbeat")
+          .maybeSingle();
+        const lastSeenStr = (hb?.value as any)?.last_seen_at;
+        if (lastSeenStr) {
+          const ageMs = Date.now() - new Date(lastSeenStr).getTime();
+          if (Number.isFinite(ageMs) && ageMs >= 0 && ageMs < 45_000) {
+            useDurableQueue = true;
+          }
+        }
+      } catch {}
+
+      if (useDurableQueue) {
+        const debounceUntil = new Date(Date.now() + bufferSec * 1000).toISOString();
+        await (supabaseAdmin as any)
+          .from("ai_message_processing")
+          .update({
+            status: "debouncing",
+            debounce_until: debounceUntil,
+            instance_id: opts.instanceId ?? null,
+            channel: opts.channel ?? null,
+            provider: opts.provider ?? null,
+            external_conversation_id: opts.externalConversationId ?? number,
+            responder_em_audio: !!opts.responderEmAudio,
+            incoming_text: incomingText,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", processing.id);
+        console.log(`[ai-engine] Enqueued durable debounce for ${number} until ${debounceUntil}`);
+        return;
+      }
+
+      const inlineWaitSec = Math.min(bufferSec, 5);
+      console.log(`[ai-engine] Buffering inline for ${number} (${inlineWaitSec}s capped from ${bufferSec}s) at ${new Date().toISOString()}`);
+      await new Promise((resolve) => setTimeout(resolve, inlineWaitSec * 1000));
 
       // Verifica se uma mensagem mais recente foi recebida para este contato durante a espera
       const { data: latestRows } = await (supabaseAdmin as any)
@@ -285,29 +418,35 @@ export async function processAiResponse(
            
            const umaHoraAtras = new Date(Date.now() - 60 * 60 * 1000).toISOString();
            if (!lastMsg || lastMsg.created_at < umaHoraAtras) {
-              const inst = await getActiveInstanceForContact(companyId, number);
-              if (inst) {
-                await waSendText(inst, number, msgFora);
-                const { data: cardFora } = await supabaseAdmin
-                  .from("crm_cards")
-                  .select("owner_id, user_id")
-                  .eq("company_id", companyId)
-                  .eq("numero", number)
-                  .limit(1)
-                  .maybeSingle();
-                const { error: foraErr } = await supabaseAdmin.from("mensagens").insert({
-                  company_id: companyId,
-                  user_id: (cardFora as any)?.owner_id || (cardFora as any)?.user_id || null,
-                  numero: number,
-                  texto: msgFora,
-                  direcao: "saida",
-                  autor: "ia",
-                  created_at: new Date().toISOString()
-                } as any);
-                if (foraErr) console.warn("[ai-engine] falha ao registrar mensagem fora de horário:", foraErr);
-              }
+              const inst = await resolveRequiredInstance();
+              if (!inst) return;
+              await waSendText(inst, number, msgFora);
+              const { data: cardFora } = await supabaseAdmin
+                .from("crm_cards")
+                .select("owner_id, user_id")
+                .eq("company_id", companyId)
+                .eq("numero", number)
+                .limit(1)
+                .maybeSingle();
+              const { error: foraErr } = await supabaseAdmin.from("mensagens").insert({
+                company_id: companyId,
+                user_id: (cardFora as any)?.owner_id || (cardFora as any)?.user_id || null,
+                numero: number,
+                texto: msgFora,
+                direcao: "saida",
+                autor: "ia",
+                instance_id: inst.id ?? null,
+                provider: inst.provider,
+                status_envio: "enviado",
+                created_at: new Date().toISOString()
+              } as any);
+              if (foraErr) console.warn("[ai-engine] falha ao registrar mensagem fora de horário:", foraErr);
            }
         }
+        await (supabaseAdmin as any)
+          .from("ai_message_processing")
+          .update({ status: "skipped", error_message: "outside_business_hours" })
+          .eq("id", processing.id);
         return;
       }
     }
@@ -317,7 +456,7 @@ export async function processAiResponse(
     // usamos o mais recente. maybeSingle() aqui retornava erro e travava a IA.
     const { data: cardRows } = await (supabaseAdmin as any)
       .from("crm_cards")
-      .select("user_id, owner_id, id, stage_id, pipeline_id, updated_at, nome, canal_entrada, canal_chat, origem, utm_source, utm_medium, utm_campaign, utm_content, utm_term, gclid, fbclid, ctwa_clid, campos_extras, tags, valor, item_nome")
+      .select("user_id, owner_id, id, stage_id, pipeline_id, updated_at, nome, canal_entrada, canal_chat, origem, utm_source, utm_medium, utm_campaign, utm_content, utm_term, gclid, fbclid, ctwa_clid, campos_extras, tags, valor, item_nome, client_memory, active_task")
       .eq("company_id", companyId)
       .eq("numero", number)
       .not("stage_id", "is", null)
@@ -348,7 +487,7 @@ export async function processAiResponse(
       const hoursSincePause = (Date.now() - pausedAt) / (3600 * 1000);
 
       // 1. Si la pausa fue por audio anterior y el cliente ahora escribe texto legible, reactivar automáticamente
-      const isNowTextMessage = Boolean(effectiveIncomingText && !effectiveIncomingText.startsWith("[ÁUDIO]"));
+      const isNowTextMessage = Boolean(effectiveIncomingText && !/^\[(ÁUDIO|AUDIO)\]/i.test(effectiveIncomingText.trim()));
       const shouldClearAudioPause = pausedByAudio && isNowTextMessage;
 
       // 2. Si la etapa está configurada explícitamente en modo "ia" (y no fue pausada por humano), tiene prioridad
@@ -415,6 +554,99 @@ export async function processAiResponse(
     }
 
 
+    // Regra determinística imediata (Turno 1+): se o cliente pede explicitamente falar com uma pessoa/humano,
+    // transfere na hora sem esperar 3 trocas nem chamar o LLM.
+    const EXPLICIT_HUMAN_HANDOFF_RE =
+      /\b(hablar con (un |una )?(humano|persona|asesor|agente real|alguien)|falar com (um |uma )?(humano|atendente|pessoa|vendedor)|quero atendimento humano|atendente humano)\b/i;
+    if (EXPLICIT_HUMAN_HANDOFF_RE.test(effectiveIncomingText)) {
+      const handoffInst = await resolveRequiredInstance(card?.owner_id || card?.user_id);
+      if (!handoffInst) return;
+
+      const { data: handoffInstRow } = await supabaseAdmin
+        .from("whatsapp_instances")
+        .select("user_id")
+        .eq("instance_name", handoffInst.instance_name)
+        .maybeSingle();
+      let resolvedOwnerId: string | null = card?.owner_id || card?.user_id || handoffInstRow?.user_id || null;
+
+      if (card?.id && card?.stage_id) {
+        try {
+          const { data: stgHandoff } = await (supabaseAdmin as any)
+            .from("crm_stage")
+            .select("ia_handoff_stage_id")
+            .eq("id", card.stage_id)
+            .maybeSingle();
+          const targetStageId = stgHandoff?.ia_handoff_stage_id;
+          if (targetStageId && targetStageId !== card.stage_id) {
+            const { data: targetStageCfg } = await supabaseAdmin
+              .from("crm_stage")
+              .select("id, nome, modo_atendimento, mensagem_prompt")
+              .eq("id", targetStageId)
+              .eq("company_id", companyId)
+              .maybeSingle();
+            if (targetStageCfg) {
+              const { resolveStageAiMeta } = await import("./crm-stage-meta");
+              const stageMeta = resolveStageAiMeta(targetStageCfg);
+              if (!stageMeta.bloqueada_para_ia) {
+                let nextOwner = card.owner_id;
+                if (targetStageCfg.modo_atendimento === "manual") {
+                  const { pickLeadOwner } = await import("./crm-engine.server");
+                  nextOwner = (await pickLeadOwner(supabaseAdmin, companyId, targetStageCfg.id)) || nextOwner || null;
+                }
+                const { moveCardToStage } = await import("./crm-engine.server");
+                await moveCardToStage(supabaseAdmin, card.id, targetStageCfg.id, { owner_id: nextOwner });
+                if (nextOwner) resolvedOwnerId = nextOwner;
+              }
+            }
+          }
+        } catch (moveErr: any) {
+          console.warn("[ai-engine] Erro ao mover etapa no handoff determinístico:", moveErr?.message);
+        }
+      }
+
+      const lang = String((cfg as any).idioma || "pt-BR").toLowerCase();
+      const handoffReply = lang.startsWith("es")
+        ? "Perfecto, te transfiero ahora mismo con un asesor de nuestro equipo. En un momento te atenderán por aquí."
+        : lang.startsWith("en")
+          ? "Of course! I'm connecting you with a member of our team now. Someone will reply shortly."
+          : "Claro! Já estou te transferindo para um atendente da nossa equipe. Em instantes alguém te responde por aqui.";
+
+      const handoffSend = await waSendText(handoffInst, number, handoffReply);
+      const { extractWhatsappMessageId } = await import("@/lib/whatsapp-helpers");
+      const handoffMsgId = extractWhatsappMessageId(handoffSend) || null;
+      await supabaseAdmin.from("mensagens").insert({
+        company_id: companyId,
+        user_id: resolvedOwnerId,
+        numero: number,
+        texto: handoffReply,
+        direcao: "saida",
+        autor: "ia",
+        instance_id: handoffInst.id ?? null,
+        provider: handoffInst.provider,
+        whatsapp_message_id: handoffMsgId,
+        status_envio: "enviado",
+        created_at: new Date().toISOString(),
+      } as any);
+
+      await supabaseAdmin.from("contact_pause").upsert(
+        {
+          company_id: companyId,
+          user_id: resolvedOwnerId,
+          numero: number,
+          pausado: true,
+          pausado_por: "ia",
+          pausado_em: new Date().toISOString(),
+        } as any,
+        { onConflict: "company_id,numero" },
+      );
+
+      await (supabaseAdmin as any)
+        .from("ai_message_processing")
+        .update({ status: "completed", error_message: "deterministic_human_handoff" })
+        .eq("id", processing.id);
+      return;
+    }
+
     // A abertura é um texto fixo, não um pedido para a IA. No primeiro contato,
     // enviamos o conteúdo exatamente como foi salvo para preservar linhas,
     // listas, espaços e emojis. A IA assume a conversa apenas na próxima entrada.
@@ -429,11 +661,11 @@ export async function processAiResponse(
         .limit(1);
 
       if (!previousOutgoing?.length) {
-        const inst = await getActiveInstanceForContact(companyId, number, card?.owner_id || card?.user_id);
-        if (!inst) {
-          throw new Error("Nenhuma instância ativa encontrada para enviar a mensagem inicial.");
-        }
-        await waSendText(inst, number, initialMessage);
+        const inst = await resolveRequiredInstance(card?.owner_id || card?.user_id);
+        if (!inst) return;
+        const initRes = await waSendText(inst, number, initialMessage);
+        const { extractWhatsappMessageId } = await import("@/lib/whatsapp-helpers");
+        const initMsgId = extractWhatsappMessageId(initRes) || null;
         const { error: initialInsertError } = await supabaseAdmin.from("mensagens").insert({
           company_id: companyId,
           user_id: card?.owner_id || card?.user_id || null,
@@ -441,6 +673,10 @@ export async function processAiResponse(
           texto: initialMessage,
           direcao: "saida",
           autor: "ia",
+          instance_id: inst.id ?? null,
+          provider: inst.provider,
+          whatsapp_message_id: initMsgId,
+          status_envio: "enviado",
           created_at: new Date().toISOString(),
         } as any);
         if (initialInsertError) throw initialInsertError;
@@ -449,7 +685,37 @@ export async function processAiResponse(
 
     }
 
-    // 3. Carregar histórico recente para contexto (somente últimas 24h para evitar ruído de conversas antigas)
+    traceAgentId = cfg.id ?? null;
+    traceProvider = cfg.ai_provider || traceProvider;
+    traceModel = cfg.ai_model || null;
+
+    // 3. Pre-Router determinista antes de cargar historial, catálogo y RAG
+    const [{ count: catalogCount }, { count: indexedChunksCount }] = await Promise.all([
+      (supabaseAdmin as any)
+        .from("produto")
+        .select("id", { count: "exact", head: true })
+        .eq("company_id", companyId)
+        .eq("ativo", true),
+      cfg.id
+        ? (supabaseAdmin as any)
+            .from("agent_knowledge_chunks")
+            .select("id", { count: "exact", head: true })
+            .eq("company_id", companyId)
+            .eq("agent_id", cfg.id)
+            .eq("active", true)
+        : Promise.resolve({ count: 0 }),
+    ]);
+
+    const hasIndexedRagChunks = Number(indexedChunksCount ?? 0) > 0;
+    const { planTurnContext } = await import("@/lib/ai-router.server");
+    const turnPlan = planTurnContext({
+      text: effectiveIncomingText,
+      activeTask: card?.active_task ?? null,
+      catalogCount: typeof catalogCount === "number" ? catalogCount : null,
+    });
+    traceRoute = turnPlan.route;
+
+    // Carregar histórico recente para contexto (limitado pelo Pre-Router)
     const umaHoraAtras = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: historyMsgs } = await supabaseAdmin
       .from("mensagens")
@@ -458,8 +724,7 @@ export async function processAiResponse(
       .eq("numero", number)
       .gt("created_at", umaHoraAtras)
       .order("created_at", { ascending: false })
-      .limit(20); 
-
+      .limit(turnPlan.historyLimit);
 
     const rawHistoryItems = (historyMsgs ?? []).filter((m: any) => !unrepliedIdSet.has(m.id)).reverse();
     const history: ChatMsg[] = [];
@@ -479,17 +744,40 @@ export async function processAiResponse(
       });
     }
 
-    // 4. Buscar estágios do CRM e o catálogo (produtos + serviços) para o prompt
-    const [stages, { data: catRows }] = await Promise.all([
+    // 4. Buscar estágios do CRM, catálogo sob demanda e RAG Nivel 1
+    let productQuery = (supabaseAdmin as any)
+      .from("produto")
+      .select("nome, preco, descricao, sku, foto_url, tipo, duracao_min, agendavel")
+      .eq("company_id", companyId)
+      .eq("ativo", true);
+    if (turnPlan.route === "scheduling") {
+      productQuery = productQuery.order("agendavel", { ascending: false }).order("ordem", { ascending: true });
+    } else {
+      productQuery = productQuery.order("ordem", { ascending: true });
+    }
+
+    const [stages, catResult, ragChunks, verifiedTools] = await Promise.all([
       getStagesBrief(supabaseAdmin, companyId, card?.pipeline_id),
-      (supabaseAdmin as any)
-        .from("produto")
-        .select("nome, preco, descricao, sku, foto_url, tipo, duracao_min, agendavel")
-        .eq("company_id", companyId)
-        .eq("ativo", true)
-        .order("ordem", { ascending: true })
-        .limit(80),
+      turnPlan.loadCatalog
+        ? productQuery.limit(80)
+        : Promise.resolve({ data: [] as any[] }),
+      turnPlan.loadRag && hasIndexedRagChunks && cfg.id
+        ? (await import("@/lib/knowledge-rag.server")).retrieveKnowledgeChunks(supabaseAdmin, {
+            companyId,
+            agentId: cfg.id,
+            query: effectiveIncomingText,
+            limit: 5,
+          })
+        : Promise.resolve([]),
+      cfg.id
+        ? (await import("@/lib/agent-tools.server")).listVerifiedToolsForAgent(supabaseAdmin, companyId, cfg.id)
+        : Promise.resolve([]),
     ]);
+    const hasWebhookOutTools = verifiedTools.some((t) => t.kind === "webhook_out");
+
+    const catRows = (catResult as any)?.data ?? [];
+    traceChunksUsed = (ragChunks || []).map((ch) => ({ id: ch.id, source_name: ch.source_name }));
+    if (traceChunksUsed.length > 0) traceToolsUsed.push("rag");
 
     const produtos = (catRows ?? []).map((p: any) => ({
       nome: p.nome,
@@ -502,7 +790,7 @@ export async function processAiResponse(
       agendavel: p.agendavel,
     }));
 
-    // 4b. Catálogo ao vivo do ERP Olist (preço + estoque reais), quando habilitado
+    // 4b. Catálogo ao vivo do ERP Olist (preço + estoque reais), quando habilitado e rota pedir catálogo
     let olistCatalogo = "";
     let olistPedidoAtivo = false;
     try {
@@ -511,13 +799,14 @@ export async function processAiResponse(
         const { capacidadeAtiva } = await import("@/lib/plugin-gate.server");
         if (await capacidadeAtiva(supabaseAdmin, companyId, "olist")) {
           olistPedidoAtivo = Boolean(anyCfg.olist_pedido_auto);
-          if (anyCfg.olist_catalogo) {
+          if (anyCfg.olist_catalogo && turnPlan.loadCatalog) {
             const { blocoCatalogoOlist } = await import("@/lib/olist-ai.server");
             olistCatalogo = await blocoCatalogoOlist(
               supabaseAdmin,
               companyId,
               effectiveIncomingText,
             );
+            if (olistCatalogo) traceToolsUsed.push("olist_catalog");
           }
         }
       }
@@ -549,18 +838,21 @@ export async function processAiResponse(
     const googleConectado = Boolean(googleIntegration && googleIntegration.conectado);
 
     // 5. Resolver instância ativa antes de montar o prompt (evita TDZ e chamadas desnecessárias à IA)
-    console.log(`[ai-engine] Loading active instance for contact ${number} (company ${companyId})...`);
-    const inst = await getActiveInstanceForContact(companyId, number, card?.owner_id || card?.user_id);
+    console.log(`[ai-engine] Loading active instance for contact ${number} (company ${companyId}, instanceOverride=${opts.instanceId ?? "none"})...`);
+    const inst = await resolveRequiredInstance(card?.owner_id || card?.user_id);
     if (!inst) {
-      console.error("[ai-engine] No active instance found to reply");
-      await (supabaseAdmin as any).from("audit_log").insert({
-        company_id: companyId,
-        acao: "ai_error",
-        detalhes: { error: "Nenhuma instância ativa encontrada para responder.", number }
-      });
-      await (supabaseAdmin as any).from("ai_message_processing").update({ status: "skipped", error_message: "no_active_instance" }).eq("id", processing.id);
+      if (!opts.instanceId) {
+        console.error("[ai-engine] No active instance found to reply");
+        await (supabaseAdmin as any).from("audit_log").insert({
+          company_id: companyId,
+          acao: "ai_error",
+          detalhes: { error: "Nenhuma instância ativa encontrada para responder.", number }
+        });
+        await (supabaseAdmin as any).from("ai_message_processing").update({ status: "skipped", error_message: "no_active_instance" }).eq("id", processing.id);
+      }
       return;
     }
+    traceInstId = inst.id ?? traceInstId;
     console.log(`[ai-engine] Found instance: ${inst.instance_name} (${inst.provider})`);
 
     const system = buildSystemPrompt(cfg as any, {
@@ -573,6 +865,19 @@ export async function processAiResponse(
       canal: inst.provider === "meta_instagram" ? "Instagram Direct" : inst.provider === "meta_messenger" ? "Messenger" : inst.provider === "telegram" ? "Telegram" : "WhatsApp",
       olistCatalogo,
       olistPedido: olistPedidoAtivo,
+      ragChunks,
+      hasIndexedRagChunks,
+      clientMemory: card?.client_memory ?? null,
+      activeTask: card?.active_task ?? null,
+      receiptDetected: turnPlan.receiptDetected,
+      verifiedTools: verifiedTools.map((t) => ({
+        name: t.name,
+        display_name: t.display_name,
+        description: t.description,
+        kind: t.kind,
+        permission_level: t.permission_level,
+        input_schema: t.input_schema,
+      })),
     });
 
 
@@ -584,6 +889,7 @@ export async function processAiResponse(
         const { queryCustomerLookup } = await import("./customer-lookup.server");
         dynamicCustomerPrompt = await queryCustomerLookup(customerLookupConfig, number);
         if (dynamicCustomerPrompt) {
+          traceToolsUsed.push("customer_lookup");
           console.log(`[ai-engine] Customer lookup injected for contact ${number}`);
         }
       } catch (lookupErr) {
@@ -606,6 +912,7 @@ export async function processAiResponse(
       contatoNumero: number,
       card,
       metaCapiConfig,
+      hasWebhookOutTools,
       externalData: dynamicCustomerPrompt ? { smp: "datos_reales_smp_disponibles" } : undefined,
     });
 
@@ -614,6 +921,7 @@ export async function processAiResponse(
       dynamicCustomerPrompt,
       structuredContextBlock,
     ].filter(Boolean).join("\n\n");
+    tracePromptChars = fullSystemPrompt.length;
 
     // 6. Chamar a IA com o provedor configurado
     const response = await lovableAiChat(
@@ -636,179 +944,141 @@ export async function processAiResponse(
     );
 
     console.log(`[ai-engine] AI RAW RESPONSE for ${number}:`, response);
-    
+
+    let finalResponse = response;
+    let parsed = parseAiOutput(finalResponse, stages as any);
+    let pendingOwnerToolApproval: Record<string, any> | null = null;
+
+    if (parsed.toolCall?.nombre && cfg.id) {
+      const requestedToolName = parsed.toolCall.nombre;
+      const matchedTool = verifiedTools.find(
+        (t) => t.name === requestedToolName && t.kind === "http",
+      );
+
+      if (matchedTool) {
+        if (matchedTool.permission_level === "write_require_owner_approval") {
+          traceToolsUsed.push({
+            name: matchedTool.name,
+            ok: false,
+            status: "awaiting_owner_approval",
+            requiresApproval: true,
+          });
+          pendingOwnerToolApproval = {
+            tipo: "tool_approval",
+            estado: "awaiting_owner_approval",
+            tool: matchedTool.name,
+            args: parsed.toolCall.argumentos || {},
+            updated_at: new Date().toISOString(),
+          };
+        } else {
+          try {
+            const { executeVerifiedTool } = await import("@/lib/agent-tools.server");
+            const toolRes = await executeVerifiedTool(supabaseAdmin, {
+              companyId,
+              agentId: cfg.id,
+              toolName: matchedTool.name,
+              args: parsed.toolCall.argumentos || {},
+              context: {
+                phone: number,
+                numero: number,
+                cardId: card?.id ?? null,
+                companyId,
+                channel: opts.channel ?? null,
+                name: card?.nome ?? null,
+              },
+            });
+
+            traceToolsUsed.push({
+              name: matchedTool.name,
+              ok: toolRes.ok,
+              status: toolRes.status ?? (toolRes.requiresConfirmation ? 409 : null),
+              latencyMs: toolRes.latencyMs ?? 0,
+            });
+
+            const safeToolPayload = JSON.stringify({
+              tool: matchedTool.name,
+              ok: toolRes.ok,
+              status: toolRes.status ?? null,
+              requiresConfirmation: Boolean(toolRes.requiresConfirmation),
+              reason: toolRes.reason ?? null,
+              data: toolRes.data ?? null,
+              error: toolRes.error ?? null,
+            }).slice(0, 4200);
+
+            const followUpResponse = await lovableAiChat(
+              [
+                { role: "system", content: fullSystemPrompt },
+                ...history,
+                { role: "user", content: effectiveIncomingText },
+                { role: "assistant", content: response },
+                {
+                  role: "user",
+                  content: `Resultado real de la herramienta "${matchedTool.name}": ${safeToolPayload}\n\nRedacta ahora la respuesta final para el cliente usando exactamente el mismo protocolo JSON canónico (con "usar_herramienta": null). Nunca reveles credenciales ni URLs internas.`,
+                },
+              ],
+              {
+                provider: cfg.ai_provider || "gemini",
+                model: cfg.ai_model || undefined,
+                jsonMode: true,
+                telemetry: {
+                  companyId,
+                  userId: card?.owner_id || card?.user_id || null,
+                  agentId: cfg.id || null,
+                  feature: "chat_agent_tool_followup",
+                },
+              },
+            );
+
+            if (followUpResponse) {
+              const secondParsed = parseAiOutput(followUpResponse, stages as any);
+              if (secondParsed.parts.length > 0) {
+                finalResponse = followUpResponse;
+                parsed = {
+                  ...secondParsed,
+                  stage: secondParsed.stage ?? parsed.stage,
+                  intent: secondParsed.intent ?? parsed.intent,
+                  qualified: secondParsed.qualified || parsed.qualified,
+                  handoff: secondParsed.handoff || parsed.handoff,
+                  webhookSaliente: secondParsed.webhookSaliente ?? parsed.webhookSaliente,
+                  clientMemoryUpdate: secondParsed.clientMemoryUpdate ?? parsed.clientMemoryUpdate,
+                  activeTaskUpdate: secondParsed.activeTaskUpdate ?? parsed.activeTaskUpdate,
+                };
+              }
+            }
+          } catch (toolErr: any) {
+            traceToolsUsed.push({
+              name: matchedTool.name,
+              ok: false,
+              status: 500,
+              latencyMs: 0,
+            });
+            console.warn(`[ai-engine] Verified tool execution error (${matchedTool.name}):`, toolErr?.message);
+          }
+        }
+      }
+    }
+
     try {
       await supabaseAdmin.from("audit_log").insert({
         company_id: companyId,
         acao: "ai_response",
-        detalhes: { response: response.slice(0, 500), number }
+        detalhes: { response: finalResponse.slice(0, 500), number }
       } as any);
     } catch (e) {
       console.error("[ai-engine] Failed to insert ai_response log:", e);
     }
 
-    const parsed = parseAiOutput(response, stages as any);
     const replyParts = parsed.parts.map((part) => part.trim()).filter(Boolean);
-
-    // Drael Protocol: Ejecución de código en Sandbox aislado si fue solicitado en este turno
-    if (parsed.codeExecution?.ejecutar && parsed.codeExecution?.codigo) {
-      try {
-        const { executeSandboxCode } = await import("./agent-sandbox.server");
-        const execRes = await executeSandboxCode(parsed.codeExecution.codigo, {
-          cliente: { numero: number, nombre: card?.nome },
-          card,
-        });
-        console.log(`[ai-engine] Sandbox code executed for ${number}:`, execRes);
-        if (execRes.ok && execRes.result) {
-          if (typeof execRes.result === "string" && execRes.result.trim()) {
-            replyParts.push(execRes.result.trim());
-          } else if (execRes.result.mensaje || execRes.result.reply) {
-            replyParts.push(String(execRes.result.mensaje || execRes.result.reply).trim());
-          }
-        }
-        await supabaseAdmin.from("audit_log").insert({
-          company_id: companyId,
-          acao: "ai_code_execution",
-          detalhes: {
-            code: parsed.codeExecution.codigo,
-            result: execRes.result,
-            error: execRes.error,
-            number,
-          },
-        } as any);
-      } catch (codeErr: any) {
-        console.warn("[ai-engine] Sandbox execution error:", codeErr);
-      }
-    }
-
-    // Drael Protocol: Disparo de evento Meta CAPI / Pixel si fue solicitado en la salida estructurada
-    if (parsed.pixelTracking?.evento && card?.id) {
-      try {
-        const { sendMetaConversionForLead } = await import("./meta-capi.server");
-        const VALID_PIXEL_EVENTS: Record<string, any> = {
-          leadsubmitted: "LeadSubmitted",
-          lead: "LeadSubmitted",
-          contact: "LeadSubmitted",
-          contacto: "LeadSubmitted",
-          qualifiedlead: "QualifiedLead",
-          qualified_lead: "QualifiedLead",
-          viewcontent: "ViewContent",
-          view_content: "ViewContent",
-          addtocart: "AddToCart",
-          add_to_cart: "AddToCart",
-          initiatecheckout: "InitiateCheckout",
-          initiate_checkout: "InitiateCheckout",
-          appointmentbooked: "AppointmentBooked",
-          appointment_booked: "AppointmentBooked",
-          appointment: "AppointmentBooked",
-          schedule: "AppointmentBooked",
-          agendamiento: "AppointmentBooked",
-          ordercreated: "OrderCreated",
-          order_created: "OrderCreated",
-          purchase: "Purchase",
-          compra: "Purchase",
-        };
-        const rawEvt = String(parsed.pixelTracking.evento || "").trim();
-        const mappedEvt = VALID_PIXEL_EVENTS[rawEvt.toLowerCase()] || VALID_PIXEL_EVENTS[rawEvt] || null;
-        if (mappedEvt) {
-          await sendMetaConversionForLead({
-            companyId,
-            cardId: card.id,
-            eventName: mappedEvt,
-            value: parsed.pixelTracking.valor != null ? Number(parsed.pixelTracking.valor) : undefined,
-            currency: parsed.pixelTracking.moneda || undefined,
-          });
-          console.log(`[ai-engine] Meta CAPI Pixel event emitted: ${mappedEvt} (from ${rawEvt})`);
-        } else {
-          console.warn(`[ai-engine] Evento Pixel ignorado por no estar en lista blanca: "${rawEvt}"`);
-        }
-      } catch (pixErr: any) {
-        console.warn("[ai-engine] Pixel event emit error:", pixErr?.message);
-      }
-    }
-
-    // Drael Protocol: Disparo de Webhook saliente hacia sistema externo si fue solicitado
-    if (parsed.webhookSaliente?.disparar && parsed.webhookSaliente?.evento) {
-      try {
-        await supabaseAdmin.from("audit_log").insert({
-          company_id: companyId,
-          acao: "ai_outbound_webhook",
-          detalhes: {
-            evento: parsed.webhookSaliente.evento,
-            payload: parsed.webhookSaliente.payload,
-            number,
-          },
-        } as any);
-        console.log(`[ai-engine] Outbound webhook emitted: ${parsed.webhookSaliente.evento}`);
-      } catch (hookErr: any) {
-        console.warn("[ai-engine] Outbound webhook error:", hookErr?.message);
-      }
-    }
-
     const replyText = replyParts.join("\n\n");
     console.log(`[ai-engine] Parsed intent: ${parsed.intent}, parts count: ${replyParts.length}, qualified: ${parsed.qualified}, sugestao: ${Boolean(parsed.sugestao)}`);
 
-    // B-06: Agendamento automático quando a IA confirma horário com o cliente
-    if (parsed.agendar) {
-      try {
-        const inicioIso = parsed.agendar.inicio || new Date().toISOString();
-        const fimIso = parsed.agendar.fim || new Date(new Date(inicioIso).getTime() + 30 * 60_000).toISOString();
-        await supabaseAdmin.from("mensagem_agendada").insert({
-          company_id: companyId,
-          card_id: card?.id ?? null,
-          numero: number,
-          nome_lead: card?.nome_contato ?? null,
-          titulo: parsed.agendar.titulo || `Agendamento - ${number}`,
-          agendado_para: inicioIso,
-          fim_em: fimIso,
-          status: "agendado",
-          tipo: "compromisso",
-          origem: "ia",
-        } as any);
-        console.log(`[ai-engine] Agendamento registrado para ${number} às ${inicioIso} em mensagem_agendada`);
-      } catch (agErr: any) {
-        console.warn("[ai-engine] Falha ao registrar agendamento automático:", agErr?.message);
-      }
-    }
-
-    // Fase B: Registrar sugestão de treinamento / melhoria de prompt se gerada pela IA
-    if (parsed.sugestao) {
-      console.log(`[ai-engine] 💡 AI prompt suggestion detected for ${number}:`, parsed.sugestao);
-      try {
-        await (supabaseAdmin as any).from("audit_log").insert({
-          company_id: companyId,
-          acao: "ai_prompt_suggestion",
-          detalhes: {
-            numero: number,
-            inbound_text: effectiveIncomingText.slice(0, 500),
-            previous_reply: replyText.slice(0, 500),
-            history: history.slice(-6),
-            intent: parsed.intent || "NEUTRA",
-            duda: parsed.sugestao.duda,
-            regra_sugerida: parsed.sugestao.regra,
-            status: "pending",
-            created_at: new Date().toISOString(),
-          }
-        });
-
-        await (supabaseAdmin as any).rpc("push_notificacao", {
-          _company_id: companyId,
-          _tipo: "geral",
-          _titulo: "💡 Sugerencia de entrenamiento para tu Agente IA",
-          _descricao: parsed.sugestao.duda.slice(0, 180),
-          _link: "/app/agente",
-          _ref_id: `sugestao:${processing.id}`,
-        });
-      } catch (sugErr: any) {
-        console.warn("[ai-engine] Falha ao gravar sugestão de treinamento:", sugErr?.message);
-      }
-    }
     const stage = parsed.stage;
     const intent = parsed.intent;
     const handoff = parsed.handoff;
     const qualified = parsed.qualified;
+    traceHandoff = Boolean(handoff);
 
-    // 7. Enviar resposta(s)
+    // 7. Re-validação final ANTES de efeitos colaterais e envio de mensagens
     console.log(`[ai-engine] Preparing dispatch via instance: ${inst.instance_name} (${inst.provider})`);
 
     const { data: instRow } = await supabaseAdmin
@@ -886,6 +1156,319 @@ export async function processAiResponse(
       return;
     }
 
+    // Efeitos colaterais seguros (SOMENTE após re-validação e com idempotência por inboundMessageId)
+    const hasSideEffects = Boolean(
+      (parsed.pixelTracking?.evento && card?.id) ||
+      (parsed.webhookSaliente?.disparar && parsed.webhookSaliente?.evento) ||
+      parsed.agendar ||
+      parsed.sugestao ||
+      turnPlan.receiptDetected ||
+      pendingOwnerToolApproval
+    );
+    let sideEffectsAlreadyRan = false;
+    if (hasSideEffects) {
+      try {
+        const { data: existingSideEffect } = await (supabaseAdmin as any)
+          .from("audit_log")
+          .select("id")
+          .eq("company_id", companyId)
+          .eq("acao", "ai_side_effects_done")
+          .eq("recurso", inboundMessageId)
+          .limit(1)
+          .maybeSingle();
+        if (existingSideEffect?.id) {
+          sideEffectsAlreadyRan = true;
+        } else {
+          await (supabaseAdmin as any).from("audit_log").insert({
+            company_id: companyId,
+            acao: "ai_side_effects_done",
+            recurso: inboundMessageId,
+            detalhes: { number, inbound_message_id: inboundMessageId },
+          });
+        }
+      } catch (idemErr: any) {
+        console.warn("[ai-engine] Idempotency check warning:", idemErr?.message);
+      }
+    }
+
+    if (!sideEffectsAlreadyRan) {
+      // Disparo de evento Meta CAPI / Pixel si fue solicitado en la salida estructurada
+      if (parsed.pixelTracking?.evento && card?.id) {
+        try {
+          const { sendMetaConversionForLead } = await import("./meta-capi.server");
+          const VALID_PIXEL_EVENTS: Record<string, any> = {
+            leadsubmitted: "LeadSubmitted",
+            lead: "LeadSubmitted",
+            contact: "LeadSubmitted",
+            contacto: "LeadSubmitted",
+            qualifiedlead: "QualifiedLead",
+            qualified_lead: "QualifiedLead",
+            viewcontent: "ViewContent",
+            view_content: "ViewContent",
+            addtocart: "AddToCart",
+            add_to_cart: "AddToCart",
+            initiatecheckout: "InitiateCheckout",
+            initiate_checkout: "InitiateCheckout",
+            appointmentbooked: "AppointmentBooked",
+            appointment_booked: "AppointmentBooked",
+            appointment: "AppointmentBooked",
+            schedule: "AppointmentBooked",
+            agendamiento: "AppointmentBooked",
+            ordercreated: "OrderCreated",
+            order_created: "OrderCreated",
+            purchase: "Purchase",
+            compra: "Purchase",
+          };
+          const rawEvt = String(parsed.pixelTracking.evento || "").trim();
+          const mappedEvt = VALID_PIXEL_EVENTS[rawEvt.toLowerCase()] || VALID_PIXEL_EVENTS[rawEvt] || null;
+          if (mappedEvt) {
+            await sendMetaConversionForLead({
+              companyId,
+              cardId: card.id,
+              eventName: mappedEvt,
+              dedupKey: `ai_${inboundMessageId}_${mappedEvt}`,
+              value: parsed.pixelTracking.valor != null ? Number(parsed.pixelTracking.valor) : undefined,
+              currency: parsed.pixelTracking.moneda || undefined,
+            });
+            traceToolsUsed.push(`meta_capi:${mappedEvt}`);
+            console.log(`[ai-engine] Meta CAPI Pixel event emitted: ${mappedEvt} (from ${rawEvt})`);
+          } else {
+            console.warn(`[ai-engine] Evento Pixel ignorado por no estar en lista blanca: "${rawEvt}"`);
+          }
+        } catch (pixErr: any) {
+          console.warn("[ai-engine] Pixel event emit error:", pixErr?.message);
+        }
+      }
+
+      // Despacho real de webhook saliente hacia tool webhook_out verificada vía agent_webhook_outbox
+      if (parsed.webhookSaliente?.disparar && parsed.webhookSaliente?.evento) {
+        const reqEvent = String(parsed.webhookSaliente.evento || "").trim();
+        const webhookOutTools = verifiedTools.filter((t) => t.kind === "webhook_out");
+        const matchedOutTool =
+          webhookOutTools.find(
+            (t) =>
+              t.name.toLowerCase() === reqEvent.toLowerCase() ||
+              t.display_name.toLowerCase() === reqEvent.toLowerCase(),
+          ) || (webhookOutTools.length === 1 ? webhookOutTools[0] : undefined);
+
+        if (matchedOutTool) {
+          try {
+            const { enqueueAndDispatchAgentWebhook } = await import("@/lib/agent-tools.server");
+            const outboxRes = await enqueueAndDispatchAgentWebhook(supabaseAdmin, {
+              companyId,
+              agentId: cfg.id ?? null,
+              toolId: matchedOutTool.id,
+              numero: number,
+              inboundMessageId,
+              eventName: reqEvent || matchedOutTool.name,
+              url: matchedOutTool.url,
+              method: matchedOutTool.method,
+              headers: matchedOutTool.headers,
+              payload: {
+                evento: reqEvent,
+                numero: number,
+                card_id: card?.id ?? null,
+                ...(parsed.webhookSaliente.payload && typeof parsed.webhookSaliente.payload === "object"
+                  ? parsed.webhookSaliente.payload
+                  : { data: parsed.webhookSaliente.payload ?? null }),
+              },
+            });
+            traceToolsUsed.push({
+              name: matchedOutTool.name,
+              kind: "webhook_out",
+              outboxId: outboxRes.outboxId,
+              ok: outboxRes.ok,
+              status: outboxRes.httpStatus,
+            });
+            console.log(
+              `[ai-engine] Outbox webhook ${matchedOutTool.name} (${reqEvent}): status=${outboxRes.status} http=${outboxRes.httpStatus}`,
+            );
+          } catch (hookErr: any) {
+            traceToolsUsed.push({
+              name: matchedOutTool.name,
+              kind: "webhook_out",
+              ok: false,
+              status: 500,
+            });
+            console.warn("[ai-engine] Outbox webhook error:", hookErr?.message);
+          }
+        }
+      }
+
+      // Agendamento automático quando a IA confirma horário com o cliente
+      if (parsed.agendar) {
+        try {
+          const inicioIso = parsed.agendar.inicio || new Date().toISOString();
+          const fimIso = parsed.agendar.fim || new Date(new Date(inicioIso).getTime() + 30 * 60_000).toISOString();
+          const tituloAgenda = parsed.agendar.titulo || `Agendamento - ${number}`;
+          const mensagemAgenda =
+            parsed.agendar.titulo ||
+            replyText.slice(0, 500) ||
+            "Agendamento confirmado pela IA";
+          const { error: agInsertErr } = await supabaseAdmin.from("mensagem_agendada").insert({
+            company_id: companyId,
+            card_id: card?.id ?? null,
+            numero: number,
+            nome_lead: card?.nome ?? null,
+            titulo: tituloAgenda,
+            mensagem: mensagemAgenda,
+            agendado_para: inicioIso,
+            fim_em: fimIso,
+            status: "agendado",
+            tipo: "compromisso",
+            origem: "ia",
+          } as any);
+          if (agInsertErr) {
+            console.warn("[ai-engine] Falha ao registrar agendamento automático:", agInsertErr.message);
+          } else {
+            traceToolsUsed.push("schedule_appointment");
+            console.log(`[ai-engine] Agendamento registrado para ${number} às ${inicioIso} em mensagem_agendada`);
+          }
+        } catch (agErr: any) {
+          console.warn("[ai-engine] Falha ao registrar agendamento automático:", agErr?.message);
+        }
+      }
+
+      // Fase B: Registrar sugestão de treinamento / melhoria de prompt se gerada pela IA
+      if (parsed.sugestao) {
+        console.log(`[ai-engine] 💡 AI prompt suggestion detected for ${number}:`, parsed.sugestao);
+        try {
+          await (supabaseAdmin as any).from("audit_log").insert({
+            company_id: companyId,
+            acao: "ai_prompt_suggestion",
+            recurso: inboundMessageId,
+            detalhes: {
+              numero: number,
+              inbound_text: effectiveIncomingText.slice(0, 500),
+              previous_reply: replyText.slice(0, 500),
+              history: history.slice(-6),
+              intent: parsed.intent || "NEUTRA",
+              duda: parsed.sugestao.duda,
+              regra_sugerida: parsed.sugestao.regra,
+              status: "pending",
+              created_at: new Date().toISOString(),
+            }
+          });
+
+          await (supabaseAdmin as any).rpc("push_notificacao", {
+            _company_id: companyId,
+            _tipo: "geral",
+            _titulo: "💡 Sugerencia de entrenamiento para tu Agente IA",
+            _descricao: parsed.sugestao.duda.slice(0, 180),
+            _link: "/app/agente",
+            _ref_id: `sugestao:${processing.id}`,
+          });
+        } catch (sugErr: any) {
+          console.warn("[ai-engine] Falha ao gravar sugestão de treinamento:", sugErr?.message);
+        }
+      }
+
+      // Disparo proactivo Human-in-the-Loop (HITL) hacia teléfonos autorizados del Secretario
+      const hasSecretaryTargets = Boolean(
+        (cfg as any)?.secretary_enabled &&
+        Array.isArray((cfg as any)?.secretary_phones) &&
+        (cfg as any).secretary_phones.length > 0,
+      );
+
+      if (hasSecretaryTargets && turnPlan.receiptDetected) {
+        try {
+          const { createAndNotifyApprovalRequest } = await import("@/lib/ai-secretary.server");
+          await createAndNotifyApprovalRequest(supabaseAdmin, {
+            companyId,
+            agentId: cfg.id ?? null,
+            agent: cfg,
+            kind: "payment_receipt",
+            leadNumero: number,
+            leadNome: card?.nome ?? null,
+            summary: `Posible comprobante de pago recibido: "${effectiveIncomingText.slice(0, 180)}"`,
+            payload: {
+              receiptText: effectiveIncomingText.slice(0, 500),
+              messageId: inboundMessageId,
+            },
+            requestedByInstanceId: inst.id ?? opts.instanceId ?? null,
+            dedupKey: inboundMessageId,
+          });
+        } catch (hitlErr: any) {
+          console.warn("[ai-engine] HITL payment_receipt error:", hitlErr?.message);
+        }
+      }
+
+      if (hasSecretaryTargets && pendingOwnerToolApproval) {
+        try {
+          const { createAndNotifyApprovalRequest } = await import("@/lib/ai-secretary.server");
+          await createAndNotifyApprovalRequest(supabaseAdmin, {
+            companyId,
+            agentId: cfg.id ?? null,
+            agent: cfg,
+            kind: "tool_write",
+            leadNumero: number,
+            leadNome: card?.nome ?? null,
+            summary: `Ejecutar herramienta protegida "${pendingOwnerToolApproval.tool}"`,
+            payload: {
+              toolName: pendingOwnerToolApproval.tool,
+              args: pendingOwnerToolApproval.args || {},
+            },
+            requestedByInstanceId: inst.id ?? opts.instanceId ?? null,
+            dedupKey: inboundMessageId,
+          });
+        } catch (hitlErr: any) {
+          console.warn("[ai-engine] HITL tool_write error:", hitlErr?.message);
+        }
+      }
+    }
+
+    // Persistir Memoria Aguda (client_memory) y Tarea Activa (active_task) en crm_cards después de re-validación
+    if (card?.id && (parsed.clientMemoryUpdate || turnPlan.receiptDetected || pendingOwnerToolApproval || parsed.activeTaskUpdate)) {
+      try {
+        const cardPatch: Record<string, any> = {};
+        if (parsed.clientMemoryUpdate && typeof parsed.clientMemoryUpdate === "object") {
+          const prevMem =
+            card.client_memory && typeof card.client_memory === "object" && !Array.isArray(card.client_memory)
+              ? { ...(card.client_memory as Record<string, any>) }
+              : {};
+          for (const [k, v] of Object.entries(parsed.clientMemoryUpdate)) {
+            const cleanKey = String(k || "").trim().slice(0, 60);
+            if (!cleanKey || v === null || v === undefined) continue;
+            if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
+              const val = typeof v === "string" ? v.trim().slice(0, 240) : v;
+              if (val !== "") prevMem[cleanKey] = val;
+            }
+          }
+          const cappedEntries = Object.entries(prevMem).slice(-20);
+          cardPatch.client_memory = Object.fromEntries(cappedEntries);
+          card.client_memory = cardPatch.client_memory;
+        }
+
+        if (turnPlan.receiptDetected) {
+          cardPatch.active_task = {
+            tipo: "verify_payment",
+            estado: "pending_review",
+            updated_at: new Date().toISOString(),
+            ...(parsed.activeTaskUpdate?.datos ? { datos: parsed.activeTaskUpdate.datos } : {}),
+          };
+          card.active_task = cardPatch.active_task;
+        } else if (pendingOwnerToolApproval) {
+          cardPatch.active_task = pendingOwnerToolApproval;
+          card.active_task = cardPatch.active_task;
+        } else if (parsed.activeTaskUpdate && typeof parsed.activeTaskUpdate === "object") {
+          cardPatch.active_task = {
+            ...parsed.activeTaskUpdate,
+            updated_at: new Date().toISOString(),
+          };
+          card.active_task = cardPatch.active_task;
+        }
+
+        if (Object.keys(cardPatch).length > 0) {
+          await (supabaseAdmin as any)
+            .from("crm_cards")
+            .update(cardPatch)
+            .eq("id", card.id);
+        }
+      } catch (memErr: any) {
+        console.warn("[ai-engine] Falha ao persistir memória/tarefa do cliente:", memErr?.message);
+      }
+    }
+
     if (replyText) {
       console.log(`[ai-engine] Sending consolidated reply to ${number}: "${replyText.slice(0, 30)}..."`);
       const typingMs = Math.min(Math.max(replyText.length * 30, 1000), 5000);
@@ -942,8 +1525,10 @@ export async function processAiResponse(
                 texto: replyText,
                 direcao: "saida",
                 autor: "ia",
+                instance_id: inst.id ?? null,
                 provider: inst.provider,
                 whatsapp_message_id: audioMsgId,
+                status_envio: "enviado",
                 midia_tipo: "audio",
                 midia_url: audioUrlToSend.startsWith("http") ? audioUrlToSend : null,
                 midia_mime: "audio/mpeg",
@@ -988,8 +1573,10 @@ export async function processAiResponse(
               texto: message,
               direcao: "saida",
               autor: "ia",
+              instance_id: inst.id ?? null,
               provider: inst.provider,
               whatsapp_message_id: partMsgId,
+              status_envio: "enviado",
               created_at: new Date().toISOString()
             } as any);
             console.log(`[ai-engine] waSendText part success for ${number}: id=${partMsgId}`);
@@ -1035,12 +1622,14 @@ export async function processAiResponse(
                 texto: cardCaption,
                 midia_url: prodImg,
                 midia_tipo: prodImg ? "image" : null,
+                instance_id: inst.id ?? null,
                 provider: inst.provider,
                 whatsapp_message_id: prodMsgId,
                 status_envio: "enviado",
                 created_at: new Date().toISOString()
               });
               console.log(`[ai-engine] Produto enviado e gravado: SKU ${sku} (${prod.nome}) para ${number}, waId=${prodMsgId}`);
+              traceToolsUsed.push(`send_product:${sku}`);
             } catch (prodErr: any) {
               console.warn(`[ai-engine] Falha ao enviar produto SKU ${sku}:`, prodErr?.message);
             }
@@ -1118,6 +1707,7 @@ export async function processAiResponse(
             detalhes: { numero: number, pedido: r, total_cents: totalCents },
           });
 
+          traceToolsUsed.push("olist_order");
           console.log(`[ai-engine] Pedido Olist #${r.numero} criado pela IA para ${number}`);
         }
       } catch (e: any) {
@@ -1232,6 +1822,27 @@ export async function processAiResponse(
         );
     }
 
+    try {
+      await (supabaseAdmin as any).from("ai_turn_traces").insert({
+        company_id: companyId,
+        agent_id: traceAgentId,
+        numero: number,
+        instance_id: traceInstId,
+        channel: opts.channel ?? null,
+        provider: traceProvider,
+        model: traceModel,
+        route: traceRoute,
+        chunks_used: traceChunksUsed,
+        tools_used: traceToolsUsed,
+        latency_ms: Math.max(0, Date.now() - turnStartedAt),
+        prompt_chars: tracePromptChars,
+        handoff: traceHandoff,
+        error: null,
+      });
+    } catch (traceErr: any) {
+      console.warn("[ai-engine] Failed to persist ai_turn_trace:", traceErr?.message);
+    }
+
     await (supabaseAdmin as any)
       .from("ai_message_processing")
       .update({ status: "completed", error_message: null })
@@ -1239,6 +1850,24 @@ export async function processAiResponse(
 
   } catch (error: any) {
     console.error("[ai-engine] FATAL ERROR in processAiResponse:", error);
+    try {
+      await (supabaseAdmin as any).from("ai_turn_traces").insert({
+        company_id: companyId,
+        agent_id: traceAgentId,
+        numero: number,
+        instance_id: traceInstId,
+        channel: opts.channel ?? null,
+        provider: traceProvider,
+        model: traceModel,
+        route: traceRoute,
+        chunks_used: traceChunksUsed,
+        tools_used: traceToolsUsed,
+        latency_ms: Math.max(0, Date.now() - turnStartedAt),
+        prompt_chars: tracePromptChars,
+        handoff: traceHandoff,
+        error: String(error?.message || error).slice(0, 500),
+      });
+    } catch {}
     try {
       await supabaseAdmin.from("audit_log").insert({
         company_id: companyId,

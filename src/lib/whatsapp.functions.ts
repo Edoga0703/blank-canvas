@@ -1104,8 +1104,13 @@ export const testAiReply = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const companyId = await resolveCompanyId(supabase, userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { lovableAiChat } = await import("./lovable-ai.server");
     const { buildSystemPrompt, parseAiOutput } = await import("./ai-prompt");
+    const { planTurnContext } = await import("./ai-router.server");
+    const { retrieveKnowledgeChunks } = await import("./knowledge-rag.server");
+    const { listVerifiedToolsForAgent } = await import("./agent-tools.server");
+    const startedAt = Date.now();
     const tipo = data.tipo || "qualificacao";
 
     let agentQuery = supabase.from("agent_config").select("*");
@@ -1120,14 +1125,59 @@ export const testAiReply = createServerFn({ method: "POST" })
     ]);
 
     const cfg = data.draftCfg ? { ...(dbCfg || {}), ...data.draftCfg } : dbCfg;
+    const resolvedAgentId = data.agentId || (cfg as any)?.id || null;
     const stages = (stagesRows ?? []).map((s: any) => ({ nome: s.nome, tipo: s.tipo }));
     const produtos = (prodRows ?? []).map((p: any) => ({ nome: p.nome, preco: p.preco, descricao: p.descricao, sku: p.sku, tipo: p.tipo, duracao_min: p.duracao_min, agendavel: p.agendavel }));
     const feedback = (fbRows ?? []).map((f: any) => ({ rating: f.rating, texto: f.mensagem_texto || "", nota: f.nota })).filter((f: any) => f.texto);
+
+    const turnPlan = planTurnContext({
+      text: data.message,
+      activeTask: null,
+      catalogCount: produtos.length,
+    });
+
+    const [ragChunks, verifiedTools, chunksCountRes] = await Promise.all([
+      turnPlan.loadRag && resolvedAgentId
+        ? retrieveKnowledgeChunks(supabaseAdmin, {
+            companyId,
+            agentId: resolvedAgentId,
+            query: data.message,
+            limit: 5,
+          })
+        : Promise.resolve([]),
+      resolvedAgentId
+        ? listVerifiedToolsForAgent(supabaseAdmin, companyId, resolvedAgentId)
+        : Promise.resolve([]),
+      resolvedAgentId
+        ? (supabaseAdmin as any)
+            .from("agent_knowledge_chunks")
+            .select("id", { count: "exact", head: true })
+            .eq("company_id", companyId)
+            .eq("agent_id", resolvedAgentId)
+            .eq("active", true)
+        : Promise.resolve({ count: 0 }),
+    ]);
+
+    const hasIndexedRagChunks = Number((chunksCountRes as any)?.count || 0) > 0;
+    const ragChunksUsed = (ragChunks || []).map((c) => ({ id: c.id, source_name: c.source_name }));
+    const verifiedToolsAvailable = (verifiedTools || []).map((t) => t.name);
+
     const system = buildSystemPrompt(cfg ?? {}, {
       responderEmPartes: cfg?.responder_em_partes ?? true,
       stages,
       produtos,
       feedbackHints: feedback,
+      ragChunks,
+      hasIndexedRagChunks,
+      receiptDetected: turnPlan.receiptDetected,
+      verifiedTools: verifiedTools.map((t) => ({
+        name: t.name,
+        display_name: t.display_name,
+        description: t.description,
+        kind: t.kind,
+        permission_level: t.permission_level,
+        input_schema: t.input_schema,
+      })),
     });
 
     const { getCompanyPlan } = await import("./plan-limits.server");
@@ -1161,6 +1211,7 @@ export const testAiReply = createServerFn({ method: "POST" })
       },
     );
     const parsed = parseAiOutput(raw, stages);
+    const latencyMs = Math.max(0, Date.now() - startedAt);
 
     if (parsed.sugestao) {
       try {
@@ -1184,7 +1235,25 @@ export const testAiReply = createServerFn({ method: "POST" })
       }
     }
 
-    return { reply: parsed.parts.join("\n\n"), parts: parsed.parts, stage: parsed.stage, sugestao: parsed.sugestao, system };
+    return {
+      reply: parsed.parts.join("\n\n"),
+      parts: parsed.parts,
+      stage: parsed.stage,
+      sugestao: parsed.sugestao,
+      system,
+      xray: {
+        route: turnPlan.route,
+        latencyMs,
+        provider,
+        model,
+        ragChunksUsed,
+        verifiedToolsAvailable,
+        receiptDetected: turnPlan.receiptDetected,
+        proposedToolCall: parsed.toolCall ?? null,
+        proposedMemoryUpdate: parsed.clientMemoryUpdate ?? null,
+        proposedActiveTask: parsed.activeTaskUpdate ?? null,
+      },
+    };
   });
 
 export const handleChatAction = createServerFn({ method: "POST" })

@@ -136,7 +136,7 @@ export async function getInstanceForContact(
       .select("instance_id, provider")
       .eq("company_id", companyId)
       .eq("numero", numero)
-      .neq("status_envio", "falha")
+      .or("status_envio.is.null,status_envio.neq.falha")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),

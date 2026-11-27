@@ -17,6 +17,7 @@ export function isMetaProvider(provider?: string | null): boolean {
 }
 
 export type WaInstance = {
+  id?: string;
   company_id?: string | null;
   instance_name: string;
   instance_token: string | null;
@@ -45,7 +46,7 @@ export async function getActiveInstance(
   const providersFilter = allowedProviders.length > 0 ? allowedProviders : DEFAULT_WA_PROVIDERS;
   const { data: inst } = await supabaseAdmin
     .from("whatsapp_instances")
-    .select("instance_name, instance_token, status, paused, provider, provider_type, phone_number_id, waba_id")
+    .select("id, instance_name, instance_token, status, paused, provider, provider_type, phone_number_id, waba_id")
     .eq("company_id", companyId)
     .in("provider", providersFilter)
     .in("status", ["connected", "open"])
@@ -58,6 +59,7 @@ export async function getActiveInstance(
   const provider = normalizeProvider((inst as any).provider, (inst as any).provider_type);
 
   return {
+    id: (inst as any).id,
     company_id: companyId,
     instance_name: (inst as any).instance_name,
     instance_token: (inst as any).instance_token ?? null,
@@ -80,15 +82,23 @@ export async function getActiveInstanceForContact(
     supabaseAdmin,
     companyId,
     numero,
-    "instance_name,display_name,instance_token,status,provider,provider_type,phone_number_id,waba_id,paused",
+    "id,instance_name,display_name,instance_token,status,provider,provider_type,phone_number_id,waba_id,paused",
     userId,
     instanceIdOverride,
   );
   if (!inst?.instance_name) return null;
 
+  if (instanceIdOverride) {
+    const isUp = (inst.status === "connected" || inst.status === "open") && !inst.paused;
+    if ((inst as any).id !== instanceIdOverride || !isUp) {
+      throw new Error("A conexão exigida para esta conversa não coincide ou está desconectada/pausada.");
+    }
+  }
+
   const provider = normalizeProvider((inst as any).provider, (inst as any).provider_type);
 
   return {
+    id: (inst as any).id,
     company_id: companyId,
     instance_name: (inst as any).instance_name,
     instance_token: (inst as any).instance_token ?? null,

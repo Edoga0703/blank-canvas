@@ -497,19 +497,22 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
 
           // 10. Despachar para o motor de automatizações multicanal (somente entradas reais de cliente)
           if (!isMerchantEcho && insertedMsg?.id) {
+            const safeInstanceId = instanceId || (connectionId ? `tg_conn_${connectionId}` : "telegram");
+            const isUntranscribedAudio = mediaType === "audio" && !texto.trim();
+            const eventText = texto.trim() ? texto : isUntranscribedAudio ? "[ÁUDIO]" : "";
             const { recordInboundAutomationEvent } = await import("@/lib/automations/inbound-events.server");
             await recordInboundAutomationEvent({
               companyId,
               messageId: insertedMsg.id,
               source: "telegram",
-              instanceId: instanceId || undefined,
+              instanceId: safeInstanceId,
               payload: {
                 cardId,
                 messageId: insertedMsg.id,
                 phone: String(chatId),
-                text: texto || "",
+                text: eventText,
                 channel: "telegram",
-                instanceId: instanceId || "",
+                instanceId: instanceId || null,
                 provider: "telegram",
                 externalConversationId: String(chatId),
                 author: "contact",
@@ -517,8 +520,8 @@ export const Route = createFileRoute("/api/public/telegram-webhook")({
                 kind: mediaProxiedUrl ? mediaType : "text",
                 isGroup: Boolean(msg.chat?.type === "group" || msg.chat?.type === "supergroup"),
                 stageId: existingCard?.stage_id || null,
-                responderEmAudio: false,
-                isAudioMessage: mediaType === "audio",
+                responderEmAudio: mediaType === "audio",
+                isAudioMessage: isUntranscribedAudio,
               },
             });
           }

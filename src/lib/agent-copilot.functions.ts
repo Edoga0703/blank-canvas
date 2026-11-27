@@ -4,19 +4,14 @@ import { resolveCompanyIdCached } from "@/lib/company-cache";
 
 async function requireAdminCompany(supabase: any, userId: string): Promise<string> {
   const companyId = await resolveCompanyIdCached(supabase, userId);
-  const { data: isSuper } = await supabase.rpc("is_super_admin");
-  if (!isSuper) {
-    const { data: cu } = await supabase
-      .from("company_user")
-      .select("role")
-      .eq("company_id", companyId)
-      .eq("user_id", userId)
-      .eq("ativo", true)
-      .maybeSingle();
-    if (!cu || (cu.role !== "owner" && cu.role !== "admin")) {
-      throw new Error("Somente o dono ou administradores podem editar os agentes de IA.");
-    }
-  }
+  const { assertPermission } = await import("./permissions.server");
+  await assertPermission(
+    supabase,
+    companyId,
+    userId,
+    "agente.manage",
+    "Sem permissão para gerenciar os agentes de IA.",
+  );
   return companyId as string;
 }
 import {
@@ -107,7 +102,9 @@ export const testWebhookInSandbox = createServerFn({ method: "POST" })
     if (!d?.url) throw new Error("URL é obrigatória para o teste de sandbox.");
     return d;
   })
-  .handler(async ({ data }) => {
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    await requireAdminCompany(supabase, userId);
     const { testExternalWebhook } = await import("./agent-sandbox.server");
     return await testExternalWebhook(data);
   });
@@ -202,7 +199,7 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
       return { ok: true, message: `${inserts.length} produto(s) adicionados ao catálogo com sucesso!` };
     }
 
-    // Manejo inteligente de integraciones Webhook (incluso si la IA envió erróneamente type: "config")
+    // Manejo inteligente de herramientas verificadas (type: "tool") e integraciones Webhook (incluso si la IA envió erróneamente type: "config")
     const isWebhookLike =
       action.type === "webhook" ||
       (action.type === "config" && (
@@ -216,11 +213,17 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
         /webhook|lookup|smp|api|endpoint/i.test(action.description || "")
       ));
 
-    if (isWebhookLike) {
+    if (action.type === "tool" || isWebhookLike) {
+      const { testExternalWebhook, isSafeUrl } = await import("./agent-sandbox.server");
+      const {
+        normalizeToolSlug,
+        sanitizeToolForClient,
+      } = await import("./agent-tools.server");
+
       const integrationKey = String(
         action.payload?.integration ||
         action.payload?.updates?.integration ||
-        "customerLookup"
+        ""
       ).trim();
 
       const url = String(
@@ -231,68 +234,227 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
         ""
       ).trim();
 
-      const method = String(
+      if (!url || !isSafeUrl(url)) {
+        throw new Error("A URL da ferramenta é obrigatória e deve ser válida e segura.");
+      }
+
+      const rawMethod = String(
         action.payload?.method ||
         action.payload?.updates?.method ||
         "POST"
       ).toUpperCase();
+      const method = (rawMethod === "GET" || rawMethod === "PUT" ? rawMethod : "POST") as "GET" | "POST" | "PUT";
 
-      const headers =
+      const rawHeaders =
         action.payload?.headers ||
-        action.payload?.updates?.headers || {
-          "Content-Type": "application/json",
-        };
+        action.payload?.updates?.headers ||
+        {};
+      let headers: Record<string, string> =
+        rawHeaders && typeof rawHeaders === "object" && !Array.isArray(rawHeaders)
+          ? Object.fromEntries(
+              Object.entries(rawHeaders).map(([k, v]) => [String(k), String(v ?? "")]),
+            )
+          : {};
 
-      const currentCanais = (cfg.canais_ativos && typeof cfg.canais_ativos === "object")
-        ? { ...cfg.canais_ativos }
-        : { telegram: false, whatsapp: false, instagram: false };
+      const rawKind = String(action.payload?.kind || "").trim().toLowerCase();
+      const kind = rawKind === "webhook_out" ? "webhook_out" : "http";
 
-      const currentIntegrations = currentCanais.integrations || {};
-      currentIntegrations[integrationKey] = {
-        enabled: true,
-        name: action.title || action.payload?.name || "Customer Lookup API",
-        url,
-        method,
-        headers,
-        updated_at: new Date().toISOString(),
-      };
-      currentCanais.integrations = currentIntegrations;
+      const rawPerm = String(action.payload?.permission_level || "").trim();
+      const permissionLevel = (
+        rawPerm === "write_confirm_customer" || rawPerm === "write_require_owner_approval"
+          ? rawPerm
+          : "read_only"
+      ) as "read_only" | "write_confirm_customer" | "write_require_owner_approval";
 
-      let updatedRegras = cfg.regras_rigidas || "";
-      const ruleText = String(action.payload?.ruleText || action.payload?.updates?.ruleText || "").trim();
-      if (ruleText) {
-        const formatted = ruleText.startsWith("-") || /^\d+\./.test(ruleText) ? ruleText : `- ${ruleText}`;
-        if (!updatedRegras.includes(ruleText)) {
-          updatedRegras = updatedRegras ? `${updatedRegras}\n${formatted}` : formatted;
-        }
+      const displayName = String(
+        action.payload?.display_name ||
+        action.payload?.name ||
+        action.title ||
+        "Herramienta Externa"
+      ).trim().slice(0, 120);
+
+      const toolSlug = normalizeToolSlug(
+        action.payload?.name || integrationKey || displayName,
+        kind === "webhook_out" ? "webhook_saliente" : "herramienta_http",
+      );
+
+      const description = String(
+        action.payload?.description ||
+        action.description ||
+        displayName
+      ).trim().slice(0, 500);
+
+      const inputSchema =
+        action.payload?.input_schema && typeof action.payload.input_schema === "object" && !Array.isArray(action.payload.input_schema)
+          ? action.payload.input_schema
+          : {};
+
+      const bodyTemplate =
+        action.payload?.body_template !== undefined
+          ? action.payload.body_template
+          : action.payload?.body !== undefined
+            ? action.payload.body
+            : null;
+
+      // Preservar headers reales si el Copilot recibió valores redactados de una herramienta existente
+      if (Object.values(headers).some((v) => v === "***redacted***")) {
+        try {
+          const { data: existingTool } = await (supabaseAdmin as any)
+            .from("agent_tools")
+            .select("headers")
+            .eq("company_id", companyId)
+            .eq("agent_id", cfg.id)
+            .eq("name", toolSlug)
+            .maybeSingle();
+          if (existingTool?.headers && typeof existingTool.headers === "object") {
+            const mergedHeaders = { ...headers };
+            for (const [k, v] of Object.entries(mergedHeaders)) {
+              if (v === "***redacted***" && existingTool.headers[k] !== undefined) {
+                mergedHeaders[k] = String(existingTool.headers[k]);
+              }
+            }
+            headers = mergedHeaders;
+          }
+        } catch {}
       }
 
-      const { error: upErr } = await (supabaseAdmin as any)
-        .from("agent_config")
-        .update({
-          canais_ativos: currentCanais as any,
-          regras_rigidas: updatedRegras,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", cfg.id);
+      // Exigir verificación HTTP 2xx previa (si no viene ya verificada del Sandbox, probar ahora)
+      const preTested = action.payload?.sandboxTestResult;
+      let testStatus: number;
+      let testLatencyMs: number;
+      let testSample: any;
 
-      if (upErr) throw new Error(`Falha ao salvar integração webhook: ${upErr.message}`);
-
-      await supabaseAdmin.from("audit_log").insert({
-        company_id: companyId,
-        user_id: userId,
-        acao: "copilot_webhook_integrated",
-        detalhes: {
-          integration: integrationKey,
+      if (
+        preTested &&
+        preTested.ok === true &&
+        Number(preTested.status) >= 200 &&
+        Number(preTested.status) < 300
+      ) {
+        testStatus = Number(preTested.status);
+        testLatencyMs = Math.max(0, Number(preTested.latencyMs) || 0);
+        testSample = preTested.responseSample ?? null;
+      } else {
+        const testRes = await testExternalWebhook({
           url,
-          agent_id: cfg.id,
-          applied_at: new Date().toISOString(),
-        },
-      });
+          method,
+          headers,
+          body: action.payload?.test_body ?? action.payload?.body ?? bodyTemplate ?? {},
+        });
+        if (!testRes.ok || testRes.status < 200 || testRes.status >= 300) {
+          throw new Error(
+            `La prueba previa en Sandbox falló (HTTP ${testRes.status}): ${testRes.error || testRes.statusText}. Corrige la URL o credenciales antes de guardar.`,
+          );
+        }
+        testStatus = testRes.status;
+        testLatencyMs = testRes.latencyMs;
+        testSample = testRes.responseSample ?? null;
+      }
+
+      const nowIso = new Date().toISOString();
+      let safeSample = testSample;
+      try {
+        const serialized = JSON.stringify(testSample);
+        if (serialized && serialized.length > 2000) {
+          safeSample = { truncated: serialized.slice(0, 2000) };
+        }
+      } catch {
+        safeSample = null;
+      }
+
+      const { data: savedTool, error: toolErr } = await (supabaseAdmin as any)
+        .from("agent_tools")
+        .upsert(
+          {
+            company_id: companyId,
+            agent_id: cfg.id,
+            name: toolSlug,
+            display_name: displayName,
+            description,
+            kind,
+            method,
+            url,
+            headers,
+            input_schema: inputSchema,
+            body_template: bodyTemplate,
+            permission_level: permissionLevel,
+            verified: true,
+            verified_at: nowIso,
+            last_test_status: testStatus,
+            last_test_latency_ms: testLatencyMs,
+            last_test_sample: safeSample,
+            active: true,
+            updated_at: nowIso,
+          },
+          { onConflict: "agent_id,name" },
+        )
+        .select("*")
+        .single();
+
+      if (toolErr || !savedTool) {
+        throw new Error(`Falha ao salvar ferramenta verificada: ${toolErr?.message || "Erro desconhecido"}`);
+      }
+
+      // Compatibilidad heredada si integration === "customerLookup" o si incluye ruleText
+      const ruleText = String(action.payload?.ruleText || action.payload?.updates?.ruleText || "").trim();
+      const shouldUpdateCustomerLookup = integrationKey === "customerLookup" || action.type === "webhook";
+
+      if (shouldUpdateCustomerLookup || ruleText) {
+        const cfgUpdate: Record<string, any> = { updated_at: nowIso };
+        if (integrationKey === "customerLookup") {
+          const currentCanais = (cfg.canais_ativos && typeof cfg.canais_ativos === "object")
+            ? { ...cfg.canais_ativos }
+            : { telegram: false, whatsapp: false, instagram: false };
+          const currentIntegrations = currentCanais.integrations || {};
+          currentIntegrations[integrationKey] = {
+            enabled: true,
+            name: displayName,
+            url,
+            method,
+            headers,
+            updated_at: nowIso,
+          };
+          currentCanais.integrations = currentIntegrations;
+          cfgUpdate.canais_ativos = currentCanais as any;
+        }
+        if (ruleText) {
+          let updatedRegras = cfg.regras_rigidas || "";
+          const formatted = ruleText.startsWith("-") || /^\d+\./.test(ruleText) ? ruleText : `- ${ruleText}`;
+          if (!updatedRegras.includes(ruleText)) {
+            updatedRegras = updatedRegras ? `${updatedRegras}\n${formatted}` : formatted;
+          }
+          cfgUpdate.regras_rigidas = updatedRegras;
+        }
+        const { error: upErr } = await (supabaseAdmin as any)
+          .from("agent_config")
+          .update(cfgUpdate)
+          .eq("id", cfg.id);
+        if (upErr) throw new Error(`Falha ao atualizar configuração da integração: ${upErr.message}`);
+      }
+
+      try {
+        await supabaseAdmin.from("audit_log").insert({
+          company_id: companyId,
+          user_id: userId,
+          acao: action.type === "tool" ? "copilot_tool_verified" : "copilot_webhook_integrated",
+          detalhes: {
+            tool_id: savedTool.id,
+            name: toolSlug,
+            kind,
+            permission_level: permissionLevel,
+            integration: integrationKey || null,
+            url,
+            status: testStatus,
+            latency_ms: testLatencyMs,
+            agent_id: cfg.id,
+            applied_at: nowIso,
+          },
+        });
+      } catch {}
 
       return {
         ok: true,
-        message: `¡Integración "${action.title || action.payload?.name || integrationKey}" conectada exitosamente al agente!`,
+        tool: sanitizeToolForClient(savedTool),
+        message: `¡Herramienta verificada "${displayName}" (${toolSlug}) guardada y activa en el agente!`,
       };
     }
 
@@ -413,4 +575,106 @@ Responda em formato JSON:
     }
 
     return result;
+  });
+
+/**
+ * Lista las herramientas externas registradas para un agente (con headers redactados)
+ */
+export const listAgentTools = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { agentId?: string | null; tipo?: string }) => ({
+    agentId: d?.agentId || null,
+    tipo: d?.tipo || "qualificacao",
+  }))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { resolveTargetAgent } = await import("./agent-copilot.server");
+    const { sanitizeToolForClient } = await import("./agent-tools.server");
+
+    const cfg = await resolveTargetAgent(supabaseAdmin, companyId, data.agentId, data.tipo);
+    const { data: rows, error } = await (supabaseAdmin as any)
+      .from("agent_tools")
+      .select("*")
+      .eq("company_id", companyId)
+      .eq("agent_id", cfg.id)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      throw new Error(`Falha ao listar ferramentas: ${error.message}`);
+    }
+
+    return {
+      agentId: cfg.id,
+      tools: (rows ?? []).map((row: any) => sanitizeToolForClient(row)),
+    };
+  });
+
+/**
+ * Activa o pausa una herramienta externa del agente
+ */
+export const toggleAgentTool = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { toolId: string; active: boolean }) => {
+    if (!d?.toolId) throw new Error("ID da ferramenta é obrigatório.");
+    return {
+      toolId: String(d.toolId).trim(),
+      active: Boolean(d.active),
+    };
+  })
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: updated, error } = await (supabaseAdmin as any)
+      .from("agent_tools")
+      .update({
+        active: data.active,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("company_id", companyId)
+      .eq("id", data.toolId)
+      .select("id, active")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Falha ao atualizar ferramenta: ${error.message}`);
+    }
+    if (!updated) {
+      throw new Error("Ferramenta não encontrada.");
+    }
+
+    return { ok: true, id: updated.id, active: updated.active };
+  });
+
+/**
+ * Elimina una herramienta externa del agente
+ */
+export const deleteAgentTool = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { toolId: string }) => {
+    if (!d?.toolId) throw new Error("ID da ferramenta é obrigatório.");
+    return {
+      toolId: String(d.toolId).trim(),
+    };
+  })
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { error } = await (supabaseAdmin as any)
+      .from("agent_tools")
+      .delete()
+      .eq("company_id", companyId)
+      .eq("id", data.toolId);
+
+    if (error) {
+      throw new Error(`Falha ao excluir ferramenta: ${error.message}`);
+    }
+
+    return { ok: true };
   });

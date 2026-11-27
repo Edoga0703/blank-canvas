@@ -20,21 +20,21 @@ function toBase64(bytes: Uint8Array): string {
 }
 
 async function extractPdfWithAi(bytes: Uint8Array, name: string): Promise<string> {
-  // 1. Tenta extração de strings de texto dos streams do PDF
+  // 1. Tenta extração real do texto em JS/Workerd via unpdf
+  let unpdfText = "";
   try {
-    const raw = new TextDecoder("latin1").decode(bytes);
-    const matches = raw.match(/\(([^()]{3,})\)/g) || [];
-    const clean = matches
-      .map((m) => m.slice(1, -1).trim())
-      .filter((t) => t.length > 2 && !/^[\d\s.,;:]+$/.test(t))
-      .join(" ");
-
-    if (clean.length > 80) {
-      return clean.slice(0, 15000);
+    const { getDocumentProxy, extractText } = await import("unpdf");
+    const pdf = await getDocumentProxy(new Uint8Array(bytes));
+    const parsed = await extractText(pdf, { mergePages: true });
+    unpdfText = String(parsed?.text || "").replace(/\s+/g, " ").trim();
+    if (unpdfText.length >= 80) {
+      return unpdfText.slice(0, MAX_CHARS_PER_FILE);
     }
-  } catch {}
+  } catch (unpdfErr) {
+    console.warn("[extractPdfWithAi] unpdf fallback para PDF:", unpdfErr);
+  }
 
-  // 2. Si hay clave Google Gemini o OpenAI configurada, intenta extracción con IA
+  // 2. Se for PDF escaneado (< 80 chars úteis) e houver chave Google Gemini, envia os bytes reais do PDF
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: globalSettings } = await (supabaseAdmin as any)
     .from("master_settings")
@@ -43,7 +43,7 @@ async function extractPdfWithAi(bytes: Uint8Array, name: string): Promise<string
     .maybeSingle();
 
   const gVal = (globalSettings?.value as any) || {};
-  const geminiKey = gVal.gemini_api_key || process.env.GEMINI_API_KEY;
+  const geminiKey = (gVal.gemini_api_key || process.env.GEMINI_API_KEY || "").trim();
 
   if (geminiKey) {
     try {
@@ -75,42 +75,14 @@ async function extractPdfWithAi(bytes: Uint8Array, name: string): Promise<string
       if (res.ok) {
         const data: any = await res.json();
         const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
-        if (text) return text.slice(0, 15000);
+        if (text.length >= 20) return text.slice(0, MAX_CHARS_PER_FILE);
       }
     } catch (geminiErr) {
       console.warn("[extractPdfWithAi] Error extrayendo PDF con Gemini:", geminiErr);
     }
   }
 
-  const openAiKey = gVal.openai_api_key || process.env.OPENAI_API_KEY;
-
-  if (openAiKey && !openAiKey.startsWith("dk-")) {
-    try {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${openAiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "user",
-              content: `Extraia as informações principais deste arquivo PDF denominado ${name}.`,
-            },
-          ],
-        }),
-      });
-      if (res.ok) {
-        const data: any = await res.json();
-        const text = data?.choices?.[0]?.message?.content?.toString().trim() || "";
-        if (text) return text;
-      }
-    } catch {}
-  }
-
-  return `Documento anexado: ${name} (${Math.round(bytes.byteLength / 1024)} KB).`;
+  return unpdfText.length >= 20 ? unpdfText.slice(0, MAX_CHARS_PER_FILE) : "";
 }
 
 async function extractDocx(bytes: Uint8Array): Promise<string> {
@@ -152,7 +124,7 @@ export async function extractKnowledgeText(
         return { text: "", status: "ilegivel", chars: 0 };
       }
     }
-    if (!text) return { text: "", status: "ilegivel", chars: 0 };
+    if (!text || text.trim().length < 20) return { text: "", status: "ilegivel", chars: 0 };
     if (text.length > MAX_CHARS_PER_FILE) text = text.slice(0, MAX_CHARS_PER_FILE);
     return { text, status: "ok", chars: text.length };
   } catch (e) {

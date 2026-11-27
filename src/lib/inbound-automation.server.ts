@@ -17,9 +17,51 @@ export async function processInboundAutomation(
     isAudioMessage?: boolean;
     instanceId?: string | null;
     channel?: string | null;
+    provider?: string | null;
+    externalConversationId?: string | null;
   },
 ) {
   const { companyId, numero, texto, inboundMessageId } = params;
+
+  // Guard temprano: interceptar mensajes del dueño en Modo Secretario antes de pausas o automatizaciones
+  const isGroup = Boolean(numero.includes("@g.us"));
+  if (!isGroup && (!params.channel || params.channel === "whatsapp")) {
+    try {
+      const { matchSecretaryForPhone, handleSecretaryMessage } = await import("@/lib/ai-secretary.server");
+      const secMatch = await matchSecretaryForPhone(admin, companyId, numero);
+      if (secMatch.matched && secMatch.agent) {
+        let audioUrl: string | null = null;
+        let audioMime: string | null = null;
+        const upperSec = (texto || "").trim().toUpperCase();
+        const isSecAudio = Boolean(params.isAudioMessage) || upperSec === "[ÁUDIO]" || upperSec === "[AUDIO]";
+        if (isSecAudio && inboundMessageId) {
+          try {
+            const { data: msgRow } = await admin
+              .from("mensagens")
+              .select("midia_url, midia_mime")
+              .eq("company_id", companyId)
+              .eq("id", inboundMessageId)
+              .maybeSingle();
+            audioUrl = msgRow?.midia_url ?? null;
+            audioMime = msgRow?.midia_mime ?? null;
+          } catch {}
+        }
+        await handleSecretaryMessage(admin, {
+          companyId,
+          agent: secMatch.agent,
+          ownerPhone: numero,
+          text: texto,
+          instanceId: params.instanceId ?? null,
+          isAudioMessage: isSecAudio,
+          audioUrl,
+          audioMime,
+        });
+        return { engine: "ai_secretary", handled: true };
+      }
+    } catch (secErr: any) {
+      console.warn("[inbound-automation] Secretary guard warning:", secErr?.message);
+    }
+  }
 
   const triggerBackgroundLeadAudit = async () => {
     try {
@@ -34,7 +76,12 @@ export async function processInboundAutomation(
 
   // 0) Se a mensagem recebida for áudio, a IA não deve responder ou alucinar.
   // Pausa a IA para este contato e encaminha para atenção humana.
-  if ((params.isAudioMessage && (!texto || texto === "[ÁUDIO]")) || texto === "[ÁUDIO]") {
+  const upperText = (texto || "").trim().toUpperCase();
+  const isUntranscribedAudio =
+    upperText === "[ÁUDIO]" ||
+    upperText === "[AUDIO]" ||
+    (Boolean(params.isAudioMessage) && !texto.trim());
+  if (isUntranscribedAudio) {
     console.log(`[inbound] Áudio recebido de ${numero}. Pausando IA e encaminhando para atendimento humano.`);
     try {
       await admin.from("contact_pause").upsert(
@@ -59,7 +106,7 @@ export async function processInboundAutomation(
     const { getConversationControl } = await import("@/lib/automations/conversation-control.server");
     const control = await getConversationControl({
       companyId,
-      externalConversationId: numero,
+      externalConversationId: params.externalConversationId || numero,
       instanceId: params.instanceId,
     });
     if (control.ownerKind === "human") {
@@ -174,6 +221,10 @@ export async function processInboundAutomation(
 
   await processAiResponse(companyId, numero, texto, inboundMessageId, {
     responderEmAudio: !!params.responderEmAudio,
+    channel: params.channel || null,
+    provider: params.provider || null,
+    instanceId: params.instanceId || null,
+    externalConversationId: params.externalConversationId || numero,
   });
 
   // Se ejecuta DESPUÉS de processAiResponse para evitar condición de carrera en stage_id

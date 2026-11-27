@@ -9,25 +9,53 @@ export async function debitAiCredits(
   ref?: string,
 ): Promise<number | null> {
   try {
-    if (!companyId || qtd <= 0) return null;
-    const { data: comp } = await admin
-      .from("company")
-      .select("creditos_saldo")
-      .eq("id", companyId)
-      .maybeSingle();
-    if (!comp) return null;
-    const atual = Number(comp.creditos_saldo ?? 0);
-    const novo = Math.max(0, atual - qtd);
-    if (novo === atual) return atual;
-    await admin.from("company").update({ creditos_saldo: novo }).eq("id", companyId);
-    await admin.from("credit_ledger").insert({
-      company_id: companyId,
-      delta: -(atual - novo),
-      saldo_apos: novo,
-      motivo,
-      ref: ref ?? null,
+    const qty = Math.max(1, Math.floor(Number(qtd) || 1));
+    if (!companyId || qty <= 0) return null;
+
+    let novoSaldo: number | null = null;
+    let usedFallback = false;
+
+    const { data: rpcData, error: rpcError } = await admin.rpc("debit_ai_credits_atomic", {
+      _company_id: companyId,
+      _qtd: qty,
     });
-    return novo;
+
+    if (!rpcError && rpcData !== null && rpcData !== undefined) {
+      novoSaldo = Number(rpcData);
+    } else {
+      usedFallback = true;
+      if (rpcError) {
+        console.warn("[credits.debit] RPC fallback:", rpcError.message);
+      }
+      const { data: comp } = await admin
+        .from("company")
+        .select("creditos_saldo")
+        .eq("id", companyId)
+        .maybeSingle();
+      if (!comp) return null;
+      const atual = Number(comp.creditos_saldo ?? 0);
+      novoSaldo = Math.max(0, atual - qty);
+      if (novoSaldo === atual) return atual;
+      await admin.from("company").update({ creditos_saldo: novoSaldo }).eq("id", companyId);
+    }
+
+    if (novoSaldo === null || Number.isNaN(novoSaldo)) return null;
+
+    if (!usedFallback || novoSaldo >= 0) {
+      try {
+        await admin.from("credit_ledger").insert({
+          company_id: companyId,
+          delta: -qty,
+          saldo_apos: novoSaldo,
+          motivo,
+          ref: ref ?? null,
+        });
+      } catch (ledgerErr: any) {
+        console.warn("[credits.debit.ledger]", ledgerErr?.message);
+      }
+    }
+
+    return novoSaldo;
   } catch (e: any) {
     console.warn("[credits.debit]", e?.message);
     return null;

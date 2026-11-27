@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { defineTool, type ToolContext } from "@lovable.dev/mcp-js";
 import { z } from "zod";
+import type { WaInstance } from "@/lib/wa-dispatch.server";
 
 function sb(ctx: ToolContext) {
   const url = process.env.EXTERNAL_SUPABASE_URL || (process.env.SUPABASE_URL && !process.env.SUPABASE_URL.includes("llnfjhqdeeuscyqzoqfz") ? process.env.SUPABASE_URL : "https://supabase.cuentastupana.com");
@@ -28,9 +29,10 @@ export default defineTool({
 
     const { data: connection, error } = await sb(ctx)
       .from("whatsapp_instances")
-      .select("external_connection_id, instance_name, status, provider")
+      .select("id, company_id, instance_name, instance_token, status, paused, provider, provider_type, phone_number_id, waba_id")
       .in("provider", ["dapi", "dapi_official"])
       .in("status", ["connected", "open"])
+      .or("paused.is.null,paused.eq.false")
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -44,16 +46,43 @@ export default defineTool({
     }
 
     try {
-      const { getMessagingProvider } = await import("@/lib/messaging/provider-registry.server");
-      const provId = "dapi" as const;
-      const result = await getMessagingProvider(provId).sendText({
-        connectionExternalId: connection.external_connection_id || connection.instance_name,
-        to: numero.replace(/\D/g, ""),
-        text: texto,
+      const { waSendText } = await import("@/lib/wa-dispatch.server");
+      const { extractWhatsappMessageId } = await import("@/lib/whatsapp-helpers");
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+      const prov = connection.provider === "dapi_official" ? ("dapi_official" as const) : ("dapi" as const);
+      const waInst: WaInstance = {
+        id: connection.id,
+        company_id: connection.company_id,
+        instance_name: connection.instance_name,
+        instance_token: connection.instance_token ?? null,
+        provider: prov,
+        status: connection.status,
+        paused: Boolean(connection.paused),
+        phone_number_id: connection.phone_number_id ?? null,
+        waba_id: connection.waba_id ?? null,
+      };
+
+      const cleanNumero = numero.replace(/\D/g, "");
+      const sendRes = await waSendText(waInst, cleanNumero, texto);
+      const extMsgId = extractWhatsappMessageId(sendRes) || null;
+
+      await (supabaseAdmin as any).from("mensagens").insert({
+        company_id: connection.company_id,
+        instance_id: connection.id,
+        numero: cleanNumero,
+        texto,
+        direcao: "saida",
+        autor: "humano",
+        provider: prov,
+        whatsapp_message_id: extMsgId,
+        status_envio: "enviado",
+        created_at: new Date().toISOString(),
       });
+
       return {
         content: [{ type: "text" as const, text: `Mensaje enviado a ${numero}.` }],
-        structuredContent: { ok: true, messageId: result.externalMessageId },
+        structuredContent: { ok: true, messageId: extMsgId, provider: prov, instanceId: connection.id },
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : "No se pudo enviar el mensaje.";

@@ -1,8 +1,9 @@
 import { lovableAiChat, type ChatMsg } from "@/lib/lovable-ai.server";
 import { buildSystemPrompt, parseAiOutput, type AgentConfig } from "@/lib/ai-prompt";
+import { redactToolHeaders } from "@/lib/agent-tools.server";
 
 export interface CopilotActionProposal {
-  type: "catalog" | "rule" | "config" | "simulation" | "audit" | "test_webhook" | "webhook";
+  type: "catalog" | "rule" | "config" | "simulation" | "audit" | "test_webhook" | "webhook" | "tool";
   title: string;
   description: string;
   status: "pending" | "applied" | "rejected";
@@ -127,11 +128,28 @@ export async function getAgentCopilotContext(
     }))
     .filter((s: any) => s.status === "pending");
 
+  let agentTools: any[] = [];
+  if (agentCfg?.id) {
+    try {
+      const { data: toolsRows } = await supabase
+        .from("agent_tools")
+        .select("id, name, display_name, description, kind, method, url, headers, input_schema, body_template, permission_level, verified, verified_at, last_test_status, last_test_latency_ms, active, updated_at")
+        .eq("company_id", companyId)
+        .eq("agent_id", agentCfg.id)
+        .order("created_at", { ascending: true });
+      agentTools = (toolsRows ?? []).map((t: any) => ({
+        ...t,
+        headers: redactToolHeaders(t.headers),
+      }));
+    } catch {}
+  }
+
   return {
     agent: agentCfg as AgentConfig | null,
     produtos: produtos ?? [],
     stages: stages ?? [],
     pendingSuggestions,
+    agentTools,
     channels: {
       whatsapp: waInstances ?? [],
     },
@@ -146,6 +164,7 @@ export function buildCopilotSystemPrompt(context: {
   produtos: any[];
   stages: any[];
   pendingSuggestions: any[];
+  agentTools?: any[];
   channels: any;
 }): string {
   const agent = context.agent || {};
@@ -166,6 +185,16 @@ export function buildCopilotSystemPrompt(context: {
         .map(([k, v]: [string, any]) => `- [${v?.name || k}] URL: ${v?.url} (${v?.enabled ? "Activa" : "Desactivada"}) [Método: ${v?.method || "POST"}]`)
         .join("\n")
     : "Sin integraciones externas configuradas.";
+
+  const agentTools = context.agentTools || [];
+  const verifiedToolsSummary = agentTools.length > 0
+    ? agentTools
+        .map(
+          (t: any) =>
+            `- [${t.name}] (${t.display_name || t.name}) | Tipo: ${t.kind} | Método: ${t.method} | URL: ${t.url} | Estado: ${t.verified ? "verificada" : "pendiente"} | Activa: ${t.active ? "sí" : "no"} | Permiso: ${t.permission_level} | Uso: ${t.description}`,
+        )
+        .join("\n")
+    : "Sin herramientas verificadas registradas aún.";
 
   return `Eres el "AI Studio Copilot", el Consultor Senior de Inteligencia Artificial y Arquitecto de Agentes NATIVO dentro del CRM Capiconversa.
 
@@ -202,6 +231,9 @@ ESTADO ACTUAL DEL AGENTE:
 - Reglas Rígidas Actuales:
 ${agent.regras_rigidas ? agent.regras_rigidas : "(Sin reglas rígidas configuradas)"}
 
+HERRAMIENTAS VERIFICADAS DEL AGENTE (${agentTools.length}):
+${verifiedToolsSummary}
+
 INTEGRACIONES EXTERNAS / WEBHOOKS ACTIVOS:
 ${activeIntegrationsSummary}
 
@@ -225,15 +257,15 @@ CURIOSIDAD PROACTIVA Y PREGUNTAS DE DESCUBRIMIENTO:
   3. Pregunta qué datos debe enviar (ej: número de teléfono del cliente) y qué formato devuelve (JSON).
   4. Explica que la plataforma cuenta con un SANDBOX SEGURO DE PRUEBAS para verificar la respuesta real de la API antes de integrarla al agente de atención.
 
-FLUJO ESTRICTO PARA WEBHOOKS Y APIS EXTERNAS:
-1. PASO 1 (Descubrimiento): Haz las preguntas necesarias para obtener la URL, token y formato.
-2. PASO 2 (Prueba en Sandbox): En cuanto tengas los datos técnicos (o si el usuario te pide probar con un endpoint), genera la acción 'test_webhook' para que el usuario pueda probarla con 1 clic en el sandbox seguro y ver la latencia y respuesta JSON real.
-3. PASO 3 (Conexión Definitiva): NUNCA configures una integración fija sin antes haber propuesto la prueba en sandbox o sin la confirmación del administrador. Una vez probado, genera la acción 'webhook' para guardarla en el agente y agregar la directiva en las reglas rígidas.
+FLUJO ESTRICTO PARA WEBHOOKS Y HERRAMIENTAS EXTERNAS:
+1. PASO 1 (Descubrimiento): Haz las preguntas necesarias para obtener la URL, método, headers/token, parámetros esperados, nivel de permiso ('read_only', 'write_confirm_customer' o 'write_require_owner_approval') y tipo ('http' para consultar/ejecutar datos o 'webhook_out' para notificar eventos salientes).
+2. PASO 2 (Prueba Obligatoria en Sandbox): En cuanto tengas los datos técnicos (o si el usuario te pide probar un endpoint), genera SIEMPRE primero la acción 'test_webhook' para verificar en el sandbox que el endpoint responde con HTTP 2xx y ver la latencia y JSON real.
+3. PASO 3 (Guardar Herramienta Verificada): NUNCA guardes una herramienta nueva sin antes haber propuesto probarla con 'test_webhook' y validar HTTP 2xx. Tras comprobarla en el sandbox, genera la acción 'tool' (o 'webhook' si es consulta heredada customerLookup) con 'name' (slug único en minúsculas con guiones bajos), 'display_name', 'description', 'url', 'method', 'headers', 'input_schema', 'body_template', 'permission_level' y 'kind'.
 
 REGLA CRÍTICA DE TIPADO PARA ACCIONES:
-- Para webhooks, APIs o integraciones externas (como Supabase, SMP, Cerebro, n8n, CRM externo):
-  * Para pruebas en el sandbox: usa EXCLUSIVAMENTE "type": "test_webhook"
-  * Para conectar la integración definitivamente: usa EXCLUSIVAMENTE "type": "webhook"
+- Para webhooks, APIs o herramientas externas:
+  * Para pruebas previas obligatorias en el sandbox: usa EXCLUSIVAMENTE "type": "test_webhook"
+  * Para guardar una herramienta verificada en la librería del agente (agent_tools): usa "type": "tool" (o "type": "webhook" cuando incluya integration: "customerLookup")
   * NUNCA uses "type": "config" para webhooks ni APIs externas. "config" es sólo para campos nativos como segundos_buffer o sobre_empresa.
 - Para las reglas de comportamiento derivadas del webhook (ej: qué decir si está vencida, cómo manejar cliente no registrado, etc.), genera acciones individuales con "type": "rule".
 
@@ -300,6 +332,30 @@ ESTRUCTURA OBLIGATORIA DE TU RESPUESTA:
     }
   },
   {
+    "type": "tool",
+    "title": "Guardar Herramienta: Consultar Vencimiento",
+    "description": "Guarda la API verificada para consultar suscripciones y vencimientos por teléfono",
+    "payload": {
+      "name": "consultar_vencimiento",
+      "display_name": "Consultar Vencimiento",
+      "description": "Consulta el estado y fecha de vencimiento de cuentas del cliente por número de teléfono",
+      "kind": "http",
+      "method": "POST",
+      "url": "https://api.ejemplo.com/v1/customer-lookup",
+      "headers": {
+        "Authorization": "Bearer token_aqui",
+        "Content-Type": "application/json"
+      },
+      "input_schema": {
+        "phone": "string"
+      },
+      "body_template": {
+        "phone": "{{phone}}"
+      },
+      "permission_level": "read_only"
+    }
+  },
+  {
     "type": "webhook",
     "title": "Conectar Integración de Clientes al Agente",
     "description": "Habilita la consulta dinámica de vencimientos y cuentas para cada cliente",
@@ -356,7 +412,7 @@ export function parseCopilotOutput(rawText: string): CopilotTurnResult {
       const candidateText = codeBlockMatch[1].trim();
       if (
         candidateText.includes('"type"') &&
-        /(?:catalog|rule|config|simulation|audit|test_webhook|webhook)/i.test(candidateText)
+        /(?:catalog|rule|config|simulation|audit|test_webhook|webhook|tool)/i.test(candidateText)
       ) {
         rawJson = candidateText;
         reply = rawText.replace(codeBlockMatch[0], "").trim();
@@ -380,7 +436,7 @@ export function parseCopilotOutput(rawText: string): CopilotTurnResult {
       } catch {
         // Intento 2: Recuperación resiliente de objetos de acción individuales si el array fue cortado
         parsed = [];
-        const itemRegex = /{\s*"type"\s*:\s*"(?:catalog|rule|config|simulation|audit|test_webhook|webhook)"[\s\S]*?}(?=\s*,\s*{|\s*\]|\s*$)/g;
+        const itemRegex = /{\s*"type"\s*:\s*"(?:catalog|rule|config|simulation|audit|test_webhook|webhook|tool)"[\s\S]*?}(?=\s*,\s*{|\s*\]|\s*$)/g;
         let m: RegExpExecArray | null;
         while ((m = itemRegex.exec(rawJson)) !== null) {
           try {

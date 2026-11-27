@@ -64,10 +64,54 @@ async function download(url: string): Promise<{ bytes: Uint8Array; mime: string 
   }
 }
 
-/** Transcreve um áudio recebido via Whisper direto (se chave OpenAI estiver configurada). */
+const MAX_GEMINI_INLINE_BYTES = 8 * 1024 * 1024; // 8 MB
+
+async function callGeminiMultimodal(params: {
+  geminiKey: string;
+  prompt: string;
+  mimeType: string;
+  bytes: Uint8Array;
+}): Promise<string | null> {
+  const { geminiKey, prompt, mimeType, bytes } = params;
+  if (!geminiKey || !bytes.byteLength || bytes.byteLength > MAX_GEMINI_INLINE_BYTES) {
+    return null;
+  }
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${encodeURIComponent(geminiKey)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt },
+                {
+                  inlineData: {
+                    mimeType,
+                    data: toBase64(bytes),
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+      },
+    );
+    if (!res.ok) return null;
+    const json: any = await res.json().catch(() => null);
+    const out = (json?.candidates?.[0]?.content?.parts?.[0]?.text || "").trim();
+    return out || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Transcreve um áudio recebido via Whisper direto ou Gemini multimodal como fallback. */
 export async function transcribeIncomingAudio(url: string, mime?: string | null): Promise<string | null> {
-  const { openAiKey } = await getMasterAiKeys();
-  if (!openAiKey) return null; // Sem chave direta, pula sem consumir Lovable
+  const { openAiKey, geminiKey } = await getMasterAiKeys();
+  if (!openAiKey && !geminiKey) return null;
 
   const file = await download(url);
   if (!file || file.bytes.byteLength < 512) return null;
@@ -83,25 +127,40 @@ export async function transcribeIncomingAudio(url: string, mime?: string | null)
   };
   const ext = extMap[finalMime] || "ogg";
 
-  const form = new FormData();
-  form.append("model", "whisper-1");
-  form.append("file", new Blob([file.bytes.buffer as ArrayBuffer], { type: finalMime }), `audio.${ext}`);
+  if (openAiKey) {
+    const form = new FormData();
+    form.append("model", "whisper-1");
+    form.append("file", new Blob([file.bytes.buffer as ArrayBuffer], { type: finalMime }), `audio.${ext}`);
 
-  try {
-    const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${openAiKey}` },
-      body: form,
-    });
-    if (!res.ok) return null;
-    const json: any = await res.json().catch(() => null);
-    return (json?.text || "").trim() || null;
-  } catch {
-    return null;
+    try {
+      const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${openAiKey}` },
+        body: form,
+      });
+      if (res.ok) {
+        const json: any = await res.json().catch(() => null);
+        const txt = (json?.text || "").trim();
+        if (txt) return txt;
+      }
+    } catch {}
   }
+
+  if (geminiKey) {
+    const geminiMime = finalMime.startsWith("audio/") ? finalMime : "audio/ogg";
+    return await callGeminiMultimodal({
+      geminiKey,
+      prompt:
+        "Transcribe con fidelidad todo el contenido hablado en este audio al texto exacto, sin agregar comentarios ni inventar palabras.",
+      mimeType: geminiMime,
+      bytes: file.bytes,
+    });
+  }
+
+  return null;
 }
 
-/** Descreve uma imagem/vídeo ou lê um documento recebido usando visão direta. */
+/** Descreve uma imagem ou lê um documento PDF (até 8 MB) via OpenAI Vision ("gpt-4o-mini") e/ou Gemini multimodal. */
 export async function describeIncomingFile(
   url: string,
   tipo: "image" | "video" | "document",
@@ -109,48 +168,77 @@ export async function describeIncomingFile(
   caption?: string | null,
   options?: { provider?: string; model?: string },
 ): Promise<string | null> {
-  const { openAiKey } = await getMasterAiKeys();
-  if (!openAiKey) return null; // Sem chave direta de visão, não chama Lovable
+  if (tipo === "video") return null; // Vídeo requer processamento assíncrono complexo
+
+  const { openAiKey, geminiKey } = await getMasterAiKeys();
+  if (!openAiKey && !geminiKey) return null;
 
   const file = await download(url);
   if (!file) return null;
   const finalMime = (mime || file.mime || "application/octet-stream").split(";")[0];
-  const dataUrl = `data:${finalMime};base64,${toBase64(file.bytes)}`;
 
   const instrucao =
     tipo === "document"
       ? "Analiza este documento enviado por el cliente. Si es un comprobante de pago, factura, presupuesto o contrato, extrae de manera estructurada con subtítulos, viñetas y negritas: Tipo de documento, Estatus, Montos y monedas, Número de referencia/factura, Bancos o entidades emisora y receptora, Fecha/hora y Partes involucradas. Responde en el mismo idioma del documento (español por defecto) con formato limpio, espaciado y profesional."
       : "Analiza y describe de forma estructurada esta imagen enviada por el cliente. Si es un comprobante de pago (ej. Pago Móvil, Transferencia bancaria, Zelle), factura o recibo, extrae detalladamente con subtítulos, viñetas y negritas: Estatus de la transacción, Monto y moneda, Banco emisor y receptor, Número de referencia, Fecha y hora, y Datos de las partes (teléfono, cédula o beneficiario). Si es un producto o foto general, describe lo que aparece con textos y detalles útiles. Responde en el mismo idioma del contenido (español por defecto) con formato limpio, ordenado y espaciado.";
+  const promptText = caption ? `${instrucao}\nLegenda do cliente: ${caption}` : instrucao;
 
-  const content: any[] = [{ type: "text", text: caption ? `${instrucao}\nLegenda do cliente: ${caption}` : instrucao }];
-  if (tipo === "image") {
-    content.push({ type: "image_url", image_url: { url: dataUrl } });
-  } else if (tipo === "video") {
-    return null; // Vídeo requer processamento assíncrono complexo
-  } else {
-    if (finalMime !== "application/pdf") return null;
-    return null;
-  }
-
-  try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openAiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: options?.model || "gpt-4o-mini",
-        messages: [{ role: "user", content }],
-      }),
+  if (tipo === "document") {
+    if (finalMime !== "application/pdf" || file.bytes.byteLength > MAX_GEMINI_INLINE_BYTES) {
+      return null;
+    }
+    if (!geminiKey) return null;
+    return await callGeminiMultimodal({
+      geminiKey,
+      prompt: promptText,
+      mimeType: "application/pdf",
+      bytes: file.bytes,
     });
-    if (!res.ok) return null;
-    const json: any = await res.json().catch(() => null);
-    const out = (json?.choices?.[0]?.message?.content || "").trim();
-    return out || null;
-  } catch {
-    return null;
   }
+
+  const tryOpenAiVision = async (): Promise<string | null> => {
+    if (!openAiKey) return null;
+    const dataUrl = `data:${finalMime};base64,${toBase64(file.bytes)}`;
+    const content: any[] = [
+      { type: "text", text: promptText },
+      { type: "image_url", image_url: { url: dataUrl } },
+    ];
+    try {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openAiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content }],
+        }),
+      });
+      if (!res.ok) return null;
+      const json: any = await res.json().catch(() => null);
+      const out = (json?.choices?.[0]?.message?.content || "").trim();
+      return out || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const tryGeminiVision = async (): Promise<string | null> => {
+    if (!geminiKey) return null;
+    const imgMime = finalMime.startsWith("image/") ? finalMime : "image/jpeg";
+    return await callGeminiMultimodal({
+      geminiKey,
+      prompt: promptText,
+      mimeType: imgMime,
+      bytes: file.bytes,
+    });
+  };
+
+  if (options?.provider === "gemini" && geminiKey) {
+    return (await tryGeminiVision()) ?? (await tryOpenAiVision());
+  }
+  return (await tryOpenAiVision()) ?? (await tryGeminiVision());
 }
 
 /** Gera áudio (base64) a partir de um texto, via OpenAI TTS direto se houver chave. */

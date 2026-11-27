@@ -424,14 +424,26 @@ async function executeAutoLeadAnalysisAndMove(
   runningLeadLocks.add(lockKey);
 
   try {
-    const { data: card } = await supabaseAdmin
+    const { data: card } = await (supabaseAdmin as any)
       .from("crm_cards")
-      .select("id, stage_id, owner_id")
+      .select("id, stage_id, owner_id, active_task")
       .eq("id", cardId)
       .eq("company_id", companyId)
       .maybeSingle();
 
     if (!card) return { triggered: false, reason: "card_not_found" };
+
+    const activeTask = (card as any).active_task;
+    const taskState = String(activeTask?.estado || activeTask?.status || "").toLowerCase();
+    if (
+      activeTask &&
+      typeof activeTask === "object" &&
+      Object.keys(activeTask).length > 0 &&
+      taskState !== "completed" &&
+      taskState !== "closed"
+    ) {
+      return { triggered: false, reason: "active_agent_task_in_progress" };
+    }
 
     const analysis = await analyzeLeadInternal(companyId, card.id, priority);
     if (analysis.ok && analysis.result && analysis.result.etapa_sugerida_id !== card.stage_id) {

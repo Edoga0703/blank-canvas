@@ -40,6 +40,7 @@ import {
   Play,
   Globe,
   ExternalLink,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -169,9 +170,22 @@ Puedo ayudarte a:
     setExecutingIdx(actionKey);
 
     try {
+      const actionKey = `${msgIndex}-${propIndex}`;
+      const existingTest = sandboxResults[actionKey];
+      const actionToSend: CopilotActionProposal =
+        (proposal.type === "tool" || proposal.type === "webhook") && existingTest?.ok
+          ? {
+              ...proposal,
+              payload: {
+                ...(proposal.payload || {}),
+                sandboxTestResult: existingTest,
+              },
+            }
+          : proposal;
+
       const res = await execAction({
         data: {
-          action: proposal,
+          action: actionToSend,
           agentId,
           tipo,
         },
@@ -188,7 +202,13 @@ Puedo ayudarte a:
         return copy;
       });
 
-      if ((proposal.type === "rule" || proposal.type === "config" || proposal.type === "webhook") && onRuleApplied) {
+      if (
+        (proposal.type === "rule" ||
+          proposal.type === "config" ||
+          proposal.type === "webhook" ||
+          proposal.type === "tool") &&
+        onRuleApplied
+      ) {
         onRuleApplied();
       }
       if (proposal.type === "catalog" && onCatalogUpdated) {
@@ -314,6 +334,7 @@ Puedo ayudarte a:
                               {prop.type === "config" && <Sliders className="h-3.5 w-3.5" />}
                               {prop.type === "test_webhook" && <Terminal className="h-3.5 w-3.5 text-blue-500" />}
                               {prop.type === "webhook" && <Database className="h-3.5 w-3.5 text-emerald-500" />}
+                              {prop.type === "tool" && <Wrench className="h-3.5 w-3.5 text-emerald-500" />}
                               <span>{prop.title}</span>
                             </div>
                             <Badge
@@ -427,47 +448,121 @@ Puedo ayudarte a:
                             </div>
                           )}
 
-                          {/* Final Webhook Connection card */}
-                          {prop.type === "webhook" && (
-                            <div className="space-y-2">
-                              <div className="rounded-md bg-background/80 p-2.5 font-mono text-[11px] border border-border/60 space-y-1">
-                                <div className="flex items-center gap-1.5 font-semibold text-foreground">
-                                  <Badge variant="secondary" className="text-[10px] uppercase font-mono px-1.5 py-0">
-                                    {prop.payload?.method || "POST"}
-                                  </Badge>
-                                  <span className="truncate">{prop.payload?.url}</span>
+                          {/* Final Webhook / Verified Tool Connection card */}
+                          {(prop.type === "webhook" || prop.type === "tool") && (() => {
+                            const permLevel = prop.payload?.permission_level || "read_only";
+                            const permLabel =
+                              permLevel === "write_require_owner_approval"
+                                ? "Aprobación dueño"
+                                : permLevel === "write_confirm_customer"
+                                  ? "Confirmación cliente"
+                                  : "Solo lectura";
+                            const permClass =
+                              permLevel === "write_require_owner_approval"
+                                ? "bg-rose-500/10 text-rose-600 border-rose-500/30 dark:text-rose-300"
+                                : permLevel === "write_confirm_customer"
+                                  ? "bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-300"
+                                  : "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-300";
+
+                            return (
+                              <div className="space-y-2">
+                                <div className="rounded-md bg-background/80 p-2.5 font-mono text-[11px] border border-border/60 space-y-1.5">
+                                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                                    <div className="flex items-center gap-1.5 font-semibold text-foreground min-w-0">
+                                      <Badge variant="secondary" className="text-[10px] uppercase font-mono px-1.5 py-0">
+                                        {prop.payload?.method || "POST"}
+                                      </Badge>
+                                      {prop.payload?.name && (
+                                        <span className="text-[10px] text-violet-600 dark:text-violet-300 font-semibold">
+                                          {prop.payload.name}
+                                        </span>
+                                      )}
+                                      <span className="truncate">{prop.payload?.url}</span>
+                                    </div>
+                                    <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", permClass)}>
+                                      {permLabel}
+                                    </Badge>
+                                  </div>
+                                  {prop.payload?.kind === "webhook_out" && (
+                                    <div className="text-[10px] text-blue-600 dark:text-blue-300">
+                                      Tipo: Webhook Saliente (webhook_out)
+                                    </div>
+                                  )}
+                                  {prop.payload?.ruleText && (
+                                    <div className="text-[10px] text-muted-foreground pt-1 border-t border-border/40">
+                                      <span className="text-foreground/70 font-semibold">Directiva:</span> {prop.payload.ruleText}
+                                    </div>
+                                  )}
                                 </div>
-                                {prop.payload?.ruleText && (
-                                  <div className="text-[10px] text-muted-foreground pt-1 border-t border-border/40">
-                                    <span className="text-foreground/70 font-semibold">Directiva:</span> {prop.payload.ruleText}
+
+                                {testResult && (
+                                  <div
+                                    className={cn(
+                                      "rounded-md p-2.5 text-[11px] font-mono border space-y-1.5",
+                                      testResult.ok
+                                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-950 dark:text-emerald-200"
+                                        : "bg-destructive/10 border-destructive/30 text-destructive dark:text-red-300",
+                                    )}
+                                  >
+                                    <div className="flex items-center justify-between font-semibold">
+                                      <span>
+                                        {testResult.ok ? `🟢 Sandbox HTTP ${testResult.status} OK` : `🔴 Sandbox HTTP ${testResult.status}`}
+                                      </span>
+                                      <span className="text-[10px] text-muted-foreground">
+                                        {testResult.latencyMs}ms
+                                      </span>
+                                    </div>
+                                    {testResult.responseSample && (
+                                      <pre className="max-h-28 overflow-y-auto text-[10px] p-2 bg-background/90 rounded border border-border/40 text-foreground whitespace-pre-wrap">
+                                        {typeof testResult.responseSample === "object"
+                                          ? JSON.stringify(testResult.responseSample, null, 2)
+                                          : String(testResult.responseSample)}
+                                      </pre>
+                                    )}
+                                    {testResult.error && (
+                                      <p className="text-[10px] text-destructive">{testResult.error}</p>
+                                    )}
+                                  </div>
+                                )}
+
+                                {!isApplied ? (
+                                  <div className="flex flex-col sm:flex-row gap-1.5">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 text-xs gap-1.5 sm:w-auto"
+                                      onClick={() => handleTestWebhook(`${mIdx}-${pIdx}`, prop.payload)}
+                                      disabled={isTesting || isApplying}
+                                    >
+                                      {isTesting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                                      {isTesting ? "Probando..." : "Probar en Sandbox"}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      className="flex-1 h-7 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                                      onClick={() => handleExecuteAction(mIdx, pIdx, prop)}
+                                      disabled={isApplying}
+                                    >
+                                      {isApplying ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                      ) : (
+                                        <Plus className="h-3.5 w-3.5" />
+                                      )}
+                                      {isApplying ? "Verificando y guardando..." : "Guardar Herramienta Verificada"}
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-center gap-1 text-[11px] text-emerald-600 font-medium py-1">
+                                    <CheckCircle2 className="h-3.5 w-3.5" /> Herramienta Verificada y Guardada
                                   </div>
                                 )}
                               </div>
-
-                              {!isApplied ? (
-                                <Button
-                                  size="sm"
-                                  className="w-full h-7 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
-                                  onClick={() => handleExecuteAction(mIdx, pIdx, prop)}
-                                  disabled={isApplying}
-                                >
-                                  {isApplying ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : (
-                                    <Plus className="h-3.5 w-3.5" />
-                                  )}
-                                  {isApplying ? "Conectando..." : "🔗 Aprobar y Conectar Integración"}
-                                </Button>
-                              ) : (
-                                <div className="flex items-center justify-center gap-1 text-[11px] text-emerald-600 font-medium py-1">
-                                  <CheckCircle2 className="h-3.5 w-3.5" /> Integración Conectada al Agente
-                                </div>
-                              )}
-                            </div>
-                          )}
+                            );
+                          })()}
 
                           {/* Default Action for rule, catalog, config */}
-                          {prop.type !== "test_webhook" && prop.type !== "webhook" && (
+                          {prop.type !== "test_webhook" && prop.type !== "webhook" && prop.type !== "tool" && (
                             !isApplied ? (
                               <Button
                                 size="sm"

@@ -18,7 +18,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Bot, Loader2, Save, Send, Sparkles, Wand2, ChevronDown, Settings2, RefreshCcw, HelpCircle, ArrowLeft, CheckCircle2, Plus, Trash2, LayoutGrid, Search, UserCircle2, Eye, History, FileText, ShoppingBag, Zap, Share2, BarChart3, Database, Camera, Image as ImageIcon, Globe } from "lucide-react";
+import { Bot, Loader2, Save, Send, Sparkles, Wand2, ChevronDown, Settings2, RefreshCcw, HelpCircle, ArrowLeft, CheckCircle2, Plus, Trash2, LayoutGrid, Search, UserCircle2, Eye, History, FileText, ShoppingBag, Zap, Share2, BarChart3, Database, Camera, Image as ImageIcon, Globe, Wrench, Phone, RotateCcw, Cpu as CpuIcon } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { brand } from "@/config/brand";
@@ -27,7 +27,8 @@ import { testAiReply } from "@/lib/whatsapp.functions";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 
-import { generateAgentConfig, analyzeBusinessBrief, addAgentExample, listAgents, deleteAgent, generateAgentAvatar, updateAgentKnowledgeFiles, saveAgentConfig, createAgent, indexAgentKnowledge, listAgentSuggestions, applyAgentSuggestion, dismissAgentSuggestion, simulateSuggestionFix, runAutoRegressionTests, type BriefQuestion, type AgentPromptSuggestionItem } from "@/lib/agent-ai.functions";
+import { generateAgentConfig, analyzeBusinessBrief, addAgentExample, listAgents, deleteAgent, generateAgentAvatar, updateAgentKnowledgeFiles, saveAgentConfig, createAgent, indexAgentKnowledge, listAgentSuggestions, applyAgentSuggestion, dismissAgentSuggestion, simulateSuggestionFix, runAutoRegressionTests, setAgentStudioMode, getAgentPlanCapabilities, type BriefQuestion, type AgentPromptSuggestionItem } from "@/lib/agent-ai.functions";
+import { saveSecretaryConfig } from "@/lib/agent-secretary.functions";
 import { ensureSession, mensagemErroSessao } from "@/lib/ensure-session";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { MicDictateButton } from "@/components/mic-dictate-button";
@@ -38,6 +39,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AvatarBuilder } from "@/components/agente/avatar-builder";
 import { AgentAvatar } from "@/components/agente/agent-avatar";
 import { AgentCopilotSheet } from "@/components/agente/agent-copilot-sheet";
+import { AgentSimpleMode } from "@/components/agente/agent-simple-mode";
+import { AgentToolsPanel } from "@/components/agente/agent-tools-panel";
+import { AgentSecretaryPanel } from "@/components/agente/agent-secretary-panel";
+import { AgentAnalyticsPanel } from "@/components/agente/agent-analytics-panel";
+import { AgentVersionsDialog } from "@/components/agente/agent-versions-dialog";
 import { useLanguage } from "@/lib/i18n/context";
 
 import { cn } from "@/lib/utils";
@@ -109,6 +115,28 @@ function AgentePage() {
   const dismissSuggestion = useServerFn(dismissAgentSuggestion);
   const simulateFix = useServerFn(simulateSuggestionFix);
   const autoTestAll = useServerFn(runAutoRegressionTests);
+  const updateStudioMode = useServerFn(setAgentStudioMode);
+  const fetchPlanCaps = useServerFn(getAgentPlanCapabilities);
+  const persistQuickSecretary = useServerFn(saveSecretaryConfig);
+
+  const [studioMode, setStudioMode] = useState<"simple" | "advanced">("simple");
+  const [confirmSimpleOpen, setConfirmSimpleOpen] = useState(false);
+  const [switchingMode, setSwitchingMode] = useState(false);
+  const [versionsOpen, setVersionsOpen] = useState(false);
+  const [showXray, setShowXray] = useState(true);
+  const [ragChunksCount, setRagChunksCount] = useState<number>(0);
+  const [planCaps, setPlanCaps] = useState<{ slug: string; nome: string; modules: Record<string, boolean> }>({
+    slug: "business",
+    nome: "Business",
+    modules: {
+      agente_simples: true,
+      rag_conhecimento: true,
+      secretario_ia: true,
+      analises_ia: true,
+      agente_avancado: true,
+      ferramentas_verificadas: true,
+    },
+  });
 
   const [avatarLoading, setAvatarLoading] = useState(false);
 
@@ -126,13 +154,23 @@ function AgentePage() {
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
-  const [channelStatus, setChannelStatus] = useState<Record<string, boolean>>({ whatsapp: true, instagram: true, telegram: true });
+  const [channelStatus, setChannelStatus] = useState<Record<string, boolean>>({ whatsapp: true, instagram: true, messenger: true, telegram: true });
 
   useEffect(() => {
-    if (searchTab && ["visao", "conhecimento", "comportamento", "fluxo", "canais", "avancado", "analises"].includes(searchTab)) {
+    if (searchTab && ["visao", "conhecimento", "comportamento", "fluxo", "ferramentas", "secretario", "canais", "avancado", "analises"].includes(searchTab)) {
       setActiveTab(searchTab);
     }
   }, [searchTab]);
+
+  useEffect(() => {
+    if (!companyId) return;
+    void (async () => {
+      try {
+        const res: any = await fetchPlanCaps({});
+        if (res?.modules) setPlanCaps(res);
+      } catch {}
+    })();
+  }, [companyId, fetchPlanCaps]);
 
   useEffect(() => {
     if (!companyId) return;
@@ -285,12 +323,30 @@ function AgentePage() {
     }
   }, [fetchSuggestions]);
 
+  const loadRagChunksCount = useCallback(async (agentId?: string | null) => {
+    if (!agentId) {
+      setRagChunksCount(0);
+      return;
+    }
+    try {
+      const { count } = await (supabase as any)
+        .from("agent_knowledge_chunks")
+        .select("id", { count: "exact", head: true })
+        .eq("agent_id", agentId)
+        .eq("active", true);
+      setRagChunksCount(Number(count || 0));
+    } catch {
+      setRagChunksCount(0);
+    }
+  }, []);
+
   function applyAgentData(data: any) {
     if (data && data.nome_agente && data.nome_agente.trim() && (data.sobre_empresa || data.descricao_negocio)) {
       setHasConfig(true);
       setStep("pronto");
       setCfg(data);
-        if (data?.canais_ativos) setChannelStatus(data.canais_ativos);
+        if (data?.canais_ativos) setChannelStatus({ whatsapp: true, instagram: true, messenger: true, telegram: true, ...data.canais_ativos });
+      setStudioMode(data?.studio_mode === "advanced" ? "advanced" : "simple");
       setActiveAgentId(data.id);
       setTipo(data.tipo as AgentTipo);
       setTamanhoResposta((data.tamanho_resposta as any) || "curtas");
@@ -316,6 +372,7 @@ function AgentePage() {
       setMenuSetoresOpcoes(Array.isArray(data.menu_setores_opcoes) ? data.menu_setores_opcoes : []);
       setOlistCatalogo(Boolean(data.olist_catalogo));
       loadSuggestions(data.id);
+      void loadRagChunksCount(data.id);
     } else if (data) {
       setAiProvider(data.ai_provider || "gemini");
       const normalizedModel = !data.ai_model || data.ai_model.includes("2.0") || data.ai_model.includes("1.5") || data.ai_model.includes("2.5") ? "gemini-3.5-flash-lite" : data.ai_model.replace(/^google\//, "");
@@ -331,7 +388,8 @@ function AgentePage() {
       setMenuSetoresOpcoes(Array.isArray(data.menu_setores_opcoes) ? data.menu_setores_opcoes : []);
       setOlistCatalogo(Boolean(data.olist_catalogo));
       setCfg(data);
-      if (data?.canais_ativos) setChannelStatus(data.canais_ativos);
+      if (data?.canais_ativos) setChannelStatus({ whatsapp: true, instagram: true, messenger: true, telegram: true, ...data.canais_ativos });
+      setStudioMode(data?.studio_mode === "advanced" ? "advanced" : "simple");
       setActiveAgentId(data.id);
       setSegundosBuffer(typeof data.segundos_buffer === "number" ? data.segundos_buffer : 3);
       setRegrasRigidas(data.regras_rigidas || "");
@@ -339,6 +397,7 @@ function AgentePage() {
       // Garante que o prompt preview seja atualizado se a config mudar
       setPromptPreview(buildSystemPrompt(data as any, { responderEmPartes: data.responder_em_partes ?? true, produtos: [] }));
       loadSuggestions(data.id);
+      void loadRagChunksCount(data.id);
     } else {
       setHasConfig(false);
       setCfg(null);
@@ -734,7 +793,7 @@ function AgentePage() {
         olist_catalogo: olistCatalogo,
       };
       const r = await test({ data: { message: msg, tipo, agentId: activeAgentId, draftCfg: liveDraft, history } });
-      setChat((c) => [...c, { role: "assistant", content: r.parts.join("\n\n"), parts: r.parts }]);
+      setChat((c) => [...c, { role: "assistant", content: r.parts.join("\n\n"), parts: r.parts, xray: (r as any)?.xray }]);
       if ((r as any)?.sugestao) {
         toast.info("💡 La IA detectó una oportunidad de mejora y generó una sugerencia de entrenamiento.");
         loadSuggestions(activeAgentId);
@@ -815,6 +874,7 @@ function AgentePage() {
       try {
         const idx: any = await indexKnowledge({ data: { agentId: activeAgentId } });
         if (idx?.files) setCfg((prev: any) => ({ ...prev, knowledge_files: idx.files }));
+        void loadRagChunksCount(activeAgentId);
         if (idx?.failed > 0) {
           toast.warning("Arquivo enviado, mas parte do conteúdo não pôde ser lida (ex.: PDF de imagem).");
         } else {
@@ -1249,6 +1309,303 @@ function AgentePage() {
 
   // ---------- Tela com config: resumo + ajustes finos + teste ----------
   const currentAgent = agents.find(a => a.id === activeAgentId);
+  const effectiveStudioMode: "simple" | "advanced" =
+    studioMode === "advanced" && planCaps.modules.agente_avancado ? "advanced" : "simple";
+
+  const handleRequestStudioMode = async (target: "simple" | "advanced") => {
+    if (target === effectiveStudioMode || !activeAgentId) return;
+    if (target === "advanced") {
+      if (!planCaps.modules.agente_avancado) {
+        toast.info(
+          language === "es"
+            ? "El Modo Avanzado (herramientas verificadas, reglas granulares y canales extra) está disponible desde el plan Business."
+            : "O Modo Avançado está disponível a partir do plano Business.",
+        );
+        return;
+      }
+      setSwitchingMode(true);
+      try {
+        await updateStudioMode({ data: { agentId: activeAgentId, mode: "advanced", saveSnapshot: false } });
+        setStudioMode("advanced");
+        setCfg((prev: any) => (prev ? { ...prev, studio_mode: "advanced" } : prev));
+      } catch (err: any) {
+        toast.error(err?.message || "Error cambiando a Modo Avanzado");
+      } finally {
+        setSwitchingMode(false);
+      }
+      return;
+    }
+    setConfirmSimpleOpen(true);
+  };
+
+  const handleConfirmSwitchToSimple = async () => {
+    if (!activeAgentId) return;
+    setSwitchingMode(true);
+    try {
+      const res: any = await updateStudioMode({
+        data: { agentId: activeAgentId, mode: "simple", saveSnapshot: true },
+      });
+      setStudioMode("simple");
+      setCfg((prev: any) =>
+        prev ? { ...prev, studio_mode: "simple", active_version: res?.activeVersion ?? prev.active_version } : prev,
+      );
+      toast.success(
+        language === "es"
+          ? "Cambiado a Modo Simple. Se guardó un respaldo en Versiones."
+          : "Alterado para Modo Simple com backup em Versões.",
+      );
+      setConfirmSimpleOpen(false);
+    } catch (err: any) {
+      toast.error(err?.message || "Error cambiando a Modo Simple");
+    } finally {
+      setSwitchingMode(false);
+    }
+  };
+
+  const handleReindexKnowledgeFiles = async () => {
+    if (!activeAgentId) return;
+    setIndexingKnowledge(true);
+    try {
+      const idx: any = await indexKnowledge({ data: { agentId: activeAgentId, force: true } });
+      if (idx?.files) setCfg((prev: any) => ({ ...prev, knowledge_files: idx.files }));
+      await loadRagChunksCount(activeAgentId);
+      toast.success(`Base reindexada: ${idx?.chars ?? 0} caracteres${idx?.failed ? ` (${idx.failed} arquivo(s) ilegível)` : ""}.`);
+    } catch (e: any) {
+      toast.error("Falha ao reindexar: " + (e?.message || "erro"));
+    } finally {
+      setIndexingKnowledge(false);
+    }
+  };
+
+  const playgroundColumn = (
+    <div className="space-y-8">
+      <Section title={t("ai.test_agent", undefined, "Probar agente")} icon={<Bot className="size-3.5" />}>
+        <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <div className="size-2 rounded-full bg-green-500" />
+            <span className="text-[10px] text-muted-foreground font-medium">
+              {cfg?.nome_agente || t("ai.agent", undefined, "Agente")} {t("ai.is_active", undefined, "está activo")}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              variant={showXray ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setShowXray((v) => !v)}
+              className="h-7 text-[10px] gap-1"
+              title="Rayos X del turno (ruta, latencia, fuentes RAG y herramientas)"
+            >
+              <CpuIcon className="size-3" /> Rayos X
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setChat([])} className="h-7 text-[10px] gap-1">
+              <RefreshCcw className="size-3" /> {t("ai.new_test", undefined, "Nueva prueba")}
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 cursor-pointer">
+                  <UserCircle2 className="size-3" />
+                  <span>{t("ai.simulate_lead", undefined, "Simular lead")}</span>
+                  <ChevronDown className="size-2.5 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64 text-xs">
+                <DropdownMenuItem className="cursor-pointer" onClick={() => void runTest("Hola, vi su anuncio y me gustaría recibir más información.")}>
+                  💬 Lead Frío (Primer contacto)
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer" onClick={() => void runTest("¡Hola! ¿Qué productos o servicios tienen y cuáles son los precios?")}>
+                  🏷️ Consulta de Precio / Catálogo
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer" onClick={() => void runTest("¿Hacen envíos o atienden en mi zona? ¿Cuál es el plazo y costo?")}>
+                  🚚 Consulta de Entrega / Zona
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer" onClick={() => void runTest("Me gustaría agendar una cita para esta semana, ¿tienen disponibilidad?")}>
+                  📅 Agendamiento de Horario
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer" onClick={() => void runTest("Me parece un poco costoso comparado con otros. ¿Tienen algún descuento?")}>
+                  🤝 Negociación / Objeción
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer" onClick={() => void runTest("Hola, hice una compra y tengo una duda sobre mi pedido.")}>
+                  🛡️ Post-venta / Soporte
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        <div ref={scrollRef} className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)]/50 p-4 space-y-4 h-[440px] overflow-y-auto mb-3">
+          {chat.length === 0 && !testing && (
+            <div className="h-full flex flex-col items-center justify-center text-center gap-2 p-6">
+              <Bot className="size-8 text-muted-foreground/30" />
+              <p className="text-xs text-muted-foreground">{t("ai.start_conversation_to_test", undefined, "Inicia una conversación para probar el comportamiento del agente.")}</p>
+            </div>
+          )}
+          {chat.map((m, i) =>
+            m.role === "user" ? (
+              <div key={i} className="flex justify-end">
+                <div className="max-w-[85%] bg-[var(--brand)] text-white rounded-2xl rounded-tr-sm px-4 py-2.5 text-xs shadow-sm">{m.content}</div>
+              </div>
+            ) : (
+              <div key={i} className="flex justify-start gap-2 items-start group">
+                <AgentAvatar
+                  traits={cfg?.avatar_traits}
+                  avatarUrl={cfg?.avatar_url}
+                  fallbackName={cfg?.nome_agente || "IA"}
+                  size={28}
+                  className="shrink-0 border border-[var(--border)]"
+                />
+                <div className="max-w-[85%] flex flex-col gap-2">
+                  {(m.parts && m.parts.length ? m.parts : [m.content]).map((p, j) => (
+                    <div key={j} className="bg-card border border-[var(--border)] text-foreground rounded-2xl rounded-tl-sm px-4 py-2.5 text-xs shadow-sm">
+                      {p}
+                    </div>
+                  ))}
+
+                  {(m.fonte || m.regra) && (
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {m.fonte && (
+                        <Badge variant="secondary" className="bg-blue-500/10 text-[9px] text-blue-600 dark:text-blue-300 border-none font-normal gap-1">
+                          <FileText className="size-2.5" /> Fonte: <span className="font-bold">{m.fonte}</span>
+                        </Badge>
+                      )}
+                      {m.regra && (
+                        <Badge variant="secondary" className="bg-purple-500/10 text-[9px] text-purple-600 dark:text-purple-300 border-none font-normal gap-1">
+                          <Zap className="size-2.5" /> Regra: <span className="font-bold">{m.regra}</span>
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+
+                  {m.xray && (effectiveStudioMode === "advanced" || showXray) && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {m.xray.route && (
+                        <Badge variant="outline" className="text-[9px] font-mono bg-background/80">
+                          Ruta: {m.xray.route}
+                        </Badge>
+                      )}
+                      {typeof m.xray.latencyMs === "number" && (
+                        <Badge variant="outline" className="text-[9px] font-mono bg-background/80">
+                          {m.xray.latencyMs}ms
+                        </Badge>
+                      )}
+                      {m.xray.model && (
+                        <Badge variant="outline" className="text-[9px] font-mono bg-background/80">
+                          {m.xray.provider}/{m.xray.model}
+                        </Badge>
+                      )}
+                      {Array.isArray(m.xray.ragChunksUsed) && m.xray.ragChunksUsed.length > 0 && (
+                        <Badge variant="outline" className="text-[9px] bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30">
+                          RAG: {m.xray.ragChunksUsed.map((c) => c.source_name).slice(0, 2).join(", ")}
+                        </Badge>
+                      )}
+                      {m.xray.proposedToolCall?.nombre && (
+                        <Badge variant="outline" className="text-[9px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
+                          Tool: {m.xray.proposedToolCall.nombre}
+                        </Badge>
+                      )}
+                      {m.xray.proposedMemoryUpdate && (
+                        <Badge variant="outline" className="text-[9px] bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/30">
+                          Memoria: {Object.keys(m.xray.proposedMemoryUpdate).join(", ")}
+                        </Badge>
+                      )}
+                      {m.xray.proposedActiveTask?.tipo && (
+                        <Badge variant="outline" className="text-[9px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30">
+                          Tarea: {m.xray.proposedActiveTask.tipo}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => openCorrect(i)}
+                    className="self-start inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-[var(--brand-text)] opacity-0 group-hover:opacity-100 transition mt-1"
+                  >
+                    <Pencil className="size-2.5" /> Corrigir resposta
+                  </button>
+                </div>
+              </div>
+            ),
+          )}
+          {testing && (
+            <div className="flex justify-start gap-2 items-start">
+              <AgentAvatar
+                traits={cfg?.avatar_traits}
+                avatarUrl={cfg?.avatar_url}
+                fallbackName={cfg?.nome_agente || "IA"}
+                size={28}
+                className="shrink-0 border border-[var(--border)]"
+              />
+              <div className="bg-card border border-[var(--border)] rounded-2xl rounded-tl-sm px-4 py-2.5 text-xs shadow-sm italic text-muted-foreground flex items-center gap-2">
+                <Loader2 className="size-3 animate-spin" /> {t("ai.typing", undefined, "Escribiendo...")}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="relative">
+          <Input
+            value={testInput}
+            onChange={(e) => setTestInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void runTest(); } }}
+            placeholder={t("ai.type_as_client", undefined, "Escribe como un cliente...")}
+            disabled={testing}
+            className="pr-10 bg-background"
+          />
+          <Button
+            onClick={() => runTest()}
+            disabled={testing || !testInput.trim()}
+            size="icon"
+            className="absolute right-1 top-1 size-8 rounded-lg bg-[var(--brand)] hover:bg-[var(--brand)]/90"
+          >
+            {testing ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 mt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              const lastAssistantIdx = chat.map(m => m.role).lastIndexOf("assistant");
+              if (lastAssistantIdx === -1) {
+                toast.error(language === "es" ? "Ninguna respuesta de la IA para marcar como correcta." : "Nenhuma resposta da IA para marcar como correta.");
+                return;
+              }
+              const userMsg = chat.slice(0, lastAssistantIdx).reverse().find(m => m.role === "user");
+              const clientText = userMsg ? userMsg.content : "Pergunta de teste";
+              const agentText = chat[lastAssistantIdx].content;
+              const nextExamples = [...(Array.isArray(cfg?.exemplos_few_shot) ? cfg.exemplos_few_shot : []), { cliente: clientText, agente: agentText }];
+              setCfg((prev: any) => ({ ...prev, exemplos_few_shot: nextExamples }));
+              try {
+                await saveExample({ data: { tipo, cliente: clientText, agente: agentText, agentId: activeAgentId || undefined } });
+                toast.success(language === "es" ? "¡Respuesta guardada como ejemplo de entrenamiento de la IA!" : "Resposta salva como exemplo de treinamento da IA!");
+              } catch {
+                toast.success(language === "es" ? "¡Respuesta marcada como correcta en los ejemplos!" : "Resposta marcada como correta nos exemplos!");
+              }
+            }}
+            className="text-[10px] h-8 gap-1.5 border-green-500/30 text-green-700 dark:text-green-300 hover:bg-green-500/10 cursor-pointer"
+          >
+            <CheckCircle2 className="size-3.5" /> {t("ai.correct_response", undefined, "Respuesta correcta")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const lastAssistantIdx = chat.map(m => m.role).lastIndexOf("assistant");
+              if (lastAssistantIdx === -1) {
+                toast.error(language === "es" ? "Ninguna respuesta de la IA para corregir aún." : "Nenhuma resposta da IA para corrigir ainda.");
+                return;
+              }
+              openCorrect(lastAssistantIdx);
+            }}
+            className="text-[10px] h-8 gap-1.5 border-orange-500/30 text-orange-700 dark:text-orange-300 hover:bg-orange-500/10 cursor-pointer"
+          >
+            <Sparkles className="size-3.5" /> {t("ai.needs_improvement", undefined, "Necesita mejorar")}
+          </Button>
+        </div>
+      </Section>
+    </div>
+  );
 
   return (
     <div className="flex flex-col lg:flex-row min-h-[calc(100vh-140px)] gap-6">
@@ -1280,17 +1637,17 @@ function AgentePage() {
               </div>
 
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-2xl font-bold tracking-tight">{cfg?.nome_agente || "Agente sem nome"}</h1>
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="h-7 text-[10px] gap-2 rounded-lg border-slate-200"
+                    className="h-7 text-[10px] gap-2 rounded-lg border-border"
                     onClick={() => setAvatarBuilderOpen(true)}
                   >
                     <Pencil className="size-3" /> {t("ai.edit_avatar", undefined, "Editar avatar")}
                   </Button>
-                  <Badge variant={currentAgent?.is_active !== false ? "outline" : "secondary"} className={cn("text-[10px] uppercase", currentAgent?.is_active !== false ? "border-green-500/50 text-green-600 bg-green-50" : "")}>
+                  <Badge variant={currentAgent?.is_active !== false ? "outline" : "secondary"} className={cn("text-[10px] uppercase", currentAgent?.is_active !== false ? "border-green-500/50 text-green-600 dark:text-green-400 bg-green-500/10" : "")}>
                     {currentAgent?.is_active !== false ? t("ai.active", undefined, "Activo") : t("ai.inactive", undefined, "Inactivo")}
                   </Badge>
                 </div>
@@ -1301,19 +1658,48 @@ function AgentePage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Button 
-                variant={activeTab === "avancado" ? "default" : "outline"} 
-                size="sm" 
-                className="gap-2 text-xs cursor-pointer" 
-                onClick={() => setActiveTab("avancado")}
+              <div className="inline-flex rounded-lg border border-border bg-muted/40 p-0.5">
+                <button
+                  type="button"
+                  disabled={switchingMode}
+                  onClick={() => void handleRequestStudioMode("simple")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md text-xs font-medium transition",
+                    effectiveStudioMode === "simple"
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {language === "es" ? "Modo Simple" : "Modo Simples"}
+                </button>
+                <button
+                  type="button"
+                  disabled={switchingMode}
+                  onClick={() => void handleRequestStudioMode("advanced")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md text-xs font-medium transition",
+                    effectiveStudioMode === "advanced"
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {language === "es" ? "Modo Avanzado" : "Modo Avançado"}
+                </button>
+              </div>
+
+              <Button
+                onClick={() => setVersionsOpen(true)}
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs cursor-pointer"
               >
-                <Settings2 className="size-3.5" /> {t("ai.advanced_config", undefined, "Configuración avanzada")}
+                <RotateCcw className="size-3.5" /> {language === "es" ? "Versiones" : "Versões"}
               </Button>
               <Button 
                 onClick={() => { setHistoryDialogOpen(true); void loadHistory(); }} 
                 variant="outline" 
                 size="sm" 
-                className="gap-2 text-xs cursor-pointer hover:bg-slate-50"
+                className="gap-2 text-xs cursor-pointer"
               >
                 <History className="size-3.5" /> {t("ai.history", undefined, "Historial")}
               </Button>
@@ -1321,7 +1707,7 @@ function AgentePage() {
                 onClick={() => setPreviewDialogOpen(true)} 
                 variant="outline" 
                 size="sm" 
-                className="gap-2 text-xs cursor-pointer hover:bg-slate-50"
+                className="gap-2 text-xs cursor-pointer"
               >
                 <Eye className="size-3.5" /> {t("ai.preview", undefined, "Vista previa")}
               </Button>
@@ -1335,15 +1721,73 @@ function AgentePage() {
             </div>
           </div>
 
+          {effectiveStudioMode === "simple" ? (
+            <div className="grid lg:grid-cols-[1fr_360px] gap-8 pt-2">
+              <AgentSimpleMode
+                cfg={cfg}
+                setCfg={setCfg}
+                livre={livre}
+                setLivre={setLivre}
+                agendamentoAtivo={agendamentoAtivo}
+                setAgendamentoAtivo={setAgendamentoAtivo}
+                responderEmPartes={responderEmPartes}
+                setResponderEmPartes={setResponderEmPartes}
+                tamanhoResposta={tamanhoResposta}
+                setTamanhoResposta={setTamanhoResposta}
+                saving={saving}
+                onSave={save}
+                onOpenCopilotInterview={() => {
+                  setCopilotInitialPrompt(
+                    language === "es"
+                      ? "Hola Copilot, quiero configurar mi agente en Modo Simple paso a paso. Hazme 4 preguntas claras sobre mi negocio, productos/precios, horarios y reglas clave."
+                      : "Olá Copilot, quero configurar meu agente no Modo Simples passo a passo. Me faça 4 perguntas claras sobre meu negócio, produtos/preços e regras.",
+                  );
+                  setCopilotOpen(true);
+                }}
+                onFileUpload={handleFileUpload}
+                onDeleteFile={handleDeleteFile}
+                onReindexKnowledge={handleReindexKnowledgeFiles}
+                uploadingFile={uploadingFile}
+                indexingKnowledge={indexingKnowledge}
+                catalogEnabled={channelStatus.catalog_enabled !== false}
+                onToggleCatalog={(val) => setChannelStatus((prev) => ({ ...prev, catalog_enabled: val }))}
+                hasSecretaryFeature={Boolean(planCaps.modules.secretario_ia)}
+                secretaryEnabled={Boolean(cfg?.secretary_enabled)}
+                secretaryPhones={Array.isArray(cfg?.secretary_phones) ? cfg.secretary_phones : []}
+                onQuickEnableSecretary={async (enabled, phone) => {
+                  if (!activeAgentId) return;
+                  const nextPhones = phone
+                    ? Array.from(new Set([phone.replace(/\D/g, ""), ...(Array.isArray(cfg?.secretary_phones) ? cfg.secretary_phones : [])])).filter((p) => p.length >= 10).slice(0, 5)
+                    : (Array.isArray(cfg?.secretary_phones) ? cfg.secretary_phones : []);
+                  const res: any = await persistQuickSecretary({
+                    data: {
+                      agentId: activeAgentId,
+                      enabled,
+                      phones: nextPhones,
+                      briefingHour: cfg?.secretary_briefing_hour || "08:00",
+                      timezone: cfg?.secretary_timezone || "America/Sao_Paulo",
+                    },
+                  });
+                  if (res?.config) {
+                    setCfg((prev: any) => ({ ...prev, ...res.config }));
+                  }
+                  toast.success(language === "es" ? "Secretario actualizado" : "Secretário atualizado");
+                }}
+              />
+              {playgroundColumn}
+            </div>
+          ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full justify-start bg-transparent border-b border-[var(--border)] rounded-none h-12 p-0 gap-6 overflow-x-auto">
-              <TabsTrigger value="visao" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">{t("ai.overview", undefined, "Visión general")}</TabsTrigger>
-              <TabsTrigger value="conhecimento" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">{t("ai.knowledge", undefined, "Conocimiento")}</TabsTrigger>
-              <TabsTrigger value="comportamento" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">{t("ai.behavior", undefined, "Comportamiento")}</TabsTrigger>
-              <TabsTrigger value="fluxo" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">{t("ai.training", undefined, "Entrenamiento")}</TabsTrigger>
-              <TabsTrigger value="canais" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">{t("ai.channels", undefined, "Canales")}</TabsTrigger>
-              <TabsTrigger value="avancado" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">{t("ai.advanced", undefined, "Avanzado")}</TabsTrigger>
-              <TabsTrigger value="analises" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium">{t("ai.analytics", undefined, "Análisis")}</TabsTrigger>
+            <TabsList className="w-full justify-start bg-transparent border-b border-[var(--border)] rounded-none h-12 p-0 gap-5 overflow-x-auto">
+              <TabsTrigger value="visao" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium shrink-0">{t("ai.overview", undefined, "Visión general")}</TabsTrigger>
+              <TabsTrigger value="conhecimento" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium shrink-0">{t("ai.knowledge", undefined, "Conocimiento")}</TabsTrigger>
+              <TabsTrigger value="comportamento" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium shrink-0">{t("ai.behavior", undefined, "Comportamiento")}</TabsTrigger>
+              <TabsTrigger value="fluxo" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium shrink-0">{t("ai.training", undefined, "Entrenamiento")}</TabsTrigger>
+              <TabsTrigger value="ferramentas" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium shrink-0">{language === "es" ? "Herramientas" : "Ferramentas"}</TabsTrigger>
+              <TabsTrigger value="secretario" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium shrink-0">{language === "es" ? "Secretario & Aprobaciones" : "Secretário & Aprovações"}</TabsTrigger>
+              <TabsTrigger value="canais" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium shrink-0">{t("ai.channels", undefined, "Canales")}</TabsTrigger>
+              <TabsTrigger value="avancado" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium shrink-0">{t("ai.advanced", undefined, "Avanzado")}</TabsTrigger>
+              <TabsTrigger value="analises" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[var(--brand)] rounded-none h-full px-0 text-sm font-medium shrink-0">{t("ai.analytics", undefined, "Análisis")}</TabsTrigger>
             </TabsList>
 
             <div className="grid lg:grid-cols-[1fr_360px] gap-8 pt-8">
@@ -1492,7 +1936,10 @@ function AgentePage() {
                     {Array.isArray(cfg?.knowledge_files) && cfg.knowledge_files.length > 0 && (
                       <div className="flex items-center justify-between">
                         <p className="text-[11px] text-muted-foreground">
-                          Conhecimento indexado: <strong>{(Array.isArray(cfg?.knowledge_files) ? cfg.knowledge_files : []).reduce((a: number, f: any) => a + (Number(f?.textChars) || 0), 0).toLocaleString()}</strong> caracteres
+                          Conhecimento indexado: <strong>{(Array.isArray(cfg?.knowledge_files) ? cfg.knowledge_files : []).reduce((a: number, f: any) => a + (Number(f?.textChars) || 0), 0).toLocaleString()}</strong> caracteres •{" "}
+                          <Badge variant="outline" className="text-[10px] font-mono ml-1">
+                            {ragChunksCount} chunks RAG
+                          </Badge>
                         </p>
                         <Button
                           variant="ghost"
@@ -1505,6 +1952,7 @@ function AgentePage() {
                             try {
                               const idx: any = await indexKnowledge({ data: { agentId: activeAgentId, force: true } });
                               if (idx?.files) setCfg((prev: any) => ({ ...prev, knowledge_files: idx.files }));
+                              await loadRagChunksCount(activeAgentId);
                               toast.success(`Base reindexada: ${idx?.chars ?? 0} caracteres${idx?.failed ? ` (${idx.failed} arquivo(s) ilegível)` : ""}.`);
                             } catch (e: any) {
                               toast.error("Falha ao reindexar: " + (e?.message || "erro"));
@@ -2058,9 +2506,36 @@ function AgentePage() {
                     </div>
                   </Section>
                 </TabsContent>
+                <TabsContent value="ferramentas" className="mt-0 space-y-6">
+                  <AgentToolsPanel
+                    agentId={activeAgentId}
+                    tipo={tipo}
+                    allowed={Boolean(planCaps.modules.ferramentas_verificadas)}
+                    onOpenCopilotTools={() => {
+                      setCopilotInitialPrompt(
+                        language === "es"
+                          ? "Quiero integrar un webhook o API externa para este agente. Ayúdame a descubrir los datos, probarla en el Sandbox y guardarla como herramienta verificada."
+                          : "Quero integrar um webhook ou API externa para este agente. Me ajude a testar no Sandbox e salvar como ferramenta verificada.",
+                      );
+                      setCopilotOpen(true);
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="secretario" className="mt-0 space-y-6">
+                  <AgentSecretaryPanel
+                    agentId={activeAgentId}
+                    cfg={cfg}
+                    allowed={Boolean(planCaps.modules.secretario_ia)}
+                    onConfigUpdated={(updatedFields) => {
+                      setCfg((prev: any) => (prev ? { ...prev, ...updatedFields } : prev));
+                    }}
+                  />
+                </TabsContent>
+
                 <TabsContent value="canais" className="mt-0 space-y-6">
                   <Section title={language === "es" ? "Conectar Canales de Atención" : "Conectar Canais de Atendimento"}>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="p-4 rounded-xl border border-[var(--border)] bg-card space-y-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
@@ -2090,6 +2565,21 @@ function AgentePage() {
                           <Switch checked={channelStatus.instagram} onCheckedChange={(val) => setChannelStatus(prev => ({ ...prev, instagram: val }))} />
                         </div>
                         <Button variant="outline" size="sm" className="w-full text-xs" asChild><Link to="/app/conexao" search={{ tab: "instagram" }}>{language === "es" ? "Configurar canal" : "Configurar canal"}</Link></Button>
+                      </div>
+                      <div className="p-4 rounded-xl border border-[var(--border)] bg-card space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="size-10 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center">
+                              <Globe className="size-5 text-indigo-600 dark:text-indigo-400" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold">Messenger</h4>
+                              <p className="text-[10px] text-muted-foreground">{language === "es" ? "Páginas de Facebook Meta" : "Páginas do Facebook Meta"}</p>
+                            </div>
+                          </div>
+                          <Switch checked={channelStatus.messenger !== false} onCheckedChange={(val) => setChannelStatus(prev => ({ ...prev, messenger: val }))} />
+                        </div>
+                        <Button variant="outline" size="sm" className="w-full text-xs" asChild><Link to="/app/conexao" search={{ tab: "messenger" }}>{language === "es" ? "Configurar canal" : "Configurar canal"}</Link></Button>
                       </div>
                       <div className="p-4 rounded-xl border border-[var(--border)] bg-card space-y-4">
                         <div className="flex items-center justify-between">
@@ -2436,198 +2926,17 @@ function AgentePage() {
                 </TabsContent>
 
                 <TabsContent value="analises" className="mt-0 space-y-6">
-                  <Section title={language === "es" ? "Rendimiento de la IA" : "Desempenho da IA"}>
-                    <div className="h-[300px] flex items-center justify-center border-2 border-dashed border-[var(--border)] rounded-xl bg-[var(--panel)]/30">
-                      <div className="text-center space-y-2">
-                        <BarChart3 className="size-8 text-muted-foreground/30 mx-auto" />
-                        <p className="text-xs text-muted-foreground">{language === "es" ? "Los datos de análisis y métricas se mostrarán después de las primeras interacciones con clientes." : "Dados de análise serão exibidos após as primeiras interações."}</p>
-                      </div>
-                    </div>
-                  </Section>
+                  <AgentAnalyticsPanel
+                    agentId={activeAgentId}
+                    allowed={Boolean(planCaps.modules.analises_ia)}
+                  />
                 </TabsContent>
               </div>
 
-              <div className="space-y-8">
-                <Section title={t("ai.test_agent", undefined, "Probar agente")} icon={<Bot className="size-3.5" />}>
-
-
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="size-2 rounded-full bg-green-500" />
-                      <span className="text-[10px] text-muted-foreground font-medium">{cfg?.nome_agente || t("ai.agent", undefined, "Agente")} {t("ai.is_active", undefined, "está activo")}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => setChat([])} className="h-7 text-[10px] gap-1">
-                        <RefreshCcw className="size-3" /> {t("ai.new_test", undefined, "Nueva prueba")}
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 cursor-pointer">
-                            <UserCircle2 className="size-3" />
-                            <span>{t("ai.simulate_lead", undefined, "Simular lead")}</span>
-                            <ChevronDown className="size-2.5 opacity-60" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-64 text-xs">
-                          <DropdownMenuItem className="cursor-pointer" onClick={() => void runTest("Hola, vi su anuncio y me gustaría recibir más información.")}>
-                            💬 Lead Frío (Primer contacto)
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="cursor-pointer" onClick={() => void runTest("¡Hola! ¿Qué productos o servicios tienen y cuáles son los precios?")}>
-                            🏷️ Consulta de Precio / Catálogo
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="cursor-pointer" onClick={() => void runTest("¿Hacen envíos o atienden en mi zona? ¿Cuál es el plazo y costo?")}>
-                            🚚 Consulta de Entrega / Zona
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="cursor-pointer" onClick={() => void runTest("Me gustaría agendar una cita para esta semana, ¿tienen disponibilidad?")}>
-                            📅 Agendamiento de Horario
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="cursor-pointer" onClick={() => void runTest("Me parece un poco costoso comparado con otros. ¿Tienen algún descuento?")}>
-                            🤝 Negociación / Objeción
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="cursor-pointer" onClick={() => void runTest("Hola, hice una compra y tengo una duda sobre mi pedido.")}>
-                            🛡️ Post-venta / Soporte
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-
-                  <div ref={scrollRef} className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)]/50 p-4 space-y-4 h-[440px] overflow-y-auto mb-3">
-                    {chat.length === 0 && !testing && (
-                      <div className="h-full flex flex-col items-center justify-center text-center gap-2 p-6">
-                        <Bot className="size-8 text-muted-foreground/30" />
-                        <p className="text-xs text-muted-foreground">{t("ai.start_conversation_to_test", undefined, "Inicia una conversación para probar el comportamiento del agente.")}</p>
-                      </div>
-                    )}
-                    {chat.map((m, i) =>
-                      m.role === "user" ? (
-                        <div key={i} className="flex justify-end">
-                          <div className="max-w-[85%] bg-[var(--brand)] text-white rounded-2xl rounded-tr-sm px-4 py-2.5 text-xs shadow-sm">{m.content}</div>
-                        </div>
-                      ) : (
-                        <div key={i} className="flex justify-start gap-2 items-start group">
-                          <AgentAvatar 
-                            traits={cfg?.avatar_traits} 
-                            avatarUrl={cfg?.avatar_url}
-                            fallbackName={cfg?.nome_agente || "IA"}
-                            size={28} 
-                            className="shrink-0 border border-[var(--border)]" 
-                          />
-                          <div className="max-w-[85%] flex flex-col gap-2">
-
-                            {(m.parts && m.parts.length ? m.parts : [m.content]).map((p, j) => (
-                              <div key={j} className="bg-card border border-[var(--border)] text-foreground rounded-2xl rounded-tl-sm px-4 py-2.5 text-xs shadow-sm">
-                                {p}
-                              </div>
-                            ))}
-                            
-                            {(m.fonte || m.regra) && (
-                              <div className="flex flex-wrap gap-2 mt-1">
-                                {m.fonte && (
-                                  <Badge variant="secondary" className="bg-blue-50 text-[9px] text-blue-600 border-none font-normal gap-1">
-                                    <FileText className="size-2.5" /> Fonte: <span className="font-bold">{m.fonte}</span>
-                                  </Badge>
-                                )}
-                                {m.regra && (
-                                  <Badge variant="secondary" className="bg-purple-50 text-[9px] text-purple-600 border-none font-normal gap-1">
-                                    <Zap className="size-2.5" /> Regra: <span className="font-bold">{m.regra}</span>
-                                  </Badge>
-                                )}
-                              </div>
-                            )}
-
-                            <button
-                              onClick={() => openCorrect(i)}
-                              className="self-start inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-[var(--brand-text)] opacity-0 group-hover:opacity-100 transition mt-1"
-                            >
-                              <Pencil className="size-2.5" /> Corrigir resposta
-                            </button>
-                          </div>
-                        </div>
-                      ),
-                    )}
-                    {testing && (
-                      <div className="flex justify-start gap-2 items-start">
-                        <AgentAvatar 
-                          traits={cfg?.avatar_traits} 
-                          avatarUrl={cfg?.avatar_url}
-                          fallbackName={cfg?.nome_agente || "IA"}
-                          size={28} 
-                          className="shrink-0 border border-[var(--border)]" 
-                        />
-
-                        <div className="bg-card border border-[var(--border)] rounded-2xl rounded-tl-sm px-4 py-2.5 text-xs shadow-sm italic text-muted-foreground flex items-center gap-2">
-                          <Loader2 className="size-3 animate-spin" /> {t("ai.typing", undefined, "Escribiendo...")}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="relative">
-                    <Input
-                      value={testInput}
-                      onChange={(e) => setTestInput(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void runTest(); } }}
-                      placeholder={t("ai.type_as_client", undefined, "Escribe como un cliente...")}
-                      disabled={testing}
-                      className="pr-10 bg-background"
-                    />
-                    <Button 
-                      onClick={() => runTest()} 
-                      disabled={testing || !testInput.trim()} 
-                      size="icon" 
-                      className="absolute right-1 top-1 size-8 rounded-lg bg-[var(--brand)] hover:bg-[var(--brand)]/90"
-                    >
-                      {testing ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 mt-4">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={async () => {
-                        const lastAssistantIdx = chat.map(m => m.role).lastIndexOf("assistant");
-                        if (lastAssistantIdx === -1) {
-                          toast.error(language === "es" ? "Ninguna respuesta de la IA para marcar como correcta." : "Nenhuma resposta da IA para marcar como correta.");
-                          return;
-                        }
-                        const userMsg = chat.slice(0, lastAssistantIdx).reverse().find(m => m.role === "user");
-                        const clientText = userMsg ? userMsg.content : "Pergunta de teste";
-                        const agentText = chat[lastAssistantIdx].content;
-                        const nextExamples = [...(Array.isArray(cfg?.exemplos_few_shot) ? cfg.exemplos_few_shot : []), { cliente: clientText, agente: agentText }];
-                        setCfg((prev: any) => ({ ...prev, exemplos_few_shot: nextExamples }));
-                        try {
-                          await saveExample({ data: { tipo, cliente: clientText, agente: agentText, agentId: activeAgentId || undefined } });
-                          toast.success(language === "es" ? "¡Respuesta guardada como ejemplo de entrenamiento de la IA!" : "Resposta salva como exemplo de treinamento da IA!");
-                        } catch (err: any) {
-                          toast.success(language === "es" ? "¡Respuesta marcada como correcta en los ejemplos!" : "Resposta marcada como correta nos exemplos!");
-                        }
-                      }}
-                      className="text-[10px] h-8 gap-1.5 border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800 cursor-pointer"
-                    >
-                      <CheckCircle2 className="size-3.5" /> {t("ai.correct_response", undefined, "Respuesta correcta")}
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => {
-                        const lastAssistantIdx = chat.map(m => m.role).lastIndexOf("assistant");
-                        if (lastAssistantIdx === -1) {
-                          toast.error(language === "es" ? "Ninguna respuesta de la IA para corregir aún." : "Nenhuma resposta da IA para corrigir ainda.");
-                          return;
-                        }
-                        openCorrect(lastAssistantIdx);
-                      }}
-                      className="text-[10px] h-8 gap-1.5 border-orange-200 text-orange-700 hover:bg-orange-50 hover:text-orange-800 cursor-pointer"
-                    >
-                      <Sparkles className="size-3.5" /> {t("ai.needs_improvement", undefined, "Necesita mejorar")}
-                    </Button>
-                  </div>
-                </Section>
-              </div>
+              {playgroundColumn}
             </div>
           </Tabs>
+          )}
         </div>
       </div>
 
@@ -2883,6 +3192,47 @@ function AgentePage() {
           toast.success("Catálogo actualizado con éxito");
         }}
       />
+
+      <AgentVersionsDialog
+        open={versionsOpen}
+        onOpenChange={setVersionsOpen}
+        agentId={activeAgentId}
+        activeVersion={cfg?.active_version}
+        onRestored={(restoredCfg) => {
+          applyAgentData(restoredCfg);
+        }}
+      />
+
+      <AlertDialog open={confirmSimpleOpen} onOpenChange={setConfirmSimpleOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {language === "es" ? "¿Cambiar a Modo Simple?" : "Mudar para Modo Simples?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                {language === "es"
+                  ? "Tus configuraciones avanzadas actuales (herramientas verificadas, fragmentos RAG indexados, reglas estrictas y Secretario Ejecutivo) seguirán activas funcionando en segundo plano."
+                  : "Suas configurações avançadas atuais (ferramentas verificadas, chunks RAG, regras rígidas e Secretário) continuarão ativas em segundo plano."}
+              </span>
+              <span className="block text-foreground font-medium">
+                {language === "es"
+                  ? "Al continuar, guardaremos automáticamente un respaldo de tu versión actual para que puedas restaurarla en 1 clic desde Versiones."
+                  : "Ao continuar, salvaremos um backup automático da versão atual em Versões."}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={switchingMode}>
+              {language === "es" ? "Cancelar" : "Cancelar"}
+            </AlertDialogCancel>
+            <AlertDialogAction disabled={switchingMode} onClick={() => void handleConfirmSwitchToSimple()}>
+              {switchingMode ? <Loader2 className="size-3.5 animate-spin mr-1.5" /> : null}
+              {language === "es" ? "Sí, cambiar a Modo Simple" : "Sim, mudar para Modo Simples"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -3004,5 +3354,17 @@ type ChatMsg = {
   parts?: string[];
   fonte?: string;
   regra?: string;
+  xray?: {
+    route?: string;
+    latencyMs?: number;
+    provider?: string;
+    model?: string;
+    ragChunksUsed?: Array<{ id: string; source_name: string }>;
+    verifiedToolsAvailable?: string[];
+    receiptDetected?: boolean;
+    proposedToolCall?: { nombre: string; argumentos: any } | null;
+    proposedMemoryUpdate?: Record<string, any> | null;
+    proposedActiveTask?: Record<string, any> | null;
+  };
 };
 

@@ -301,6 +301,36 @@ async function persistMessage(
   // F7 — Conexión con CRM / Kanban / IA para mensajes entrantes
   if (event.direction === "incoming") {
     try {
+      const isGroupMessage = Boolean((event.raw as any)?.data?.is_group || event.phone.includes("@g.us"));
+      if (connection.channel === "whatsapp" && !isGroupMessage) {
+        const { matchSecretaryForPhone, handleSecretaryMessage } = await import("@/lib/ai-secretary.server");
+        const secMatch = await matchSecretaryForPhone(supabaseAdmin, connection.company_id, event.phone);
+        if (secMatch.matched && secMatch.agent) {
+          if (!isHistorical) {
+            const audioAtt = event.attachments.find((a) => a.kind === "audio");
+            const isAudioSec = Boolean(audioAtt);
+            const secText =
+              event.text ||
+              (isAudioSec
+                ? "[ÁUDIO]"
+                : event.attachments.length
+                  ? `[${event.attachments[0].kind.toUpperCase()}]`
+                  : "");
+            await handleSecretaryMessage(supabaseAdmin, {
+              companyId: connection.company_id,
+              agent: secMatch.agent,
+              ownerPhone: event.phone,
+              text: secText,
+              instanceId: connection.id,
+              isAudioMessage: isAudioSec,
+              audioUrl: audioAtt?.storageUrl || audioAtt?.providerUrl || safeMidiaUrl || null,
+              audioMime: audioAtt?.mimeType ?? null,
+            });
+          }
+          return;
+        }
+      }
+
       const { upsertCard, getStagesBrief, pickLeadOwner } = await import("@/lib/crm-engine.server");
       const stages = await getStagesBrief(supabaseAdmin, connection.company_id);
       const isAudio = event.attachments.some((a) => a.kind === "audio");

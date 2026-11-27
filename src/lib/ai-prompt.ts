@@ -234,6 +234,7 @@ export interface StructuredContextParams {
   card?: any;
   metaCapiConfig?: any;
   externalData?: any;
+  hasWebhookOutTools?: boolean;
   capacidades?: {
     ejecucion_sandbox?: boolean;
     lookup_cliente?: boolean;
@@ -258,11 +259,11 @@ export function buildStructuredContextBlock(params: StructuredContextParams): st
       instancia: params.instanciaNome || "Canal Principal",
       timestamp: new Date().toISOString(),
       capacidades_activas: {
-        ejecucion_sandbox: true,
+        ejecucion_sandbox: false,
         lookup_cliente: true,
         mover_etapa_crm: true,
         pausar_chat: true,
-        disparar_webhooks: true,
+        disparar_webhooks: Boolean(params.hasWebhookOutTools),
         disparar_pixel: Boolean(params.metaCapiConfig?.ativo),
         ...(params.capacidades || {})
       }
@@ -327,6 +328,25 @@ export function buildSystemPrompt(
     olistCatalogo?: string;
     /** Permite que a IA feche o pedido direto na Olist. */
     olistPedido?: boolean;
+    /** Fragmentos recuperados por RAG Nivel 1 */
+    ragChunks?: Array<{ id?: string; source_name: string; content: string; score?: number }>;
+    /** Indica si existen chunks RAG indexados en Postgres para este agente */
+    hasIndexedRagChunks?: boolean;
+    /** Memoria aguda de hechos confirmados del cliente */
+    clientMemory?: Record<string, any> | null;
+    /** Tarea activa en curso (cita, comprobante, pedido, etc.) */
+    activeTask?: Record<string, any> | null;
+    /** Flag determinista de posible comprobante de pago detectado en el turno */
+    receiptDetected?: boolean;
+    /** Herramientas externas verificadas disponibles para este agente */
+    verifiedTools?: Array<{
+      name: string;
+      display_name?: string;
+      description: string;
+      kind?: string;
+      permission_level: string;
+      input_schema?: any;
+    }>;
   },
 ): string {
   const partes = opts?.responderEmPartes ?? c.responder_em_partes ?? true;
@@ -494,7 +514,51 @@ Você deve agir EXATAMENTE como instruído abaixo. Houve mudanças no motor de I
     c.reativar_cliente ? (isEs ? "Puedes reactivar clientes inactivos con mensajes ligeros y de valor." : "Pode reativar clientes inativos com mensagens leves e relevantes.") : "",
     c.pode_fazer ? (isEs ? `LO QUE PUEDES HACER:\n${c.pode_fazer}` : `O QUE VOCÊ PODE FAZER:\n${c.pode_fazer}`) : "",
     c.nao_pode_fazer ? (isEs ? `LO QUE NO PUEDES HACER:\n${c.nao_pode_fazer}` : `O QUE VOCÊ NÃO PODE FAZER:\n${c.nao_pode_fazer}`) : "",
-    buildKnowledgeFilesBloco(c.knowledge_files),
+    opts?.ragChunks && opts.ragChunks.length > 0
+      ? (isEs
+          ? "FRAGMENTOS RELEVANTES DE LA BASE DE CONOCIMIENTO (fuente oficial — úsalos y cita la fuente si ayuda):\n"
+          : isEn
+            ? "RELEVANT KNOWLEDGE BASE EXCERPTS (official source — use them accurately):\n"
+            : "TRECHOS RELEVANTES DA BASE DE CONHECIMENTO (fonte oficial — use para responder com precisão):\n") +
+        opts.ragChunks.map((ch) => `[Fuente: ${ch.source_name}]\n${ch.content}`).join("\n\n")
+      : !opts?.hasIndexedRagChunks
+        ? buildKnowledgeFilesBloco(c.knowledge_files)
+        : "",
+    opts?.clientMemory && typeof opts.clientMemory === "object" && Object.keys(opts.clientMemory).length > 0
+      ? (isEs
+          ? `MEMORIA PERSISTENTE DEL CLIENTE (hechos ya confirmados — no vuelvas a preguntar esto):\n${JSON.stringify(opts.clientMemory)}`
+          : isEn
+            ? `PERSISTENT CLIENT MEMORY (confirmed facts — do not re-ask):\n${JSON.stringify(opts.clientMemory)}`
+            : `MEMÓRIA PERSISTENTE DO CLIENTE (fatos já confirmados — não pergunte novamente):\n${JSON.stringify(opts.clientMemory)}`)
+      : "",
+    opts?.activeTask && typeof opts.activeTask === "object" && Object.keys(opts.activeTask).length > 0
+      ? (isEs
+          ? `TAREA EN CURSO CON ESTE CLIENTE:\n${JSON.stringify(opts.activeTask)}`
+          : isEn
+            ? `ACTIVE TASK IN PROGRESS:\n${JSON.stringify(opts.activeTask)}`
+            : `TAREFA EM ANDAMENTO COM ESTE CLIENTE:\n${JSON.stringify(opts.activeTask)}`)
+      : "",
+    opts?.receiptDetected
+      ? (isEs
+          ? "DIRECTIVA OBLIGATORIA DE COMPROBANTE DE PAGO: El cliente envió un posible comprobante de pago. NUNCA confirmes ni apruebes el pago por tu cuenta; agradece el envío e indica que el equipo lo verificará en breve."
+          : isEn
+            ? "MANDATORY PAYMENT RECEIPT DIRECTIVE: The customer sent a possible payment receipt. NEVER confirm or approve payment yourself; thank them and let them know the team will verify it shortly."
+            : "DIRETIVA OBRIGATÓRIA DE COMPROVANTE: O cliente enviou um possível comprovante de pagamento. NUNCA confirme nem aprove o pagamento por conta própria; agradeça o envio e informe que a equipe irá verificar em breve.")
+      : "",
+
+    opts?.verifiedTools && opts.verifiedTools.length > 0
+      ? (isEs
+          ? "HERRAMIENTAS EXTERNAS VERIFICADAS (úsalas SOLO si necesitas consultar o ejecutar datos reales en sistemas externos; si tipo='http', devuelve \"usar_herramienta\": {\"nombre\":\"slug\",\"argumentos\":{}}; si tipo='webhook_out', usa \"webhook_saliente\"; si permission_level='write_confirm_customer' pide confirmación primero y envía customer_confirmed:true; si es 'write_require_owner_approval' NO inventes ejecución y avisa que requiere aprobación del dueño):\n"
+          : isEn
+            ? "VERIFIED EXTERNAL TOOLS (call with \"usar_herramienta\" for kind='http' or \"webhook_saliente\" for kind='webhook_out'):\n"
+            : "FERRAMENTAS EXTERNAS VERIFICADAS (use \"usar_herramienta\" para tipo='http' ou \"webhook_saliente\" para tipo='webhook_out'):\n") +
+        opts.verifiedTools
+          .map((t) => {
+            const schemaStr = t.input_schema && Object.keys(t.input_schema).length > 0 ? JSON.stringify(t.input_schema) : "{}";
+            return `- slug: "${t.name}" | tipo: ${t.kind || "http"} | permiso: ${t.permission_level} | esquema: ${schemaStr} | descripción: ${t.description}`;
+          })
+          .join("\n")
+      : "",
 
     c.agendamento_ativo
       ? (isEs
@@ -504,31 +568,30 @@ Você deve agir EXATAMENTE como instruído abaixo. Houve mudanças no motor de I
 
     (Array.isArray(c.handoff_user_ids) && c.handoff_user_ids.length)
       ? (isEs
-          ? `TRANSFERENCIA A HUMANO (reglas estrictas — solo transfiere cuando sea REALMENTE necesario):
-- NUNCA uses [HANDOFF] en tu primera respuesta al cliente, bajo ninguna circunstancia.
-- ANTES de transferir, DEBES calificar al lead: descubrir nombre, qué necesita, para cuándo/urgencia y contexto mínimo (mínimo 3 intercambios de mensajes).
-- Solo transfiere si: (a) el cliente pide EXPLÍCITAMENTE hablar con una persona/humano/asesor y confirma su insistencia, O (b) es un reclamo serio/sensible (legal, conflicto grave), O (c) está claramente fuera de tu alcance según "LO QUE NO PUEDES HACER".
-- Duda simple, consulta de precio, cliente ausente o saludo — NO transfieras, sigue calificando.
+          ? `TRANSFERENCIA A HUMANO (solo transfiere cuando sea necesario o el cliente lo solicite):
+- Si el cliente pide EXPLÍCITAMENTE hablar con una persona, asesor o humano (incluso en el primer mensaje), transfiere de inmediato sin retenerlo ni insistir.
+- Para casos sin solicitud explícita, califica brevemente antes (nombre, necesidad, urgencia).
+- También transfiere si es un reclamo serio/sensible (legal, conflicto grave) o está claramente fuera de tu alcance según "LO QUE NO PUEDES HACER".
+- Duda simple, consulta de precio o saludo sin petición de humano — no transfieras, sigue atendiendo.
 - Cuando decidas transferir: avisa en una frase corta que llamarás a ${opts?.handoffTargetNome || "un asesor del equipo"} y, en una NUEVA LÍNEA al final, escribe EXACTAMENTE el marcador: [HANDOFF]`
           : isEn
-          ? `HUMAN HANDOFF (strict rules — only hand off when REALLY needed):
-- NEVER use [HANDOFF] on your first message.
-- Qualify the lead first: find out name, need, timeline/urgency (at least 3 message exchanges).
-- Only hand off if explicitly requested after trying to help, or serious complaint.
+          ? `HUMAN HANDOFF (hand off when needed or explicitly requested):
+- If the customer EXPLICITLY asks to speak with a human/person/agent (even on the first message), hand off immediately.
+- Otherwise, briefly qualify first (name, need, urgency) or hand off on serious complaints / out-of-scope requests.
 - When handing off, notify in one short sentence and on a NEW LINE write: [HANDOFF]`
-          : `TRANSFERÊNCIA PARA HUMANO (regras estritas — só transfira quando REALMENTE necessário):
-- NUNCA use [HANDOFF] na sua primeira resposta ao cliente, sob nenhuma hipótese.
-- ANTES de transferir, você DEVE qualificar o lead: descobrir nome, o que ele precisa, para quando/urgência e contexto mínimo (mínimo 3 trocas de mensagem com o cliente).
-- Só transfira se: (a) o cliente pedir EXPLICITAMENTE falar com humano/atendente/vendedor e insistir mesmo após você tentar ajudar, OU (b) o assunto for reclamação séria/sensível (jurídico, cancelamento com atrito, erro grave), OU (c) for algo claramente fora do seu escopo listado em "NÃO pode fazer" e você já tentou ajudar.
-- Dúvida simples, pedido de preço, pedido de informação, cliente sumido, cliente que só respondeu "oi" — NÃO transfira, continue qualificando.
+          : `TRANSFERÊNCIA PARA HUMANO (transfira quando necessário ou quando o cliente pedir):
+- Se o cliente pedir EXPLICITAMENTE falar com um humano, atendente, pessoa ou vendedor (mesmo na primeira mensagem), transfira imediatamente sem reter.
+- Sem pedido explícito, qualifique brevemente antes (nome, necessidade, urgência).
+- Também transfira em reclamação séria/sensível (jurídico, atrito grave) ou assunto fora do seu escopo listado em "NÃO pode fazer".
+- Dúvida simples, preço ou saudação sem pedido de humano — não transfira, continue atendendo.
 - Quando decidir transferir: avise em uma frase curta que vai chamar ${opts?.handoffTargetNome || "um atendente do time"} e, em uma NOVA LINHA ao final, escreva EXATAMENTE o marcador: [HANDOFF]`)
       : c.telefone_transferencia
       ? (isEs
-          ? `Si el cliente pide atención humana tras intentar calificarlo y ayudarlo, o tiene un reclamo sensible, indícale comunicarse con ${c.telefone_transferencia}. Nunca ofrezcas esto en la primera respuesta.`
-          : `Se o cliente pedir atendimento humano APÓS você ter tentado qualificar e ajudar, reclamar de algo sensível, ou precisar de algo fora do seu escopo, oriente a falar com ${c.telefone_transferencia}. Nunca ofereça isso na primeira resposta.`)
+          ? `Si el cliente pide atención humana (incluso en la primera respuesta) o tiene un reclamo sensible, indícale de inmediato comunicarse con ${c.telefone_transferencia}.`
+          : `Se o cliente pedir atendimento humano (mesmo na primeira mensagem) ou tiver reclamação sensível, oriente imediatamente a falar com ${c.telefone_transferencia}.`)
       : (isEs
-          ? "Si el cliente pide atención humana tras intentar ayudarlo, di educadamente que llamarás a alguien del equipo. Nunca transfieras en la primera respuesta."
-          : "Se o cliente pedir atendimento humano após você tentar ajudar, ou for algo sensível, diga educadamente que vai chamar alguém do time. Nunca transfira na primeira resposta."),
+          ? "Si el cliente pide atención humana (incluso en el primer mensaje), di educadamente que llamarás a alguien del equipo."
+          : "Se o cliente pedir atendimento humano (mesmo na primeira mensagem), diga educadamente que vai chamar alguém do time."),
 
     opts?.resumoContato ? (isEs ? `Contexto del contacto: ${opts.resumoContato}` : `Contexto do contato: ${opts.resumoContato}`) : "",
     opts?.estagioAtual ? (isEs ? `Etapa actual en el CRM: ${opts.estagioAtual}.` : `Estágio atual no CRM: ${opts.estagioAtual}.`) : "",
@@ -617,7 +680,11 @@ ESQUEMA OBLIGATORIO:
   "agendamiento": null,
   "pedido": null,
   "sugestao": null,
-  "tracking_pixel": null
+  "tracking_pixel": null,
+  "webhook_saliente": null,
+  "usar_herramienta": null,
+  "memoria_cliente": null,
+  "tarea_activa": null
 }
 
 DIRECTIVAS ESTRICTAS DE CADA CAMPO:
@@ -638,6 +705,14 @@ DIRECTIVAS ESTRICTAS DE CADA CAMPO:
    - Si el cliente confirmó formalmente un pedido: { "itens": [{"nome": "nombre", "qtd": 1, "valor": 0}], "entrega": "retirada", "pagamento": "pix" }, de lo contrario null.
 6. "sugestao":
    - Si detectas alguna ambigüedad o duda no cubierta en tus reglas rígidas: { "duda": "explicación", "regra": "regla sugerida" }, de lo contrario null.
+7. "memoria_cliente":
+   - Opcional: objeto clave-valor corto con hechos nuevos confirmados del cliente (ej. {"ciudad": "Caracas", "interes": "Plan Pro"}), o null.
+8. "tarea_activa":
+   - Opcional: { "tipo": "booking|verify_payment|order|support", "estado": "...", "datos": {} } si hay una tarea en curso o se completó, o null si no aplica.
+9. "usar_herramienta":
+   - Opcional: si necesitas ejecutar una herramienta HTTP verificada de la lista ("tipo: http"), usa { "nombre": "slug", "argumentos": {} }, de lo contrario null.
+10. "webhook_saliente":
+   - Opcional: si necesitas emitir un evento hacia un webhook_out verificado y capacidades_activas.disparar_webhooks es true, usa { "disparar": true, "evento": "slug_o_evento", "payload": {} }, de lo contrario null.
 ═══════════════════════════════════════════════════════`
       : `═══════════════════════════════════════════════════════
 FORMATO DA RESPOSTA OBRIGATÓRIO (PROTOCOLO JSON CANÔNICO):
@@ -664,7 +739,11 @@ ESQUEMA OBRIGATÓRIO:
   "agendamiento": null,
   "pedido": null,
   "sugestao": null,
-  "tracking_pixel": null
+  "tracking_pixel": null,
+  "webhook_saliente": null,
+  "usar_herramienta": null,
+  "memoria_cliente": null,
+  "tarea_activa": null
 }
 
 DIRETIVAS ESTRITAS DE CADA CAMPO:
@@ -685,6 +764,14 @@ DIRETIVAS ESTRITAS DE CADA CAMPO:
    - Se o cliente confirmou um pedido: { "itens": [{"nome": "item", "qtd": 1, "valor": 0}], "entrega": "...", "pagamento": "..." }, senão null.
 6. "sugestao":
    - Se detectar ambiguidade ou dúvida não coberta nas regras: { "duda": "...", "regra": "..." }, senão null.
+7. "memoria_cliente":
+   - Opcional: objeto chave-valor curto com novos fatos confirmados do cliente (ex. {"cidade": "SP", "plano": "Pro"}), ou null.
+8. "tarea_activa":
+   - Opcional: { "tipo": "booking|verify_payment|order|support", "estado": "...", "datos": {} } se houver tarefa em curso/concluída, ou null.
+9. "usar_herramienta":
+   - Opcional: se precisar consultar/executar uma ferramenta HTTP verificada da lista ("tipo: http"), use { "nombre": "slug", "argumentos": {} }, senão null.
+10. "webhook_saliente":
+   - Opcional: se precisar disparar um webhook_out verificado e capacidades_activas.disparar_webhooks for true, use { "disparar": true, "evento": "slug_ou_evento", "payload": {} }, senão null.
 ═══════════════════════════════════════════════════════`
   );
 
@@ -859,6 +946,12 @@ export function parseAiOutput(
     evento?: string | null;
     payload?: any;
   } | null;
+  toolCall?: {
+    nombre: string;
+    argumentos: Record<string, any>;
+  } | null;
+  clientMemoryUpdate?: Record<string, any> | null;
+  activeTaskUpdate?: Record<string, any> | null;
 } {
   let text = raw || "";
 
@@ -898,6 +991,36 @@ export function parseAiOutput(
     const codeExecution = structured.ejecucion_codigo || structured.code_execution || null;
     const webhookSaliente = structured.webhook_saliente || structured.outbound_webhook || null;
 
+    const rawToolCall = structured.usar_herramienta ?? structured.tool_call;
+    const toolCall =
+      rawToolCall &&
+      typeof rawToolCall === "object" &&
+      !Array.isArray(rawToolCall) &&
+      typeof rawToolCall.nombre === "string" &&
+      rawToolCall.nombre.trim()
+        ? {
+            nombre: rawToolCall.nombre.trim(),
+            argumentos:
+              rawToolCall.argumentos &&
+              typeof rawToolCall.argumentos === "object" &&
+              !Array.isArray(rawToolCall.argumentos)
+                ? rawToolCall.argumentos
+                : {},
+          }
+        : null;
+
+    const rawMem = structured.memoria_cliente ?? structured.client_memory;
+    const clientMemoryUpdate =
+      rawMem && typeof rawMem === "object" && !Array.isArray(rawMem) && Object.keys(rawMem).length > 0
+        ? (rawMem as Record<string, any>)
+        : null;
+
+    const rawTask = structured.tarea_activa ?? structured.active_task;
+    const activeTaskUpdate =
+      rawTask && typeof rawTask === "object" && !Array.isArray(rawTask) && Object.keys(rawTask).length > 0
+        ? (rawTask as Record<string, any>)
+        : null;
+
     const skusFromParts: string[] = [];
     const cleanMarker = (s: string) => {
       const prodMatches = s.matchAll(/\[PRODUTO:([^\]]+)\]/gi);
@@ -932,6 +1055,9 @@ export function parseAiOutput(
       pixelTracking,
       codeExecution,
       webhookSaliente,
+      toolCall,
+      clientMemoryUpdate,
+      activeTaskUpdate,
     };
   }
   let stage: string | null = null;
@@ -1037,7 +1163,7 @@ export function parseAiOutput(
     return p;
   }).filter(Boolean);
 
-  return { parts: sanitized, stage, agendar, intent, handoff, qualified, pedido, sugestao, produtosSku };
+  return { parts: sanitized, stage, agendar, intent, handoff, qualified, pedido, sugestao, produtosSku, toolCall: null };
 
 }
 

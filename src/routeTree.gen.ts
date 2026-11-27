@@ -116,6 +116,7 @@ import { Route as ApiPublicHooksGoogleCalendarRenewRouteImport } from './routes/
 import { Route as ApiPublicHooksMetaStoriesRouteImport } from './routes/api/public/hooks/meta-stories'
 import { Route as ApiPublicHooksMetaSyncRouteImport } from './routes/api/public/hooks/meta-sync'
 import { Route as ApiPublicHooksProcessAgendamentosRouteImport } from './routes/api/public/hooks/process-agendamentos'
+import { Route as ApiPublicHooksProcessAiDebounceRouteImport } from './routes/api/public/hooks/process-ai-debounce'
 import { Route as ApiPublicHooksProcessAutomationJobsRouteImport } from './routes/api/public/hooks/process-automation-jobs'
 import { Route as ApiPublicHooksProcessCampaignsRouteImport } from './routes/api/public/hooks/process-campaigns'
 import { Route as ApiPublicHooksProcessContentPostsRouteImport } from './routes/api/public/hooks/process-content-posts'
@@ -125,6 +126,7 @@ import { Route as ApiPublicHooksProcessMetaLeadsRouteImport } from './routes/api
 import { Route as ApiPublicHooksProcessRelatorioIaRouteImport } from './routes/api/public/hooks/process-relatorio-ia'
 import { Route as ApiPublicHooksProcessRetryQueueRouteImport } from './routes/api/public/hooks/process-retry-queue'
 import { Route as ApiPublicHooksProcessScheduledPostsRouteImport } from './routes/api/public/hooks/process-scheduled-posts'
+import { Route as ApiPublicHooksSecretaryBriefingRouteImport } from './routes/api/public/hooks/secretary-briefing'
 import { Route as ApiPublicHooksWhatsappWatchdogRouteImport } from './routes/api/public/hooks/whatsapp-watchdog'
 import { Route as ApiPublicMetaOauthCallbackRouteImport } from './routes/api/public/meta-oauth.callback'
 import { Route as ApiPublicV1SplatRouteImport } from './routes/api/public/v1/$'
@@ -684,6 +686,12 @@ const ApiPublicHooksProcessAgendamentosRoute =
     path: '/api/public/hooks/process-agendamentos',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksProcessAiDebounceRoute =
+  ApiPublicHooksProcessAiDebounceRouteImport.update({
+    id: '/api/public/hooks/process-ai-debounce',
+    path: '/api/public/hooks/process-ai-debounce',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksProcessAutomationJobsRoute =
   ApiPublicHooksProcessAutomationJobsRouteImport.update({
     id: '/api/public/hooks/process-automation-jobs',
@@ -736,6 +744,12 @@ const ApiPublicHooksProcessScheduledPostsRoute =
   ApiPublicHooksProcessScheduledPostsRouteImport.update({
     id: '/api/public/hooks/process-scheduled-posts',
     path: '/api/public/hooks/process-scheduled-posts',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksSecretaryBriefingRoute =
+  ApiPublicHooksSecretaryBriefingRouteImport.update({
+    id: '/api/public/hooks/secretary-briefing',
+    path: '/api/public/hooks/secretary-briefing',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksWhatsappWatchdogRoute =
@@ -886,6 +900,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/meta-stories': typeof ApiPublicHooksMetaStoriesRoute
   '/api/public/hooks/meta-sync': typeof ApiPublicHooksMetaSyncRoute
   '/api/public/hooks/process-agendamentos': typeof ApiPublicHooksProcessAgendamentosRoute
+  '/api/public/hooks/process-ai-debounce': typeof ApiPublicHooksProcessAiDebounceRoute
   '/api/public/hooks/process-automation-jobs': typeof ApiPublicHooksProcessAutomationJobsRoute
   '/api/public/hooks/process-campaigns': typeof ApiPublicHooksProcessCampaignsRoute
   '/api/public/hooks/process-content-posts': typeof ApiPublicHooksProcessContentPostsRoute
@@ -895,6 +910,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/process-relatorio-ia': typeof ApiPublicHooksProcessRelatorioIaRoute
   '/api/public/hooks/process-retry-queue': typeof ApiPublicHooksProcessRetryQueueRoute
   '/api/public/hooks/process-scheduled-posts': typeof ApiPublicHooksProcessScheduledPostsRoute
+  '/api/public/hooks/secretary-briefing': typeof ApiPublicHooksSecretaryBriefingRoute
   '/api/public/hooks/whatsapp-watchdog': typeof ApiPublicHooksWhatsappWatchdogRoute
   '/api/public/meta-oauth/callback': typeof ApiPublicMetaOauthCallbackRoute
   '/api/public/v1/$': typeof ApiPublicV1SplatRoute
@@ -1008,6 +1024,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/meta-stories': typeof ApiPublicHooksMetaStoriesRoute
   '/api/public/hooks/meta-sync': typeof ApiPublicHooksMetaSyncRoute
   '/api/public/hooks/process-agendamentos': typeof ApiPublicHooksProcessAgendamentosRoute
+  '/api/public/hooks/process-ai-debounce': typeof ApiPublicHooksProcessAiDebounceRoute
   '/api/public/hooks/process-automation-jobs': typeof ApiPublicHooksProcessAutomationJobsRoute
   '/api/public/hooks/process-campaigns': typeof ApiPublicHooksProcessCampaignsRoute
   '/api/public/hooks/process-content-posts': typeof ApiPublicHooksProcessContentPostsRoute
@@ -1017,6 +1034,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/process-relatorio-ia': typeof ApiPublicHooksProcessRelatorioIaRoute
   '/api/public/hooks/process-retry-queue': typeof ApiPublicHooksProcessRetryQueueRoute
   '/api/public/hooks/process-scheduled-posts': typeof ApiPublicHooksProcessScheduledPostsRoute
+  '/api/public/hooks/secretary-briefing': typeof ApiPublicHooksSecretaryBriefingRoute
   '/api/public/hooks/whatsapp-watchdog': typeof ApiPublicHooksWhatsappWatchdogRoute
   '/api/public/meta-oauth/callback': typeof ApiPublicMetaOauthCallbackRoute
   '/api/public/v1/$': typeof ApiPublicV1SplatRoute
@@ -1134,6 +1152,7 @@ export interface FileRoutesById {
   '/api/public/hooks/meta-stories': typeof ApiPublicHooksMetaStoriesRoute
   '/api/public/hooks/meta-sync': typeof ApiPublicHooksMetaSyncRoute
   '/api/public/hooks/process-agendamentos': typeof ApiPublicHooksProcessAgendamentosRoute
+  '/api/public/hooks/process-ai-debounce': typeof ApiPublicHooksProcessAiDebounceRoute
   '/api/public/hooks/process-automation-jobs': typeof ApiPublicHooksProcessAutomationJobsRoute
   '/api/public/hooks/process-campaigns': typeof ApiPublicHooksProcessCampaignsRoute
   '/api/public/hooks/process-content-posts': typeof ApiPublicHooksProcessContentPostsRoute
@@ -1143,6 +1162,7 @@ export interface FileRoutesById {
   '/api/public/hooks/process-relatorio-ia': typeof ApiPublicHooksProcessRelatorioIaRoute
   '/api/public/hooks/process-retry-queue': typeof ApiPublicHooksProcessRetryQueueRoute
   '/api/public/hooks/process-scheduled-posts': typeof ApiPublicHooksProcessScheduledPostsRoute
+  '/api/public/hooks/secretary-briefing': typeof ApiPublicHooksSecretaryBriefingRoute
   '/api/public/hooks/whatsapp-watchdog': typeof ApiPublicHooksWhatsappWatchdogRoute
   '/api/public/meta-oauth/callback': typeof ApiPublicMetaOauthCallbackRoute
   '/api/public/v1/$': typeof ApiPublicV1SplatRoute
@@ -1261,6 +1281,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/meta-stories'
     | '/api/public/hooks/meta-sync'
     | '/api/public/hooks/process-agendamentos'
+    | '/api/public/hooks/process-ai-debounce'
     | '/api/public/hooks/process-automation-jobs'
     | '/api/public/hooks/process-campaigns'
     | '/api/public/hooks/process-content-posts'
@@ -1270,6 +1291,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/process-relatorio-ia'
     | '/api/public/hooks/process-retry-queue'
     | '/api/public/hooks/process-scheduled-posts'
+    | '/api/public/hooks/secretary-briefing'
     | '/api/public/hooks/whatsapp-watchdog'
     | '/api/public/meta-oauth/callback'
     | '/api/public/v1/$'
@@ -1383,6 +1405,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/meta-stories'
     | '/api/public/hooks/meta-sync'
     | '/api/public/hooks/process-agendamentos'
+    | '/api/public/hooks/process-ai-debounce'
     | '/api/public/hooks/process-automation-jobs'
     | '/api/public/hooks/process-campaigns'
     | '/api/public/hooks/process-content-posts'
@@ -1392,6 +1415,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/process-relatorio-ia'
     | '/api/public/hooks/process-retry-queue'
     | '/api/public/hooks/process-scheduled-posts'
+    | '/api/public/hooks/secretary-briefing'
     | '/api/public/hooks/whatsapp-watchdog'
     | '/api/public/meta-oauth/callback'
     | '/api/public/v1/$'
@@ -1508,6 +1532,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/meta-stories'
     | '/api/public/hooks/meta-sync'
     | '/api/public/hooks/process-agendamentos'
+    | '/api/public/hooks/process-ai-debounce'
     | '/api/public/hooks/process-automation-jobs'
     | '/api/public/hooks/process-campaigns'
     | '/api/public/hooks/process-content-posts'
@@ -1517,6 +1542,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/process-relatorio-ia'
     | '/api/public/hooks/process-retry-queue'
     | '/api/public/hooks/process-scheduled-posts'
+    | '/api/public/hooks/secretary-briefing'
     | '/api/public/hooks/whatsapp-watchdog'
     | '/api/public/meta-oauth/callback'
     | '/api/public/v1/$'
@@ -1579,6 +1605,7 @@ export interface RootRouteChildren {
   ApiPublicHooksMetaStoriesRoute: typeof ApiPublicHooksMetaStoriesRoute
   ApiPublicHooksMetaSyncRoute: typeof ApiPublicHooksMetaSyncRoute
   ApiPublicHooksProcessAgendamentosRoute: typeof ApiPublicHooksProcessAgendamentosRoute
+  ApiPublicHooksProcessAiDebounceRoute: typeof ApiPublicHooksProcessAiDebounceRoute
   ApiPublicHooksProcessAutomationJobsRoute: typeof ApiPublicHooksProcessAutomationJobsRoute
   ApiPublicHooksProcessCampaignsRoute: typeof ApiPublicHooksProcessCampaignsRoute
   ApiPublicHooksProcessContentPostsRoute: typeof ApiPublicHooksProcessContentPostsRoute
@@ -1588,6 +1615,7 @@ export interface RootRouteChildren {
   ApiPublicHooksProcessRelatorioIaRoute: typeof ApiPublicHooksProcessRelatorioIaRoute
   ApiPublicHooksProcessRetryQueueRoute: typeof ApiPublicHooksProcessRetryQueueRoute
   ApiPublicHooksProcessScheduledPostsRoute: typeof ApiPublicHooksProcessScheduledPostsRoute
+  ApiPublicHooksSecretaryBriefingRoute: typeof ApiPublicHooksSecretaryBriefingRoute
   ApiPublicHooksWhatsappWatchdogRoute: typeof ApiPublicHooksWhatsappWatchdogRoute
   ApiPublicMetaOauthCallbackRoute: typeof ApiPublicMetaOauthCallbackRoute
   ApiPublicV1SplatRoute: typeof ApiPublicV1SplatRoute
@@ -2348,6 +2376,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksProcessAgendamentosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/process-ai-debounce': {
+      id: '/api/public/hooks/process-ai-debounce'
+      path: '/api/public/hooks/process-ai-debounce'
+      fullPath: '/api/public/hooks/process-ai-debounce'
+      preLoaderRoute: typeof ApiPublicHooksProcessAiDebounceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/process-automation-jobs': {
       id: '/api/public/hooks/process-automation-jobs'
       path: '/api/public/hooks/process-automation-jobs'
@@ -2409,6 +2444,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/hooks/process-scheduled-posts'
       fullPath: '/api/public/hooks/process-scheduled-posts'
       preLoaderRoute: typeof ApiPublicHooksProcessScheduledPostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/secretary-briefing': {
+      id: '/api/public/hooks/secretary-briefing'
+      path: '/api/public/hooks/secretary-briefing'
+      fullPath: '/api/public/hooks/secretary-briefing'
+      preLoaderRoute: typeof ApiPublicHooksSecretaryBriefingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/whatsapp-watchdog': {
@@ -2668,6 +2710,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksMetaSyncRoute: ApiPublicHooksMetaSyncRoute,
   ApiPublicHooksProcessAgendamentosRoute:
     ApiPublicHooksProcessAgendamentosRoute,
+  ApiPublicHooksProcessAiDebounceRoute: ApiPublicHooksProcessAiDebounceRoute,
   ApiPublicHooksProcessAutomationJobsRoute:
     ApiPublicHooksProcessAutomationJobsRoute,
   ApiPublicHooksProcessCampaignsRoute: ApiPublicHooksProcessCampaignsRoute,
@@ -2682,6 +2725,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksProcessRetryQueueRoute: ApiPublicHooksProcessRetryQueueRoute,
   ApiPublicHooksProcessScheduledPostsRoute:
     ApiPublicHooksProcessScheduledPostsRoute,
+  ApiPublicHooksSecretaryBriefingRoute: ApiPublicHooksSecretaryBriefingRoute,
   ApiPublicHooksWhatsappWatchdogRoute: ApiPublicHooksWhatsappWatchdogRoute,
   ApiPublicMetaOauthCallbackRoute: ApiPublicMetaOauthCallbackRoute,
   ApiPublicV1SplatRoute: ApiPublicV1SplatRoute,

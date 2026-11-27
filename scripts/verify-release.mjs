@@ -46,6 +46,11 @@ const migrationPairs = [
   "20261126150000_unified_plans_and_master_storage.sql",
   "20261126180000_granular_user_permissions.sql",
   "20261127010000_fix_seed_fixed_agents_on_conflict.sql",
+  "20261127020000_ai_engine_p0_hardening_and_debounce.sql",
+  "20261127030000_agent_rag_memory_and_traces.sql",
+  "20261127040000_agent_verified_tools_and_outbox.sql",
+  "20261127050000_agent_secretary_and_hitl_approvals.sql",
+  "20261127060000_agent_studio_mode_and_versions.sql",
 ];
 
 let migrationsOk = true;

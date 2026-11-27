@@ -50,6 +50,8 @@ export async function processInboundFallbackJobs(limit = 1): Promise<number> {
         isAudioMessage: Boolean(payload.isAudioMessage),
         instanceId: payload.instanceId || null,
         channel: payload.channel || null,
+        provider: payload.provider || null,
+        externalConversationId: payload.externalConversationId ? String(payload.externalConversationId) : null,
       });
       const { data: finished, error: finishErr } = await (supabaseAdmin as any)
         .from("automation_inbound_fallback_jobs")
