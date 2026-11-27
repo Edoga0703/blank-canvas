@@ -24,9 +24,80 @@ import {
 import type { ChatMsg } from "./lovable-ai.server";
 
 export interface CopilotChatMessage {
+  id?: string;
   role: "user" | "assistant";
   content: string;
   proposals?: CopilotActionProposal[];
+  createdAt?: string;
+}
+
+function defaultModelForProvider(provider: string): string {
+  switch (provider.toLowerCase()) {
+    case "drael":
+      return "drael-v1";
+    case "openai":
+      return "gpt-4o-mini";
+    case "anthropic":
+      return "claude-3-5-sonnet-latest";
+    default:
+      return "gemini-3.5-flash-lite";
+  }
+}
+
+async function resolveCopilotModelConfig(
+  admin: any,
+  agent: any,
+): Promise<{ provider: string; model: string }> {
+  let gVal: Record<string, any> = {};
+  try {
+    const { data: globalSettings } = await admin
+      .from("master_settings")
+      .select("value")
+      .eq("key", "global_ai_config")
+      .maybeSingle();
+    gVal = (globalSettings?.value as Record<string, any>) || {};
+  } catch {}
+
+  const copilotProvider = String(gVal.copilot_provider || "").trim().toLowerCase();
+  const copilotModel = String(gVal.copilot_model || "").trim();
+  const globalProvider = String(gVal.ai_provider || "").trim().toLowerCase();
+  const globalModel = String(gVal.ai_model || "").trim();
+  const agentProvider = String(agent?.ai_provider || "").trim().toLowerCase();
+  const agentModel = String(agent?.ai_model || "").trim();
+
+  if (copilotProvider && copilotProvider !== "global" && copilotProvider !== "default") {
+    return {
+      provider: copilotProvider,
+      model: copilotModel || defaultModelForProvider(copilotProvider),
+    };
+  }
+
+  if (copilotModel) {
+    const prov = globalProvider || agentProvider || "gemini";
+    return {
+      provider: prov,
+      model: copilotModel,
+    };
+  }
+
+  if (globalProvider) {
+    return {
+      provider: globalProvider,
+      model: globalModel || defaultModelForProvider(globalProvider),
+    };
+  }
+
+  if (agentProvider) {
+    return {
+      provider: agentProvider,
+      model: agentModel || defaultModelForProvider(agentProvider),
+    };
+  }
+
+  return {
+    provider: "gemini",
+    model: "gemini-3.5-flash-lite",
+  };
 }
 
 const SANDBOX_TEST_VARS: Record<string, string> = {
@@ -144,6 +215,156 @@ function formatSandboxSampleExcerpt(sample: any): string {
 }
 
 /**
+ * Obtiene la sesión activa más reciente del Copilot o crea una nueva
+ */
+export const getOrCreateCopilotSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: {
+    agentId?: string | null;
+    tipo?: string;
+    forceNew?: boolean;
+  }) => ({
+    agentId: d?.agentId || null,
+    tipo: d?.tipo || "qualificacao",
+    forceNew: Boolean(d?.forceNew),
+  }))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { resolveTargetAgent, sanitizeCopilotProposalsForStorage } = await import("./agent-copilot.server");
+    const cfg = await resolveTargetAgent(supabaseAdmin, companyId, data.agentId, data.tipo);
+
+    if (!data.forceNew) {
+      const { data: existingSession } = await (supabaseAdmin as any)
+        .from("agent_copilot_sessions")
+        .select("id, company_id, agent_id, user_id, title, created_at, updated_at")
+        .eq("company_id", companyId)
+        .eq("agent_id", cfg.id)
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingSession?.id) {
+        const { data: msgRows } = await (supabaseAdmin as any)
+          .from("agent_copilot_messages")
+          .select("id, role, content, proposals, created_at")
+          .eq("session_id", existingSession.id)
+          .eq("company_id", companyId)
+          .order("created_at", { ascending: false })
+          .limit(40);
+
+        const messages: CopilotChatMessage[] = ((msgRows ?? []).slice().reverse()).map((m: any) => ({
+          id: m.id,
+          role: m.role === "user" ? "user" : "assistant",
+          content: String(m.content || ""),
+          proposals: Array.isArray(m.proposals) ? sanitizeCopilotProposalsForStorage(m.proposals) : [],
+          createdAt: m.created_at,
+        }));
+
+        return {
+          session: existingSession,
+          messages,
+        };
+      }
+    }
+
+    const { data: createdSession, error: createErr } = await (supabaseAdmin as any)
+      .from("agent_copilot_sessions")
+      .insert({
+        company_id: companyId,
+        agent_id: cfg.id,
+        user_id: userId,
+        title: "Nueva sesión",
+      })
+      .select("id, company_id, agent_id, user_id, title, created_at, updated_at")
+      .single();
+
+    if (createErr || !createdSession) {
+      throw new Error(`No se pudo crear la sesión del Copilot: ${createErr?.message || "Error"}`);
+    }
+
+    return {
+      session: createdSession,
+      messages: [] as CopilotChatMessage[],
+    };
+  });
+
+/**
+ * Actualiza el estado (applied / failed / pending) y resultado de Sandbox en una propuesta persistida
+ */
+export const updateCopilotMessageProposalState = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: {
+    messageId: string;
+    proposalIndex: number;
+    status: "pending" | "applied" | "rejected" | "failed";
+    sandboxResult?: any;
+  }) => {
+    if (!d?.messageId) throw new Error("messageId es obligatorio.");
+    const idx = Number(d?.proposalIndex);
+    if (!Number.isInteger(idx) || idx < 0) throw new Error("proposalIndex inválido.");
+    const status = d?.status;
+    if (!["pending", "applied", "rejected", "failed"].includes(status)) {
+      throw new Error("Estado de propuesta inválido.");
+    }
+    return {
+      messageId: String(d.messageId).trim(),
+      proposalIndex: idx,
+      status,
+      sandboxResult: d.sandboxResult,
+    };
+  })
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const companyId = await requireAdminCompany(supabase, userId);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const {
+      sanitizeCopilotProposalsForStorage,
+      sanitizeSandboxResultForStorage,
+    } = await import("./agent-copilot.server");
+
+    const { data: msgRow, error: fetchErr } = await (supabaseAdmin as any)
+      .from("agent_copilot_messages")
+      .select("id, session_id, proposals")
+      .eq("id", data.messageId)
+      .eq("company_id", companyId)
+      .maybeSingle();
+
+    if (fetchErr || !msgRow) {
+      throw new Error("Mensaje del Copilot no encontrado.");
+    }
+
+    const currentProposals = Array.isArray(msgRow.proposals) ? [...msgRow.proposals] : [];
+    if (!currentProposals[data.proposalIndex]) {
+      return { ok: true, proposals: sanitizeCopilotProposalsForStorage(currentProposals) };
+    }
+
+    const updatedItem = { ...currentProposals[data.proposalIndex], status: data.status };
+    if (data.sandboxResult !== undefined) {
+      updatedItem.sandboxResult = sanitizeSandboxResultForStorage(data.sandboxResult);
+    }
+    currentProposals[data.proposalIndex] = updatedItem;
+
+    const sanitizedProposals = sanitizeCopilotProposalsForStorage(currentProposals);
+
+    const { error: updErr } = await (supabaseAdmin as any)
+      .from("agent_copilot_messages")
+      .update({ proposals: sanitizedProposals })
+      .eq("id", msgRow.id)
+      .eq("company_id", companyId);
+
+    if (updErr) {
+      throw new Error(`No se pudo actualizar la propuesta: ${updErr.message}`);
+    }
+
+    return { ok: true, proposals: sanitizedProposals };
+  });
+
+/**
  * Consulta interactiva al Copilot Arquitecto y Entrenador
  */
 export const askAgentCopilot = createServerFn({ method: "POST" })
@@ -152,6 +373,7 @@ export const askAgentCopilot = createServerFn({ method: "POST" })
     messages: CopilotChatMessage[];
     agentId?: string | null;
     tipo?: string;
+    sessionId?: string | null;
   }) => {
     if (!Array.isArray(d?.messages) || d.messages.length === 0) {
       throw new Error("Mensagem inválida.");
@@ -160,47 +382,174 @@ export const askAgentCopilot = createServerFn({ method: "POST" })
       messages: d.messages,
       agentId: d.agentId || null,
       tipo: d.tipo || "qualificacao",
+      sessionId: d.sessionId ? String(d.sessionId).trim() : null,
     };
   })
   .handler(async ({ context, data }): Promise<CopilotTurnResult> => {
     const { supabase, userId } = context;
     const companyId = await requireAdminCompany(supabase, userId);
 
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const {
+      redactCopilotSecretsInText,
+      sanitizeCopilotProposalsForStorage,
+    } = await import("./agent-copilot.server");
+
     // 1. Obtém contexto completo do agente e catálogo
     const agentCtx = await getAgentCopilotContext(supabase, companyId, data.agentId, data.tipo);
     const systemPrompt = buildCopilotSystemPrompt(agentCtx);
+    const resolvedAgentId = (agentCtx.agent as any)?.id || data.agentId;
 
-    // 2. Ventana deslizante de los últimos 16 mensajes para evitar degradación y timeouts
+    // 2. Resolver o crear sesión persistente en PostgreSQL
+    let sessionId: string | null = data.sessionId || null;
+    let currentTitle: string | null = null;
+
+    if (sessionId && resolvedAgentId) {
+      try {
+        const { data: existingSession } = await (supabaseAdmin as any)
+          .from("agent_copilot_sessions")
+          .select("id, title")
+          .eq("id", sessionId)
+          .eq("company_id", companyId)
+          .eq("agent_id", resolvedAgentId)
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (existingSession?.id) {
+          currentTitle = existingSession.title ?? null;
+        } else {
+          sessionId = null;
+        }
+      } catch {
+        sessionId = null;
+      }
+    } else {
+      sessionId = null;
+    }
+
+    if (!sessionId && resolvedAgentId) {
+      try {
+        const { data: createdSession } = await (supabaseAdmin as any)
+          .from("agent_copilot_sessions")
+          .insert({
+            company_id: companyId,
+            agent_id: resolvedAgentId,
+            user_id: userId,
+            title: "Nueva sesión",
+          })
+          .select("id, title")
+          .single();
+        if (createdSession?.id) {
+          sessionId = createdSession.id;
+          currentTitle = createdSession.title ?? null;
+        }
+      } catch {}
+    }
+
+    // 3. Ventana deslizante de los últimos 16 mensajes para evitar degradación y timeouts
     const windowedMessages = data.messages.slice(-16);
     const historyMsgs: ChatMsg[] = windowedMessages.map((m) => ({
       role: m.role,
       content: m.content,
     }));
 
-    // 3. Executa chat com a IA nativa do sistema (garante até 8192 tokens para respostas completas)
+    // 4. Modelo desacoplado del bot (prioridad global_ai_config.copilot_* -> global_* -> agente -> default)
+    const { provider, model } = await resolveCopilotModelConfig(supabaseAdmin, agentCtx.agent);
+
+    // 5. Executa chat com a IA nativa do sistema protegida por semáforo de concorrência
     const { lovableAiChat } = await import("./lovable-ai.server");
-    const rawOutput = await lovableAiChat(
-      [
-        { role: "system", content: systemPrompt },
-        ...historyMsgs,
-      ],
-      {
-        provider: agentCtx.agent?.ai_provider || "gemini",
-        model: agentCtx.agent?.ai_model || "gemini-3.5-flash-lite",
-        maxTokens: 8192,
-        temperature: 0.2,
-        telemetry: {
-          companyId,
-          userId,
-          agentId: data.agentId || (agentCtx.agent as any)?.id || null,
-          feature: "agent_copilot",
-        },
-      }
+    const { globalAiLimiter } = await import("./ai-limiter.server");
+    const rawOutput = await globalAiLimiter.schedule(
+      () =>
+        lovableAiChat(
+          [
+            { role: "system", content: systemPrompt },
+            ...historyMsgs,
+          ],
+          {
+            provider,
+            model,
+            maxTokens: 8192,
+            temperature: 0.2,
+            telemetry: {
+              companyId,
+              userId,
+              agentId: resolvedAgentId || null,
+              feature: "agent_copilot",
+            },
+          },
+        ),
+      1,
     );
 
-    // 4. Parsea saída e ações estruturadas
+    // 6. Parsea saída e ações estruturadas
     const parsed = parseCopilotOutput(rawOutput);
-    return parsed;
+
+    // 7. Persiste turno (siempre redactando tokens/headers antes de guardar)
+    let userMessageId: string | null = null;
+    let assistantMessageId: string | null = null;
+    const latestMsg = data.messages[data.messages.length - 1];
+
+    if (sessionId) {
+      const nowIso = new Date().toISOString();
+      if (latestMsg?.role === "user") {
+        try {
+          const safeUserText = redactCopilotSecretsInText(latestMsg.content);
+          const { data: insUser } = await (supabaseAdmin as any)
+            .from("agent_copilot_messages")
+            .insert({
+              session_id: sessionId,
+              company_id: companyId,
+              role: "user",
+              content: safeUserText,
+              proposals: [],
+            })
+            .select("id")
+            .single();
+          userMessageId = insUser?.id ?? null;
+        } catch {}
+      }
+
+      try {
+        const safeReply = redactCopilotSecretsInText(parsed.reply);
+        const safeProposals = sanitizeCopilotProposalsForStorage(parsed.proposals);
+        const { data: insAsst } = await (supabaseAdmin as any)
+          .from("agent_copilot_messages")
+          .insert({
+            session_id: sessionId,
+            company_id: companyId,
+            role: "assistant",
+            content: safeReply,
+            proposals: safeProposals,
+          })
+          .select("id")
+          .single();
+        assistantMessageId = insAsst?.id ?? null;
+      } catch {}
+
+      try {
+        const sessionUpdate: Record<string, any> = { updated_at: nowIso };
+        if ((!currentTitle || currentTitle === "Nueva sesión") && latestMsg?.role === "user") {
+          const derivedTitle = redactCopilotSecretsInText(latestMsg.content)
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 72);
+          if (derivedTitle) sessionUpdate.title = derivedTitle;
+        }
+        await (supabaseAdmin as any)
+          .from("agent_copilot_sessions")
+          .update(sessionUpdate)
+          .eq("id", sessionId)
+          .eq("company_id", companyId);
+      } catch {}
+    }
+
+    return {
+      sessionId: sessionId || undefined,
+      userMessageId,
+      assistantMessageId,
+      reply: parsed.reply,
+      proposals: parsed.proposals,
+    };
   });
 
 /**

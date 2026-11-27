@@ -90,6 +90,8 @@ function SistemaPage() {
     gemini_api_key: "",
     ai_provider: "drael",
     ai_model: "drael-v1",
+    copilot_provider: "",
+    copilot_model: "",
   });
   const [keysStatus, setKeysStatus] = useState({
     openai: { configured: false, preview: "" },
@@ -128,6 +130,8 @@ function SistemaPage() {
         setGlobalAi({
           ai_provider: cfg.ai_provider || "drael",
           ai_model: cfg.ai_model || "drael-v1",
+          copilot_provider: cfg.copilot_provider || "",
+          copilot_model: cfg.copilot_model || "",
           drael_api_key: "",
           openai_api_key: "",
           gemini_api_key: "",
@@ -465,6 +469,57 @@ function SistemaPage() {
                 <option value="drael-v1" />
                 <option value="drael-fast" />
                 <option value="gpt-4o-mini" />
+                <option value="gpt-4o" />
+                <option value="claude-3-5-sonnet-latest" />
+              </datalist>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 pt-3 border-t border-dashed">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">{mt("Proveedor del Copilot (opcional)")}</Label>
+              <Select
+                value={globalAi.copilot_provider || "__global__"}
+                onValueChange={(v) => {
+                  if (v === "__global__") {
+                    setGlobalAi({ ...globalAi, copilot_provider: "", copilot_model: "" });
+                    return;
+                  }
+                  const defaultModel =
+                    v === "drael"
+                      ? "drael-v1"
+                      : v === "openai"
+                        ? "gpt-4o"
+                        : v === "gemini"
+                          ? "gemini-2.5-pro"
+                          : "claude-3-5-sonnet-latest";
+                  setGlobalAi({ ...globalAi, copilot_provider: v, copilot_model: defaultModel });
+                }}
+              >
+                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__global__">{mt("Usar el mismo modelo global")}</SelectItem>
+                  <SelectItem value="drael">Drael AI (drael-v1)</SelectItem>
+                  <SelectItem value="gemini">Google Gemini (gemini-2.5-pro / 3.5-pro)</SelectItem>
+                  <SelectItem value="openai">OpenAI (gpt-4o)</SelectItem>
+                  <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">{mt("Modelo del Copilot (opcional)")}</Label>
+              <Input
+                className="h-9 text-xs"
+                value={globalAi.copilot_model}
+                onChange={e => setGlobalAi({ ...globalAi, copilot_model: e.target.value })}
+                placeholder={mt("Usar el mismo modelo global")}
+                list="copilot-models"
+              />
+              <datalist id="copilot-models">
+                <option value="drael-v1" />
+                <option value="gemini-2.5-pro" />
+                <option value="gemini-3.5-pro" />
+                <option value="gemini-3.5-flash-lite" />
                 <option value="gpt-4o" />
                 <option value="claude-3-5-sonnet-latest" />
               </datalist>

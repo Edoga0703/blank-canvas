@@ -969,6 +969,8 @@ function buildKeysStatus(val: Record<string, any>) {
 const GlobalAiConfigSchema = z.object({
   ai_provider: z.enum(["drael", "gemini", "openai", "anthropic"]).default("drael"),
   ai_model: z.string().trim().max(120).optional().default("drael-v1"),
+  copilot_provider: z.enum(["", "drael", "gemini", "openai", "anthropic"]).optional().default(""),
+  copilot_model: z.string().trim().max(120).optional().default(""),
   drael_api_key: z.string().optional(),
   openai_api_key: z.string().optional(),
   gemini_api_key: z.string().optional(),
@@ -992,6 +994,8 @@ export const getGlobalAiConfig = createServerFn({ method: "GET" })
     return {
       ai_provider: val.ai_provider || process.env.GLOBAL_AI_PROVIDER || "drael",
       ai_model: val.ai_model || process.env.GLOBAL_AI_MODEL || "drael-v1",
+      copilot_provider: val.copilot_provider || "",
+      copilot_model: val.copilot_model || "",
       keys_status: buildKeysStatus(val),
     };
   });
@@ -1021,6 +1025,8 @@ export const saveGlobalAiConfig = createServerFn({ method: "POST" })
       ...currentVal,
       ai_provider: data.ai_provider,
       ai_model: data.ai_model || "drael-v1",
+      copilot_provider: data.copilot_provider || "",
+      copilot_model: data.copilot_model || "",
       drael_api_key: resolveKey(data.drael_api_key, "drael_api_key"),
       openai_api_key: resolveKey(data.openai_api_key, "openai_api_key"),
       gemini_api_key: resolveKey(data.gemini_api_key, "gemini_api_key"),
@@ -1042,6 +1048,8 @@ export const saveGlobalAiConfig = createServerFn({ method: "POST" })
       ok: true,
       ai_provider: nextValue.ai_provider,
       ai_model: nextValue.ai_model,
+      copilot_provider: nextValue.copilot_provider,
+      copilot_model: nextValue.copilot_model,
       keys_status: buildKeysStatus(nextValue),
     };
   });

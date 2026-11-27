@@ -72,9 +72,20 @@ async function fetchJson(url: string, init: RequestInit, timeoutMs = 30_000) {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+const EXPLICIT_REASONING_GEMINI_MODELS = new Set([
+  "gemini-2.5-pro",
+  "gemini-3.5-pro",
+  "gemini-3-pro",
+  "gemini-3-pro-preview",
+  "gemini-3.8-flash",
+]);
+
 export function sanitizeGatewayGeminiModel(model?: string): string {
   if (!model) return "gemini-3.5-flash-lite";
   const m = model.trim().replace(/^google\//, "");
+  if (EXPLICIT_REASONING_GEMINI_MODELS.has(m)) {
+    return m;
+  }
   if (
     m === "gemini-1.5-flash" ||
     m === "gemini-1.5-pro" ||

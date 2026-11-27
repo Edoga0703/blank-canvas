@@ -19,6 +19,8 @@ import {
   executeCopilotAction,
   auditAgentRules,
   testWebhookInSandbox,
+  getOrCreateCopilotSession,
+  updateCopilotMessageProposalState,
   type CopilotChatMessage,
 } from "@/lib/agent-copilot.functions";
 import type { CopilotActionProposal } from "@/lib/agent-copilot.server";
@@ -42,8 +44,22 @@ import {
   ExternalLink,
   Wrench,
   RefreshCw,
+  MessageSquarePlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const WELCOME_MESSAGE: CopilotChatMessage = {
+  role: "assistant",
+  content: `¡Hola! Soy tu Copilot Arquitecto y Entrenador de IA. 
+
+Puedo ayudarte a:
+1. **Analizar dudas de chats reales** (WhatsApp, Instagram, etc.) y redactar reglas exactas.
+2. **Cargar o actualizar tu catálogo** simplemente pegando una lista de precios o texto desordenado.
+3. **Auditar tus reglas rígidas** para detectar contradicciones o ambigüedades.
+4. **Probar y conectar APIs externas / Webhooks en el Sandbox** para obtener datos de clientes en vivo (vencimientos, cuentas activas, etc.).
+
+¿Qué te gustaría configurar o entrenar hoy?`,
+};
 
 interface AgentCopilotSheetProps {
   open: boolean;
@@ -70,21 +86,12 @@ export function AgentCopilotSheet({
   const execAction = useServerFn(executeCopilotAction);
   const runAudit = useServerFn(auditAgentRules);
   const runSandbox = useServerFn(testWebhookInSandbox);
+  const loadOrCreateSession = useServerFn(getOrCreateCopilotSession);
+  const persistProposalState = useServerFn(updateCopilotMessageProposalState);
 
-  const [messages, setMessages] = useState<CopilotChatMessage[]>([
-    {
-      role: "assistant",
-      content: `¡Hola! Soy tu Copilot Arquitecto y Entrenador de IA. 
-
-Puedo ayudarte a:
-1. **Analizar dudas de chats reales** (WhatsApp, Instagram, etc.) y redactar reglas exactas.
-2. **Cargar o actualizar tu catálogo** simplemente pegando una lista de precios o texto desordenado.
-3. **Auditar tus reglas rígidas** para detectar contradicciones o ambigüedades.
-4. **Probar y conectar APIs externas / Webhooks en el Sandbox** para obtener datos de clientes en vivo (vencimientos, cuentas activas, etc.).
-
-¿Qué te gustaría configurar o entrenar hoy?`,
-    },
-  ]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [loadingSession, setLoadingSession] = useState(false);
+  const [messages, setMessages] = useState<CopilotChatMessage[]>([WELCOME_MESSAGE]);
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -93,6 +100,72 @@ Puedo ayudarte a:
   const [sandboxResults, setSandboxResults] = useState<Record<string, any>>({});
   const [auditing, setAuditing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const loadedContextRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const ctxKey = `${agentId || "default"}:${tipo || "qualificacao"}`;
+    if (loadedContextRef.current === ctxKey && sessionId) return;
+
+    let cancelled = false;
+    setLoadingSession(true);
+    void loadOrCreateSession({
+      data: { agentId, tipo },
+    })
+      .then((res: any) => {
+        if (cancelled) return;
+        loadedContextRef.current = ctxKey;
+        setSessionId(res?.session?.id || null);
+        const restored: CopilotChatMessage[] = Array.isArray(res?.messages) ? res.messages : [];
+        if (restored.length > 0) {
+          setMessages(restored);
+          const nextSandbox: Record<string, any> = {};
+          restored.forEach((m, mIdx) => {
+            (m.proposals || []).forEach((p, pIdx) => {
+              if (p?.sandboxResult) {
+                nextSandbox[`${mIdx}-${pIdx}`] = p.sandboxResult;
+              }
+            });
+          });
+          setSandboxResults(nextSandbox);
+        } else {
+          setMessages([WELCOME_MESSAGE]);
+          setSandboxResults({});
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMessages([WELCOME_MESSAGE]);
+          setSandboxResults({});
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingSession(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, agentId, tipo]);
+
+  async function handleNewSession() {
+    if (loadingSession || loading) return;
+    setLoadingSession(true);
+    try {
+      const res: any = await loadOrCreateSession({
+        data: { agentId, tipo, forceNew: true },
+      });
+      loadedContextRef.current = `${agentId || "default"}:${tipo || "qualificacao"}`;
+      setSessionId(res?.session?.id || null);
+      setMessages([WELCOME_MESSAGE]);
+      setSandboxResults({});
+      toast.success("Nueva sesión del Copilot iniciada.");
+    } catch (e: any) {
+      toast.error(e?.message || "No se pudo iniciar una nueva sesión.");
+    } finally {
+      setLoadingSession(false);
+    }
+  }
 
   useEffect(() => {
     if (initialPrompt && open) {
@@ -110,6 +183,7 @@ Puedo ayudarte a:
     const text = (textToSend || input).trim();
     if (!text || loading) return;
 
+    const userMsgIdx = messages.length;
     const newMsgs: CopilotChatMessage[] = [
       ...messages,
       { role: "user", content: text },
@@ -124,17 +198,27 @@ Puedo ayudarte a:
           messages: newMsgs,
           agentId,
           tipo,
+          sessionId,
         },
       });
 
-      setMessages((prev) => [
-        ...prev,
-        {
+      if (res.sessionId) {
+        setSessionId(res.sessionId);
+      }
+
+      setMessages((prev) => {
+        const copy = [...prev];
+        if (copy[userMsgIdx] && res.userMessageId) {
+          copy[userMsgIdx] = { ...copy[userMsgIdx], id: res.userMessageId };
+        }
+        copy.push({
+          id: res.assistantMessageId || undefined,
           role: "assistant",
           content: res.reply,
           proposals: res.proposals,
-        },
-      ]);
+        });
+        return copy;
+      });
     } catch (e: any) {
       toast.error(e.message || "Error al consultar con el Copilot.");
     } finally {
@@ -142,7 +226,8 @@ Puedo ayudarte a:
     }
   }
 
-  async function handleTestWebhook(actionKey: string, payload: any) {
+  async function handleTestWebhook(msgIndex: number, propIndex: number, payload: any) {
+    const actionKey = `${msgIndex}-${propIndex}`;
     setTestingKey(actionKey);
     try {
       const resolvedTestBody =
@@ -163,6 +248,20 @@ Puedo ayudarte a:
         },
       });
       setSandboxResults((prev) => ({ ...prev, [actionKey]: res }));
+
+      const targetMsg = messages[msgIndex];
+      if (targetMsg?.id) {
+        const currentStatus = targetMsg.proposals?.[propIndex]?.status || "pending";
+        void persistProposalState({
+          data: {
+            messageId: targetMsg.id,
+            proposalIndex: propIndex,
+            status: currentStatus,
+            sandboxResult: res,
+          },
+        }).catch(() => {});
+      }
+
       if (res.ok) {
         toast.success(`Prueba exitosa en Sandbox: HTTP ${res.status} (${res.latencyMs}ms)`);
       } else {
@@ -178,10 +277,10 @@ Puedo ayudarte a:
   async function handleExecuteAction(msgIndex: number, propIndex: number, proposal: CopilotActionProposal) {
     const actionKey = `${msgIndex}-${propIndex}`;
     setExecutingIdx(actionKey);
+    const existingTest = sandboxResults[actionKey];
+    const targetMsgId = messages[msgIndex]?.id;
 
     try {
-      const actionKey = `${msgIndex}-${propIndex}`;
-      const existingTest = sandboxResults[actionKey];
       const actionToSend: CopilotActionProposal =
         (proposal.type === "tool" || proposal.type === "webhook") && existingTest?.ok
           ? {
@@ -212,6 +311,17 @@ Puedo ayudarte a:
         return copy;
       });
 
+      if (targetMsgId) {
+        void persistProposalState({
+          data: {
+            messageId: targetMsgId,
+            proposalIndex: propIndex,
+            status: "applied",
+            ...(existingTest ? { sandboxResult: existingTest } : {}),
+          },
+        }).catch(() => {});
+      }
+
       if (
         (proposal.type === "rule" ||
           proposal.type === "replace_rules" ||
@@ -226,6 +336,23 @@ Puedo ayudarte a:
         onCatalogUpdated();
       }
     } catch (e: any) {
+      setMessages((prev) => {
+        const copy = [...prev];
+        if (copy[msgIndex]?.proposals?.[propIndex]) {
+          copy[msgIndex].proposals![propIndex].status = "failed";
+        }
+        return copy;
+      });
+      if (targetMsgId) {
+        void persistProposalState({
+          data: {
+            messageId: targetMsgId,
+            proposalIndex: propIndex,
+            status: "failed",
+            ...(existingTest ? { sandboxResult: existingTest } : {}),
+          },
+        }).catch(() => {});
+      }
       toast.error(e.message || "Error al aplicar la acción.");
     } finally {
       setExecutingIdx(null);
@@ -285,21 +412,40 @@ Puedo ayudarte a:
               </div>
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRunAudit}
-              disabled={auditing}
-              className="h-8 text-xs gap-1.5 border-border hover:bg-muted"
-            >
-              <ShieldAlert className={cn("h-3.5 w-3.5 text-amber-500", auditing && "animate-spin")} />
-              {auditing ? "Auditando..." : "Auditar Reglas"}
-            </Button>
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleNewSession}
+                disabled={loadingSession || loading}
+                className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+                title="Iniciar un nuevo hilo de conversación"
+              >
+                <MessageSquarePlus className="h-3.5 w-3.5" />
+                Nueva sesión
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRunAudit}
+                disabled={auditing}
+                className="h-8 text-xs gap-1.5 border-border hover:bg-muted"
+              >
+                <ShieldAlert className={cn("h-3.5 w-3.5 text-amber-500", auditing && "animate-spin")} />
+                {auditing ? "Auditando..." : "Auditar Reglas"}
+              </Button>
+            </div>
           </div>
         </SheetHeader>
 
         {/* Chat Message Scroll */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+          {loadingSession && (
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-3">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
+              <span>Cargando historial de sesión...</span>
+            </div>
+          )}
           {messages.map((msg, mIdx) => (
             <div
               key={mIdx}
@@ -355,20 +501,24 @@ Puedo ayudarte a:
                                 "text-[10px] font-mono",
                                 isApplied
                                   ? "bg-green-500/10 text-green-600 border-green-500/30"
-                                  : prop.type === "test_webhook"
-                                    ? "bg-blue-500/10 text-blue-600 border-blue-500/30"
-                                    : prop.type === "replace_rules"
-                                      ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/40"
-                                      : "bg-amber-500/10 text-amber-600 border-amber-500/30"
+                                  : prop.status === "failed"
+                                    ? "bg-destructive/10 text-destructive border-destructive/30"
+                                    : prop.type === "test_webhook"
+                                      ? "bg-blue-500/10 text-blue-600 border-blue-500/30"
+                                      : prop.type === "replace_rules"
+                                        ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/40"
+                                        : "bg-amber-500/10 text-amber-600 border-amber-500/30"
                               )}
                             >
                               {isApplied
                                 ? "Aplicado"
-                                : prop.type === "test_webhook"
-                                  ? "Sandbox"
-                                  : prop.type === "replace_rules"
-                                    ? "Reemplazo limpio"
-                                    : "Pendiente"}
+                                : prop.status === "failed"
+                                  ? "Falló"
+                                  : prop.type === "test_webhook"
+                                    ? "Sandbox"
+                                    : prop.type === "replace_rules"
+                                      ? "Reemplazo limpio"
+                                      : "Pendiente"}
                             </Badge>
                           </div>
 
@@ -477,7 +627,7 @@ Puedo ayudarte a:
                               <Button
                                 size="sm"
                                 className="w-full h-7 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
-                                onClick={() => handleTestWebhook(`${mIdx}-${pIdx}`, prop.payload)}
+                                onClick={() => handleTestWebhook(mIdx, pIdx, prop.payload)}
                                 disabled={isTesting}
                               >
                                 {isTesting ? (
@@ -574,7 +724,7 @@ Puedo ayudarte a:
                                       variant="outline"
                                       size="sm"
                                       className="h-7 text-xs gap-1.5 sm:w-auto"
-                                      onClick={() => handleTestWebhook(`${mIdx}-${pIdx}`, prop.payload)}
+                                      onClick={() => handleTestWebhook(mIdx, pIdx, prop.payload)}
                                       disabled={isTesting || isApplying}
                                     >
                                       {isTesting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}

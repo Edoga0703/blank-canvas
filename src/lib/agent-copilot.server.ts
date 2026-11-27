@@ -6,13 +6,118 @@ export interface CopilotActionProposal {
   type: "catalog" | "rule" | "replace_rules" | "config" | "simulation" | "audit" | "test_webhook" | "webhook" | "tool";
   title: string;
   description: string;
-  status: "pending" | "applied" | "rejected";
+  status: "pending" | "applied" | "rejected" | "failed";
   payload: any;
+  sandboxResult?: any;
 }
 
 export interface CopilotTurnResult {
+  sessionId?: string;
+  userMessageId?: string | null;
+  assistantMessageId?: string | null;
   reply: string;
   proposals: CopilotActionProposal[];
+}
+
+/**
+ * Enmascara tokens Bearer y API keys conocidas en texto plano antes de guardar en BD.
+ */
+export function redactCopilotSecretsInText(text: unknown): string {
+  const raw = String(text ?? "");
+  if (!raw) return "";
+  return raw
+    .replace(/(Bearer\s+)[A-Za-z0-9._\-+/=]{8,}/gi, "$1***redacted***")
+    .replace(/\b(smp_(?:live|test)|sk|dk|pk_live|pk_test|ghp|xoxb|xoxp)_[A-Za-z0-9_-]{8,}/gi, "***redacted***")
+    .replace(/\b(sk-[A-Za-z0-9_-]{12,}|dk-[A-Za-z0-9_-]{8,}|AIza[A-Za-z0-9_-]{12,})/g, "***redacted***")
+    .replace(/((?:x-api-key|api-key|apikey|authorization|secret|token)\s*[:=]\s*["']?)[^\s"',;}{]+/gi, "$1***redacted***");
+}
+
+function sanitizeJsonValueForStorage(value: any, depth = 0): any {
+  if (depth > 8 || value === null || value === undefined) return value;
+  if (typeof value === "string") {
+    return redactCopilotSecretsInText(value);
+  }
+  if (Array.isArray(value)) {
+    return value.slice(0, 100).map((item) => sanitizeJsonValueForStorage(item, depth + 1));
+  }
+  if (typeof value === "object") {
+    const out: Record<string, any> = {};
+    for (const [k, v] of Object.entries(value)) {
+      const lower = k.toLowerCase();
+      if (lower === "headers" && v && typeof v === "object" && !Array.isArray(v)) {
+        out[k] = redactToolHeaders(v);
+      } else if (
+        (lower === "token" || lower === "secret" || lower === "apikey" || lower === "api_key" || lower === "authorization") &&
+        typeof v === "string" &&
+        v.trim().length > 0
+      ) {
+        out[k] = "***redacted***";
+      } else {
+        out[k] = sanitizeJsonValueForStorage(v, depth + 1);
+      }
+    }
+    return out;
+  }
+  return value;
+}
+
+export function sanitizeSandboxResultForStorage(res: any): any {
+  if (!res || typeof res !== "object") return undefined;
+  let sample = res.responseSample ?? null;
+  if (sample !== null && sample !== undefined) {
+    try {
+      const serialized = typeof sample === "string" ? sample : JSON.stringify(sample);
+      const masked = redactCopilotSecretsInText(serialized);
+      sample = masked.length > 1500 ? `${masked.slice(0, 1500)}...` : masked;
+    } catch {
+      sample = null;
+    }
+  }
+  return {
+    ok: Boolean(res.ok),
+    status: Number(res.status || 0),
+    statusText: String(res.statusText || ""),
+    latencyMs: Math.max(0, Number(res.latencyMs || 0)),
+    responseSample: sample,
+    ...(res.error ? { error: redactCopilotSecretsInText(String(res.error)).slice(0, 300) } : {}),
+  };
+}
+
+/**
+ * Redacta credenciales sensibles (headers Authorization/API Key y tokens en texto claro)
+ * antes de persistir propuestas en agent_copilot_messages.
+ */
+export function sanitizeCopilotProposalsForStorage(
+  proposals: CopilotActionProposal[] | null | undefined,
+): CopilotActionProposal[] {
+  if (!Array.isArray(proposals)) return [];
+  return proposals.map((prop) => {
+    const clonedPayload = prop?.payload && typeof prop.payload === "object"
+      ? sanitizeJsonValueForStorage(prop.payload)
+      : {};
+    if (clonedPayload?.headers && typeof clonedPayload.headers === "object") {
+      clonedPayload.headers = redactToolHeaders(clonedPayload.headers);
+    }
+    if (clonedPayload?.updates?.headers && typeof clonedPayload.updates.headers === "object") {
+      clonedPayload.updates.headers = redactToolHeaders(clonedPayload.updates.headers);
+    }
+    if (clonedPayload?.sandboxTestResult) {
+      clonedPayload.sandboxTestResult = sanitizeSandboxResultForStorage(clonedPayload.sandboxTestResult);
+    }
+
+    const sanitizedSandbox = prop?.sandboxResult
+      ? sanitizeSandboxResultForStorage(prop.sandboxResult)
+      : undefined;
+
+    return {
+      type: prop.type,
+      title: redactCopilotSecretsInText(prop.title || "Acción recomendada"),
+      description: redactCopilotSecretsInText(prop.description || ""),
+      status: prop.status || "pending",
+      payload: clonedPayload,
+      ...(sanitizedSandbox ? { sandboxResult: sanitizedSandbox } : {}),
+    };
+  });
 }
 
 /**
