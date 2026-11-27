@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-27T21:54:59.706343+00:00",
+  "generated_at": "2026-11-27T22:31:15.067050+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -286,6 +286,10 @@
       "bytes": 869
     },
     {
+      "path": "supabase/migrations/20261127080000_agent_copilot_sessions.sql",
+      "bytes": 2352
+    },
+    {
       "path": "supabase/migrations/20261009070000_company_full_columns.sql",
       "bytes": 2532
     },
@@ -436,6 +440,10 @@
     {
       "path": "docs/sql/20261029110000_automation_legacy_preflight.sql",
       "bytes": 869
+    },
+    {
+      "path": "docs/sql/20261127080000_agent_copilot_sessions.sql",
+      "bytes": 2352
     },
     {
       "path": "docs/sql/MASTER_V1.3.01_CONSOLIDATED_DATABASE_MIGRATION.sql",
@@ -863,7 +871,7 @@
     },
     {
       "path": "src/lib/lovable-ai.server.ts",
-      "bytes": 22305
+      "bytes": 22534
     },
     {
       "path": "src/lib/sectors.functions.ts",
@@ -923,7 +931,7 @@
     },
     {
       "path": "src/lib/master.functions.ts",
-      "bytes": 66613
+      "bytes": 67076
     },
     {
       "path": "src/lib/plugin-gate.server.ts",
@@ -1155,7 +1163,7 @@
     },
     {
       "path": "src/lib/agent-copilot.server.ts",
-      "bytes": 23972
+      "bytes": 28056
     },
     {
       "path": "src/lib/message-actions.functions.ts",
@@ -1439,7 +1447,7 @@
     },
     {
       "path": "src/lib/agent-copilot.functions.ts",
-      "bytes": 35854
+      "bytes": 47349
     },
     {
       "path": "src/lib/csat-config.functions.ts",
@@ -2175,7 +2183,7 @@
     },
     {
       "path": "src/components/agente/agent-copilot-sheet.tsx",
-      "bytes": 34132
+      "bytes": 39420
     },
     {
       "path": "src/components/agente/agent-avatar.tsx",
@@ -2651,7 +2659,7 @@
     },
     {
       "path": "src/routes/master/sistema.tsx",
-      "bytes": 32326
+      "bytes": 34989
     },
     {
       "path": "src/routes/master/cadastros.tsx",
@@ -8657,7 +8665,35 @@
     },
     {
       "source": "src/lib/agent-copilot.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/agent-copilot.functions.ts",
+      "target": "./agent-copilot.server"
+    },
+    {
+      "source": "src/lib/agent-copilot.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/agent-copilot.functions.ts",
+      "target": "./agent-copilot.server"
+    },
+    {
+      "source": "src/lib/agent-copilot.functions.ts",
+      "target": "@/integrations/supabase/client.server"
+    },
+    {
+      "source": "src/lib/agent-copilot.functions.ts",
+      "target": "./agent-copilot.server"
+    },
+    {
+      "source": "src/lib/agent-copilot.functions.ts",
       "target": "./lovable-ai.server"
+    },
+    {
+      "source": "src/lib/agent-copilot.functions.ts",
+      "target": "./ai-limiter.server"
     },
     {
       "source": "src/lib/agent-copilot.functions.ts",
