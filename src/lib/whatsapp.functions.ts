@@ -445,7 +445,7 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
     const companyId = await resolveCompanyId(supabase, userId);
     await (await import("./billing/access.server")).assertCompanyCanWrite(companyId);
     const { supabaseAdmin: sbAdmin } = await import("@/integrations/supabase/client.server");
-    let inst = await getInstanceForContact(sbAdmin, companyId, data.numero, "id,instance_name,status,numero,provider,instance_token", userId, data.instanceId);
+    let inst = await getInstanceForContact(sbAdmin, companyId, data.numero, "id,instance_name,display_name,status,paused,numero,provider,instance_token", userId, data.instanceId);
     {
       const { canonicalOutboundNumero } = await import("./phone-thread.server");
       const canon = await canonicalOutboundNumero(sbAdmin, companyId, data.numero, inst as any);
@@ -454,6 +454,10 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
       }
     }
     if (!inst?.instance_name) throw new Error("Conexão não disponível para este contato");
+    const isInstActive = (inst.status === "connected" || inst.status === "open") && !(inst as any).paused;
+    if (!isInstActive) {
+      throw new Error(`A linha ${(inst as any).display_name || inst.instance_name} está desconectada. Reconecte em Conexões ou selecione outra linha de WhatsApp.`);
+    }
 
     assertNotSendingToOwnConnectedNumber(data.numero, inst);
 
@@ -506,8 +510,8 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
       }
     }
 
-    // Fallback inteligente: se a preferencial dapi_official estiver fora da janela 24h, mas houver dapi não-oficial conectada
-    if (inst.provider === "dapi_official") {
+    // Fallback inteligente: se a preferencial dapi_official estiver fora da janela 24h (e sem seleção explícita), mas houver dapi não-oficial conectada
+    if (!data.instanceId && inst.provider === "dapi_official") {
       try {
         const { getMetaResponseWindow } = await import("./meta-response-window.server");
         const win = await getMetaResponseWindow(sbAdmin, {
@@ -518,10 +522,11 @@ export const sendWhatsappText = createServerFn({ method: "POST" })
         if (!win.open) {
           const { data: fallbackRows } = await sbAdmin
             .from("whatsapp_instances")
-            .select("id,instance_name,status,numero,provider,instance_token")
+            .select("id,instance_name,display_name,status,paused,numero,provider,instance_token")
             .eq("company_id", companyId)
             .eq("provider", "dapi")
             .eq("status", "connected")
+            .or("paused.is.null,paused.eq.false")
             .limit(1);
           if (fallbackRows && fallbackRows.length > 0) {
             inst = fallbackRows[0];
@@ -670,7 +675,7 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
     const companyId = await resolveCompanyId(supabase, userId);
     await (await import("./billing/access.server")).assertCompanyCanWrite(companyId);
     const { supabaseAdmin: sbAdmin } = await import("@/integrations/supabase/client.server");
-    let inst = await getInstanceForContact(sbAdmin, companyId, data.numero, "id,instance_name,status,numero,provider,instance_token", userId, (data as any).instanceId);
+    let inst = await getInstanceForContact(sbAdmin, companyId, data.numero, "id,instance_name,display_name,status,paused,numero,provider,instance_token", userId, (data as any).instanceId);
     {
       const { canonicalOutboundNumero } = await import("./phone-thread.server");
       const canon = await canonicalOutboundNumero(sbAdmin, companyId, data.numero, inst as any);
@@ -679,6 +684,10 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
       }
     }
     if (!inst?.instance_name) throw new Error("Conexão não disponível para este contato");
+    const isInstActive = (inst.status === "connected" || inst.status === "open") && !(inst as any).paused;
+    if (!isInstActive) {
+      throw new Error(`A linha ${(inst as any).display_name || inst.instance_name} está desconectada. Reconecte em Conexões ou selecione outra linha de WhatsApp.`);
+    }
 
     assertNotSendingToOwnConnectedNumber(data.numero, inst);
 
@@ -716,7 +725,17 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
       sendError = e?.message ?? String(e);
     }
 
-    const permanentFailure = isPermanentMetaSendError(inst.provider, sendError);
+    const sessionDead = /not reconnectable|não reconect|whatsapp disconnected|desconectad/i.test(sendError ?? "");
+    if (sessionDead) {
+      try {
+        await (sbAdmin as any)
+          .from("whatsapp_instances")
+          .update({ status: "disconnected", last_state_at: new Date().toISOString() } as any)
+          .eq("company_id", companyId)
+          .eq("instance_name", inst.instance_name);
+      } catch { /* noop */ }
+    }
+    const permanentFailure = isPermanentMetaSendError(inst.provider, sendError) || sessionDead;
     let insertedId: string | null = null;
     const { data: inserted, error } = await supabase.from("mensagens").insert({
       company_id: companyId, user_id: userId, numero: data.numero,
@@ -829,7 +848,10 @@ export const sendWhatsappMedia = createServerFn({ method: "POST" })
       } catch { /* best-effort */ }
     })();
 
-    return { ok: !sendError, queued: !!sendError && !permanentFailure, error: sendError };
+    const finalError = sessionDead
+      ? "Seu WhatsApp foi desconectado. Vá em Conexões e leia o QR Code novamente para voltar a enviar mensagens."
+      : sendError;
+    return { ok: !sendError, queued: !!sendError && !permanentFailure, error: finalError };
   });
 
 export const sendWhatsappAudio = createServerFn({ method: "POST" })
@@ -840,7 +862,7 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
     const companyId = await resolveCompanyId(supabase, userId);
     await (await import("./billing/access.server")).assertCompanyCanWrite(companyId);
     const { supabaseAdmin: sbAdmin } = await import("@/integrations/supabase/client.server");
-    let inst = await getInstanceForContact(sbAdmin, companyId, data.numero, "id,instance_name,status,numero,provider,instance_token", userId, (data as any).instanceId);
+    let inst = await getInstanceForContact(sbAdmin, companyId, data.numero, "id,instance_name,display_name,status,paused,numero,provider,instance_token", userId, (data as any).instanceId);
     {
       const { canonicalOutboundNumero } = await import("./phone-thread.server");
       const canon = await canonicalOutboundNumero(sbAdmin, companyId, data.numero, inst as any);
@@ -849,6 +871,10 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
       }
     }
     if (!inst?.instance_name) throw new Error("Conexão não disponível para este contato");
+    const isInstActive = (inst.status === "connected" || inst.status === "open") && !(inst as any).paused;
+    if (!isInstActive) {
+      throw new Error(`A linha ${(inst as any).display_name || inst.instance_name} está desconectada. Reconecte em Conexões ou selecione outra linha de WhatsApp.`);
+    }
 
     assertNotSendingToOwnConnectedNumber(data.numero, inst);
 
@@ -904,7 +930,17 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
       sendError = e?.message ?? String(e);
     }
 
-    const permanentFailure = isPermanentMetaSendError(inst.provider, sendError);
+    const sessionDead = /not reconnectable|não reconect|whatsapp disconnected|desconectad/i.test(sendError ?? "");
+    if (sessionDead) {
+      try {
+        await (sbAdmin as any)
+          .from("whatsapp_instances")
+          .update({ status: "disconnected", last_state_at: new Date().toISOString() } as any)
+          .eq("company_id", companyId)
+          .eq("instance_name", inst.instance_name);
+      } catch { /* noop */ }
+    }
+    const permanentFailure = isPermanentMetaSendError(inst.provider, sendError) || sessionDead;
     let insertedId: string | null = null;
     const { data: inserted, error } = await supabase.from("mensagens").insert({
       company_id: companyId, user_id: userId, numero: data.numero,
@@ -995,7 +1031,10 @@ export const sendWhatsappAudio = createServerFn({ method: "POST" })
       } catch { /* best-effort */ }
     })();
 
-    return { ok: !sendError, queued: !!sendError && !permanentFailure, error: sendError };
+    const finalError = sessionDead
+      ? "Seu WhatsApp foi desconectado. Vá em Conexões e leia o QR Code novamente para voltar a enviar mensagens."
+      : sendError;
+    return { ok: !sendError, queued: !!sendError && !permanentFailure, error: finalError };
   });
 
 export const getWhatsappProfilePic = createServerFn({ method: "POST" })
@@ -1327,4 +1366,70 @@ export const connectDapiOfficial = createServerFn({ method: "POST" })
     }
 
     return { success: true, instanceName, coexistenceSync };
+  });
+
+export const notifyDisconnectedInstance = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { instanceName: string; displayName?: string | null }) => d)
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const companyId = await resolveCompanyId(supabase, userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const sinceIso = new Date(Date.now() - 20 * 60_000).toISOString();
+
+    try {
+      const { data: recentLogs } = await (supabaseAdmin as any)
+        .from("audit_log")
+        .select("id, detalhes")
+        .eq("company_id", companyId)
+        .eq("acao", "notify_disconnected_instance")
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false })
+        .limit(25);
+      const already = (recentLogs ?? []).some(
+        (r: any) => String(r?.detalhes?.instanceName || "") === String(data.instanceName || ""),
+      );
+      if (already) return { ok: true, alreadyNotified: true };
+    } catch { /* ignore audit lookup errors */ }
+
+    let userName = "Um usuário";
+    try {
+      const { data: prof } = await (supabaseAdmin as any)
+        .from("profiles")
+        .select("nome")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (prof?.nome) {
+        userName = String(prof.nome);
+      } else {
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData?.user?.email) userName = authData.user.email.split("@")[0];
+      }
+    } catch { /* fallback userName */ }
+
+    const label = data.displayName || data.instanceName;
+    try {
+      await (supabaseAdmin as any).rpc("push_notificacao", {
+        _company_id: companyId,
+        _tipo: "conexao",
+        _titulo: "WhatsApp desconectado",
+        _descricao: `${userName} avisou que a linha ${label} está desconectada e precisa ser reconectada.`,
+        _link: "/app/conexao",
+        _ref_id: null,
+      });
+    } catch (err: any) {
+      throw new Error(err?.message || "Não foi possível notificar o administrador");
+    }
+
+    try {
+      await (supabaseAdmin as any).from("audit_log").insert({
+        company_id: companyId,
+        user_id: userId,
+        acao: "notify_disconnected_instance",
+        recurso: data.instanceName,
+        detalhes: { instanceName: data.instanceName, displayName: data.displayName ?? null },
+      });
+    } catch { /* best-effort audit */ }
+
+    return { ok: true, alreadyNotified: false };
   });

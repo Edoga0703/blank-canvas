@@ -25,7 +25,7 @@ function highlightMatchedTextInSnippet(text: string, query: string) {
 }
 
 import { normalizePhone } from "@/lib/br-phone";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn, stripAiMediaAnalysis } from "@/lib/utils";
 import { useServerFn } from "@tanstack/react-start";
@@ -43,7 +43,7 @@ import {
   Smile, PanelRightClose, PanelRightOpen, Pencil, Reply, Package, ChevronLeft, ChevronRight, Info, CheckCircle2,
   UserPlus, Users, Inbox, Wifi, WifiOff, Image as ImageIcon, Mic as MicIcon, Video as VideoIcon,
   Filter as FunnelIcon, Check, CheckCheck, Bell, BellOff, Contact as ContactIcon, Ban, RefreshCw,
-  CalendarPlus, Sparkles, Gauge, Download, UserRound, ExternalLink, Phone, Loader2, MoreVertical,
+  CalendarPlus, Sparkles, Gauge, Download, UserRound, ExternalLink, Phone, Loader2, MoreVertical, AlertTriangle, RotateCcw,
 } from "lucide-react";
 import { SendContactDialog } from "@/components/chat/send-contact-dialog";
 import { AiAssistButton } from "@/components/chat/ai-assist-button";
@@ -71,7 +71,7 @@ import { reactMessage, editMessage, deleteMessage } from "@/lib/message-actions.
 import { toast, isAbortLike } from "@/components/ui/sonner";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { AvatarViewer } from "@/components/ui/avatar-viewer";
-import { sendWhatsappText, setContactIaActive, sendWhatsappMedia, sendWhatsappAudio, getWhatsappProfilePic, handleChatAction, syncWhatsappHistory } from "@/lib/whatsapp.functions";
+import { sendWhatsappText, setContactIaActive, sendWhatsappMedia, sendWhatsappAudio, getWhatsappProfilePic, handleChatAction, syncWhatsappHistory, notifyDisconnectedInstance } from "@/lib/whatsapp.functions";
 import { QuickScheduleDialog } from "@/components/agenda/quick-schedule-dialog";
 import { LeadDrawer, LeadDetailsPanel, LeadTagsInline, type LeadCard, type Stage, type Member } from "@/components/crm/lead-drawer";
 import { GrupoDetailsPanel } from "@/components/chat/grupo-details-panel";
@@ -94,6 +94,7 @@ import { responderTransferencia } from "@/lib/sectors.functions";
 import { Forward } from "lucide-react";
 import { useFeatureEnabled } from "@/hooks/use-feature-flags";
 import { canTransferConversation } from "@/lib/tenant";
+import { hasPermission } from "@/lib/permissions";
 import { salvarRelatorioAtendimento, sugerirRelatorioAtendimento, type AtendimentoSituacao } from "@/lib/atendimento-relatorios.functions";
 import { prepareR2Upload, uploadR2Direct } from "@/lib/storage/r2.functions";
 import { syncMetaNow } from "@/lib/meta-content.functions";
@@ -250,12 +251,64 @@ function parseTemplateData(m: Msg): ParsedTemplateData {
   };
 }
 
-function getChannel(card?: any, lastMsg?: Msg | null): CanalChat {
+type InstanceItem = {
+  id: string;
+  instance_name: string;
+  display_name: string | null;
+  provider: string;
+  status: string;
+  paused?: boolean | null;
+  phone_number_id: string | null;
+  numero?: string | null;
+};
+
+function channelFromProvider(provider?: string | null): CanalChat | null {
+  if (provider === "meta_instagram") return "instagram";
+  if (provider === "meta_messenger") return "messenger";
+  if (provider === "telegram") return "telegram";
+  if (provider === "dapi" || provider === "dapi_official" || provider === "official") return "whatsapp";
+  return null;
+}
+
+function instanceMatchesChannel(
+  inst: { provider?: string | null; provider_type?: string | null } | null | undefined,
+  channel: CanalChat
+): boolean {
+  if (!inst) return false;
+  const prov = String(inst.provider || "").toLowerCase();
+  if (channel === "instagram") return prov === "meta_instagram";
+  if (channel === "messenger") return prov === "meta_messenger";
+  if (channel === "telegram") return prov === "telegram";
+  return !prov || prov === "dapi" || prov === "dapi_official" || prov === "official" || String(inst.provider_type || "").toLowerCase() === "dapi";
+}
+
+function getChannel(card?: any, lastMsg?: Msg | null, fallbackMsgs?: Msg[]): CanalChat {
   const c = String((card as any)?.canal_chat || (card as any)?.canal_entrada || "").toLowerCase();
   if (c === "instagram" || c === "messenger" || c === "telegram") return c as CanalChat;
-  if (lastMsg?.provider === "meta_instagram") return "instagram";
-  if (lastMsg?.provider === "meta_messenger") return "messenger";
-  if (lastMsg?.provider === "telegram") return "telegram";
+
+  if (lastMsg && lastMsg.status_envio !== "falha") {
+    const fromLast = channelFromProvider(lastMsg.provider);
+    if (fromLast) return fromLast;
+  }
+
+  if (fallbackMsgs && fallbackMsgs.length > 0) {
+    let bestIn: Msg | null = null;
+    let bestAny: Msg | null = null;
+    for (const m of fallbackMsgs) {
+      if (!m || m.status_envio === "falha") continue;
+      if (!channelFromProvider(m.provider)) continue;
+      if (!bestAny || +new Date(m.created_at) >= +new Date(bestAny.created_at)) bestAny = m;
+      if (m.direcao === "entrada" && (!bestIn || +new Date(m.created_at) >= +new Date(bestIn.created_at))) {
+        bestIn = m;
+      }
+    }
+    const chosen = bestIn ?? bestAny;
+    if (chosen) {
+      const fromChosen = channelFromProvider(chosen.provider);
+      if (fromChosen) return fromChosen;
+    }
+  }
+
   return "whatsapp";
 }
 const INSTANCE_COLORS = [
@@ -366,6 +419,7 @@ function ConversasPage() {
   const companyId = ctx.company?.id;
   const userId = ctx.user.id;
   const canTransfer = canTransferConversation(ctx.membership, ctx.isSuperAdmin);
+  const canManageConnection = hasPermission(ctx.permissions, "conexao.manage");
   const operationalMode = ctx.company?.atendimento_operacional === true;
   // Grupos do WhatsApp só ficam visíveis em contas com o recurso habilitado.
   const gruposAtivos = (ctx.company as any)?.grupos_ativos === true;
@@ -387,6 +441,7 @@ function ConversasPage() {
   const fetchProfilePicFn = useServerFn(getWhatsappProfilePic);
   const chatActionFn = useServerFn(handleChatAction);
   const syncHistoryFn = useServerFn(syncWhatsappHistory);
+  const notifyDisconnectedFn = useServerFn(notifyDisconnectedInstance);
   const resumirFn = useServerFn(resumirConversa);
   const sugerirRelatorioFn = useServerFn(sugerirRelatorioAtendimento);
   const salvarRelatorioFn = useServerFn(salvarRelatorioAtendimento);
@@ -447,7 +502,7 @@ function ConversasPage() {
     }).catch(() => {});
   }, [getCsatCfgFn]);
 
-  const [instances, setInstances] = useState<Array<{ id: string; instance_name: string; display_name: string | null; provider: string; status: string; phone_number_id: string | null; numero?: string | null }>>([]);
+  const [instances, setInstances] = useState<InstanceItem[]>([]);
   const [overrideInstanceId, setOverrideInstanceId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -456,7 +511,7 @@ function ConversasPage() {
     async function loadInstances() {
       const { data } = await supabase
         .from("whatsapp_instances")
-        .select("id,instance_name,display_name,provider,status,phone_number_id,numero")
+        .select("id,instance_name,display_name,provider,status,paused,phone_number_id,numero")
         .eq("company_id", companyId ?? "");
       if (alive && data) setInstances(data as any);
     }
@@ -1371,7 +1426,14 @@ function ConversasPage() {
 
 
   const conversations = useMemo(() => {
-    const map = new Map<string, { numero: string; nome: string | null; last: Msg }>();
+    const map = new Map<string, {
+      numero: string;
+      nome: string | null;
+      last: Msg;
+      fallbackMsgs: Msg[];
+      lastNonFailedInstanceId: string | null;
+      lastNonFailedInstanceAt: number;
+    }>();
     const cardByComparableNumber = new Map<string, LeadCard>();
     for (const card of Object.values(cards)) {
       const key = numeroComparable(card.numero);
@@ -1379,13 +1441,35 @@ function ConversasPage() {
     }
     for (const m of msgs) {
       const cur = map.get(m.numero);
+      const ts = +new Date(m.created_at);
+      const fallbackMsgs = cur ? cur.fallbackMsgs : [];
+      if (m.status_envio !== "falha") {
+        fallbackMsgs.push(m);
+      }
+      const updatesInst =
+        m.status_envio !== "falha" &&
+        Boolean(m.instance_id) &&
+        (!cur || ts >= cur.lastNonFailedInstanceAt);
+      const nextInstId = updatesInst ? (m.instance_id ?? null) : (cur?.lastNonFailedInstanceId ?? null);
+      const nextInstAt = updatesInst ? ts : (cur?.lastNonFailedInstanceAt ?? -1);
+
       // sempre mantém a mensagem mais recente como "last" (independe da ordem do array)
-      if (!cur || +new Date(m.created_at) > +new Date(cur.last.created_at)) {
+      if (!cur || ts > +new Date(cur.last.created_at)) {
         // O nome salvo no cadastro (inclusive pela planilha) prevalece sobre o
         // nome público recebido do WhatsApp.
         const grupo = isGrupo(m.numero) ? grupos.find((g) => g.jid === m.numero) : null;
         const savedCard = cards[m.numero] ?? cardByComparableNumber.get(numeroComparable(m.numero));
-        map.set(m.numero, { numero: m.numero, nome: grupo?.nome ?? savedCard?.nome ?? m.contato_nome ?? cur?.nome ?? null, last: m });
+        map.set(m.numero, {
+          numero: m.numero,
+          nome: grupo?.nome ?? savedCard?.nome ?? m.contato_nome ?? cur?.nome ?? null,
+          last: m,
+          fallbackMsgs,
+          lastNonFailedInstanceId: nextInstId,
+          lastNonFailedInstanceAt: nextInstAt,
+        });
+      } else if (updatesInst) {
+        cur.lastNonFailedInstanceId = nextInstId;
+        cur.lastNonFailedInstanceAt = nextInstAt;
       }
     }
     // Inclui contatos de crm_cards que possuem histórico de mensagens (ultima_em)
@@ -1394,6 +1478,9 @@ function ConversasPage() {
       map.set(card.numero, {
         numero: card.numero,
         nome: card.nome ?? card.numero,
+        fallbackMsgs: [],
+        lastNonFailedInstanceId: null,
+        lastNonFailedInstanceAt: -1,
         last: {
           id: `card-${card.id}`,
           numero: card.numero,
@@ -1412,6 +1499,9 @@ function ConversasPage() {
         map.set(g.jid, {
           numero: g.jid,
           nome: g.nome,
+          fallbackMsgs: [],
+          lastNonFailedInstanceId: null,
+          lastNonFailedInstanceAt: -1,
           last: {
             id: `grupo-${g.jid}`,
             numero: g.jid,
@@ -1457,7 +1547,7 @@ function ConversasPage() {
       if (sectorFilter && (card as any)?.department_id !== sectorFilter) return false;
       if (agentFilter && card?.owner_id !== agentFilter) return false;
       if (channelFilter) {
-        const canal = getChannel(card, c.last);
+        const canal = getChannel(card, c.last, c.fallbackMsgs);
         if (canal !== channelFilter) return false;
       }
 
@@ -1540,29 +1630,8 @@ function ConversasPage() {
   }, [active, inChatSearchOpen]);
 
   
-  const stickyInstance = useMemo(() => {
-    if (!active || thread.length === 0) return null;
-    for (let i = thread.length - 1; i >= 0; i--) {
-      const instId = thread[i].instance_id;
-      if (instId) {
-        const match = instances.find((inst) => inst.id === instId && (inst.status === "connected" || inst.status === "open"));
-        if (match) return match;
-      }
-    }
-    return null;
-  }, [active, thread, instances]);
-
-  const activeSendInstance = useMemo(() => {
-    if (overrideInstanceId) {
-      const match = instances.find((i) => i.id === overrideInstanceId);
-      if (match) return match;
-    }
-    if (stickyInstance) return stickyInstance;
-    return instances.find((i) => i.status === "connected" || i.status === "open") || instances[0] || null;
-  }, [overrideInstanceId, stickyInstance, instances]);
-
   const activeGroup = active ? grupos.find((g) => g.jid === active) : undefined;
-  const activeConv = conversations.find((c) => c.numero === active) ?? (active ? { numero: active, nome: activeGroup?.nome ?? cards[active]?.nome ?? null, last: thread[thread.length - 1] } : null);
+  const activeConv = conversations.find((c) => c.numero === active) ?? (active ? { numero: active, nome: activeGroup?.nome ?? cards[active]?.nome ?? null, last: thread[thread.length - 1], fallbackMsgs: thread, lastNonFailedInstanceId: null, lastNonFailedInstanceAt: -1 } : null);
   const activeCard = useMemo(() => {
     if (!active) return undefined;
     if (cards[active]) return cards[active];
@@ -1573,6 +1642,76 @@ function ConversasPage() {
   }, [active, cards]);
   // Grupos são abertos para toda a equipe: ninguém precisa assumir para responder.
   const activeIsGrupo = !!active && isGrupo(active);
+
+  const activeChannel = useMemo<CanalChat>(() => {
+    return getChannel(activeCard, activeConv?.last, thread);
+  }, [activeCard, activeConv?.last, thread]);
+
+  const threadOriginInstance = useMemo(() => {
+    if (!active || thread.length === 0) return null;
+    for (let i = thread.length - 1; i >= 0; i--) {
+      const m = thread[i];
+      if (m.status_envio === "falha") continue;
+      if (!m.instance_id) continue;
+      const match = instances.find((inst) => inst.id === m.instance_id && instanceMatchesChannel(inst, activeChannel));
+      if (match) return match;
+    }
+    return null;
+  }, [active, thread, instances, activeChannel]);
+
+  const stickyInstance = useMemo(() => {
+    if (!threadOriginInstance) return null;
+    const isUp = threadOriginInstance.status === "connected" || threadOriginInstance.status === "open";
+    return isUp && !threadOriginInstance.paused ? threadOriginInstance : null;
+  }, [threadOriginInstance]);
+
+  const activeSendInstance = useMemo(() => {
+    if (overrideInstanceId) {
+      const match = instances.find(
+        (i) =>
+          i.id === overrideInstanceId &&
+          instanceMatchesChannel(i, activeChannel) &&
+          (i.status === "connected" || i.status === "open") &&
+          !i.paused
+      );
+      return match ?? null;
+    }
+    if (stickyInstance) return stickyInstance;
+    if (threadOriginInstance) return null;
+    return (
+      instances.find(
+        (i) =>
+          instanceMatchesChannel(i, activeChannel) &&
+          (i.status === "connected" || i.status === "open") &&
+          !i.paused
+      ) || null
+    );
+  }, [overrideInstanceId, stickyInstance, threadOriginInstance, instances, activeChannel]);
+
+  const otherConnectedWa = useMemo(() => {
+    return instances.filter(
+      (i) =>
+        instanceMatchesChannel(i, "whatsapp") &&
+        (i.status === "connected" || i.status === "open") &&
+        !i.paused &&
+        i.id !== threadOriginInstance?.id
+    );
+  }, [instances, threadOriginInstance?.id]);
+
+  const isLineDisconnected = useMemo(() => {
+    if (!active || activeIsGrupo || overrideInstanceId) return false;
+    if (threadOriginInstance) {
+      const isUp = threadOriginInstance.status === "connected" || threadOriginInstance.status === "open";
+      if (!isUp || Boolean(threadOriginInstance.paused)) return true;
+    }
+    if (activeChannel === "whatsapp") {
+      const hasAnyConnectedWa = instances.some(
+        (i) => instanceMatchesChannel(i, "whatsapp") && (i.status === "connected" || i.status === "open") && !i.paused
+      );
+      if (!hasAnyConnectedWa) return true;
+    }
+    return false;
+  }, [active, activeIsGrupo, overrideInstanceId, threadOriginInstance, activeChannel, instances]);
   const activeStage = activeCard?.stage_id ? stages.find((s) => s.id === activeCard.stage_id) : null;
   // Empresa usa agente de IA? (alguma etapa em modo IA/auto com IA)
   const usaIa = useMemo(() => stages.some((s) => s.modo_atendimento === "ia"), [stages]);
@@ -1648,13 +1787,20 @@ function ConversasPage() {
   }, [msgs, search, sectorFilter, mySectorIds, unread, cards, pauses, stages, userId, ctx, grupos, operationalMode]);
 
   const channelCounts = useMemo(() => {
-    const map = new Map<string, { numero: string; last: Msg }>();
-    for (const m of msgs) if (!map.has(m.numero)) map.set(m.numero, { numero: m.numero, last: m });
+    const map = new Map<string, { numero: string; last: Msg; fallbackMsgs: Msg[] }>();
+    for (const m of msgs) {
+      const cur = map.get(m.numero);
+      const fallbackMsgs = cur ? cur.fallbackMsgs : [];
+      if (m.status_envio !== "falha") fallbackMsgs.push(m);
+      if (!cur || +new Date(m.created_at) > +new Date(cur.last.created_at)) {
+        map.set(m.numero, { numero: m.numero, last: m, fallbackMsgs });
+      }
+    }
     const counts = { todos: 0, whatsapp: 0, instagram: 0, messenger: 0 };
     for (const c of map.values()) {
       if (isGrupo(c.numero)) continue;
       const card = cards[c.numero];
-      const canal = getChannel(card, c.last);
+      const canal = getChannel(card, c.last, c.fallbackMsgs);
       counts.todos++;
       if (canal === "instagram") counts.instagram++;
       else if (canal === "messenger") counts.messenger++;
@@ -1996,6 +2142,10 @@ function ConversasPage() {
   async function sendMsg(text?: string) {
     const txt = (text ?? composer).trim();
     if (!txt || !active || !companyId) return;
+    if (!activeIsGrupo && isLineDisconnected && !activeSendInstance) {
+      toast.error("A linha deste contato está desconectada. Reconecte em Conexões ou selecione outra linha de WhatsApp.");
+      return;
+    }
     const currentReply = effectiveReplyTo;
     setSending(true);
     const targetInstId = activeSendInstance?.id ?? null;
@@ -2026,6 +2176,61 @@ function ConversasPage() {
       toast.error(e?.message ?? "Falha ao enviar");
     } finally {
       setSending(false);
+    }
+  }
+
+  async function retryFailedMessage(failedMsg: Msg) {
+    if (!active || !companyId || !failedMsg.texto) return;
+    if (!activeIsGrupo && isLineDisconnected && !activeSendInstance) {
+      toast.error("A linha está desconectada. Reconecte ou selecione outra linha para reenviar.");
+      return;
+    }
+    try {
+      const result = await sendFn({
+        data: {
+          numero: active,
+          texto: failedMsg.texto,
+          contatoNome: activeConv?.nome ?? null,
+          replyToMessageId: failedMsg.reply_to_id ?? null,
+          instanceId: activeSendInstance?.id ?? null,
+        },
+      });
+      if (!result.ok) {
+        toast.error(result.error ?? "A mensagem não foi enviada.");
+        return;
+      }
+      try {
+        await supabase.from("mensagens").delete().eq("id", failedMsg.id);
+      } catch {}
+      setMsgs((p) => p.filter((item) => item.id !== failedMsg.id));
+      void refreshRecent(companyId);
+      toast.success("Mensagem reenviada.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao reenviar");
+    }
+  }
+
+  async function handleNotifyDisconnectedAdmin() {
+    if (!companyId) return;
+    const target = threadOriginInstance ?? instances.find((i) => instanceMatchesChannel(i, activeChannel)) ?? null;
+    if (!target) {
+      toast.error("Nenhuma linha encontrada para notificar.");
+      return;
+    }
+    try {
+      const res: any = await notifyDisconnectedFn({
+        data: {
+          instanceName: target.instance_name,
+          displayName: target.display_name,
+        },
+      });
+      if (res?.alreadyNotified) {
+        toast.info("O administrador já foi avisado recentemente sobre esta linha.");
+      } else {
+        toast.success("Administrador avisado sobre a linha desconectada.");
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Não foi possível avisar o administrador.");
     }
   }
 
@@ -2532,15 +2737,65 @@ function ConversasPage() {
           <div className="px-4 sm:px-5 pb-2">
             <div className="flex flex-wrap items-center gap-2.5 text-[11px] font-medium text-muted-foreground">
               {/* WhatsApp */}
-              <div className="inline-flex items-center gap-1.5" title="Status do WhatsApp">
-                {wppStatus === "connected" ? (
-                  <><span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /> <WhatsAppGlyph className="size-3 text-[#25D366]" /> <span className="text-foreground">WhatsApp</span></>
-                ) : wppStatus === "connecting" ? (
-                  <><span className="size-2 rounded-full bg-amber-500 animate-pulse" /> <WhatsAppGlyph className="size-3 text-[#25D366]" /> <span>Conectando…</span></>
-                ) : (
-                  <><span className="size-2 rounded-full bg-amber-500/70" /> <WhatsAppGlyph className="size-3 text-muted-foreground" /> <span>WhatsApp pendente</span></>
-                )}
-              </div>
+              {(() => {
+                const waList = instances.filter((i) => instanceMatchesChannel(i, "whatsapp"));
+                const isUp = (i: InstanceItem) => (i.status === "connected" || i.status === "open") && !i.paused;
+                const upCount = waList.filter(isUp).length;
+                const downCount = waList.length - upCount;
+                const tooltip = waList.length > 0
+                  ? waList.map((i) => {
+                      const label = i.display_name || (i.numero ? `+${i.numero}` : i.instance_name);
+                      if (i.paused) return `${label}: Pausada`;
+                      return isUp(i) ? `${label}: Conectada` : `${label}: Desconectada`;
+                    }).join("\n")
+                  : "Status do WhatsApp";
+
+                if (waList.length === 0) {
+                  return (
+                    <div className="inline-flex items-center gap-1.5" title={tooltip}>
+                      {wppStatus === "connected" ? (
+                        <><span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /> <WhatsAppGlyph className="size-3 text-[#25D366]" /> <span className="text-foreground">WhatsApp</span></>
+                      ) : wppStatus === "connecting" ? (
+                        <><span className="size-2 rounded-full bg-amber-500 animate-pulse" /> <WhatsAppGlyph className="size-3 text-[#25D366]" /> <span>Conectando…</span></>
+                      ) : (
+                        <><span className="size-2 rounded-full bg-amber-500/70" /> <WhatsAppGlyph className="size-3 text-muted-foreground" /> <span>WhatsApp pendente</span></>
+                      )}
+                    </div>
+                  );
+                }
+
+                if (upCount === 0) {
+                  return (
+                    <div className="inline-flex items-center gap-1.5 text-red-600 dark:text-red-400" title={tooltip}>
+                      <span className="size-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                      <WhatsAppGlyph className="size-3" />
+                      <span className="font-semibold">
+                        {wppStatus === "connecting" ? "Conectando…" : "WhatsApp desconectado"}
+                      </span>
+                    </div>
+                  );
+                }
+
+                if (downCount > 0) {
+                  return (
+                    <div className="inline-flex items-center gap-1.5 text-amber-700 dark:text-amber-400" title={tooltip}>
+                      <span className="size-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+                      <WhatsAppGlyph className="size-3 text-[#25D366]" />
+                      <span className="font-semibold">
+                        WhatsApp · {downCount} {downCount === 1 ? "desconectada" : "desconectadas"}
+                      </span>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="inline-flex items-center gap-1.5" title={tooltip}>
+                    <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                    <WhatsAppGlyph className="size-3 text-[#25D366]" />
+                    <span className="text-foreground">WhatsApp</span>
+                  </div>
+                );
+              })()}
 
               {/* Instagram */}
               {instances.filter(i => i.provider === "meta_instagram").map(inst => (
@@ -2766,6 +3021,12 @@ function ConversasPage() {
               // (ex.: atendimento por setores) nunca veem essa tag.
               const transferidaPelaIa = usaIa && !iaAtiva && !card?.owner_id;
               const precisaAtender = !on && u > 0;
+              const rowInst = c.lastNonFailedInstanceId
+                ? instances.find((inst) => inst.id === c.lastNonFailedInstanceId)
+                : undefined;
+              const rowInstOffline = Boolean(
+                rowInst && ((rowInst.status !== "connected" && rowInst.status !== "open") || rowInst.paused)
+              );
               return (
                 <li key={c.numero}>
                   <div
@@ -2795,7 +3056,7 @@ function ConversasPage() {
                           <Bot className="size-2.5" />
                         </span>
                       )}
-                      <ChannelBadge canal={getChannel(card, c.last)} parentSize={42} />
+                      <ChannelBadge canal={getChannel(card, c.last, c.fallbackMsgs)} parentSize={42} />
                     </div>
                     <div className="min-w-0 flex-1 flex flex-col gap-1 relative group/item">
                       <div className="flex items-baseline justify-between gap-2">
@@ -2889,6 +3150,7 @@ function ConversasPage() {
                           <MiniChip tone="human">{t("chat.human", undefined, "Humano")}</MiniChip>
                         )}
                         {!conversaEhGrupo && stage && <StageChip nome={stage.nome} cor={stage.cor} />}
+                        {!conversaEhGrupo && rowInstOffline && <MiniChip tone="warn">Offline</MiniChip>}
                       </div>
                     </div>
                   </div>
@@ -3107,7 +3369,7 @@ function ConversasPage() {
                         <Bot className="size-2.5" />
                       </span>
                     )}
-                    <ChannelBadge canal={getChannel(activeCard, activeConv?.last)} size={18} parentSize={40} />
+                    <ChannelBadge canal={activeChannel} size={18} parentSize={40} />
                   </div>
 
                   <div className="min-w-0 flex-1">
@@ -3497,7 +3759,9 @@ function ConversasPage() {
                         quotedSnippet={quotedSnippet}
                         companyId={companyId ?? ""}
                         onReply={(msg) => setReplyTo(msg)}
-                        hasUnofficialInstance={instances.some(i => (i.provider === "dapi" || (i as any).provider_type === "dapi") && (i.status === "connected" || i.status === "open"))}
+                        onRetry={retryFailedMessage}
+                        retryDisabled={!activeIsGrupo && isLineDisconnected && !activeSendInstance}
+                        hasUnofficialInstance={instances.some(i => (i.provider === "dapi" || (i as any).provider_type === "dapi") && (i.status === "connected" || i.status === "open") && !i.paused)}
                         agentTraits={agentConfig?.avatar_traits}
                         agentAvatarUrl={agentConfig?.avatar_url}
                         instances={instances}
@@ -3514,7 +3778,7 @@ function ConversasPage() {
                 key={active}
                 active={active}
                 activeName={activeConv?.nome ?? null}
-                channel={getChannel(activeCard, activeConv?.last)}
+                channel={activeChannel}
                 templates={templates}
                 quickReplies={quickReplies}
                 onQuickRepliesChanged={() => void reloadQuickReplies()}
@@ -3537,6 +3801,11 @@ function ConversasPage() {
                 instances={instances}
                 activeSendInstance={activeSendInstance}
                 stickyInstance={stickyInstance}
+                threadOriginInstance={threadOriginInstance}
+                isLineDisconnected={isLineDisconnected}
+                otherConnectedWa={otherConnectedWa}
+                canManageConnection={canManageConnection}
+                onNotifyAdmin={handleNotifyDisconnectedAdmin}
                 onSelectInstance={(id) => setOverrideInstanceId(id)}
               />
 
@@ -3840,6 +4109,8 @@ function Bubble({
   quotedSnippet,
   companyId,
   onReply,
+  onRetry,
+  retryDisabled,
   agentTraits,
   agentAvatarUrl,
   hasUnofficialInstance,
@@ -3851,10 +4122,12 @@ function Bubble({
   quotedSnippet?: { sender: string; text: string; id?: string | null } | null;
   companyId: string;
   onReply?: (m: Msg) => void;
+  onRetry?: (m: Msg) => Promise<void> | void;
+  retryDisabled?: boolean;
   agentTraits?: any;
   agentAvatarUrl?: string;
   hasUnofficialInstance?: boolean;
-  instances?: Array<{ id: string; instance_name: string; display_name: string | null; provider: string; status: string; phone_number_id: string | null; numero?: string | null }>;
+  instances?: InstanceItem[];
   highlightText?: string;
   isFlashing?: boolean;
 }) {
@@ -3867,6 +4140,7 @@ function Bubble({
   const media = m.midia_tipo && m.midia_url ? { tipo: m.midia_tipo, url: m.midia_url, nome: m.midia_nome, mime: m.midia_mime } : null;
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
   const [busy, setBusy] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [forwardOpen, setForwardOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -4138,7 +4412,31 @@ function Bubble({
                 {new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                 {m.deletado_em ? <span className="italic">· apagada</span> : m.editado_em ? <span className="italic">· editada</span> : null}
                 {isOut && m.status_envio === "pendente" && <span className="italic">· enviando</span>}
-                {isOut && m.status_envio === "falha" && <span className="font-semibold">· falhou</span>}
+                {isOut && m.status_envio === "falha" && (
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-red-200 dark:text-red-300">
+                    <span>· falhou</span>
+                    {!isDeleted && !media && m.texto && onRetry && (
+                      <button
+                        type="button"
+                        disabled={retryDisabled || retrying}
+                        title={retryDisabled ? "Linha desconectada — reconecte ou selecione outra linha" : "Reintentar envio"}
+                        onClick={async () => {
+                          if (retrying || retryDisabled) return;
+                          setRetrying(true);
+                          try {
+                            await onRetry(m);
+                          } finally {
+                            setRetrying(false);
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/15 hover:bg-white/25 text-white text-[10px] font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <RotateCcw className={`size-2.5 ${retrying ? "animate-spin" : ""}`} />
+                        <span>{retrying ? "Reenviando…" : "Reintentar"}</span>
+                      </button>
+                    )}
+                  </span>
+                )}
                 {isOut && m.status_envio === "enviado" && <Check className="size-3 text-primary-foreground/70" />}
                 {isOut && ["recebido", "entregue", "delivered"].includes(m.status_envio || "") && <CheckCheck className="size-3 text-primary-foreground/80" />}
                 {isOut && ["visto", "lido", "read"].includes(m.status_envio || "") && <CheckCheck className="size-3 text-emerald-400 dark:text-emerald-300 font-bold" />}
@@ -4210,7 +4508,7 @@ function Bubble({
 function Composer({
   active, activeName, channel = "whatsapp", templates, quickReplies, onQuickRepliesChanged, sending, onSendText, companyId, iaAtiva, onAssumir, onEncaminhar, replyTo, onCancelReply,
   ownerId, currentUserId, ownerNome, agentTraits, agentAvatarUrl, scheduleTarget, onLocalMedia, onLocalMediaFail,
-  instances = [], activeSendInstance, stickyInstance, onSelectInstance,
+  instances = [], activeSendInstance, stickyInstance, threadOriginInstance, isLineDisconnected = false, otherConnectedWa = [], canManageConnection = false, onNotifyAdmin, onSelectInstance,
 }: {
   active: string;
   activeName: string | null;
@@ -4234,18 +4532,23 @@ function Composer({
   scheduleTarget: { numero: string; nome: string | null; cardId?: string };
   onLocalMedia?: (url: string, tipo: string, mime?: string | null) => string;
   onLocalMediaFail?: (id: string) => void;
-  instances?: Array<{ id: string; instance_name: string; display_name: string | null; provider: string; status: string; phone_number_id: string | null; numero?: string | null }>;
-  activeSendInstance?: { id: string; instance_name: string; display_name: string | null; provider: string; status: string; phone_number_id: string | null; numero?: string | null } | null;
-  stickyInstance?: { id: string; instance_name: string; display_name: string | null; provider: string; status: string; phone_number_id: string | null; numero?: string | null } | null;
-  onSelectInstance?: (id: string) => void;
+  instances?: InstanceItem[];
+  activeSendInstance?: InstanceItem | null;
+  stickyInstance?: InstanceItem | null;
+  threadOriginInstance?: InstanceItem | null;
+  isLineDisconnected?: boolean;
+  otherConnectedWa?: InstanceItem[];
+  canManageConnection?: boolean;
+  onNotifyAdmin?: () => Promise<void> | void;
+  onSelectInstance?: (id: string | null) => void;
 }) {
-  const connectedInstances = (instances || []).filter((i) => i.status === "connected" || i.status === "open" || i.provider?.startsWith("meta_") || i.provider === "telegram");
+  const connectedInstances = (instances || []).filter((i) => (i.status === "connected" || i.status === "open" || i.provider?.startsWith("meta_") || i.provider === "telegram") && !i.paused);
   const waInstances = (instances || []).filter(
-    (i) =>
-      (!i.provider || i.provider === "dapi" || i.provider === "dapi_official" || i.provider === "official" || (i as any).provider_type === "dapi") &&
-      (i.status === "connected" || i.status === "open")
+    (i) => instanceMatchesChannel(i, "whatsapp") && (i.status === "connected" || i.status === "open") && !i.paused
   );
+  const [notifyingAdmin, setNotifyingAdmin] = useState(false);
   const activeMeta = activeSendInstance ? getInstanceVisualMeta(activeSendInstance.id, activeSendInstance.provider, instances || []) : null;
+  const lineBlocked = Boolean(isLineDisconnected && !activeSendInstance);
   const { t: tr, formatCurrency: fmtCurr } = useLanguage();
 
 
@@ -4455,6 +4758,10 @@ function Composer({
   }
 
   async function pickQuickReply(qr: QuickReply) {
+    if (lineBlocked) {
+      toast.error("A linha está desconectada. Reconecte ou selecione outra linha WhatsApp.");
+      return;
+    }
     if (qr.tipo === "texto") {
       setText(qr.texto || "");
       setShowTpl(false);
@@ -4493,7 +4800,7 @@ function Composer({
   }
 
   async function submit() {
-    if (busy) return;
+    if (busy || lineBlocked) return;
     const t = text.trim();
     const hasFiles = stagedFiles.length > 0;
     const hasProd = !!stagedProduto;
@@ -4883,7 +5190,20 @@ function Composer({
 
 
 
-  const disabled = sending || busy;
+  const disabled = sending || busy || lineBlocked;
+  const originLineName =
+    threadOriginInstance?.display_name ||
+    (threadOriginInstance?.numero ? `+${threadOriginInstance.numero}` : threadOriginInstance?.instance_name) ||
+    (channel === "whatsapp" ? "WhatsApp" : CANAL_CHAT[channel]?.label || "WhatsApp");
+  const isAlternativeLine = Boolean(
+    activeSendInstance &&
+      threadOriginInstance &&
+      activeSendInstance.id !== threadOriginInstance.id
+  );
+  const altLineName =
+    activeSendInstance?.display_name ||
+    (activeSendInstance?.numero ? `+${activeSendInstance.numero}` : activeSendInstance?.instance_name) ||
+    "WhatsApp";
 
   if (ownerId !== currentUserId) {
     const deOutro = !!ownerId;
@@ -4945,6 +5265,95 @@ function Composer({
 
   return (
     <div className="border-t border-[color:var(--hairline)] bg-[color:var(--panel)] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-2">
+      {isLineDisconnected && (
+        <div className="mx-3 sm:mx-4 mt-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+          <div className="flex items-start sm:items-center gap-2.5 min-w-0">
+            <WifiOff className="size-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5 sm:mt-0" />
+            <div className="text-[12.5px] leading-snug">
+              A linha <strong>{originLineName}</strong> está desconectada.{" "}
+              <span className="text-amber-800/80 dark:text-amber-200/80">
+                Envio bloqueado até reconectar ou escolher outra linha.
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {otherConnectedWa.length === 1 && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => onSelectInstance?.(otherConnectedWa[0]!.id)}
+                className="h-7 px-2.5 text-[11.5px] font-semibold border-amber-500/40 bg-background/80 hover:bg-background text-foreground"
+              >
+                Responder por outra linha WhatsApp
+              </Button>
+            )}
+            {otherConnectedWa.length > 1 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2.5 text-[11.5px] font-semibold border-amber-500/40 bg-background/80 hover:bg-background text-foreground gap-1"
+                  >
+                    <span>Responder por outra linha WhatsApp</span>
+                    <ChevronDown className="size-3.5 opacity-70" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64 p-1 z-50">
+                  {otherConnectedWa.map((inst) => (
+                    <DropdownMenuItem
+                      key={inst.id}
+                      onClick={() => onSelectInstance?.(inst.id)}
+                      className="flex items-center justify-between gap-2 px-2.5 py-2 cursor-pointer text-[12px]"
+                    >
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-semibold truncate">{inst.display_name || inst.instance_name}</span>
+                        {inst.numero && <span className="text-[10px] text-muted-foreground">+{inst.numero}</span>}
+                      </div>
+                      {inst.provider === "dapi_official" && (
+                        <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-semibold shrink-0">
+                          Oficial
+                        </span>
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            {canManageConnection ? (
+              <Button
+                type="button"
+                size="sm"
+                asChild
+                className="h-7 px-2.5 text-[11.5px] font-semibold bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                <Link to="/app/conexao">Reconectar em Conexões</Link>
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                disabled={notifyingAdmin}
+                onClick={async () => {
+                  if (!onNotifyAdmin || notifyingAdmin) return;
+                  setNotifyingAdmin(true);
+                  try {
+                    await onNotifyAdmin();
+                  } finally {
+                    setNotifyingAdmin(false);
+                  }
+                }}
+                className="h-7 px-2.5 text-[11.5px] font-semibold bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                {notifyingAdmin ? "Avisando…" : "Avisar administrador"}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       {replyTo && (
         <div className="mx-4 mt-2 flex items-start gap-2 px-3 py-2 rounded-lg border-l-2 border-[color:var(--brand)] bg-[color:var(--panel-2)]">
           <Reply className="size-3.5 mt-0.5 text-[color:var(--brand)] shrink-0" />
@@ -5209,6 +5618,29 @@ function Composer({
             </div>
           )}
 
+          {isAlternativeLine && (
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 rounded-lg border border-sky-500/30 bg-sky-500/10 text-[11.5px] text-sky-900 dark:text-sky-200">
+              <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                <AlertTriangle className="size-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+                <span>
+                  Enviando por <strong>{altLineName}</strong> (número diferente do original)
+                </span>
+                {activeSendInstance?.provider === "dapi_official" && (
+                  <span className="text-[11px] text-sky-800/85 dark:text-sky-200/85">
+                    · API Oficial Meta: fora da janela de 24h neste número, use um template aprovado
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => onSelectInstance?.(null)}
+                className="text-[11px] font-semibold underline underline-offset-2 hover:opacity-80 shrink-0"
+              >
+                Voltar
+              </button>
+            </div>
+          )}
+
           <div className="flex gap-1.5 sm:gap-2 items-end w-full">
             <input
               ref={fileRef}
@@ -5268,10 +5700,11 @@ function Composer({
 
             <button
               type="button"
+              disabled={disabled}
               onClick={() => setAgendarOpen(true)}
               title="Agendar"
               aria-label="Agendar"
-              className="size-10 shrink-0 rounded-full grid place-items-center text-muted-foreground hover:bg-[color:var(--panel-2)] hover:text-[color:var(--brand)] transition"
+              className="size-10 shrink-0 rounded-full grid place-items-center text-muted-foreground hover:bg-[color:var(--panel-2)] hover:text-[color:var(--brand)] transition disabled:opacity-50"
             >
               <CalendarPlus className="size-5" />
             </button>
@@ -5300,8 +5733,14 @@ function Composer({
                 if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void submit(); }
               }}
 
-              placeholder={isMobileWidth ? "Mensagem…  (/ atalhos)" : "Escreva uma mensagem…   (/ para respostas rápidas)"}
-              disabled={busy}
+              placeholder={
+                lineBlocked
+                  ? "Linha desconectada — reconecte ou selecione outra linha…"
+                  : isMobileWidth
+                    ? "Mensagem…  (/ atalhos)"
+                    : "Escreva uma mensagem…   (/ para respostas rápidas)"
+              }
+              disabled={busy || lineBlocked}
               rows={1}
               wrap="soft"
               className="chat-composer-textarea no-scrollbar flex-1 min-w-0 resize-none overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words max-h-[150px] min-h-[46px] lg:min-h-[52px] bg-muted border border-border rounded-[20px] px-3.5 sm:px-4 py-3 text-[13.5px] leading-snug outline-none focus:border-primary/60"

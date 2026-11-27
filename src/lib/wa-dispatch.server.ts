@@ -27,7 +27,7 @@ export type WaInstance = {
   waba_id?: string | null;
 };
 
-const VALID_ACTIVE_PROVIDERS = ["dapi", "dapi_official", "meta_instagram", "meta_messenger", "telegram"];
+const DEFAULT_WA_PROVIDERS: WaProvider[] = ["dapi", "dapi_official"];
 
 function normalizeProvider(rawProvider?: string | null, rawType?: string | null): WaProvider {
   const p = String(rawProvider || rawType || "dapi").toLowerCase();
@@ -38,12 +38,16 @@ function normalizeProvider(rawProvider?: string | null, rawType?: string | null)
   return "dapi";
 }
 
-export async function getActiveInstance(companyId: string): Promise<WaInstance | null> {
+export async function getActiveInstance(
+  companyId: string,
+  allowedProviders: WaProvider[] = DEFAULT_WA_PROVIDERS,
+): Promise<WaInstance | null> {
+  const providersFilter = allowedProviders.length > 0 ? allowedProviders : DEFAULT_WA_PROVIDERS;
   const { data: inst } = await supabaseAdmin
     .from("whatsapp_instances")
     .select("instance_name, instance_token, status, paused, provider, provider_type, phone_number_id, waba_id")
     .eq("company_id", companyId)
-    .in("provider", VALID_ACTIVE_PROVIDERS)
+    .in("provider", providersFilter)
     .in("status", ["connected", "open"])
     .or("paused.is.null,paused.eq.false")
     .order("updated_at", { ascending: false })
@@ -71,34 +75,29 @@ export async function getActiveInstanceForContact(
   userId?: string,
   instanceIdOverride?: string | null,
 ): Promise<WaInstance | null> {
-  try {
-    const { getInstanceForContact } = await import("@/lib/whatsapp-helpers");
-    const inst = await getInstanceForContact(
-      supabaseAdmin,
-      companyId,
-      numero,
-      "instance_name,instance_token,status,provider,provider_type,phone_number_id,waba_id,paused",
-      userId,
-      instanceIdOverride,
-    );
-    if (!inst?.instance_name) return null;
+  const { getInstanceForContact } = await import("@/lib/whatsapp-helpers");
+  const inst = await getInstanceForContact(
+    supabaseAdmin,
+    companyId,
+    numero,
+    "instance_name,display_name,instance_token,status,provider,provider_type,phone_number_id,waba_id,paused",
+    userId,
+    instanceIdOverride,
+  );
+  if (!inst?.instance_name) return null;
 
-    const provider = normalizeProvider((inst as any).provider, (inst as any).provider_type);
+  const provider = normalizeProvider((inst as any).provider, (inst as any).provider_type);
 
-    return {
-      company_id: companyId,
-      instance_name: (inst as any).instance_name,
-      instance_token: (inst as any).instance_token ?? null,
-      provider,
-      status: (inst as any).status,
-      paused: !!(inst as any).paused,
-      phone_number_id: (inst as any).phone_number_id ?? null,
-      waba_id: (inst as any).waba_id ?? null,
-    };
-  } catch (e: any) {
-    console.warn(`[getActiveInstanceForContact] Falha ao resolver instância para ${numero}, usando fallback:`, e?.message);
-    return getActiveInstance(companyId);
-  }
+  return {
+    company_id: companyId,
+    instance_name: (inst as any).instance_name,
+    instance_token: (inst as any).instance_token ?? null,
+    provider,
+    status: (inst as any).status,
+    paused: !!(inst as any).paused,
+    phone_number_id: (inst as any).phone_number_id ?? null,
+    waba_id: (inst as any).waba_id ?? null,
+  };
 }
 
 async function assertMetaWindowForInstance(inst: WaInstance, numero: string) {

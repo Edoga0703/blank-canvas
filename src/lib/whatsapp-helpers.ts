@@ -22,6 +22,16 @@ export function sortInstances(rows: any[] = []) {
 
 const VALID_WA_PROVIDERS = ["dapi", "dapi_official"];
 
+export type ChannelFamily = "whatsapp" | "instagram" | "messenger" | "telegram";
+
+export function channelFamilyForProvider(provider?: string | null): ChannelFamily {
+  const p = String(provider || "").trim().toLowerCase();
+  if (p === "meta_instagram") return "instagram";
+  if (p === "meta_messenger") return "messenger";
+  if (p === "telegram") return "telegram";
+  return "whatsapp";
+}
+
 export async function getPreferredWhatsappInstance(
   supabase: any,
   companyId: string,
@@ -101,65 +111,107 @@ export async function getInstanceForContact(
   userId?: string,
   explicitInstanceId?: string | null,
 ) {
-  // 1. Instância explicitamente selecionada pelo atendente no chat
+  const selectCols = columns.split(",").map((s) => s.trim()).filter(Boolean);
+  if (!selectCols.includes("paused")) selectCols.push("paused");
+  if (!selectCols.includes("provider")) selectCols.push("provider");
+  if (!selectCols.includes("status")) selectCols.push("status");
+  if (!selectCols.includes("display_name")) selectCols.push("display_name");
+  const effectiveColumns = selectCols.join(",");
+
+  const cleanNumero = String(numero || "").trim();
+  const isPhoneLike = /^\+?\d[\d\s().-]{6,}$/.test(cleanNumero);
+
+  // 0. Determina expectedChannel consultando crm_cards e a última mensagem NÃO falhada
+  const [{ data: card }, { data: lastMsg }] = await Promise.all([
+    supabase
+      .from("crm_cards")
+      .select("canal_chat,canal_entrada")
+      .eq("company_id", companyId)
+      .eq("numero", numero)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("mensagens")
+      .select("instance_id, provider")
+      .eq("company_id", companyId)
+      .eq("numero", numero)
+      .neq("status_envio", "falha")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  let canal = String((card as any)?.canal_chat ?? "").trim().toLowerCase();
+  if (!canal || canal === "null" || canal === "undefined") {
+    canal = String((card as any)?.canal_entrada ?? "").trim().toLowerCase();
+  }
+
+  let expectedChannel: ChannelFamily | null = null;
+  if (canal === "instagram" || canal === "meta_instagram") expectedChannel = "instagram";
+  else if (canal === "messenger" || canal === "meta_messenger") expectedChannel = "messenger";
+  else if (canal === "telegram") expectedChannel = "telegram";
+  else if (canal === "whatsapp" || canal === "dapi" || canal === "dapi_official" || canal === "official") {
+    expectedChannel = "whatsapp";
+  }
+
+  if (!expectedChannel && lastMsg?.provider) {
+    expectedChannel = channelFamilyForProvider(lastMsg.provider);
+  }
+  if (!expectedChannel && isPhoneLike) {
+    expectedChannel = "whatsapp";
+  }
+
+  // 1. Validar instância explicitamente selecionada pelo atendente no chat
   if (explicitInstanceId) {
     const { data: explicitInst } = await supabase
       .from("whatsapp_instances")
-      .select(columns)
+      .select(effectiveColumns)
       .eq("id", explicitInstanceId)
       .eq("company_id", companyId)
       .maybeSingle();
 
-    if (explicitInst && (explicitInst.status === "connected" || explicitInst.status === "open")) {
-      return explicitInst;
+    if (!explicitInst) {
+      throw new Error("A conexão selecionada não foi encontrada.");
     }
+    if (expectedChannel && channelFamilyForProvider(explicitInst.provider) !== expectedChannel) {
+      throw new Error("A conexão selecionada não pertence ao canal deste contato.");
+    }
+    const active = (explicitInst.status === "connected" || explicitInst.status === "open") && !explicitInst.paused;
+    if (!active) {
+      throw new Error("A conexão selecionada está desconectada. Reconecte ou escolha outra linha.");
+    }
+    return explicitInst;
   }
 
-  // 2. Sticky Routing: busca a mesma instância por onde o contato conversou por último
-  const { data: lastMsg } = await supabase
-    .from("mensagens")
-    .select("instance_id, provider")
-    .eq("company_id", companyId)
-    .eq("numero", numero)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
+  // 2. Sticky Routing: busca a mesma instância da última mensagem NÃO falhada, validando família do canal
   if (lastMsg?.instance_id) {
     const { data: stickyInst } = await supabase
       .from("whatsapp_instances")
-      .select(columns)
+      .select(effectiveColumns)
       .eq("id", lastMsg.instance_id)
       .eq("company_id", companyId)
       .maybeSingle();
 
-    if (stickyInst && (stickyInst.status === "connected" || stickyInst.status === "open")) {
-      return stickyInst;
+    if (stickyInst) {
+      const stickyFamily = channelFamilyForProvider(stickyInst.provider);
+      const matchesExpected = !expectedChannel || stickyFamily === expectedChannel;
+      if (matchesExpected) {
+        if (stickyFamily === "whatsapp") {
+          // Nunca saltar silenciosamente para outra linha ou canal quando a linha de origem está desconectada/pausada
+          return stickyInst;
+        }
+        if ((stickyInst.status === "connected" || stickyInst.status === "open") && !stickyInst.paused) {
+          return stickyInst;
+        }
+      }
     }
   }
 
-  let { data: card } = await supabase
-    .from("crm_cards")
-    .select("canal_chat,canal_entrada")
-    .eq("company_id", companyId)
-    .eq("numero", numero)
-    .order("updated_at", { ascending: false }).limit(1).maybeSingle();
-
-  let canal = String((card as any)?.canal_chat ?? "").toLowerCase();
-  if (!canal || canal === "null" || canal === "undefined") {
-    canal = String((card as any)?.canal_entrada ?? "").toLowerCase();
-  }
-
-  if (!canal || canal === "null" || canal === "undefined" || canal === "whatsapp") {
-    if (lastMsg?.provider === "meta_instagram") canal = "instagram";
-    else if (lastMsg?.provider === "meta_messenger") canal = "messenger";
-    else if (lastMsg?.provider === "telegram") canal = "telegram";
-  }
-
-  if (canal === "telegram") {
+  if (expectedChannel === "telegram") {
     const { data } = await supabase
       .from("whatsapp_instances")
-      .select(columns)
+      .select(effectiveColumns)
       .eq("company_id", companyId)
       .eq("provider", "telegram");
     const inst = sortInstances(data ?? [])[0] ?? null;
@@ -169,11 +221,11 @@ export async function getInstanceForContact(
     return inst;
   }
 
-  if (canal === "instagram" || canal === "messenger") {
-    const provider = canal === "instagram" ? "meta_instagram" : "meta_messenger";
+  if (expectedChannel === "instagram" || expectedChannel === "messenger") {
+    const provider = expectedChannel === "instagram" ? "meta_instagram" : "meta_messenger";
     const { data } = await supabase
       .from("whatsapp_instances")
-      .select(columns)
+      .select(effectiveColumns)
       .eq("company_id", companyId)
       .eq("provider", provider)
       .eq("status", "connected");
@@ -184,7 +236,7 @@ export async function getInstanceForContact(
 
     if (!inst?.instance_name) {
       throw new Error(
-        canal === "instagram"
+        expectedChannel === "instagram"
           ? "Instagram não conectado. Reconecte o canal em Conexões."
           : "Messenger não conectado. Reconecte o canal em Conexões.",
       );
@@ -192,10 +244,10 @@ export async function getInstanceForContact(
     return inst;
   }
 
-  if (!/^\+?\d[\d\s().-]{6,}$/.test(String(numero).trim())) {
+  if (!isPhoneLike && !expectedChannel) {
     const { data: metaRows } = await supabase
       .from("whatsapp_instances")
-      .select(columns)
+      .select(effectiveColumns)
       .eq("company_id", companyId)
       .in("provider", ["meta_instagram", "meta_messenger"])
       .eq("status", "connected");
@@ -209,17 +261,17 @@ export async function getInstanceForContact(
     throw new Error("Este contato não é do WhatsApp. Reconecte o canal (Instagram/Messenger) em Conexões para responder.");
   }
 
-  const preferred = await getPreferredWhatsappInstance(supabase, companyId, columns, userId);
+  const preferred = await getPreferredWhatsappInstance(supabase, companyId, effectiveColumns, userId);
 
-  if (preferred && preferred.status !== "connected") {
+  if (preferred && (preferred.status !== "connected" || preferred.paused)) {
     const { data: allInstances } = await supabase
       .from("whatsapp_instances")
-      .select(columns)
+      .select(effectiveColumns)
       .eq("company_id", companyId)
       .in("provider", VALID_WA_PROVIDERS)
       .eq("status", "connected");
 
-    const connected = sortInstances(allInstances ?? [])[0];
+    const connected = sortInstances((allInstances ?? []).filter((i: any) => !i.paused))[0];
     if (connected) {
       return connected;
     }
