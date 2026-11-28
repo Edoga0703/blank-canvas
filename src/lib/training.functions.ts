@@ -52,9 +52,9 @@ export const getTrainingHomeData = createServerFn({ method: "GET" })
               courses: [
                 {
                   id: 'mock-course-1',
-                  title: 'Bem-vindo à Academia Capiversa',
+                  title: 'Bem-vindo à Academia Capiconversa',
                   thumbnail: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&q=80',
-                  instructor: 'Equipe Capiversa',
+                  instructor: 'Equipe Capiconversa',
                   lessons: 1,
                   duration: "05:00",
                   is_published: true
@@ -101,7 +101,7 @@ export const getTrainingHomeData = createServerFn({ method: "GET" })
                 id: 'err-course',
                 title: 'Conheça o Sistema',
                 thumbnail: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&q=80',
-                instructor: 'Capiversa CRM',
+                instructor: 'Capiconversa CRM',
                 lessons: 1,
                 duration: "10:00"
               }
@@ -132,8 +132,8 @@ export const getCourseDetails = createServerFn({ method: "GET" })
     if (!course && (data.courseId === 'mock-course-1' || data.courseId.startsWith('mock-'))) {
        return {
          id: data.courseId,
-         title: 'Bem-vindo à Academia Capiversa',
-         description: 'Comece sua jornada dominando as principais ferramentas do Capiversa.',
+         title: 'Bem-vindo à Academia Capiconversa',
+         description: 'Comece sua jornada dominando as principais ferramentas do Capiconversa.',
          modules: [
            {
              id: 'mock-mod-1',

@@ -225,7 +225,7 @@ export function adsDevToken() {
   const t = process.env["GOOGLE_ADS_DEVELOPER_TOKEN"];
   if (!t) {
     throw new Error(
-      "Falta o token de desenvolvedor do Google Ads. Peça o token na sua conta de administrador do Google Ads e cadastre-o no Capiversa.",
+      "Falta o token de desenvolvedor do Google Ads. Peça o token na sua conta de administrador do Google Ads e cadastre-o no Capiconversa.",
     );
   }
   return t;

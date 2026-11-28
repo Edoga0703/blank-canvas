@@ -12,6 +12,9 @@ export function registerMessagingProvider(provider: MessagingProvider) {
 
 export function getMessagingProvider(id: MessagingProviderId): MessagingProvider {
   const provider = providers.get(id);
-  if (!provider) throw new Error(`Proveedor de mensajería no registrado: ${id}`);
+  if (!provider) {
+    const registered = Array.from(providers.keys()).join(", ") || "(ninguno)";
+    throw new Error(`Proveedor de mensajería no registrado: "${id}". IDs registrados: ${registered}`);
+  }
   return provider;
 }

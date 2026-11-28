@@ -48,8 +48,8 @@ export async function emitWebhook(companyId: string, event: OutboundEvent | stri
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-AtendeZap-Event": event,
-            "X-AtendeZap-Signature": `sha256=${sig}`,
+            "X-Capiconversa-Event": event,
+            "X-Capiconversa-Signature": `sha256=${sig}`,
           },
           body,
           signal: AbortSignal.timeout(10_000),

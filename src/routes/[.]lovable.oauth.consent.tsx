@@ -65,7 +65,7 @@ function Consent() {
       <div className="max-w-md w-full rounded-2xl border border-border bg-card p-6 space-y-4">
         <h1 className="text-xl font-display font-bold">Conectar {clientName}</h1>
         <p className="text-sm text-muted-foreground">
-          Esse aplicativo poderá acessar seu AtendZap como você — ler leads, conversas e enviar mensagens em seu nome pela instância conectada.
+          Esse aplicativo poderá acessar seu Capiconversa como você — ler leads, conversas e enviar mensagens em seu nome pela instância conectada.
         </p>
         {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
         <div className="flex gap-2">

@@ -59,7 +59,7 @@ export const sendTestMessageToClient = createServerFn({ method: "POST" })
       throw new Error(`Nenhuma instância conectada para a empresa do cliente (${client.nome}).`);
     }
 
-    const testMessage = `🚀 Teste de Disparo Capiversa CRM para ${client.nome}\n\nEste é um teste técnico para confirmar que o sistema está enviando e recebendo mensagens corretamente.`;
+    const testMessage = `🚀 Teste de Disparo Capiconversa CRM para ${client.nome}\n\nEste é um teste técnico para confirmar que o sistema está enviando e recebendo mensagens corretamente.`;
 
     try {
       await dapiSendText(instance.instance_name, client.numero, testMessage);

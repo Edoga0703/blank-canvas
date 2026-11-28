@@ -9,7 +9,7 @@ const DRIVE_SCOPES = [
   "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/drive.file",
 ];
-const ROOT_FOLDER_NAME = "Capiversa CRM";
+const ROOT_FOLDER_NAME = "Capiconversa CRM";
 
 export type DriveItem = {
   id: string;

@@ -14,10 +14,10 @@ const supabaseBaseUrl = (
 
 export default defineMcp({
   name: "capiversa-mcp",
-  title: "Capiversa",
+  title: "Capiconversa",
   version: "0.1.0",
   instructions:
-    "Ferramentas do Capiversa para consultar leads do CRM, conversas recentes do WhatsApp e enviar mensagens pela instância conectada da empresa do usuário.",
+    "Ferramentas do Capiconversa para consultar leads do CRM, conversas recentes do WhatsApp e enviar mensagens pela instância conectada da empresa do usuário.",
   auth: auth.oauth.issuer({
     issuer: `${supabaseBaseUrl}/auth/v1`,
     acceptedAudiences: "authenticated",

@@ -383,8 +383,8 @@ async function notifyCharge(companyId: string, charge: any) {
     const supabase = await admin();
     const valor = (Number(charge?.total_cents ?? 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     const texto = charge?.metodo === "pix"
-      ? `Sua mensalidade Capiversa de ${valor} está disponível para pagamento via PIX. Acesse Meu plano no sistema para pagar.`
-      : `Sua mensalidade Capiversa de ${valor} foi gerada. Acesse Meu plano no sistema para concluir o pagamento.`;
+      ? `Sua mensalidade Capiconversa de ${valor} está disponível para pagamento via PIX. Acesse Meu plano no sistema para pagar.`
+      : `Sua mensalidade Capiconversa de ${valor} foi gerada. Acesse Meu plano no sistema para concluir o pagamento.`;
     await supabase.rpc("push_notificacao", {
       _company_id: companyId,
       _tipo: "cobranca",

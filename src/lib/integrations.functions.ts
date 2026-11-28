@@ -96,7 +96,7 @@ export const testWebhook = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const cid = await resolveCompanyId(context.supabase, context.userId);
     const { emitWebhook } = await import("./webhooks.server");
-    await emitWebhook(cid, "message.received", { teste: true, mensagem: "Disparo de teste do Capiversa CRM" }, data.id);
+    await emitWebhook(cid, "message.received", { teste: true, mensagem: "Disparo de teste do Capiconversa CRM" }, data.id);
     const { data: log } = await context.supabase
       .from("webhook_delivery_log")
       .select("status_code, erro")

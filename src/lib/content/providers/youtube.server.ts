@@ -101,7 +101,7 @@ export class YouTubePublisherAdapter implements SocialPublisherAdapter {
     }
 
     // Validações de título e COPPA
-    const effectiveTitle = (title?.trim() || platformSettings?.title?.trim() || caption?.slice(0, 95).trim() || "Vídeo Capiversa").slice(0, 100);
+    const effectiveTitle = (title?.trim() || platformSettings?.title?.trim() || caption?.slice(0, 95).trim() || "Vídeo Capiconversa").slice(0, 100);
     const madeForKids = Boolean(platformSettings?.madeForKids ?? false);
     const privacy = platformSettings?.privacyStatus || (scheduledAt ? "private" : "public");
 
@@ -109,7 +109,7 @@ export class YouTubePublisherAdapter implements SocialPublisherAdapter {
     const snippet: Record<string, any> = {
       title: effectiveTitle,
       description: caption || "",
-      tags: Array.isArray(platformSettings?.tags) ? platformSettings.tags : ["Capiversa", "Shorts"],
+      tags: Array.isArray(platformSettings?.tags) ? platformSettings.tags : ["Capiconversa", "Shorts"],
       categoryId: "22", // People & Blogs
     };
 

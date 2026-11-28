@@ -56,7 +56,7 @@ export function AuthShell({
           <div className="absolute top-8 right-8 xl:top-10 xl:right-10 z-20">
             <img
               src={capiversaLogo.url}
-              alt="Capi Conversa"
+              alt="Capiconversa"
               className="h-16 xl:h-20 w-auto drop-shadow-sm"
             />
           </div>
@@ -71,7 +71,7 @@ export function AuthShell({
 
             <img
               src={mascotLogin.url}
-              alt="Mascote Capi Conversa"
+              alt="Mascote Capiconversa"
               className="relative w-[72%] max-w-md h-auto object-contain drop-shadow-2xl"
               loading="eager"
             />
@@ -116,7 +116,7 @@ export function AuthShell({
             >
               <ArrowLeft className="size-4" /> login
             </Link>
-            <img src={capiversaLogo.url} alt="Capi Conversa" className="h-9 sm:h-11 w-auto" />
+            <img src={capiversaLogo.url} alt="Capiconversa" className="h-9 sm:h-11 w-auto" />
           </div>
 
           <div className="lg:hidden mb-3 sm:mb-5 relative">
@@ -125,7 +125,7 @@ export function AuthShell({
             </div>
             <img
               src={mascotLogin.url}
-              alt="Mascote Capi Conversa"
+              alt="Mascote Capiconversa"
               className="relative w-28 sm:w-40 h-auto object-contain drop-shadow-xl"
             />
           </div>

@@ -29,7 +29,7 @@ export const PLAN_MODULES: readonly PlanModuleDef[] = [
   { key: "api_webhooks", label: "API & Webhooks", description: "Integrações externas, tokens de API e disparos.", category: "operacao" },
   { key: "radar", label: "Radar de Prospecção B2B", description: "Captação e qualificação ativa de leads B2B.", category: "operacao" },
   { key: "r2_storage", label: "Mídia & Armazenamento", description: "Arquivamento de mídias e anexos das conversas.", category: "operacao" },
-  { key: "treinamentos", label: "Capiversa Academy", description: "Acesso à trilha de treinamentos e vídeos.", category: "operacao" },
+  { key: "treinamentos", label: "Capiconversa Academy", description: "Acesso à trilha de treinamentos e vídeos.", category: "operacao" },
   { key: "permite_dapi_trial", label: "Permitir WhatsApp QR (D-API) no Trial", description: "Libera conexão D-API com custo já durante o teste grátis.", category: "controle" },
 ] as const;
 

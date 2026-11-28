@@ -4260,7 +4260,7 @@ function AutomacaoCanvasPage() {
                         </label>
                       </div>
                       <p className="text-[10px] text-muted-foreground">
-                        Tamanho máximo: 15MB. Os arquivos são armazenados no bucket seguro do Capiversa.
+                        Tamanho máximo: 15MB. Os arquivos são armazenados no bucket seguro do Capiconversa.
                       </p>
                     </div>
 

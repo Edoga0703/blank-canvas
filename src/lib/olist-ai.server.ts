@@ -164,7 +164,7 @@ export async function criarPedidoIaOlist(
   const pedido = {
     pedido: {
       cliente: {
-        nome: dados.clienteNome.slice(0, 120) || "Cliente Capiversa",
+        nome: dados.clienteNome.slice(0, 120) || "Cliente Capiconversa",
         tipo_pessoa: "F",
         fone: dados.clienteFone ?? "",
       },
@@ -177,7 +177,7 @@ export async function criarPedidoIaOlist(
           valor_unitario: Math.max(0, Number(i.valorUnitario) || 0),
         },
       })),
-      obs: `Pedido fechado pelo Agente de IA do Capiversa CRM. Entrega: ${dados.entrega}. Pagamento: ${dados.pagamento}.`,
+      obs: `Pedido fechado pelo Agente de IA do Capiconversa CRM. Entrega: ${dados.entrega}. Pagamento: ${dados.pagamento}.`,
     },
   };
 

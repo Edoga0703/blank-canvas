@@ -223,7 +223,7 @@ export async function submit2FaPassword(
     sim.status = "authorized";
     sim.actorId = "874521369";
     sim.username = "empresa_marketing_oficial";
-    sim.displayName = "Capiversa Canais Brasil";
+    sim.displayName = "Capiconversa Canais Brasil";
   }
 
   return { success: true, status: "authorized" };

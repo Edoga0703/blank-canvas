@@ -6,7 +6,7 @@ import { resolveCompanyId } from "@/lib/whatsapp-helpers";
 export const registerLovableWhatsappConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input?: { displayName?: string | null; phone?: string | null }) => ({
-    displayName: input?.displayName?.trim().slice(0, 60) || "WhatsApp oficial de Capiversa",
+    displayName: input?.displayName?.trim().slice(0, 60) || "WhatsApp oficial de Capiconversa",
     phone: input?.phone?.replace(/\D/g, "").slice(0, 15) || null,
   }))
   .handler(async ({ context, data }) => {

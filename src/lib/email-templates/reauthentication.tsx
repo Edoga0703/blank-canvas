@@ -15,21 +15,21 @@ interface ReauthenticationEmailProps {
   siteName?: string
 }
 
-export const ReauthenticationEmail = ({ token, siteName = 'Capiversa' }: ReauthenticationEmailProps) => (
+export const ReauthenticationEmail = ({ token, siteName = 'Capiconversa' }: ReauthenticationEmailProps) => (
   <Html lang="pt-BR" dir="ltr">
     <Head />
     <Preview>Seu código de verificação</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Img src="https://capiconversa.com/capiversa-logo.png" alt={siteName} width="140" height="40" style={{ margin: "0 0 24px", display: "block" }} />
+        <Img src="https://capiconversa.com/capiconversa-logo.png" alt={siteName} width="140" height="40" style={{ margin: "0 0 24px", display: "block" }} />
         <Heading style={h1}>Confirme sua identidade</Heading>
         <Text style={text}>Use o código abaixo para confirmar sua identidade:</Text>
         <Text style={codeStyle}>{token}</Text>
         <Text style={footer}>
           Este código expira em breve. Se você não solicitou, pode ignorar este e-mail com segurança.
         </Text>
-        <Img src="https://capiconversa.com/assets/mascote-login.png" alt="Capiversa mascote" width="120" style={{ margin: '32px auto 8px', display: 'block' }} />
-        <Text style={{ ...footer, textAlign: 'center', margin: '0 0 4px' }}>Time Capiversa</Text>
+        <Img src="https://capiconversa.com/assets/mascote-login.png" alt="Capiconversa mascote" width="120" style={{ margin: '32px auto 8px', display: 'block' }} />
+        <Text style={{ ...footer, textAlign: 'center', margin: '0 0 4px' }}>Time Capiconversa</Text>
         <Text style={footer}>© {new Date().getFullYear()} {siteName}</Text>
       </Container>
     </Body>

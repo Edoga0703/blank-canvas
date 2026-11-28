@@ -57,7 +57,7 @@ export async function ensureInternalCompany(ownerUserId: string): Promise<Intern
   const { data: comp, error } = await supabaseAdmin
     .from("company")
     .insert({
-      nome: "Capiversa Admin",
+      nome: "Capiconversa Admin",
       slug: `capiversa-admin-${Math.random().toString(36).slice(2, 6)}`,
       is_internal: true,
       status_cobranca: "ativo",

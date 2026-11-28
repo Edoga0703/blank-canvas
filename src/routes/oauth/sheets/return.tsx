@@ -6,10 +6,10 @@ export const Route = createFileRoute("/oauth/sheets/return")({
   component: OAuthReturn,
   head: () => ({
     meta: [
-      { title: "Conectando Google Sheets | Capi Conversa" },
-      { name: "description", content: "Finalizando a conexão da sua conta do Google Sheets com o Capi Conversa." },
-      { property: "og:title", content: "Conectando Google Sheets | Capi Conversa" },
-      { property: "og:description", content: "Finalizando a conexão da sua conta do Google Sheets com o Capi Conversa." },
+      { title: "Conectando Google Sheets | Capiconversa" },
+      { name: "description", content: "Finalizando a conexão da sua conta do Google Sheets com o Capiconversa." },
+      { property: "og:title", content: "Conectando Google Sheets | Capiconversa" },
+      { property: "og:description", content: "Finalizando a conexão da sua conta do Google Sheets com o Capiconversa." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

@@ -163,7 +163,7 @@ export const exportContatosSheets = createServerFn({ method: "POST" })
     const criada = await sheets(context.userId, "/v4/spreadsheets", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ properties: { title: `Capiversa CRM — Contatos ${hoje}` } }),
+      body: JSON.stringify({ properties: { title: `Capiconversa CRM — Contatos ${hoje}` } }),
     });
     if (!criada.ok) return { ok: false as const, reconnect: criada.reconnect, erro: criada.erro };
     const id = criada.body.spreadsheetId as string;

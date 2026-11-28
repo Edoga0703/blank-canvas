@@ -245,7 +245,7 @@ function ContatosPage() {
 
       const ExcelJS = (await import("exceljs")).default;
       const wb = new ExcelJS.Workbook();
-      wb.creator = "Capi Conversa";
+      wb.creator = "Capiconversa";
       const fmtBR = (n: string) => {
         const d = String(n || "").replace(/\D/g, "");
         if (!d) return "";

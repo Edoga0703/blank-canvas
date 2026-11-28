@@ -423,13 +423,13 @@ export function OmnichannelAnalytics({ accounts }: Props) {
   // Copiar resumo executivo para WhatsApp ou relatório
   const handleCopySummary = () => {
     if (!isRealData) {
-      const summary = `📊 *RELATÓRIO PRELIMINAR DE REDES SOCIAIS (PROJEÇÃO DEMO)*\n⚠️ *Aviso de Homologação:* Este relatório apresenta métricas estimadas de demonstração. Dados oficiais de produção são consolidados após conexão com permissões de leitura das APIs.\n\nEmpresa: ${companyName}\nPeríodo: ${timeRange.toUpperCase()}\n\n👥 Audiência Projetada: ${totalFollowers.toLocaleString()} seguidores\n👀 Visualizações Estimadas: ${totalViews.toLocaleString()}\n💬 Interações Totais: ${totalInteractions.toLocaleString()}\n🎯 Oportunidades: ${totalLeads} leads projetados\n\nRelatório gerado pelo Capi Conversa CRM (Ambiente de Demonstração).`;
+      const summary = `📊 *RELATÓRIO PRELIMINAR DE REDES SOCIAIS (PROJEÇÃO DEMO)*\n⚠️ *Aviso de Homologação:* Este relatório apresenta métricas estimadas de demonstração. Dados oficiais de produção são consolidados após conexão com permissões de leitura das APIs.\n\nEmpresa: ${companyName}\nPeríodo: ${timeRange.toUpperCase()}\n\n👥 Audiência Projetada: ${totalFollowers.toLocaleString()} seguidores\n👀 Visualizações Estimadas: ${totalViews.toLocaleString()}\n💬 Interações Totais: ${totalInteractions.toLocaleString()}\n🎯 Oportunidades: ${totalLeads} leads projetados\n\nRelatório gerado pelo Capiconversa CRM (Ambiente de Demonstração).`;
       navigator.clipboard.writeText(summary);
       toast.info("Relatório de projeção copiado com aviso de homologação obrigatório.");
       return;
     }
 
-    const summary = `📊 *RELATÓRIO EXECUTIVO DE REDES SOCIAIS & INTELIGÊNCIA COMERCIAL*\nEmpresa: ${companyName}\nPeríodo: ${timeRange.toUpperCase()}\n\n👥 Audiência Consolidada: ${totalFollowers.toLocaleString()} seguidores\n👀 Visualizações / Impressões Reais: ${totalViews.toLocaleString()}\n💬 Interações Registradas: ${totalInteractions.toLocaleString()}\n🎯 Leads Atribuídos no CRM: ${totalLeads}\n💰 Receita Atribuída Confirmada: ${totalAttributedValue > 0 ? `$${totalAttributedValue.toLocaleString()} USD` : "Sem vendas confirmadas no período"}\n\nRelatório auditado gerado pelo Capi Conversa CRM.`;
+    const summary = `📊 *RELATÓRIO EXECUTIVO DE REDES SOCIAIS & INTELIGÊNCIA COMERCIAL*\nEmpresa: ${companyName}\nPeríodo: ${timeRange.toUpperCase()}\n\n👥 Audiência Consolidada: ${totalFollowers.toLocaleString()} seguidores\n👀 Visualizações / Impressões Reais: ${totalViews.toLocaleString()}\n💬 Interações Registradas: ${totalInteractions.toLocaleString()}\n🎯 Leads Atribuídos no CRM: ${totalLeads}\n💰 Receita Atribuída Confirmada: ${totalAttributedValue > 0 ? `$${totalAttributedValue.toLocaleString()} USD` : "Sem vendas confirmadas no período"}\n\nRelatório auditado gerado pelo Capiconversa CRM.`;
     navigator.clipboard.writeText(summary);
     toast.success("Relatório executivo copiado para a área de transferência!");
   };
@@ -468,7 +468,7 @@ export function OmnichannelAnalytics({ accounts }: Props) {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-bold text-foreground">
-              Painel Geral de Redes & Inteligência Capiversa
+              Painel Geral de Redes & Inteligência Capiconversa
             </h2>
             <Badge variant="outline" className={`text-[10px] font-bold uppercase ${isRealData ? "text-emerald-600 border-emerald-500/30" : "text-amber-600 border-amber-500/30"}`}>
               {isRealData ? "Métricas Reais" : "Projeção Simulada"}
@@ -831,7 +831,7 @@ export function OmnichannelAnalytics({ accounts }: Props) {
                 <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 flex items-start gap-2.5 text-xs text-foreground/90">
                   <Sparkles className="size-4 text-primary shrink-0 mt-0.5" />
                   <p className="leading-relaxed">
-                    <strong className="text-primary font-bold">Diagnóstico Capiversa:</strong> {post.aiInsight}
+                    <strong className="text-primary font-bold">Diagnóstico Capiconversa:</strong> {post.aiInsight}
                   </p>
                 </div>
               </div>
@@ -896,7 +896,7 @@ export function OmnichannelAnalytics({ accounts }: Props) {
           <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-primary" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-              Insights Estratégicos & Recomendações da IA Capiversa
+              Insights Estratégicos & Recomendações da IA Capiconversa
             </h3>
           </div>
           <span className="text-[11px] text-muted-foreground">Baseado no histórico comparativo de postagens</span>

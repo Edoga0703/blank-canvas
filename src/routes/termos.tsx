@@ -4,7 +4,7 @@ import { LegalShell } from "@/components/legal-shell";
 // ============================================================================
 // CONFIGURACIÓN DE IDENTIDAD Y MARCA (Actualizar con los datos definitivos)
 // ============================================================================
-const BRAND_NAME = "Capiversa";
+const BRAND_NAME = "Capiconversa";
 const SITE_URL = "https://capiconversa.com";
 const SUPPORT_EMAIL = "soporte@capiconversa.com";
 const TERMOS_URL = `${SITE_URL}/termos`;

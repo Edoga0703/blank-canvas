@@ -36,8 +36,8 @@ import androidStep2 from "@/assets/android-step-2.png.asset.json";
 import androidStep3 from "@/assets/android-step-3.png.asset.json";
 import androidStep4 from "@/assets/android-step-4.png.asset.json";
 
-const TITLE = "Capi Conversa no celular: CRM e WhatsApp na palma da mão";
-const DESC = "Instale o Capi Conversa no seu celular em 30 segundos. Responda leads, mova cards no Kanban e receba notificações onde você estiver.";
+const TITLE = "Capiconversa no celular: CRM e WhatsApp na palma da mão";
+const DESC = "Instale o Capiconversa no seu celular em 30 segundos. Responda leads, mova cards no Kanban e receba notificações onde você estiver.";
 const URL = "https://capiconversa.com/mobile";
 
 const IOS_STEPS = [
@@ -45,14 +45,14 @@ const IOS_STEPS = [
   { text: "2. Toque no botão de opções ou compartilhar.", img: iphoneStep2.url },
   { text: "3. Escolha “Adicionar à Tela de Início”.", img: iphoneStep3.url },
   { text: "4. Confirme em “Adicionar”.", img: iphoneStep4.url },
-  { text: "5. O Capi Conversa agora aparecerá junto aos seus apps instalados.", img: iphoneStep5.url },
+  { text: "5. O Capiconversa agora aparecerá junto aos seus apps instalados.", img: iphoneStep5.url },
 ];
 
 const ANDROID_STEPS = [
   { text: "1. Abra capiconversa.com no navegador e toque no menu ⋮ no canto superior.", img: androidStep1.url },
   { text: "2. Escolha “Instalar e criar atalho” ou “Instalar aplicativo”.", img: androidStep2.url },
   { text: "3. Confirme a instalação clicando em “Instalar”.", img: androidStep3.url },
-  { text: "4. O Capi Conversa agora aparecerá junto aos seus apps instalados.", img: androidStep4.url },
+  { text: "4. O Capiconversa agora aparecerá junto aos seus apps instalados.", img: androidStep4.url },
 ];
 
 const MOBILE_FEATURES = [
@@ -93,14 +93,14 @@ function MobilePage() {
           }} />
 
           <div className="lg:col-span-7 z-10 text-center lg:text-left space-y-6">
-            <img src={capiversaLogo.url} alt="Capi Conversa" className="h-12 md:h-16 w-auto mx-auto lg:mx-0 transition-all" />
+            <img src={capiversaLogo.url} alt="Capiconversa" className="h-12 md:h-16 w-auto mx-auto lg:mx-0 transition-all" />
             
             <div className="space-y-6">
               <h1 className="font-display font-black leading-[1.05] tracking-tight" style={{ fontSize: "clamp(2.5rem, 5vw, 5.5rem)" }}>
                 Seu CRM agora cabe no <span className="text-[#334155]">bolso.</span>
               </h1>
               <p className="text-lg md:text-xl text-[#0A0A0F]/70 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                Leve toda a potência do Capi Conversa para onde você estiver. Instalação rápida, interface fluida e produtividade máxima no celular.
+                Leve toda a potência do Capiconversa para onde você estiver. Instalação rápida, interface fluida e produtividade máxima no celular.
               </p>
             </div>
             
@@ -117,7 +117,7 @@ function MobilePage() {
                 <div className="absolute w-[85%] aspect-square rounded-full border border-dashed border-[#334155]/25" />
                 <div className="absolute w-[95%] aspect-square rounded-full bg-[#334155]/10 blur-3xl" />
              </div>
-             <img src={mascotMobile.url} alt="Mascote Capi Conversa Mobile" className="relative w-full max-w-md h-auto object-contain drop-shadow-2xl animate-[float_6s_ease-in-out_infinite]" />
+             <img src={mascotMobile.url} alt="Mascote Capiconversa Mobile" className="relative w-full max-w-md h-auto object-contain drop-shadow-2xl animate-[float_6s_ease-in-out_infinite]" />
           </div>
         </section>
 
@@ -348,7 +348,7 @@ function MobilePage() {
           
           <div className="relative pt-6 flex flex-wrap justify-center gap-4 z-10">
             <Button asChild size="lg" className="bg-white text-[#334155] hover:bg-slate-100 rounded-full h-16 px-12 font-black text-xl shadow-xl transition-all hover:scale-105 active:scale-95">
-              <a href="#instalar">Instalar Capi Conversa <Download className="ml-3 size-6" /></a>
+              <a href="#instalar">Instalar Capiconversa <Download className="ml-3 size-6" /></a>
             </Button>
           </div>
           
@@ -356,7 +356,7 @@ function MobilePage() {
         </section>
         
         <footer className="text-center pb-12 border-t border-slate-200 pt-12">
-          <img src={capiversaLogo.url} alt="Capi Conversa" className="h-6 w-auto mx-auto mb-6 opacity-30 grayscale" />
+          <img src={capiversaLogo.url} alt="Capiconversa" className="h-6 w-auto mx-auto mb-6 opacity-30 grayscale" />
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">© {new Date().getFullYear()} {brand.name}. Todos os direitos reservados.</p>
         </footer>
       </main>

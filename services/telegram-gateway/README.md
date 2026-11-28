@@ -1,4 +1,4 @@
-# Capiversa Telegram MTProto Gateway Sidecar (v1.3.07)
+# Capiconversa Telegram MTProto Gateway Sidecar (v1.3.07)
 
 Microservicio desacoplado para la conexión de cuentas personales y corporativas de Telegram vía código QR (MTProto 2.0), administración de canales, publicación multicanal y moderación de comentarios.
 
@@ -8,7 +8,7 @@ Microservicio desacoplado para la conexión de cuentas personales y corporativas
 
 * **Desacople de Edge / Nitro SSR:** Cloudflare Workers y los runtimes Serverless no admiten sockets TCP persistentes ni almacenamiento local de sesiones. Este gateway ejecuta un proceso Node.js persistente que mantiene vivas las conexiones MTProto con Telegram de manera aislada.
 * **Seguridad Multi-Tenant:** Cada empresa y cuenta conectada (`company_id`, `connection_id`) almacena su sesión cifrada en volúmenes persistentes independientes.
-* **Autenticación Interna:** Toda llamada entre el CRM principal de Capiversa y este microservicio requiere la cabecera `Authorization: Bearer <GATEWAY_SECRET>` o `x-gateway-secret: <GATEWAY_SECRET>`.
+* **Autenticación Interna:** Toda llamada entre el CRM principal de Capiconversa y este microservicio requiere la cabecera `Authorization: Bearer <GATEWAY_SECRET>` o `x-gateway-secret: <GATEWAY_SECRET>`.
 * **Zero Contraseñas Guardadas:** Las contraseñas de Verificación en Dos Pasos (2FA) se transmiten en un handshake único en memoria para desbloquear la sesión de Telegram y jamás se persisten en base de datos ni en logs.
 
 ---
@@ -18,7 +18,7 @@ Microservicio desacoplado para la conexión de cuentas personales y corporativas
 | Variable | Descripción | Requerido |
 |---|---|---|
 | `PORT` | Puerto HTTP donde corre el servicio (defecto: `3005`) | No |
-| `GATEWAY_SECRET` | Clave secreta compartida entre Capiversa CRM y el Gateway | Sí |
+| `GATEWAY_SECRET` | Clave secreta compartida entre Capiconversa CRM y el Gateway | Sí |
 | `TELEGRAM_API_ID` | Obtenido en https://my.telegram.org (App api_id) | Sí (para producción) |
 | `TELEGRAM_API_HASH` | Obtenido en https://my.telegram.org (App api_hash) | Sí (para producción) |
 | `SESSIONS_DATA_DIR` | Directorio local persistente para guardar archivos `.session` | No |

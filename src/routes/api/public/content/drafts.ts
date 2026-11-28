@@ -255,7 +255,7 @@ export const Route = createFileRoute("/api/public/content/drafts")({
               postId: post.id,
               state: post.approval_state,
               status: post.status,
-              message: "Borrador de IA registrado com sucesso. Aguardando revisão e aprovação humana no Capiversa.",
+              message: "Borrador de IA registrado com sucesso. Aguardando revisão e aprovação humana no Capiconversa.",
               targets: insertedTargets || [],
             }),
             {

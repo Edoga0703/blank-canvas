@@ -9,12 +9,13 @@ async function buildOrigin() {
   const { getRequest } = await import("@tanstack/react-start/server");
   const req = getRequest();
   const u = new URL(req.url);
-  if (u.host.includes("metrixcrm.com.br")) {
-    return "https://metrixcrm.com.br";
+  const fallback = (process.env.PUBLIC_APP_URL || "https://capiconversa.com").replace(/\/+$/, "");
+  if (u.host.includes("capiconversa.com")) {
+    return fallback;
   }
   const proto = req.headers.get("x-forwarded-proto") || u.protocol.replace(":", "");
   const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || u.host;
-  return `${proto}://${host}`;
+  return host ? `${proto}://${host}` : fallback;
 }
 
 
@@ -227,7 +228,7 @@ export const testGoogleCalendar = createServerFn({ method: "POST" })
       method: "POST",
       headers: { Authorization: `Bearer ${auth.token}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        summary: "Teste de integração — Capiversa CRM",
+        summary: "Teste de integração — Capiconversa CRM",
         description: "Evento de teste criado pelo plugin Google Calendar.",
         start: { dateTime: inicio.toISOString() },
         end: { dateTime: fim.toISOString() },

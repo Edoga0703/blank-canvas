@@ -79,12 +79,12 @@ export const Route = createFileRoute("/app/prospeccao")({
   beforeLoad: ({ context }) => requirePermission(context, "prospeccao.view"),
   head: () => ({
     meta: [
-      { title: "Radar de Prospecção | Capi Conversa" },
+      { title: "Radar de Prospecção | Capiconversa" },
       {
         name: "description",
         content: "Rastreie empresas no Google Maps e na base pública de CNPJ e envie para o CRM.",
       },
-      { property: "og:title", content: "Radar de Prospecção | Capi Conversa" },
+      { property: "og:title", content: "Radar de Prospecção | Capiconversa" },
       {
         property: "og:description",
         content: "Rastreie empresas no Google Maps e na base pública de CNPJ e envie para o CRM.",

@@ -1,10 +1,11 @@
-# Manual legado del proyecto original
+# Manual legado del proyecto original (Documentación histórica)
 
-> Este documento se conserva solamente como referencia histórica. Sus pasos,
-> nombres, secretos y afirmaciones sobre migraciones no describen Capiversa
-> v1.1. Utilice `README.md` y la documentación de `docs/` para la nueva base.
+> ⚠️ **Nota:** Este documento se conserva únicamente como referencia histórica de una
+> versión inicial heredada. Sus pasos, nombres de variables, endpoints y afirmaciones
+> sobre migraciones no reflejan la arquitectura actual de **Capiconversa** (D-API, Meta,
+> Telegram y Supabase self-hosted). Utilice `README.md` y `docs/` como referencia vigente.
 
-# 📘 Manual do Clonador — AtendeZap AI
+# 📘 Manual de Referência Histórica — Capiconversa
 
 Guia passo a passo para colocar sua cópia no ar. **Siga na ordem.** Onde tiver bloco `> PROMPT`, **copie e cole no chat do Lovable** exatamente como está.
 
@@ -133,7 +134,7 @@ Só faça se quiser cobrar cartão automaticamente.
 Já está pronta no código. Só precisa do **Passo 2** ter sido feito + adicionar o redirect URI no Google Cloud Console:
 
 ```
-https://atendezap.live/api/public/google-callback
+https://capiconversa.com/api/public/google-callback
 ```
 
 Cada cliente conecta a própria conta em `/app/agente/avancado` → botão "Conectar Google Agenda".
@@ -144,7 +145,7 @@ Cada cliente conecta a própria conta em `/app/agente/avancado` → botão "Cone
 
 No topo do Lovable → botão **"Publish"** → confirme.
 
-Sua URL: `https://atendezap.live`
+Sua URL: `https://capiconversa.com`
 Para domínio próprio: Project Settings → Domains.
 
 ---

@@ -47,7 +47,7 @@ function NotFoundComponent() {
 
       <header className="relative z-10 px-5 sm:px-8 py-5">
         <Link to="/" className="inline-flex items-center">
-           <img src={capiversaLogo.url} alt="Capiversa" className="h-8 sm:h-9 w-auto" />
+           <img src={capiversaLogo.url} alt="Capiconversa" className="h-8 sm:h-9 w-auto" />
         </Link>
       </header>
 
@@ -90,7 +90,7 @@ function NotFoundComponent() {
               />
               <img
                 src={mascotLogin.url}
-                alt="Capiversa"
+                alt="Capiconversa"
                 className="relative h-56 sm:h-72 lg:h-80 w-auto drop-shadow-2xl"
               />
             </div>
@@ -174,21 +174,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-       { title: "Capiversa — WhatsApp com IA + CRM Kanban" },
+       { title: "Capiconversa — WhatsApp com IA + CRM Kanban" },
       { name: "description", content: "Conecte o WhatsApp, deixe a IA atender e organize seus leads em um kanban arrastável." },
-       { name: "author", content: "Capiversa" },
+       { name: "author", content: "Capiconversa" },
       { name: "google-site-verification", content: "hsdXT_bpeecFPBeT-jTzjGHxswmPzR4o7aR-JfLkIoU" },
        { name: "theme-color", content: "#334155" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
-       { name: "apple-mobile-web-app-title", content: "Capiversa" },
-       { name: "application-name", content: "Capiversa" },
-       { property: "og:title", content: "Capiversa — WhatsApp com IA + CRM Kanban" },
+       { name: "apple-mobile-web-app-title", content: "Capiconversa" },
+       { name: "application-name", content: "Capiconversa" },
+       { property: "og:title", content: "Capiconversa — WhatsApp com IA + CRM Kanban" },
       { property: "og:description", content: "Conecte o WhatsApp, deixe a IA atender e organize seus leads em um kanban arrastável." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-       { name: "twitter:title", content: "Capiversa — WhatsApp com IA + CRM Kanban" },
+       { name: "twitter:title", content: "Capiconversa — WhatsApp com IA + CRM Kanban" },
       { name: "twitter:description", content: "Conecte o WhatsApp, deixe a IA atender e organize seus leads em um kanban arrastável." },
     ],
     links: [

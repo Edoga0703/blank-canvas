@@ -293,7 +293,7 @@ function EntrarPage() {
           </div>
 
           <div className="absolute top-8 right-8 xl:top-10 xl:right-10 z-20">
-            <img src={capiversaLogo.url} alt="Capi Conversa" className="h-16 xl:h-20 w-auto drop-shadow-sm" />
+            <img src={capiversaLogo.url} alt="Capiconversa" className="h-16 xl:h-20 w-auto drop-shadow-sm" />
           </div>
 
           <div className="relative flex-1 flex items-center justify-center">
@@ -306,7 +306,7 @@ function EntrarPage() {
 
             <img
               src={mascotLogin.url}
-              alt="Mascote Capi Conversa"
+              alt="Mascote Capiconversa"
               className="relative w-[78%] max-w-md h-auto object-contain drop-shadow-2xl"
               loading="eager"
             />
@@ -365,7 +365,7 @@ function EntrarPage() {
             <Link to="/" className="inline-flex items-center gap-2 text-sm text-[#12263A]/60 hover:text-[#334155]">
               <ArrowLeft className="size-4" /> voltar
             </Link>
-            <img src={capiversaLogo.url} alt="Capi Conversa" className="h-9 sm:h-11 w-auto" />
+            <img src={capiversaLogo.url} alt="Capiconversa" className="h-9 sm:h-11 w-auto" />
           </div>
 
           <div className="lg:hidden mb-3 sm:mb-5 relative">
@@ -374,7 +374,7 @@ function EntrarPage() {
             </div>
             <img
               src={mascotLogin.url}
-              alt="Mascote Capi Conversa"
+              alt="Mascote Capiconversa"
               className="relative w-28 sm:w-40 md:w-48 h-auto object-contain drop-shadow-xl"
             />
           </div>

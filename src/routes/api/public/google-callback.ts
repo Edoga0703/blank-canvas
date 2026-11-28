@@ -17,11 +17,13 @@ export const Route = createFileRoute("/api/public/google-callback")({
         if (!clientId || !clientSecret) return new Response("oauth not configured", { status: 500 });
 
         const envUrl = process.env.PUBLIC_APP_URL || process.env.APP_URL;
+        const fallback = (process.env.PUBLIC_APP_URL || "https://capiconversa.com").replace(/\/+$/, "");
+        const fwdHost = request.headers.get("x-forwarded-host") || url.host;
         const origin = envUrl
           ? envUrl.replace(/\/+$/, "")
-          : url.host.includes("metrixcrm.com.br")
-          ? "https://metrixcrm.com.br"
-          : `${request.headers.get("x-forwarded-proto") || url.protocol.replace(":", "")}://${request.headers.get("x-forwarded-host") || url.host}`;
+          : url.host.includes("capiconversa.com") || !fwdHost
+          ? fallback
+          : `${request.headers.get("x-forwarded-proto") || url.protocol.replace(":", "")}://${fwdHost}`;
         const redirectUri = `${origin}/api/public/google-callback`;
         const tokRes = await fetch("https://oauth2.googleapis.com/token", {
           method: "POST",

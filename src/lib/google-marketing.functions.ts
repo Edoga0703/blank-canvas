@@ -20,9 +20,12 @@ async function ctx(context: any, servico: Servico) {
 }
 
 async function origem() {
+  const envUrl = process.env.PUBLIC_APP_URL || process.env.APP_URL;
+  if (envUrl) return envUrl.replace(/\/+$/, "");
   const { getRequest } = await import("@tanstack/react-start/server");
   const u = new URL(getRequest().url);
-  if (u.host.includes("metrixcrm.com.br")) return "https://metrixcrm.com.br";
+  const fallback = (process.env.PUBLIC_APP_URL || "https://capiconversa.com").replace(/\/+$/, "");
+  if (u.host.includes("capiconversa.com") || !u.host) return fallback;
   return `${u.protocol}//${u.host}`;
 }
 

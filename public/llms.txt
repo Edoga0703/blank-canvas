@@ -1,12 +1,12 @@
-# Metrix CRM
+# Capiconversa
 
-> IA que atende seu WhatsApp 24/7 e organiza leads em um CRM Kanban automaticamente.
+> IA que atiende tu WhatsApp 24/7 y organiza leads en un CRM Kanban automáticamente.
 
-Metrix CRM conecta seu número de WhatsApp, deixa uma IA responder e qualificar cada lead em segundos, e move os cards no funil Kanban sem esforço manual. Foco em times de vendas que querem parar de perder oportunidade por demora de atendimento.
+Capiconversa conecta tus canales de WhatsApp y mensajería, deja que una IA responda y califique cada lead en segundos y mueve las tarjetas en el embudo Kanban sin esfuerzo manual. Pensado para equipos comerciales que no quieren perder oportunidades por demoras en la atención.
 
 ## Pages
 
-- [Home](/): visão geral, como funciona, planos e demonstração.
-- [Termos e Condições](/termos): termos de uso do serviço.
-- [Política de Privacidade](/privacidade): tratamento de dados (LGPD).
-- [Política de Reembolso](/reembolso): garantia de 30 dias.
+- [Home](/): visión general, funcionamiento, planes y demostración.
+- [Términos y Condiciones](/termos): términos de uso del servicio.
+- [Política de Privacidad](/privacidade): tratamiento de datos y cumplimiento.
+- [Política de Reembolso](/reembolso): garantía de 30 días.

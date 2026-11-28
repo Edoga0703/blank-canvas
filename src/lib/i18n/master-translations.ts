@@ -872,7 +872,7 @@ Object.assign(MASTER_STRINGS, {
   "Novo banner": { es: "Nuevo banner", en: "New banner" },
   "Nenhum banner cadastrado.": { es: "No hay banners registrados.", en: "No banners created." },
   "Editar banner": { es: "Editar banner", en: "Edit banner" },
-  "Administre o portal de treinamentos Capi Conversa.": { es: "Administra el portal de capacitación Capi Conversa.", en: "Manage the Capi Conversa training portal." },
+  "Administre o portal de treinamentos Capiconversa.": { es: "Administra el portal de capacitación Capiconversa.", en: "Manage the Capiconversa training portal." },
   "Gerencie o conteúdo e organização dos treinamentos.": { es: "Gestiona el contenido y la organización de las capacitaciones.", en: "Manage training content and organization." },
   "Carregando portal...": { es: "Cargando portal...", en: "Loading portal..." },
   "Selecione um curso para gerenciar módulos e aulas.": { es: "Selecciona un curso para gestionar módulos y clases.", en: "Select a course to manage modules and lessons." },

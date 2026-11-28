@@ -12,10 +12,10 @@ import { EmailChangeEmail } from '@/lib/email-templates/email-change'
 import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 
 const EMAIL_SUBJECTS: Record<string, string> = {
-  signup: 'Confirme seu e-mail no Capiversa',
-  invite: 'Você foi convidado para o Capiversa',
-  magiclink: 'Seu link de acesso ao Capiversa',
-  recovery: 'Redefinir sua senha do Capiversa',
+  signup: 'Confirme seu e-mail no Capiconversa',
+  invite: 'Você foi convidado para o Capiconversa',
+  magiclink: 'Seu link de acesso ao Capiconversa',
+  recovery: 'Redefinir sua senha do Capiconversa',
   email_change: 'Confirme a alteração de e-mail',
   reauthentication: 'Seu código de verificação',
 }
@@ -31,7 +31,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "Capiversa"
+const SITE_NAME = "Capiconversa"
 const SENDER_DOMAIN = "notify.capiconversa.com"
 const ROOT_DOMAIN = "capiconversa.com"
 const FROM_DOMAIN = "capiconversa.com"
@@ -166,7 +166,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
             run_id,
             message_id: messageId,
             to: payload.data.email,
-            from: `Capiversa <noreply@${FROM_DOMAIN}>`,
+            from: `Capiconversa <noreply@${FROM_DOMAIN}>`,
             sender_domain: SENDER_DOMAIN,
             subject: EMAIL_SUBJECTS[emailType] || 'Notification',
             html,

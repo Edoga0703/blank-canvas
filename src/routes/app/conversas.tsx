@@ -126,9 +126,9 @@ export const Route = createFileRoute("/app/conversas")({
   head: () => ({
     meta: [
       { title: `${brand.name} — Conversas` },
-      { name: "description", content: "Central de conversas e grupos do WhatsApp no Capi Conversa." },
+      { name: "description", content: "Central de conversas e grupos do WhatsApp no Capiconversa." },
       { property: "og:title", content: `${brand.name} — Conversas` },
-      { property: "og:description", content: "Central de conversas e grupos do WhatsApp no Capi Conversa." },
+      { property: "og:description", content: "Central de conversas e grupos do WhatsApp no Capiconversa." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -3102,7 +3102,7 @@ function ConversasPage() {
                                   className="text-red-500 focus:text-red-500 focus:bg-red-50"
                                   onClick={(e) => { 
                                     e.stopPropagation(); 
-                                    if(confirm(`Deseja apagar a conversa de "${c.nome || c.numero}" apenas no sistema Capi Conversa?`)) {
+                                    if(confirm(`Deseja apagar a conversa de "${c.nome || c.numero}" apenas no sistema Capiconversa?`)) {
                                       runAction(c.numero, "excluir_local"); 
                                     }
                                   }}

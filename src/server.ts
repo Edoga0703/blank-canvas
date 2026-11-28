@@ -33,13 +33,34 @@ function isRequestAbort(error: unknown): boolean {
   return error.name === "AbortError" || causeCode === "ECONNRESET" || message.includes("aborted");
 }
 
+function applyHtmlSecurityHeaders(response: Response): Response {
+  const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
+  if (!contentType.includes("text/html")) return response;
+
+  const headers = new Headers(response.headers);
+  if (!headers.has("X-Frame-Options")) {
+    headers.set("X-Frame-Options", "SAMEORIGIN");
+  }
+  const existingCsp = headers.get("Content-Security-Policy");
+  if (!existingCsp) {
+    headers.set("Content-Security-Policy", "frame-ancestors 'self'");
+  } else if (!/frame-ancestors/i.test(existingCsp)) {
+    headers.set("Content-Security-Policy", `${existingCsp}; frame-ancestors 'self'`);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 async function normalizeCatastrophicSsrResponse(
   response: Response,
   request: Request,
 ): Promise<Response> {
-  if (response.status < 500) return response;
+  if (response.status < 500) return applyHtmlSecurityHeaders(response);
   const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) return response;
+  if (!contentType.includes("application/json")) return applyHtmlSecurityHeaders(response);
 
   const body = await response.clone().text();
   if (!body.includes('"unhandled":true') || !body.includes('"message":"HTTPError"')) {
@@ -55,10 +76,10 @@ async function normalizeCatastrophicSsrResponse(
   }
 
   console.error(capturedError ?? new Error(`h3 swallowed SSR error: ${body}`));
-  return new Response(renderErrorPage(), {
+  return applyHtmlSecurityHeaders(new Response(renderErrorPage(), {
     status: 500,
     headers: { "content-type": "text/html; charset=utf-8" },
-  });
+  }));
 }
 
 export default {
@@ -96,10 +117,10 @@ export default {
         return new Response(null, { status: 499 });
       }
       console.error(error);
-      return new Response(renderErrorPage(), {
+      return applyHtmlSecurityHeaders(new Response(renderErrorPage(), {
         status: 500,
         headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      }));
     }
   },
 };

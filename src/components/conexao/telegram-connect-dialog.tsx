@@ -276,7 +276,7 @@ export function TelegramConnectDialog({
       });
 
       toast.success(
-        `${res.linkedCount} canais vinculados com sucesso ao Capiversa CRM!`,
+        `${res.linkedCount} canais vinculados com sucesso ao Capiconversa CRM!`,
       );
       await carregarContas();
       setMtprotoStep("list");

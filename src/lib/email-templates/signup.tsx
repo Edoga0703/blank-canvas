@@ -30,7 +30,7 @@ export const SignupEmail = ({
     <Preview>Confirme seu e-mail no {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Img src="https://capiconversa.com/capiversa-logo.png" alt={siteName} width="140" height="40" style={{ margin: "0 0 24px", display: "block" }} />
+        <Img src="https://capiconversa.com/capiconversa-logo.png" alt={siteName} width="140" height="40" style={{ margin: "0 0 24px", display: "block" }} />
         <Heading style={h1}>Confirme seu e-mail</Heading>
         <Text style={text}>
           Obrigado por criar sua conta no{' '}
@@ -52,8 +52,8 @@ export const SignupEmail = ({
         <Text style={footer}>
           Se você não criou uma conta, pode ignorar este e-mail com segurança.
         </Text>
-        <Img src="https://capiconversa.com/assets/mascote-login.png" alt="Capiversa mascote" width="120" style={{ margin: '32px auto 8px', display: 'block' }} />
-        <Text style={{ ...footer, textAlign: 'center', margin: '0 0 4px' }}>Time Capiversa</Text>
+        <Img src="https://capiconversa.com/assets/mascote-login.png" alt="Capiconversa mascote" width="120" style={{ margin: '32px auto 8px', display: 'block' }} />
+        <Text style={{ ...footer, textAlign: 'center', margin: '0 0 4px' }}>Time Capiconversa</Text>
         <Text style={footer}>© {new Date().getFullYear()} {siteName}</Text>
       </Container>
     </Body>

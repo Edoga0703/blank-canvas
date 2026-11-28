@@ -11,7 +11,7 @@ export function LegalShell({
   updatedAt?: string;
   children: React.ReactNode;
 }) {
-  const brandName = brand?.name || "TuSaaS CRM";
+  const brandName = brand?.name || "Capiconversa";
 
   return (
     <div className="public-surface relative min-h-screen bg-[#F8F9FA] text-[#0F172A] overflow-hidden">

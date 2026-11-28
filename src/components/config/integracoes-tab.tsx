@@ -67,7 +67,7 @@ export function IntegracoesTab() {
     navigator.clipboard.writeText(text).then(() => toast.success("Copiado"));
   }
 
-  const snippetHtml = `<!-- Capi Conversa — Captura de leads (cole antes de </body>) -->
+  const snippetHtml = `<!-- Capiconversa — Captura de leads (cole antes de </body>) -->
 <script>
 (function(){
   var TOKEN = "${activeToken}";

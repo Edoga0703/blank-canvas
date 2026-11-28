@@ -108,7 +108,7 @@ const sections: { label: string; items: (NavItem & { flag?: string })[] }[] = [
       { to: "/app/catalogo", label: "Catálogo", icon: Package, flag: "module.catalogo", permission: "catalogo.manage" },
       { to: "/app/publicacoes", label: "Publicações", icon: Share2, tag: "Meta", flag: "module.publicacoes", permission: "conteudo.publish" },
       { to: "/app/conteudo", label: "Conteúdo", icon: Images, tag: "Social", permission: "conteudo.publish" },
-      { to: "/app/treinamentos", label: "Capi Conversa Academy", icon: GraduationCap, tag: "Interno", superOnly: true, flag: "module.treinamentos" },
+      { to: "/app/treinamentos", label: "Capiconversa Academy", icon: GraduationCap, tag: "Interno", superOnly: true, flag: "module.treinamentos" },
     ],
   },
   {
@@ -147,7 +147,7 @@ const routeSubtitles: Record<string, string> = {
   "/app/campanhas": "Disparos em massa",
   "/app/templates": "Modelos HSM aprovados pela Meta",
   "/app/catalogo": "Produtos e serviços",
-  "/app/treinamentos": "Centro de treinamento e vídeo aulas do Capi Conversa Academy",
+  "/app/treinamentos": "Centro de treinamento e vídeo aulas do Capiconversa Academy",
   "/app/conexao": "Status do WhatsApp",
   "/app/usuarios": "Gerencie usuários, funções e permissões",
   "/app/configuracoes": "Preferências da conta",
@@ -561,8 +561,8 @@ function Sidebar({
         className={`hidden lg:flex ${width} shrink-0 h-full min-h-0 flex-col transition-all duration-200 bg-card text-foreground border-r border-border shadow-sm`}
      >
        <div className={`h-[72px] shrink-0 flex items-center border-b border-border ${collapsed ? "justify-center" : "gap-1 px-3"}`}>
-         <Link to="/app/dashboard" title="Capi Conversa" className={collapsed ? "grid size-11 place-items-center rounded-xl bg-muted overflow-hidden" : "flex-1 min-w-0 flex items-center justify-center"}>
-           {collapsed ? <img src="/favicon.png" alt="Capi Conversa" className="size-9 object-contain" /> : <img src={logoFull.url} alt={brand.name} className="h-11 w-full object-contain dark:brightness-0 dark:invert" />}
+         <Link to="/app/dashboard" title="Capiconversa" className={collapsed ? "grid size-11 place-items-center rounded-xl bg-muted overflow-hidden" : "flex-1 min-w-0 flex items-center justify-center"}>
+           {collapsed ? <img src="/favicon.png" alt="Capiconversa" className="size-9 object-contain" /> : <img src={logoFull.url} alt={brand.name} className="h-11 w-full object-contain dark:brightness-0 dark:invert" />}
          </Link>
          {!collapsed && <button type="button" onClick={onToggleCollapsed} title={t("nav.collapse_menu", undefined, "Recolher menu")} aria-label={t("nav.collapse_menu", undefined, "Recolher menu")} className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-foreground hover:bg-accent"><ChevronsLeft className="size-5" /></button>}
        </div>

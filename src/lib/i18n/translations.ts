@@ -1,4 +1,4 @@
-// Dicionário mestre de traduções do Capi Conversa
+// Dicionário mestre de traduções do Capiconversa
 // Suporta 3 idiomas de primeira classe: Espanhol (es), Inglês (en), Português (pt)
 
 export type SupportedLanguage = "es" | "en" | "pt";
@@ -114,7 +114,7 @@ export const translations: Record<SupportedLanguage, Record<string, any>> = {
       "catalog": "Catálogo",
       "publications": "Publicaciones",
       "content": "Contenido",
-      "academy": "Capiversa Academy",
+      "academy": "Capiconversa Academy",
       "users": "Usuarios",
       "connection": "Conexión",
       "tracking": "Tracking",
@@ -1157,7 +1157,7 @@ export const translations: Record<SupportedLanguage, Record<string, any>> = {
       "suggest_integration": "Sugerir Integración"
     },
     "academy": {
-      "title": "Capiversa Academy",
+      "title": "Capiconversa Academy",
       "home": "Inicio",
       "support": "Soporte",
       "community": "Comunidad",
@@ -1302,7 +1302,7 @@ export const translations: Record<SupportedLanguage, Record<string, any>> = {
       "catalog": "Catalog",
       "publications": "Publications",
       "content": "Content",
-      "academy": "Capiversa Academy",
+      "academy": "Capiconversa Academy",
       "users": "Users",
       "connection": "Connection",
       "tracking": "Tracking",
@@ -2345,7 +2345,7 @@ export const translations: Record<SupportedLanguage, Record<string, any>> = {
       "suggest_integration": "Suggest Integration"
     },
     "academy": {
-      "title": "Capiversa Academy",
+      "title": "Capiconversa Academy",
       "home": "Home",
       "support": "Support",
       "community": "Community",
@@ -2490,7 +2490,7 @@ export const translations: Record<SupportedLanguage, Record<string, any>> = {
       "catalog": "Catálogo",
       "publications": "Publicações",
       "content": "Conteúdo",
-      "academy": "Capi Conversa Academy",
+      "academy": "Capiconversa Academy",
       "users": "Usuários",
       "connection": "Conexão",
       "tracking": "Tracking",
@@ -3533,7 +3533,7 @@ export const translations: Record<SupportedLanguage, Record<string, any>> = {
       "suggest_integration": "Sugerir Integração"
     },
     "academy": {
-      "title": "Capiversa Academy",
+      "title": "Capiconversa Academy",
       "home": "Início",
       "support": "Suporte",
       "community": "Comunidade",

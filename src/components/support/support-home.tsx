@@ -115,7 +115,7 @@ export function SupportHome({
             ref={inputRef}
             value={q}
             onChange={(e) => { setQ(e.target.value); if (e.target.value) setCat(null); }}
-            placeholder="Pergunte qualquer coisa ao Capi Conversa…"
+            placeholder="Pergunte qualquer coisa ao Capiconversa…"
             className="w-full pl-9 pr-3 py-2.5 rounded-xl border-0 bg-muted/60 text-sm outline-none focus:outline-none focus:ring-0"
           />
         </div>

@@ -9,7 +9,7 @@ export type SignupWelcomeConfig = {
 };
 
 export const DEFAULT_WELCOME_MESSAGE =
-  "Olá {nome}! 👋 Aqui é a Capiversa. Sua conta foi criada com sucesso. Qualquer dúvida, é só responder por aqui que a gente te ajuda a começar.";
+  "Olá {nome}! 👋 Aqui é o Capiconversa. Sua conta foi criada com sucesso. Qualquer dúvida, é só responder por aqui que a gente te ajuda a começar.";
 
 function renderMessage(tpl: string, vars: { nome: string; email: string; telefone: string }) {
   let out = tpl || DEFAULT_WELCOME_MESSAGE;

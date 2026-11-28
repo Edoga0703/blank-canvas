@@ -53,7 +53,6 @@ import { Route as AppTemplatesRouteImport } from './routes/app/templates'
 import { Route as AppTreinamentosRouteImport } from './routes/app/treinamentos'
 import { Route as AppUsuariosRouteImport } from './routes/app/usuarios'
 import { Route as ComparativoCapiversaVsBotconversaRouteImport } from './routes/comparativo.capiversa-vs-botconversa'
-import { Route as ComparativoMetrixVsBotconversaRouteImport } from './routes/comparativo.metrix-vs-botconversa'
 import { Route as CsatTokenRouteImport } from './routes/csat.$token'
 import { Route as FSlugRouteImport } from './routes/f.$slug'
 import { Route as MasterIndexRouteImport } from './routes/master/index'
@@ -356,12 +355,6 @@ const ComparativoCapiversaVsBotconversaRoute =
   ComparativoCapiversaVsBotconversaRouteImport.update({
     id: '/comparativo/capiversa-vs-botconversa',
     path: '/comparativo/capiversa-vs-botconversa',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ComparativoMetrixVsBotconversaRoute =
-  ComparativoMetrixVsBotconversaRouteImport.update({
-    id: '/comparativo/metrix-vs-botconversa',
-    path: '/comparativo/metrix-vs-botconversa',
     getParentRoute: () => rootRouteImport,
   } as any)
 const CsatTokenRoute = CsatTokenRouteImport.update({
@@ -837,7 +830,6 @@ export interface FileRoutesByFullPath {
   '/app/treinamentos': typeof AppTreinamentosRouteWithChildren
   '/app/usuarios': typeof AppUsuariosRoute
   '/comparativo/capiversa-vs-botconversa': typeof ComparativoCapiversaVsBotconversaRoute
-  '/comparativo/metrix-vs-botconversa': typeof ComparativoMetrixVsBotconversaRoute
   '/csat/$token': typeof CsatTokenRoute
   '/f/$slug': typeof FSlugRoute
   '/master/addons': typeof MasterAddonsRoute
@@ -961,7 +953,6 @@ export interface FileRoutesByTo {
   '/app/templates': typeof AppTemplatesRoute
   '/app/usuarios': typeof AppUsuariosRoute
   '/comparativo/capiversa-vs-botconversa': typeof ComparativoCapiversaVsBotconversaRoute
-  '/comparativo/metrix-vs-botconversa': typeof ComparativoMetrixVsBotconversaRoute
   '/csat/$token': typeof CsatTokenRoute
   '/f/$slug': typeof FSlugRoute
   '/master/addons': typeof MasterAddonsRoute
@@ -1089,7 +1080,6 @@ export interface FileRoutesById {
   '/app/treinamentos': typeof AppTreinamentosRouteWithChildren
   '/app/usuarios': typeof AppUsuariosRoute
   '/comparativo/capiversa-vs-botconversa': typeof ComparativoCapiversaVsBotconversaRoute
-  '/comparativo/metrix-vs-botconversa': typeof ComparativoMetrixVsBotconversaRoute
   '/csat/$token': typeof CsatTokenRoute
   '/f/$slug': typeof FSlugRoute
   '/master/addons': typeof MasterAddonsRoute
@@ -1218,7 +1208,6 @@ export interface FileRouteTypes {
     | '/app/treinamentos'
     | '/app/usuarios'
     | '/comparativo/capiversa-vs-botconversa'
-    | '/comparativo/metrix-vs-botconversa'
     | '/csat/$token'
     | '/f/$slug'
     | '/master/addons'
@@ -1342,7 +1331,6 @@ export interface FileRouteTypes {
     | '/app/templates'
     | '/app/usuarios'
     | '/comparativo/capiversa-vs-botconversa'
-    | '/comparativo/metrix-vs-botconversa'
     | '/csat/$token'
     | '/f/$slug'
     | '/master/addons'
@@ -1469,7 +1457,6 @@ export interface FileRouteTypes {
     | '/app/treinamentos'
     | '/app/usuarios'
     | '/comparativo/capiversa-vs-botconversa'
-    | '/comparativo/metrix-vs-botconversa'
     | '/csat/$token'
     | '/f/$slug'
     | '/master/addons'
@@ -1570,7 +1557,6 @@ export interface RootRouteChildren {
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ComparativoCapiversaVsBotconversaRoute: typeof ComparativoCapiversaVsBotconversaRoute
-  ComparativoMetrixVsBotconversaRoute: typeof ComparativoMetrixVsBotconversaRoute
   CsatTokenRoute: typeof CsatTokenRoute
   FSlugRoute: typeof FSlugRoute
   WaCallbackRoute: typeof WaCallbackRoute
@@ -1933,13 +1919,6 @@ declare module '@tanstack/react-router' {
       path: '/comparativo/capiversa-vs-botconversa'
       fullPath: '/comparativo/capiversa-vs-botconversa'
       preLoaderRoute: typeof ComparativoCapiversaVsBotconversaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/comparativo/metrix-vs-botconversa': {
-      id: '/comparativo/metrix-vs-botconversa'
-      path: '/comparativo/metrix-vs-botconversa'
-      fullPath: '/comparativo/metrix-vs-botconversa'
-      preLoaderRoute: typeof ComparativoMetrixVsBotconversaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/csat/$token': {
@@ -2672,7 +2651,6 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ComparativoCapiversaVsBotconversaRoute:
     ComparativoCapiversaVsBotconversaRoute,
-  ComparativoMetrixVsBotconversaRoute: ComparativoMetrixVsBotconversaRoute,
   CsatTokenRoute: CsatTokenRoute,
   FSlugRoute: FSlugRoute,
   WaCallbackRoute: WaCallbackRoute,

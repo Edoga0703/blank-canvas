@@ -39,7 +39,7 @@ export const Route = createRoute("/master/treinamentos")({
   head: () => ({
     meta: [
       { title: `${brand.name} — Gestão de Academia` },
-      { name: "description", content: "Administre o portal de treinamentos Capi Conversa." }
+      { name: "description", content: "Administre o portal de treinamentos Capiconversa." }
     ]
   }),
   component: MasterTrainingPage,
@@ -180,7 +180,7 @@ function MasterTrainingPage() {
                   id: courseModal.data?.id,
                   title: String(form.get("title") || ""),
                   description: String(form.get("description") || ""),
-                  instructor: String(form.get("instructor") || "Capi Conversa"),
+                  instructor: String(form.get("instructor") || "Capiconversa"),
                   thumbnail: String(form.get("thumbnail") || ""),
                   category_id: String(form.get("category_id") || "") || undefined,
                   is_published: form.get("is_published") === "on",
@@ -206,7 +206,7 @@ function MasterTrainingPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>{mt("Instrutor")}</Label>
-                <Input name="instructor" defaultValue={courseModal.data?.instructor || "Capi Conversa"} />
+                <Input name="instructor" defaultValue={courseModal.data?.instructor || "Capiconversa"} />
               </div>
               <div>
                 <Label>{mt("Categoria")}</Label>
@@ -356,7 +356,7 @@ function MasterCoursesList({ courses, onEdit, onDelete }: { courses: any[]; onEd
           <CardHeader className="p-4 pb-2">
             <Badge variant="outline" className="w-fit text-[10px] mb-1">{course.category?.name || 'Sem Categoria'}</Badge>
             <CardTitle className="text-lg">{course.title}</CardTitle>
-            <CardDescription className="text-xs line-clamp-1">{course.instructor || 'Capi Conversa'}</CardDescription>
+            <CardDescription className="text-xs line-clamp-1">{course.instructor || 'Capiconversa'}</CardDescription>
           </CardHeader>
           <CardFooter className="p-4 pt-2 flex gap-2">
             <Button onClick={() => onEdit(course)} variant="outline" size="sm" className="flex-1 h-8 text-xs cursor-pointer">

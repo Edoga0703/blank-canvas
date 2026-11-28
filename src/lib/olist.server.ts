@@ -63,12 +63,12 @@ export async function criarPedidoOlist(
 ) {
   const valor = Math.max(0, Number(venda.valor_cents) || 0) / 100;
   const descricao =
-    (venda.item_nome || venda.descricao || "Venda Capiversa CRM").slice(0, 120);
+    (venda.item_nome || venda.descricao || "Venda Capiconversa CRM").slice(0, 120);
 
   const pedido = {
     pedido: {
       cliente: {
-        nome: venda.contato_nome?.slice(0, 120) || "Cliente Capiversa",
+        nome: venda.contato_nome?.slice(0, 120) || "Cliente Capiconversa",
         tipo_pessoa: "F",
         fone: venda.contato_numero ?? "",
       },
@@ -83,7 +83,7 @@ export async function criarPedidoOlist(
           },
         },
       ],
-      obs: "Pedido gerado automaticamente pelo Capiversa CRM",
+      obs: "Pedido gerado automaticamente pelo Capiconversa CRM",
     },
   };
 

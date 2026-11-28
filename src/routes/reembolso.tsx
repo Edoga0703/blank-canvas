@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LegalShell } from "@/components/legal-shell";
 
-const REEMB_URL = "https://atendzap-board.lovable.app/reembolso";
-const REEMB_TITLE = "Política de Reembolso — Capi Conversa";
-const REEMB_DESC = "Garantia de 30 dias no Capi Conversa. Saiba como solicitar reembolso.";
+const REEMB_URL = "https://capiconversa.com/reembolso";
+const REEMB_TITLE = "Política de Reembolso — Capiconversa";
+const REEMB_DESC = "Garantía de 30 días en Capiconversa. Conozca cómo solicitar un reembolso.";
 
 export const Route = createFileRoute("/reembolso")({
   head: () => ({
@@ -22,54 +22,54 @@ export const Route = createFileRoute("/reembolso")({
 
 function ReembolsoPage() {
   return (
-    <LegalShell title="Política de Reembolso" updatedAt="17 de junho de 2026">
+    <LegalShell title="Política de Reembolso" updatedAt="17 de junio de 2026">
       <section>
-        <h2>Garantia de 30 dias</h2>
+        <h2>Garantía de 30 días</h2>
         <p>
-          O <strong>Capi Conversa</strong> oferece uma garantia de satisfação de
-          <strong> 30 dias</strong>. Se você não estiver satisfeito com sua compra, pode
-          solicitar reembolso integral em até 30 dias a partir da data do pedido.
+          <strong>Capiconversa</strong> ofrece una garantía de satisfacción de
+          <strong> 30 días</strong>. Si no está satisfecho con su compra, puede
+          solicitar un reembolso íntegro dentro de los 30 días posteriores a la fecha del pedido.
         </p>
       </section>
 
       <section>
-        <h2>Como solicitar</h2>
+        <h2>Cómo solicitarlo</h2>
         <p>
-          Os reembolsos são processados pelo nosso provedor de pagamentos,
-          <strong> Paddle</strong> (Merchant of Record). Para solicitar:
+          Los reembolsos son procesados por nuestro proveedor de pagos,
+          <strong> Paddle</strong> (Merchant of Record). Para solicitarlo:
         </p>
         <ol>
           <li>
-            Acesse{" "}
+            Acceda a{" "}
             <a href="https://paddle.net" target="_blank" rel="noopener noreferrer">paddle.net</a>{" "}
-            e localize seu pedido pelo e-mail de compra.
+            y localice su pedido con el correo electrónico de compra.
           </li>
-          <li>Solicite o reembolso diretamente pelo portal da Paddle.</li>
-          <li>Ou entre em contato com nosso suporte e encaminharemos o pedido.</li>
+          <li>Solicite el reembolso directamente desde el portal de Paddle.</li>
+          <li>O póngase en contacto con nuestro soporte y gestionaremos su solicitud.</li>
         </ol>
       </section>
 
       <section>
-        <h2>Prazo de processamento</h2>
+        <h2>Plazo de procesamiento</h2>
         <p>
-          Após a aprovação, o estorno costuma aparecer no método de pagamento original em
-          até 5 a 10 dias úteis, conforme as regras do emissor do cartão ou meio de pagamento.
+          Tras la aprobación, el abono suele reflejarse en el método de pago original en un
+          plazo de 5 a 10 días hábiles, según las reglas del emisor de la tarjeta o medio de pago.
         </p>
       </section>
 
       <section>
-        <h2>Assinaturas e renovações</h2>
+        <h2>Suscripciones y renovaciones</h2>
         <p>
-          Você pode cancelar sua assinatura a qualquer momento para evitar renovações
-          futuras. Cobranças já realizadas dentro do período de 30 dias da última fatura
-          podem ser reembolsadas conforme esta política.
+          Puede cancelar su suscripción en cualquier momento para evitar renovaciones
+          futuras. Los cobros realizados dentro del período de 30 días de la última factura
+          pueden reembolsarse conforme a esta política.
         </p>
       </section>
 
       <section>
-        <h2>Contato</h2>
+        <h2>Contacto</h2>
         <p>
-          Em caso de dúvidas, entre em contato com nosso suporte ou diretamente em paddle.net.
+          Si tiene dudas, comuníquese con nuestro soporte o directamente en paddle.net.
         </p>
       </section>
     </LegalShell>

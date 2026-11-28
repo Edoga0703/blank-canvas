@@ -46,8 +46,8 @@ function CourseViewerPage() {
           console.log("Using manual mock data for:", courseId);
           const data = {
             id: courseId,
-            title: 'Bem-vindo à Capi Conversa Academy',
-            description: 'Comece sua jornada dominando as principais ferramentas do Capi Conversa.',
+            title: 'Bem-vindo à Capiconversa Academy',
+            description: 'Comece sua jornada dominando as principais ferramentas do Capiconversa.',
             modules: [
               {
                 id: 'mock-mod-1',

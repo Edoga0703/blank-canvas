@@ -846,7 +846,7 @@ export function LeadDetailsPanel({
                   className="w-full h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
                   onClick={async () => {
                     if (!local.id) return toast.error("Lead sin identificador válido");
-                    if (!confirm(`¿Deseas eliminar la conversación de "${local.nome || local.numero}" en el sistema Capi Conversa?\n\nEsto removerá los mensajes y la tarjeta CRM de la plataforma, pero no afectará tu teléfono de WhatsApp.`)) return;
+                    if (!confirm(`¿Deseas eliminar la conversación de "${local.nome || local.numero}" en el sistema Capiconversa?\n\nEsto removerá los mensajes y la tarjeta CRM de la plataforma, pero no afectará tu teléfono de WhatsApp.`)) return;
 
                     const { error } = await supabase
                       .from("mensagens")

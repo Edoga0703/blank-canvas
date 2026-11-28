@@ -305,9 +305,9 @@ Se o e-mail não chegar em alguns minutos, confira a caixa de spam. Marcar **"Ma
   {
     id: "instalar-app",
     categoria: "Conta",
-    titulo: "Instalar o Capiversa no celular",
+    titulo: "Instalar o Capiconversa no celular",
     palavrasChave: ["app", "aplicativo", "celular", "instalar", "android", "iphone", "pwa"],
-    conteudo: `O Capiversa funciona como aplicativo:
+    conteudo: `O Capiconversa funciona como aplicativo:
 
 - **Android (Chrome):** menu ⋮ → **Instalar aplicativo**.
 - **iPhone (Safari):** botão compartilhar → **Adicionar à Tela de Início**.

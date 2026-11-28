@@ -8,7 +8,7 @@ import { listWhatsappInstances } from "@/lib/whatsapp.functions";
 export const Route = createFileRoute("/wa/callback")({
   head: () => ({
     meta: [
-      { title: "Conexão concluída · Capi Conversa" },
+      { title: "Conexão concluída · Capiconversa" },
       { name: "description", content: "Retorno do onboarding WhatsApp Oficial." },
     ],
   }),

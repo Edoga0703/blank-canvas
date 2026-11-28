@@ -15,8 +15,12 @@ export const Route = createFileRoute("/api/public/google-marketing-callback")({
         const v = lerStateMarketing(state);
         if (!v) return new Response("invalid state", { status: 400 });
 
-        const origin = url.host.includes("metrixcrm.com.br")
-          ? "https://metrixcrm.com.br"
+        const envUrl = process.env.PUBLIC_APP_URL || process.env.APP_URL;
+        const fallback = (process.env.PUBLIC_APP_URL || "https://capiconversa.com").replace(/\/+$/, "");
+        const origin = envUrl
+          ? envUrl.replace(/\/+$/, "")
+          : url.host.includes("capiconversa.com") || !url.host
+          ? fallback
           : `${url.protocol}//${url.host}`;
 
         try {
@@ -33,7 +37,7 @@ export const Route = createFileRoute("/api/public/google-marketing-callback")({
 <body style="font-family:system-ui;background:#0B1020;color:#eef2ff;display:grid;place-items:center;min-height:100vh;margin:0">
 <div style="text-align:center;padding:24px">
 <h1>✅ ${nome} conectado</h1>
-<p>Pode voltar para o Capi Conversa.</p>
+<p>Pode voltar para o Capiconversa.</p>
 <script>setTimeout(()=>{ if(window.opener){window.close()} else {location.href="/app/plugins"} },1500)</script>
 </div></body>`,
           { status: 200, headers: { "content-type": "text/html; charset=utf-8" } },

@@ -137,7 +137,7 @@ export function buildEventBody(a: {
   const start = new Date(a.inicio);
   const end = new Date(start.getTime() + (a.duracaoMin || 30) * 60_000);
   return {
-    summary: a.titulo || "Compromisso Capiversa CRM",
+    summary: a.titulo || "Compromisso Capiconversa CRM",
     description: [a.mensagem || "", a.link ? `Link: ${a.link}` : ""].filter(Boolean).join("\n"),
     location: a.local || undefined,
     start: { dateTime: start.toISOString() },

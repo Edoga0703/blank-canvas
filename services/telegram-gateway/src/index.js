@@ -1,5 +1,5 @@
 /**
- * Capiversa CRM — Telegram MTProto Gateway Sidecar (v1.3.07)
+ * Capiconversa CRM — Telegram MTProto Gateway Sidecar (v1.3.07)
  * Microservicio autónomo para autenticación QR, gestión de sesiones MTProto
  * y publicación multicanal desacoplado del SSR de Cloudflare Nitro.
  */
@@ -362,7 +362,7 @@ app.get("/api/gateway/qr-status/:sessionId", requireGatewayAuth, (req, res) => {
       session.status = "authorized";
       session.actorId = "123456789";
       session.username = "empresa_demo";
-      session.displayName = "Canal Oficial Capiversa";
+      session.displayName = "Canal Oficial Capiconversa";
 
       activeClients.set(session.connectionId, {
         companyId: session.companyId,
@@ -453,7 +453,7 @@ app.get("/api/gateway/channels/:connectionId", requireGatewayAuth, async (req, r
         },
         {
           telegramChannelId: "-1002874125896",
-          title: "Capiversa Comunidade VIP",
+          title: "Capiconversa Comunidade VIP",
           username: null,
           visibility: "private",
           discussionChatId: null,
@@ -952,7 +952,7 @@ app.post("/api/gateway/reply-comment", requireGatewayAuth, async (req, res) => {
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`======================================================`);
-  console.log(` Capiversa Telegram MTProto Gateway Sidecar v1.3.07  `);
+  console.log(` Capiconversa Telegram MTProto Gateway Sidecar v1.3.07  `);
   console.log(` Running on http://0.0.0.0:${PORT}                   `);
   console.log(` Auth Secret: ${GATEWAY_SECRET ? "Configured (Protected)" : "Default"}`);
   console.log(` API ID: ${TELEGRAM_API_ID ? "Configured" : "None (Simulation Mode)"}`);
