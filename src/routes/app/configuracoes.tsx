@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, Save, CreditCard, Sparkles, AlertTriangle, Download, Shield, Wallet, Lock, User, Palette, Users, Clock, Star, ChevronDown, Search, MapPin, KeyRound, Upload, Webhook, Lightbulb, Send, Link2, ImageIcon, X, Tag, Building2, FileText, ListOrdered, Infinity, Coins } from "lucide-react";
+import { Loader2, Save, CreditCard, Sparkles, AlertTriangle, Download, Shield, Wallet, Lock, User, Palette, Users, Clock, Star, ChevronDown, Search, MapPin, KeyRound, Upload, Webhook, Lightbulb, Send, Link2, ImageIcon, X, Tag, Building2, FileText, ListOrdered, Infinity as InfinityIcon, Coins } from "lucide-react";
 import { submitFeedback } from "@/lib/admin-broadcast.functions";
 import { brand } from "@/config/brand";
 import { trialDaysLeft } from "@/lib/tenant";
@@ -829,7 +829,7 @@ function UsageBar({ used, total, label, loaded = true, tone = "primary" }: { use
         {loaded ? (
           <span className="font-medium tabular-nums whitespace-nowrap shrink-0">
             {used.toLocaleString("pt-BR")}{unlimited ? " • " : ` / ${total.toLocaleString("pt-BR")}`}
-            {unlimited && <Infinity className="inline-block size-3 -mt-0.5" />}
+            {unlimited && <InfinityIcon className="inline-block size-3 -mt-0.5" />}
             {unlimited && <span className="ml-1">ilimitado</span>}
           </span>
         ) : (

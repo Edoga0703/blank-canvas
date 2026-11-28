@@ -280,10 +280,11 @@ registerNode({
       case "is_not_empty":
         passed = current.length > 0;
         break;
-      case "has_tag":
+      case "has_tag": {
         const tags = Array.isArray(ctx.context.card?.tags) ? ctx.context.card.tags : [];
         passed = tags.some((t: string) => String(t).toLowerCase() === target);
         break;
+      }
     }
 
     return { kind: "next", port: passed ? "true" : "false" };

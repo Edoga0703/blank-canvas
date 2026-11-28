@@ -1312,7 +1312,7 @@ function ConexoesLiberadas({ companyId }: { companyId: string }) {
     }
   }
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [companyId]);
+  useEffect(() => { load(); }, [companyId]);
 
   async function toggle(tipo: "whatsapp_uazapi" | "whatsapp_meta", enable: boolean) {
     setSaving(tipo);

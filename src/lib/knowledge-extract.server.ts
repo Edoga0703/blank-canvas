@@ -120,6 +120,7 @@ export async function extractKnowledgeText(
     } else {
       // tenta como texto
       text = new TextDecoder("utf-8", { fatal: false }).decode(bytes).trim();
+      // eslint-disable-next-line no-control-regex
       if (!text || /[\u0000-\u0008]/.test(text.slice(0, 2000))) {
         return { text: "", status: "ilegivel", chars: 0 };
       }

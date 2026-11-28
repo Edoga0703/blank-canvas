@@ -188,16 +188,6 @@ function PluginsStorePage() {
 
 
 
-  if (erro) {
-    return (
-      <Card className="p-10 text-center max-w-md mx-auto mt-10">
-        <Lock className="size-8 mx-auto mb-3 text-muted-foreground/60" />
-        <div className="font-semibold mb-1">Módulo interno</div>
-        <p className="text-sm text-muted-foreground">{erro}</p>
-      </Card>
-    );
-  }
-
   const grupos = useMemo(() => {
     const map = new Map<string, StorePlugin[]>();
     for (const p of filtered) {
@@ -210,6 +200,16 @@ function PluginsStorePage() {
       return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a[0].localeCompare(b[0]);
     });
   }, [filtered]);
+
+  if (erro) {
+    return (
+      <Card className="p-10 text-center max-w-md mx-auto mt-10">
+        <Lock className="size-8 mx-auto mb-3 text-muted-foreground/60" />
+        <div className="font-semibold mb-1">Módulo interno</div>
+        <p className="text-sm text-muted-foreground">{erro}</p>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -53,6 +53,7 @@ const migrationPairs = [
   "20261127060000_agent_studio_mode_and_versions.sql",
   "20261127070000_grant_agent_v2_tables_and_rpcs.sql",
   "20261127080000_agent_copilot_sessions.sql",
+  "20261128010000_security_p0_revoke_anon_rpcs_and_app_config.sql",
 ];
 
 let migrationsOk = true;

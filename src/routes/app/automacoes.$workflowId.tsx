@@ -5235,35 +5235,37 @@ function AutomacaoCanvasPage() {
           {/* Modal com Rastro Detalhado da Execução (A14 / P1.8) */}
           <Dialog open={Boolean(selectedExecDetail)} onOpenChange={(o) => !o && setSelectedExecDetail(null)}>
             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              {(() => {
+                const exec = selectedExecDetail?.execution ?? selectedExecDetail?.exec;
+                return (
+                  <>
               <DialogHeader>
                 <DialogTitle className="text-base flex items-center gap-2">
                   <span>Trilha da Execução</span>
-                  {(selectedExecDetail?.execution || selectedExecDetail?.exec)?.error_code === "GOAL_MET" ? (
+                  {exec?.error_code === "GOAL_MET" ? (
                     <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-300">
                       Meta atingida
                     </Badge>
                   ) : (
                     <div className="flex items-center gap-1.5">
                       <Badge variant="outline" className="text-xs">
-                        {(selectedExecDetail?.execution || selectedExecDetail?.exec)?.status || "desconhecido"}
+                        {exec?.status || "desconhecido"}
                       </Badge>
-                      {((selectedExecDetail?.execution || selectedExecDetail?.exec)?.status === "failed" ||
-                        (selectedExecDetail?.execution || selectedExecDetail?.exec)?.status === "needs_review") && (
+                      {(exec?.status === "failed" || exec?.status === "needs_review") && exec?.id && (
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleRetryExecution((selectedExecDetail?.execution || selectedExecDetail?.exec).id)}
+                          onClick={() => handleRetryExecution(exec.id)}
                           className="h-6 px-2 text-[10px] text-amber-600 hover:text-amber-700 gap-1"
                         >
                           <RotateCcw className="size-2.5" /> Reintentar
                         </Button>
                       )}
-                      {((selectedExecDetail?.execution || selectedExecDetail?.exec)?.status === "running" ||
-                        (selectedExecDetail?.execution || selectedExecDetail?.exec)?.status === "waiting") && (
+                      {(exec?.status === "running" || exec?.status === "waiting") && exec?.id && (
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleCancelExecution((selectedExecDetail?.execution || selectedExecDetail?.exec).id)}
+                          onClick={() => handleCancelExecution(exec.id)}
                           className="h-6 px-2 text-[10px] text-rose-600 hover:text-rose-700 gap-1"
                         >
                           <XCircle className="size-2.5" /> Cancelar
@@ -5283,22 +5285,22 @@ function AutomacaoCanvasPage() {
                   <div className="grid grid-cols-2 gap-2 p-3 bg-muted/40 rounded-xl">
                     <div>
                       <span className="text-muted-foreground block text-[10px]">ID da Execução:</span>
-                      <span className="font-mono text-[11px]">{(selectedExecDetail?.execution || selectedExecDetail?.exec)?.id}</span>
+                      <span className="font-mono text-[11px]">{exec?.id ?? "—"}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground block text-[10px]">Iniciado em:</span>
                       <span>
-                        {(selectedExecDetail?.execution || selectedExecDetail?.exec)?.created_at
-                          ? new Date((selectedExecDetail?.execution || selectedExecDetail?.exec).created_at).toLocaleString()
+                        {exec?.created_at
+                          ? new Date(exec.created_at).toLocaleString()
                           : "—"}
                       </span>
                     </div>
                   </div>
 
-                  {(selectedExecDetail?.execution || selectedExecDetail?.exec)?.error_summary && (
+                  {exec?.error_summary && (
                     <div className="p-3 bg-rose-500/10 border border-rose-200 rounded-xl text-rose-700 text-xs">
                       <span className="font-semibold block">Erro da Execução:</span>
-                      {(selectedExecDetail?.execution || selectedExecDetail?.exec)?.error_summary}
+                      {exec.error_summary}
                     </div>
                   )}
 
@@ -5344,6 +5346,9 @@ function AutomacaoCanvasPage() {
                   </div>
                 </div>
               )}
+                  </>
+                );
+              })()}
             </DialogContent>
           </Dialog>
         </div>

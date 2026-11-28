@@ -29,7 +29,7 @@ export function usePlanFeatures(): PlanUsageState {
     }
   }
 
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { void load(); }, []);
 
   const slug = normalizePlanSlug(state?.plan?.slug);
   return {

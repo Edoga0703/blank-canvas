@@ -101,27 +101,23 @@ export async function processInboundAutomation(
     return { engine: "none", reason: "audio_inbound_human_attention" };
   }
 
-  // 0c) Verificar control de conversación (Humano vs Workflow) scoped por instancia
-  try {
-    const { getConversationControl } = await import("@/lib/automations/conversation-control.server");
-    const control = await getConversationControl({
-      companyId,
-      externalConversationId: params.externalConversationId || numero,
-      instanceId: params.instanceId,
-    });
-    if (control.ownerKind === "human") {
-      console.log(`[inbound] Conversación ${numero} (instancia: ${params.instanceId || 'general'}) controlada por asesor humano. Silenciando IA libre.`);
-      void triggerBackgroundLeadAudit();
-      return { engine: "none", reason: "human_control" };
-    }
-    if (control.ownerKind === "workflow" && control.leaseUntil && control.leaseUntil.getTime() > Date.now()) {
-      console.log(`[inbound] Conversación ${numero} (instancia: ${params.instanceId || 'general'}) controlada por Workflow activo ${control.ownerExecutionId}. Silenciando IA libre.`);
-      void triggerBackgroundLeadAudit();
-      return { engine: "workflow", executionId: control.ownerExecutionId };
-    }
-  } catch (wfCtrlErr) {
-    // Un fallo del árbitro no autoriza respuestas libres de IA.
-    throw wfCtrlErr;
+  // 0c) Verificar control de conversación (Humano vs Workflow) scoped por instancia.
+  // Un fallo del árbitro propaga error y no autoriza respuestas libres de IA.
+  const { getConversationControl } = await import("@/lib/automations/conversation-control.server");
+  const control = await getConversationControl({
+    companyId,
+    externalConversationId: params.externalConversationId || numero,
+    instanceId: params.instanceId,
+  });
+  if (control.ownerKind === "human") {
+    console.log(`[inbound] Conversación ${numero} (instancia: ${params.instanceId || 'general'}) controlada por asesor humano. Silenciando IA libre.`);
+    void triggerBackgroundLeadAudit();
+    return { engine: "none", reason: "human_control" };
+  }
+  if (control.ownerKind === "workflow" && control.leaseUntil && control.leaseUntil.getTime() > Date.now()) {
+    console.log(`[inbound] Conversación ${numero} (instancia: ${params.instanceId || 'general'}) controlada por Workflow activo ${control.ownerExecutionId}. Silenciando IA libre.`);
+    void triggerBackgroundLeadAudit();
+    return { engine: "workflow", executionId: control.ownerExecutionId };
   }
 
   // 0d) Arbitraje síncrono con flujos publicados de automatización (Regla 1)
