@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-27T23:29:00.879200+00:00",
+  "generated_at": "2026-11-28T12:13:48.066768+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -270,6 +270,10 @@
       "bytes": 7438
     },
     {
+      "path": "supabase/migrations/20261128010000_security_p0_revoke_anon_rpcs_and_app_config.sql",
+      "bytes": 1567
+    },
+    {
       "path": "supabase/migrations/20261127030000_agent_rag_memory_and_traces.sql",
       "bytes": 5383
     },
@@ -428,6 +432,10 @@
     {
       "path": "docs/sql/20261111060000_social_credentials_vault_and_queue_integrity.sql",
       "bytes": 4180
+    },
+    {
+      "path": "docs/sql/20261128010000_security_p0_revoke_anon_rpcs_and_app_config.sql",
+      "bytes": 1567
     },
     {
       "path": "docs/sql/20261127030000_agent_rag_memory_and_traces.sql",
@@ -643,7 +651,7 @@
     },
     {
       "path": "src/hooks/use-plan-features.ts",
-      "bytes": 1438
+      "bytes": 1407
     },
     {
       "path": "src/hooks/use-master-alerts.ts",
@@ -951,7 +959,7 @@
     },
     {
       "path": "src/lib/inbound-automation.server.ts",
-      "bytes": 9021
+      "bytes": 8947
     },
     {
       "path": "src/lib/tracking-utils.ts",
@@ -1439,7 +1447,7 @@
     },
     {
       "path": "src/lib/knowledge-extract.server.ts",
-      "bytes": 5158
+      "bytes": 5209
     },
     {
       "path": "src/lib/ensure-session.ts",
@@ -2207,7 +2215,7 @@
     },
     {
       "path": "src/components/master/clientes-lista.tsx",
-      "bytes": 65252
+      "bytes": 65221
     },
     {
       "path": "src/components/master/ai-telemetry-panel.tsx",
@@ -2531,7 +2539,7 @@
     },
     {
       "path": "src/lib/automations/registry.server.ts",
-      "bytes": 100070
+      "bytes": 100080
     },
     {
       "path": "src/lib/automations/http-security.server.ts",
@@ -2815,7 +2823,7 @@
     },
     {
       "path": "src/routes/app/configuracoes.tsx",
-      "bytes": 86008
+      "bytes": 86028
     },
     {
       "path": "src/routes/app/parceiro.tsx",
@@ -2863,7 +2871,7 @@
     },
     {
       "path": "src/routes/app/automacoes.$workflowId.tsx",
-      "bytes": 284932
+      "bytes": 284420
     },
     {
       "path": "src/routes/app/crm.tsx",
