@@ -3266,6 +3266,7 @@ function AgentePage() {
               .maybeSingle();
             if (updated) applyAgentData(updated);
           }
+          await loadSuggestions(activeAgentId || cfg?.id || undefined);
         }}
         onCatalogUpdated={async () => {
           toast.success(language === "es" ? "Catálogo actualizado con éxito" : "Catálogo atualizado com sucesso");

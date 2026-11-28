@@ -51,6 +51,7 @@ import {
   X,
   FileText,
   Image as ImageIcon,
+  ListChecks,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -494,6 +495,7 @@ export function AgentCopilotSheet({
       if (
         (proposal.type === "rule" ||
           proposal.type === "replace_rules" ||
+          proposal.type === "resolve_suggestion" ||
           proposal.type === "config" ||
           proposal.type === "webhook" ||
           proposal.type === "tool") &&
@@ -657,6 +659,7 @@ export function AgentCopilotSheet({
                             <div className="flex items-center gap-1.5 font-medium text-violet-700 dark:text-violet-300">
                               {prop.type === "rule" && <Zap className="h-3.5 w-3.5" />}
                               {prop.type === "replace_rules" && <RefreshCw className="h-3.5 w-3.5 text-amber-500" />}
+                              {prop.type === "resolve_suggestion" && <ListChecks className="h-3.5 w-3.5 text-emerald-600" />}
                               {prop.type === "catalog" && <ShoppingBag className="h-3.5 w-3.5" />}
                               {prop.type === "config" && <Sliders className="h-3.5 w-3.5" />}
                               {prop.type === "test_webhook" && <Terminal className="h-3.5 w-3.5 text-blue-500" />}
@@ -676,7 +679,9 @@ export function AgentCopilotSheet({
                                       ? "bg-blue-500/10 text-blue-600 border-blue-500/30"
                                       : prop.type === "replace_rules"
                                         ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/40"
-                                        : "bg-amber-500/10 text-amber-600 border-amber-500/30"
+                                        : prop.type === "resolve_suggestion"
+                                          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                                          : "bg-amber-500/10 text-amber-600 border-amber-500/30"
                               )}
                             >
                               {isApplied
@@ -687,7 +692,9 @@ export function AgentCopilotSheet({
                                     ? "Sandbox"
                                     : prop.type === "replace_rules"
                                       ? "Reemplazo limpio"
-                                      : "Pendiente"}
+                                      : prop.type === "resolve_suggestion"
+                                        ? "Resolver sugerencias"
+                                        : "Pendiente"}
                             </Badge>
                           </div>
 
@@ -703,6 +710,29 @@ export function AgentCopilotSheet({
                               {prop.payload.ruleText}
                             </div>
                           )}
+
+                          {/* Resolve suggestion proposal payload */}
+                          {prop.type === "resolve_suggestion" && (() => {
+                            const sugIds = Array.isArray(prop.payload?.suggestionIds)
+                              ? prop.payload.suggestionIds
+                              : prop.payload?.suggestionId
+                                ? [prop.payload.suggestionId]
+                                : [];
+                            const resMode = String(prop.payload?.resolution || "approved").toLowerCase() === "dismissed"
+                              ? "Descartar"
+                              : "Marcar como resuelta";
+                            return (
+                              <div className="rounded-md bg-background/80 p-2 font-mono text-[11px] border border-border/60 space-y-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-foreground font-semibold">{resMode}</span>
+                                  <span className="text-[10px] text-muted-foreground">{sugIds.length} sugerencia(s)</span>
+                                </div>
+                                {prop.payload?.note && (
+                                  <div className="text-[10px] text-muted-foreground font-sans">{prop.payload.note}</div>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           {/* Replace rules proposal payload */}
                           {prop.type === "replace_rules" && prop.payload?.rulesText && (() => {

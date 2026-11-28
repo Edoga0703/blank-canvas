@@ -33,20 +33,51 @@ function isRequestAbort(error: unknown): boolean {
   return error.name === "AbortError" || causeCode === "ECONNRESET" || message.includes("aborted");
 }
 
-function applyHtmlSecurityHeaders(response: Response): Response {
+function isPreviewOrLocalHost(request?: Request): boolean {
+  if (!request) return false;
+  let host = "";
+  try {
+    const fwdHost = request.headers.get("x-forwarded-host") || request.headers.get("host");
+    host = (fwdHost || new URL(request.url).host || "").toLowerCase().split(":")[0];
+  } catch {
+    return false;
+  }
+  if (!host) return false;
+  if (host === "capiconversa.com" || host === "www.capiconversa.com") return false;
+  return (
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host.endsWith(".lovable.app") ||
+    host.endsWith(".lovableproject.com")
+  );
+}
+
+function applyHtmlSecurityHeaders(response: Response, request?: Request): Response {
   const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
   if (!contentType.includes("text/html")) return response;
 
   const headers = new Headers(response.headers);
-  if (!headers.has("X-Frame-Options")) {
-    headers.set("X-Frame-Options", "SAMEORIGIN");
-  }
   const existingCsp = headers.get("Content-Security-Policy");
-  if (!existingCsp) {
-    headers.set("Content-Security-Policy", "frame-ancestors 'self'");
-  } else if (!/frame-ancestors/i.test(existingCsp)) {
-    headers.set("Content-Security-Policy", `${existingCsp}; frame-ancestors 'self'`);
+
+  if (isPreviewOrLocalHost(request)) {
+    headers.delete("X-Frame-Options");
+    const previewDirective = "frame-ancestors 'self' https://lovable.dev https://*.lovable.dev";
+    if (!existingCsp) {
+      headers.set("Content-Security-Policy", previewDirective);
+    } else if (!/frame-ancestors/i.test(existingCsp)) {
+      headers.set("Content-Security-Policy", `${existingCsp}; ${previewDirective}`);
+    }
+  } else {
+    if (!headers.has("X-Frame-Options")) {
+      headers.set("X-Frame-Options", "SAMEORIGIN");
+    }
+    if (!existingCsp) {
+      headers.set("Content-Security-Policy", "frame-ancestors 'self'");
+    } else if (!/frame-ancestors/i.test(existingCsp)) {
+      headers.set("Content-Security-Policy", `${existingCsp}; frame-ancestors 'self'`);
+    }
   }
+
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
@@ -58,9 +89,9 @@ async function normalizeCatastrophicSsrResponse(
   response: Response,
   request: Request,
 ): Promise<Response> {
-  if (response.status < 500) return applyHtmlSecurityHeaders(response);
+  if (response.status < 500) return applyHtmlSecurityHeaders(response, request);
   const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) return applyHtmlSecurityHeaders(response);
+  if (!contentType.includes("application/json")) return applyHtmlSecurityHeaders(response, request);
 
   const body = await response.clone().text();
   if (!body.includes('"unhandled":true') || !body.includes('"message":"HTTPError"')) {
@@ -79,7 +110,7 @@ async function normalizeCatastrophicSsrResponse(
   return applyHtmlSecurityHeaders(new Response(renderErrorPage(), {
     status: 500,
     headers: { "content-type": "text/html; charset=utf-8" },
-  }));
+  }), request);
 }
 
 export default {
@@ -120,7 +151,7 @@ export default {
       return applyHtmlSecurityHeaders(new Response(renderErrorPage(), {
         status: 500,
         headers: { "content-type": "text/html; charset=utf-8" },
-      }));
+      }), request);
     }
   },
 };

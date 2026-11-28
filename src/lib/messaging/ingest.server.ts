@@ -334,8 +334,9 @@ async function persistMessage(
       const { upsertCard, getStagesBrief, pickLeadOwner } = await import("@/lib/crm-engine.server");
       const stages = await getStagesBrief(supabaseAdmin, connection.company_id);
       const isAudio = event.attachments.some((a) => a.kind === "audio");
+      const trimmedText = typeof event.text === "string" ? event.text.trim() : "";
       const summaryText =
-        event.text ||
+        trimmedText ||
         (isAudio
           ? "[ÁUDIO]"
           : event.attachments.length

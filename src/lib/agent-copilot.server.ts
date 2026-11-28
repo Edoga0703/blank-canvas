@@ -3,7 +3,17 @@ import { buildSystemPrompt, parseAiOutput, type AgentConfig } from "@/lib/ai-pro
 import { redactToolHeaders } from "@/lib/agent-tools.server";
 
 export interface CopilotActionProposal {
-  type: "catalog" | "rule" | "replace_rules" | "config" | "simulation" | "audit" | "test_webhook" | "webhook" | "tool";
+  type:
+    | "catalog"
+    | "rule"
+    | "replace_rules"
+    | "resolve_suggestion"
+    | "config"
+    | "simulation"
+    | "audit"
+    | "test_webhook"
+    | "webhook"
+    | "tool";
   title: string;
   description: string;
   status: "pending" | "applied" | "rejected" | "failed";
@@ -188,6 +198,8 @@ export async function getAgentCopilotContext(
   agentId?: string | null,
   tipo?: string,
 ) {
+  const thirtyDaysAgoIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
   const [
     agentCfg,
     { data: produtos },
@@ -212,8 +224,9 @@ export async function getAgentCopilotContext(
       .select("id, detalhes, created_at")
       .eq("company_id", companyId)
       .eq("acao", "ai_prompt_suggestion")
+      .gte("created_at", thirtyDaysAgoIso)
       .order("created_at", { ascending: false })
-      .limit(10),
+      .limit(25),
     supabase
       .from("whatsapp_instances")
       .select("id, instance_name, status, numero")
@@ -231,7 +244,8 @@ export async function getAgentCopilotContext(
       status: s.detalhes?.status || "pending",
       created_at: s.created_at,
     }))
-    .filter((s: any) => s.status === "pending");
+    .filter((s: any) => s.status === "pending")
+    .slice(0, 5);
 
   let agentTools: any[] = [];
   let recentTraces: Array<{ route: string; error: string; latency_ms: number | null; created_at: string }> = [];
@@ -449,128 +463,23 @@ REGLA CRÍTICA DE TIPADO PARA ACCIONES:
   * NUNCA uses "type": "config" para webhooks ni APIs externas. "config" es sólo para campos nativos como segundos_buffer o sobre_empresa.
 - Para reglas nuevas puntuales usa "type": "rule".
 - Para LIMPIAR contradicciones, eliminar reglas obsoletas o CONSOLIDAR/REORDENAR todas las 'regras_rigidas', usa "type": "replace_rules" con el texto completo limpio en 'payload.rulesText' (en lugar de seguir apilando parches con "rule").
+- Para marcar sugerencias pendientes (ai_prompt_suggestion) como aprobadas o descartadas después de atenderlas o actualizar catálogo/reglas, usa "type": "resolve_suggestion".
 
 ESTRUCTURA OBLIGATORIA DE TU RESPUESTA:
 1. RESPUESTA COMPLETA Y SIN CORTES:
-   - Responde de forma natural, consultiva y empática en español.
-   - Redacta toda tu respuesta conversacional de principio a fin antes de cualquier bloque técnico.
-   - NUNCA cortes una oración o explicación a medias.
-2. ACCIONES PROPUESTAS STRICTAMENTE AL FINAL:
-   - Si recomiendas crear/modificar productos, reglas, configuraciones o pruebas de webhook, añade AL FINAL DE TODO de tu mensaje un bloque JSON especial con las acciones propuestas:
+   - Responde de forma natural, consultiva y empática en español antes de cualquier bloque técnico.
+2. ACCIONES PROPUESTAS ESTRICTAMENTE AL FINAL (solo incluye los tipos que realmente vayas a proponer):
 
 \`\`\`json_actions
 [
-  {
-    "type": "rule",
-    "title": "Título corto de la regla",
-    "description": "Por qué es necesaria esta regla",
-    "payload": {
-      "ruleText": "- Directiva clara y precisa...",
-      "agentId": "${agent.id || ""}"
-    }
-  },
-  {
-    "type": "replace_rules",
-    "title": "Consolidar y limpiar Reglas Rígidas",
-    "description": "Reemplaza las reglas actuales resolviendo contradicciones y duplicados",
-    "payload": {
-      "rulesText": "- Regla 1 limpia...\n- Regla 2 limpia...",
-      "reason": "Elimina conflicto entre reglas y reduce redundancia",
-      "agentId": "${agent.id || ""}"
-    }
-  },
-  {
-    "type": "catalog",
-    "title": "Agregar / Actualizar Producto(s)",
-    "description": "Actualiza productos existentes por SKU/nombre o inserta los nuevos",
-    "payload": {
-      "items": [
-        {
-          "nome": "Nombre Producto",
-          "sku": "SKU-OPCIONAL",
-          "preco": 10.0,
-          "descricao": "Descripción comercial",
-          "categoria": "Categoría"
-        }
-      ]
-    }
-  },
-  {
-    "type": "config",
-    "title": "Ajustar Configuración del Agente",
-    "description": "Ajuste de buffer, tamaño de respuesta o empresa",
-    "payload": {
-      "agentId": "${agent.id || ""}",
-      "updates": {
-        "segundos_buffer": 5,
-        "tamanho_resposta": "curtas"
-      }
-    }
-  },
-  {
-    "type": "test_webhook",
-    "title": "Probar API Externa en Sandbox",
-    "description": "Ejecuta una petición de prueba segura en el sandbox con timeout controlado",
-    "payload": {
-      "url": "https://api.ejemplo.com/v1/customer-lookup",
-      "method": "POST",
-      "headers": {
-        "Authorization": "Bearer token_aqui",
-        "Content-Type": "application/json"
-      },
-      "body": {
-        "phone": "584120000000"
-      }
-    }
-  },
-  {
-    "type": "tool",
-    "title": "Guardar Herramienta: Consultar Vencimiento",
-    "description": "Guarda la API verificada para consultar suscripciones y vencimientos por teléfono",
-    "payload": {
-      "name": "consultar_vencimiento",
-      "display_name": "Consultar Vencimiento",
-      "description": "Consulta el estado y fecha de vencimiento de cuentas del cliente por número de teléfono",
-      "kind": "http",
-      "method": "POST",
-      "url": "https://api.ejemplo.com/v1/customer-lookup",
-      "headers": {
-        "Authorization": "Bearer token_aqui",
-        "Content-Type": "application/json"
-      },
-      "input_schema": {
-        "phone": "string"
-      },
-      "body_template": {
-        "phone": "{{phone}}"
-      },
-      "test_body": {
-        "phone": "584120000000"
-      },
-      "permission_level": "read_only"
-    }
-  },
-  {
-    "type": "webhook",
-    "title": "Conectar Integración de Clientes al Agente",
-    "description": "Habilita la consulta dinámica de vencimientos y cuentas para cada cliente",
-    "payload": {
-      "integration": "customerLookup",
-      "name": "SMP / Cerebro",
-      "url": "https://api.ejemplo.com/v1/customer-lookup",
-      "method": "POST",
-      "headers": {
-        "Authorization": "Bearer token_aqui"
-      },
-      "body_template": {
-        "phone": "{{phone}}"
-      },
-      "test_body": {
-        "phone": "584120000000"
-      },
-      "ruleText": "- Al atender al cliente, consulta sus servicios activos y vencimientos reales antes de dar información."
-    }
-  }
+  { "type": "rule", "title": "Agregar regla", "description": "Motivo breve", "payload": { "ruleText": "- Directiva clara...", "agentId": "${agent.id || ""}" } },
+  { "type": "replace_rules", "title": "Consolidar Reglas Rígidas", "description": "Reemplaza reglas eliminando conflictos", "payload": { "rulesText": "- Regla 1...\n- Regla 2...", "reason": "Motivo", "agentId": "${agent.id || ""}" } },
+  { "type": "resolve_suggestion", "title": "Resolver sugerencias", "description": "Marca sugerencias pendientes como resueltas o descartadas", "payload": { "suggestionIds": ["uuid"], "resolution": "approved", "note": "..." } },
+  { "type": "catalog", "title": "Actualizar Catálogo", "description": "Upsert por SKU/nombre y consolida duplicados", "payload": { "items": [{ "nome": "Producto", "sku": "OPCIONAL", "preco": 10.0, "descricao": "Desc", "categoria": "Cat" }] } },
+  { "type": "config", "title": "Ajustar Configuración", "description": "Actualiza campos nativos del agente", "payload": { "agentId": "${agent.id || ""}", "updates": { "segundos_buffer": 5, "tamanho_resposta": "curtas" } } },
+  { "type": "test_webhook", "title": "Probar API en Sandbox", "description": "Prueba controlada HTTP 2xx", "payload": { "url": "https://api.ejemplo.com/endpoint", "method": "POST", "headers": { "Authorization": "Bearer token" }, "body": { "phone": "584120000000" } } },
+  { "type": "tool", "title": "Guardar Herramienta", "description": "Registra herramienta verificada", "payload": { "name": "slug_unico", "display_name": "Nombre", "description": "Uso", "kind": "http", "method": "POST", "url": "https://api.ejemplo.com/endpoint", "headers": { "Authorization": "Bearer token" }, "input_schema": { "phone": "string" }, "body_template": { "phone": "{{phone}}" }, "test_body": { "phone": "584120000000" }, "permission_level": "read_only" } },
+  { "type": "webhook", "title": "Conectar Integración", "description": "Consulta heredada customerLookup", "payload": { "integration": "customerLookup", "name": "API Clientes", "url": "https://api.ejemplo.com/endpoint", "method": "POST", "headers": { "Authorization": "Bearer token" }, "body_template": { "phone": "{{phone}}" }, "test_body": { "phone": "584120000000" }, "ruleText": "- Regla de uso..." } }
 ]
 \`\`\`
 
@@ -582,6 +491,39 @@ REGLAS DE CONDUCTA:
 - Si el usuario te pregunta por qué el bot falló o cómo mejorar una duda, diagnostica el motivo con precisión (apoyándote en las reglas y trazas de error si aplica) y propón la acción 'rule' o 'replace_rules'.
 - Si detectas que una regla nueva entra en conflicto con una regla existente, ALÉRTALO inmediatamente y propón 'replace_rules' para consolidarlas limpiamente.
 - Sé conciso y directo; no aburras al usuario con teoría innecesaria.`;
+}
+
+const ACTION_TYPES_RE = /(?:catalog|rule|replace_rules|resolve_suggestion|config|simulation|audit|test_webhook|webhook|tool)/i;
+
+function parseActionsJsonArray(rawJson: string): any[] | null {
+  if (!rawJson) return null;
+  let parsed: any = null;
+  try {
+    parsed = JSON.parse(rawJson);
+  } catch {
+    try {
+      const cleaned = rawJson
+        .replace(/,\s*([}\]])/g, "$1")
+        .replace(/\/\*[\s\S]*?\*\/|([^:]|^)\/\/.*$/gm, "");
+      parsed = JSON.parse(cleaned);
+    } catch {
+      const recovered: any[] = [];
+      const itemRegex = /{\s*"type"\s*:\s*"(?:catalog|rule|replace_rules|resolve_suggestion|config|simulation|audit|test_webhook|webhook|tool)"[\s\S]*?}(?=\s*,\s*{|\s*\]|\s*$)/g;
+      let m: RegExpExecArray | null;
+      while ((m = itemRegex.exec(rawJson)) !== null) {
+        try {
+          recovered.push(JSON.parse(m[0]));
+        } catch {
+          try {
+            const closedCandidate = m[0].trim().replace(/,$/, "") + "}";
+            recovered.push(JSON.parse(closedCandidate));
+          } catch {}
+        }
+      }
+      parsed = recovered;
+    }
+  }
+  return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
 }
 
 /**
@@ -596,74 +538,49 @@ export function parseCopilotOutput(rawText: string): CopilotTurnResult {
 
   let reply = rawText;
   const proposals: CopilotActionProposal[] = [];
+  let parsed: any[] | null = null;
 
-  // 1. Prioridad: busca bloque explícito ```json_actions (incluso si quedó truncado sin cerrar ```)
-  const jsonActionsMatch = rawText.match(/```json_actions\s*([\s\S]*?)(?:```|$)/i);
-  let rawJson = "";
+  // 1. Prioridad: busca todos los bloques ```json_actions, selecciona el último válido y limpia todos del texto
+  const jsonActionMatches = Array.from(rawText.matchAll(/```json_actions\s*([\s\S]*?)(?:```|$)/gi));
+  if (jsonActionMatches.length > 0) {
+    for (const m of jsonActionMatches) {
+      reply = reply.replace(m[0], "");
+    }
+    reply = reply.trim();
 
-  if (jsonActionsMatch) {
-    rawJson = jsonActionsMatch[1].trim();
-    // Elimina el bloque json_actions de la respuesta para que la conversación quede limpia
-    reply = rawText.replace(jsonActionsMatch[0], "").trim();
+    for (let i = jsonActionMatches.length - 1; i >= 0; i--) {
+      const candidate = parseActionsJsonArray(jsonActionMatches[i][1].trim());
+      if (candidate) {
+        parsed = candidate;
+        break;
+      }
+    }
   } else {
-    // 2. Si no hay ```json_actions, verifica si hay un bloque ```json o ``` que contenga acciones del copilot
-    // SOLO lo consideramos si incluye tipos válidos de acciones para no comer bloques de código explicativos
-    const codeBlockMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)(?:```|$)/i);
-    if (codeBlockMatch) {
-      const candidateText = codeBlockMatch[1].trim();
-      if (
-        candidateText.includes('"type"') &&
-        /(?:catalog|rule|replace_rules|config|simulation|audit|test_webhook|webhook|tool)/i.test(candidateText)
-      ) {
-        rawJson = candidateText;
-        reply = rawText.replace(codeBlockMatch[0], "").trim();
+    // 2. Fallback: último bloque ```json o ``` que contenga tipos válidos de acciones del copilot
+    const codeBlockMatches = Array.from(rawText.matchAll(/```(?:json)?\s*([\s\S]*?)(?:```|$)/gi));
+    for (let i = codeBlockMatches.length - 1; i >= 0; i--) {
+      const candidateText = codeBlockMatches[i][1].trim();
+      if (candidateText.includes('"type"') && ACTION_TYPES_RE.test(candidateText)) {
+        const candidate = parseActionsJsonArray(candidateText);
+        if (candidate) {
+          parsed = candidate;
+          reply = reply.replace(codeBlockMatches[i][0], "").trim();
+          break;
+        }
       }
     }
   }
 
-  // 3. Si se extrajo contenido JSON para acciones, procesarlo con tolerancia a truncamientos y trailing commas
-  if (rawJson) {
-    let parsed: any = null;
-
-    try {
-      parsed = JSON.parse(rawJson);
-    } catch {
-      // Intento 1: Limpiar trailing commas y comentarios comunes
-      try {
-        const cleaned = rawJson
-          .replace(/,\s*([}\]])/g, "$1")
-          .replace(/\/\*[\s\S]*?\*\/|([^:]|^)\/\/.*$/gm, "");
-        parsed = JSON.parse(cleaned);
-      } catch {
-        // Intento 2: Recuperación resiliente de objetos de acción individuales si el array fue cortado
-        parsed = [];
-        const itemRegex = /{\s*"type"\s*:\s*"(?:catalog|rule|replace_rules|config|simulation|audit|test_webhook|webhook|tool)"[\s\S]*?}(?=\s*,\s*{|\s*\]|\s*$)/g;
-        let m: RegExpExecArray | null;
-        while ((m = itemRegex.exec(rawJson)) !== null) {
-          try {
-            parsed.push(JSON.parse(m[0]));
-          } catch {
-            // Intento 3: Intentar cerrar llaves si el objeto individual fue cortado
-            try {
-              const closedCandidate = m[0].trim().replace(/,$/, "") + "}";
-              parsed.push(JSON.parse(closedCandidate));
-            } catch {}
-          }
-        }
-      }
-    }
-
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      for (const item of parsed) {
-        if (item?.type && (item?.title || item?.payload)) {
-          proposals.push({
-            type: item.type,
-            title: String(item.title || "Acción recomendada"),
-            description: String(item.description || ""),
-            status: "pending",
-            payload: item.payload || {},
-          });
-        }
+  if (Array.isArray(parsed) && parsed.length > 0) {
+    for (const item of parsed) {
+      if (item?.type && (item?.title || item?.payload)) {
+        proposals.push({
+          type: item.type,
+          title: String(item.title || "Acción recomendada"),
+          description: String(item.description || ""),
+          status: "pending",
+          payload: item.payload || {},
+        });
       }
     }
   }

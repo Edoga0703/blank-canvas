@@ -741,6 +741,14 @@ export const testWebhookInSandbox = createServerFn({ method: "POST" })
     });
   });
 
+function normalizeRuleLine(line: string): string {
+  return String(line || "")
+    .trim()
+    .replace(/^(?:[-*•]+|\d+[.)])\s*/, "")
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
 /**
  * Executa uma ação proposta pelo Copilot após aprovação do usuário
  */
@@ -772,6 +780,17 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
       if (!ruleText) throw new Error("Texto da regra vazio.");
 
       const current = (cfg.regras_rigidas || "").trim();
+      const targetNorm = normalizeRuleLine(ruleText);
+      const existingLines = current
+        ? current.split(/\r?\n/).map(normalizeRuleLine).filter(Boolean)
+        : [];
+      if (targetNorm && existingLines.includes(targetNorm)) {
+        return {
+          ok: true,
+          message: "Esta regla ya estaba registrada en las Reglas Rígidas (sin duplicar).",
+        };
+      }
+
       const formatted = ruleText.startsWith("-") || /^\d+\./.test(ruleText) ? ruleText : `- ${ruleText}`;
       const updated = current ? `${current}\n${formatted}` : formatted;
 
@@ -859,13 +878,92 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
       };
     }
 
+    if (action.type === "resolve_suggestion") {
+      const rawIds = Array.isArray(action.payload?.suggestionIds)
+        ? action.payload.suggestionIds
+        : action.payload?.suggestionId
+          ? [action.payload.suggestionId]
+          : Array.isArray(action.payload?.ids)
+            ? action.payload.ids
+            : [];
+      const suggestionIds = Array.from(
+        new Set(rawIds.map((id: any) => String(id || "").trim()).filter(Boolean)),
+      );
+      if (suggestionIds.length === 0) {
+        throw new Error("Debe indicar al menos un suggestionId para resolver.");
+      }
+
+      const rawResolution = String(action.payload?.resolution || action.payload?.status || "approved")
+        .trim()
+        .toLowerCase();
+      const resolution: "approved" | "dismissed" =
+        rawResolution === "dismissed" ? "dismissed" : "approved";
+      const note = String(action.payload?.note || "").trim();
+      const nowIso = new Date().toISOString();
+
+      const { data: rows, error: fetchSugErr } = await (supabaseAdmin as any)
+        .from("audit_log")
+        .select("id, detalhes")
+        .eq("company_id", companyId)
+        .eq("acao", "ai_prompt_suggestion")
+        .in("id", suggestionIds);
+
+      if (fetchSugErr) {
+        throw new Error(`Error al consultar sugerencias: ${fetchSugErr.message}`);
+      }
+      if (!rows || rows.length === 0) {
+        throw new Error("No se encontraron sugerencias pendientes válidas para esta empresa.");
+      }
+
+      let updatedCount = 0;
+      for (const row of rows) {
+        const nextDetalhes: Record<string, any> = {
+          ...((row.detalhes as any) || {}),
+          status: resolution,
+          ...(resolution === "approved" ? { approved_at: nowIso } : { dismissed_at: nowIso }),
+          ...(note ? { copilot_note: note } : {}),
+        };
+        const { error: updErr } = await (supabaseAdmin as any)
+          .from("audit_log")
+          .update({ detalhes: nextDetalhes })
+          .eq("id", row.id)
+          .eq("company_id", companyId);
+        if (updErr) {
+          throw new Error(`No se pudo actualizar la sugerencia ${row.id}: ${updErr.message}`);
+        }
+        updatedCount += 1;
+      }
+
+      try {
+        await supabaseAdmin.from("audit_log").insert({
+          company_id: companyId,
+          user_id: userId,
+          acao: "copilot_suggestions_resolved",
+          detalhes: {
+            agent_id: cfg.id,
+            resolution,
+            suggestion_ids: rows.map((r: any) => r.id),
+            note: note || null,
+            resolved_at: nowIso,
+          },
+        });
+      } catch {}
+
+      return {
+        ok: true,
+        updatedCount,
+        resolution,
+        message: `${updatedCount} sugerencia(s) marcada(s) como ${resolution === "approved" ? "aprobadas" : "descartadas"}.`,
+      };
+    }
+
     if (action.type === "catalog") {
       const items = Array.isArray(action.payload?.items) ? action.payload.items : [];
       if (items.length === 0) throw new Error("Nenhum produto para inserir.");
 
       const { data: existingProds, error: listProdErr } = await (supabaseAdmin as any)
         .from("produto")
-        .select("id, nome, sku, ordem")
+        .select("id, nome, sku, ordem, ativo")
         .eq("company_id", companyId)
         .order("ordem", { ascending: true });
 
@@ -875,13 +973,27 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
 
       const bySku = new Map<string, any>();
       const byNome = new Map<string, any>();
+      const byNomeRows = new Map<string, any[]>();
       let maxOrdem = -1;
 
       for (const row of existingProds || []) {
         const skuKey = String(row.sku || "").trim().toLowerCase();
         const nomeKey = String(row.nome || "").trim().toLowerCase();
-        if (skuKey && !bySku.has(skuKey)) bySku.set(skuKey, row);
-        if (nomeKey && !byNome.has(nomeKey)) byNome.set(nomeKey, row);
+        if (skuKey) {
+          const prevSku = bySku.get(skuKey);
+          if (!prevSku || (prevSku.ativo === false && row.ativo !== false)) {
+            bySku.set(skuKey, row);
+          }
+        }
+        if (nomeKey) {
+          const list = byNomeRows.get(nomeKey) || [];
+          list.push(row);
+          byNomeRows.set(nomeKey, list);
+          const prevNome = byNome.get(nomeKey);
+          if (!prevNome || (prevNome.ativo === false && row.ativo !== false)) {
+            byNome.set(nomeKey, row);
+          }
+        }
         if (typeof row.ordem === "number" && row.ordem > maxOrdem) {
           maxOrdem = row.ordem;
         }
@@ -890,6 +1002,7 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
       const nowIso = new Date().toISOString();
       let updatedCount = 0;
       let insertedCount = 0;
+      let consolidatedDupCount = 0;
       const savedProds: Array<{ id: string; nome: string; preco: number; action: "updated" | "inserted" }> = [];
 
       for (const item of items) {
@@ -937,6 +1050,34 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
           });
           if (skuKey) bySku.set(skuKey, { ...existingMatch, ...updatePatch });
           if (nomeKey) byNome.set(nomeKey, { ...existingMatch, ...updatePatch });
+
+          // Consolidar posibles duplicados activos con el mismo nombre normalizado
+          const matchedNomeKey = String(existingMatch.nome || nome).trim().toLowerCase();
+          const groupKeys = Array.from(new Set([nomeKey, matchedNomeKey].filter(Boolean)));
+          const dupIds = new Set<string>();
+          for (const gKey of groupKeys) {
+            for (const cand of byNomeRows.get(gKey) || []) {
+              if (cand.id !== existingMatch.id && cand.ativo !== false) {
+                dupIds.add(cand.id);
+              }
+            }
+          }
+          if (dupIds.size > 0) {
+            const idsToDeactivate = Array.from(dupIds);
+            const { error: dupErr } = await (supabaseAdmin as any)
+              .from("produto")
+              .update({ ativo: false, updated_at: nowIso })
+              .eq("company_id", companyId)
+              .in("id", idsToDeactivate);
+            if (!dupErr) {
+              consolidatedDupCount += idsToDeactivate.length;
+              for (const gKey of groupKeys) {
+                for (const cand of byNomeRows.get(gKey) || []) {
+                  if (dupIds.has(cand.id)) cand.ativo = false;
+                }
+              }
+            }
+          }
         } else {
           maxOrdem += 1;
           const insertRow: Record<string, any> = {
@@ -955,7 +1096,7 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
           const { data: insertedRow, error: insErr } = await (supabaseAdmin as any)
             .from("produto")
             .insert(insertRow)
-            .select("id, nome, preco, sku, ordem")
+            .select("id, nome, preco, sku, ordem, ativo")
             .single();
 
           if (insErr) {
@@ -970,7 +1111,12 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
             action: "inserted",
           });
           if (skuKey) bySku.set(skuKey, insertedRow);
-          if (nomeKey) byNome.set(nomeKey, insertedRow);
+          if (nomeKey) {
+            byNome.set(nomeKey, insertedRow);
+            const list = byNomeRows.get(nomeKey) || [];
+            list.push(insertedRow);
+            byNomeRows.set(nomeKey, list);
+          }
         }
       }
 
@@ -983,6 +1129,7 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
             itemsCount: items.length,
             updatedCount,
             insertedCount,
+            consolidatedDupCount,
             saved: savedProds,
           },
         });
@@ -990,7 +1137,7 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
 
       return {
         ok: true,
-        message: `Catálogo actualizado: ${updatedCount} actualizado(s), ${insertedCount} nuevo(s).`,
+        message: `Catálogo actualizado: ${updatedCount} actualizado(s), ${insertedCount} nuevo(s)${consolidatedDupCount > 0 ? `, ${consolidatedDupCount} duplicado(s) desactivado(s)` : ""}.`,
       };
     }
 
@@ -1284,7 +1431,9 @@ export const executeCopilotAction = createServerFn({ method: "POST" })
         "formas_pagamento", "estilo_comunicacao", "apresentacao", "como_vender",
         "regras_rigidas", "pode_fazer", "nao_pode_fazer", "palavra_pausar",
         "palavra_despausar", "responder_em_partes", "politicas", "faq", "objecoes",
-        "diferenciais", "publico_alvo", "regiao_horario", "knowledge_files"
+        "diferenciais", "publico_alvo", "regiao_horario", "knowledge_files",
+        "produtos_servicos", "personalidade", "emoji_intensidade", "usar_emojis",
+        "foco_atendimento"
       ];
       const safeUpdates: Record<string, any> = {};
       for (const k of ALLOWED_CONFIG_KEYS) {

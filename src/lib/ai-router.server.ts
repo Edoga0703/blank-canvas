@@ -102,8 +102,8 @@ export function planTurnContext(params: {
     };
   }
 
-  // 5. Consulta general (carga catálogo solo si es pequeño <= 15 ítems)
-  const smallCatalog = typeof params.catalogCount === "number" && params.catalogCount > 0 && params.catalogCount <= 15;
+  // 5. Consulta general (carga catálogo solo si es pequeño/mediano <= 30 ítems)
+  const smallCatalog = typeof params.catalogCount === "number" && params.catalogCount > 0 && params.catalogCount <= 30;
   return {
     route: "general",
     loadCatalog: smallCatalog,

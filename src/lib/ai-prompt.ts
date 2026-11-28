@@ -112,24 +112,74 @@ const DEFAULT_STAGES: StageBrief[] = [
   { nome: "Perda", tipo: "perda" },
 ];
 
-function describeTom(tom?: number | null) {
+type PromptLang = "es" | "en" | "pt";
+
+function resolvePromptLang(idioma?: string | null): PromptLang {
+  const raw = (idioma || "es").toLowerCase().trim();
+  if (raw.startsWith("es") || /español|spanish/i.test(raw)) return "es";
+  if (raw.startsWith("en") || /english/i.test(raw)) return "en";
+  return "pt";
+}
+
+function describeTom(tom: number | null | undefined, lang: PromptLang) {
   const n = typeof tom === "number" ? tom : 70;
+  if (lang === "es") {
+    if (n <= 25) return "tono serio y sobrio";
+    if (n <= 55) return "tono equilibrado y atento";
+    if (n <= 80) return "tono cálido y simpático";
+    return "tono muy cálido, cercano y amigable";
+  }
+  if (lang === "en") {
+    if (n <= 25) return "serious and restrained tone";
+    if (n <= 55) return "balanced and attentive tone";
+    if (n <= 80) return "warm and friendly tone";
+    return "very warm, close, friendly tone";
+  }
   if (n <= 25) return "tom mais sério e contido";
   if (n <= 55) return "tom equilibrado, atencioso";
   if (n <= 80) return "tom caloroso e simpático";
   return "tom muito caloroso, próximo, quase de amigo";
 }
 
-function describeFormalidade(f?: number | null) {
+function describeFormalidade(f: number | null | undefined, lang: PromptLang) {
   const n = typeof f === "number" ? f : 40;
+  if (lang === "es") {
+    if (n <= 25) return "lenguaje informal y natural (tuteo cercano, trato amigable)";
+    if (n <= 55) return "lenguaje semiformal (tuteo cordial y respetuoso)";
+    if (n <= 80) return "lenguaje formal (usted, trato cortés y profesional)";
+    return "lenguaje muy formal (ceremonioso y protocolar)";
+  }
+  if (lang === "en") {
+    if (n <= 25) return "casual, informal language";
+    if (n <= 55) return "semi-formal, cordial language";
+    if (n <= 80) return "formal, professional language";
+    return "very formal language";
+  }
   if (n <= 25) return "linguagem informal (você, oi, beleza)";
   if (n <= 55) return "linguagem semi-formal (você, com cordialidade)";
   if (n <= 80) return "linguagem formal (senhor/senhora, prezado)";
   return "linguagem muito formal (cerimoniosa)";
 }
 
-function describeTamanho(t?: string | null) {
-  switch ((t || "curtas").toLowerCase()) {
+function describeTamanho(t: string | null | undefined, lang: PromptLang) {
+  const key = (t || "curtas").toLowerCase();
+  if (lang === "es") {
+    switch (key) {
+      case "longas": return "respuestas más largas y explicativas cuando tenga sentido";
+      case "medias":
+      case "médias": return "respuestas de extensión media";
+      default: return "respuestas cortas, estilo WhatsApp";
+    }
+  }
+  if (lang === "en") {
+    switch (key) {
+      case "longas": return "longer, detailed replies when helpful";
+      case "medias":
+      case "médias": return "medium-length replies";
+      default: return "short, WhatsApp-style replies";
+    }
+  }
+  switch (key) {
     case "longas": return "respostas mais longas e explicativas quando fizer sentido";
     case "medias":
     case "médias": return "respostas de tamanho médio";
@@ -137,8 +187,45 @@ function describeTamanho(t?: string | null) {
   }
 }
 
-function describePersonalidade(p?: string | null): string {
-  switch ((p || "padrao").toLowerCase()) {
+function describePersonalidade(p: string | null | undefined, lang: PromptLang): string {
+  const key = (p || "padrao").toLowerCase();
+  if (lang === "es") {
+    switch (key) {
+      case "extrovertido":
+        return "personalidad EXTROVERTIDA: animado, entusiasmado, usa exclamaciones con naturalidad y transmite energía positiva sin sonar artificial";
+      case "serio":
+      case "sério":
+        return "personalidad SERIA: postura profesional, objetivo, directo al punto, sin bromas, transmite competencia y seguridad";
+      case "divertido":
+        return "personalidad DIVERTIDA: con buen humor, ligero, puede hacer comentarios ingeniosos sin perder el profesionalismo";
+      case "consultivo":
+        return "personalidad CONSULTIVA: actúa como especialista/consultor, hace preguntas inteligentes y recomienda con fundamento";
+      case "amigavel":
+      case "amigável":
+        return "personalidad AMIGABLE: cálido, cercano, muestra interés genuino y trato amable";
+      default:
+        return "personalidad EQUILIBRADA: amable sin exagerar y profesional sin ser frío";
+    }
+  }
+  if (lang === "en") {
+    switch (key) {
+      case "extrovertido":
+        return "EXTROVERTED personality: lively, enthusiastic, naturally positive energy without sounding robotic";
+      case "serio":
+      case "sério":
+        return "SERIOUS personality: professional posture, objective, straight to the point, no jokes";
+      case "divertido":
+        return "FUN personality: lighthearted, witty without losing professionalism";
+      case "consultivo":
+        return "CONSULTATIVE personality: acts as an expert advisor, asks smart questions, recommends clearly";
+      case "amigavel":
+      case "amigável":
+        return "FRIENDLY personality: warm, approachable, genuinely helpful";
+      default:
+        return "BALANCED personality: friendly without exaggerating, professional without being cold";
+    }
+  }
+  switch (key) {
     case "extrovertido":
       return "personalidade EXTROVERTIDA: animado, entusiasmado, usa exclamações com naturalidade, transmite energia positiva sem soar artificial";
     case "serio":
@@ -156,8 +243,29 @@ function describePersonalidade(p?: string | null): string {
   }
 }
 
-function describeFoco(f?: string | null): string {
-  switch ((f || "ambos").toLowerCase()) {
+function describeFoco(f: string | null | undefined, lang: PromptLang): string {
+  const key = (f || "ambos").toLowerCase();
+  if (lang === "es") {
+    switch (key) {
+      case "vendas":
+        return "ENFOQUE PRINCIPAL = VENTAS. Califica, genera interés y guía hacia el cierre. Sin presionar de más, pero sin dejar pasar oportunidades.";
+      case "suporte":
+        return "ENFOQUE PRINCIPAL = SOPORTE. Resuelve problemas y aclara dudas con claridad y paciencia. No fuerces ventas.";
+      default:
+        return "ENFOQUE HÍBRIDO: identifica la intención. Si es duda o problema → resuélvelo primero. Si es interés de compra → guía hacia la venta. Haz ambos con naturalidad.";
+    }
+  }
+  if (lang === "en") {
+    switch (key) {
+      case "vendas":
+        return "PRIMARY FOCUS = SALES. Qualify, build interest and guide toward closing without being pushy.";
+      case "suporte":
+        return "PRIMARY FOCUS = SUPPORT. Solve problems and answer questions clearly and patiently. Do not push sales.";
+      default:
+        return "HYBRID FOCUS: detect intent. If it is a question or issue -> solve first. If it is buying interest -> guide toward the sale naturally.";
+    }
+  }
+  switch (key) {
     case "vendas":
       return "FOCO PRINCIPAL = VENDAS. Qualifique, gere interesse e conduza pro fechamento. Não seja agressivo, mas não perca oportunidade.";
     case "suporte":
@@ -167,8 +275,24 @@ function describeFoco(f?: string | null): string {
   }
 }
 
-function describeEmojis(intensidade?: string | null, legacy?: boolean | null): string {
+function describeEmojis(intensidade: string | null | undefined, legacy: boolean | null | undefined, lang: PromptLang): string {
   const i = (intensidade || (legacy === false ? "nenhum" : "pouco")).toLowerCase();
+  if (lang === "es") {
+    switch (i) {
+      case "nenhum": return "NUNCA uses emojis";
+      case "moderado": return "usa emojis con frecuencia moderada (1 por mensaje cuando combine)";
+      case "muito": return "usa emojis con soltura para dar vida a la conversación, sin exagerar";
+      default: return "usa como máximo 1 emoji ocasional, solo cuando venga bien";
+    }
+  }
+  if (lang === "en") {
+    switch (i) {
+      case "nenhum": return "NEVER use emojis";
+      case "moderado": return "use emojis moderately (around 1 per message when fitting)";
+      case "muito": return "use emojis freely to keep the chat lively, without overdoing it";
+      default: return "use at most 1 occasional emoji only when fitting";
+    }
+  }
   switch (i) {
     case "nenhum": return "NUNCA use emojis";
     case "moderado": return "use emojis com frequência moderada (1 por mensagem quando combinar)";
@@ -177,21 +301,59 @@ function describeEmojis(intensidade?: string | null, legacy?: boolean | null): s
   }
 }
 
-function describeProatividade(p?: number | null): string {
+function describeProatividade(p: number | null | undefined, lang: PromptLang): string {
   const n = typeof p === "number" ? p : 50;
+  if (lang === "es") {
+    if (n <= 25) return "sé REACTIVO: responde solo lo que pregunte el cliente, no anticipes ofertas";
+    if (n <= 60) return "sé MODERADAMENTE PROACTIVO: sugiere el siguiente paso cuando tenga sentido";
+    return "sé MUY PROACTIVO: anticípate a las necesidades, sugiere upsell/cross-sell y guía activamente hacia el cierre";
+  }
+  if (lang === "en") {
+    if (n <= 25) return "be REACTIVE: only answer what the customer asks, do not push unprompted offers";
+    if (n <= 60) return "be MODERATELY PROACTIVE: suggest the next step when it makes sense";
+    return "be HIGHLY PROACTIVE: anticipate needs, suggest upsell/cross-sell and actively guide toward closing";
+  }
   if (n <= 25) return "seja REATIVO: só responda o que o cliente perguntar, não antecipe ofertas";
   if (n <= 60) return "seja MODERADAMENTE PROATIVO: sugira o próximo passo quando fizer sentido";
   return "seja MUITO PROATIVO: antecipe necessidades, sugira upsell/cross-sell, conduza ativamente pro fechamento";
 }
 
-function montaPersonalidade(c: Partial<AgentConfig>): string {
+function montaPersonalidade(c: Partial<AgentConfig>, lang: PromptLang): string {
+  if (lang === "es") {
+    return [
+      describePersonalidade(c.personalidade, lang),
+      describeTom(c.tom, lang),
+      describeFormalidade(c.formalidade, lang),
+      describeTamanho(c.tamanho_resposta, lang),
+      describeEmojis(c.emoji_intensidade, c.usar_emojis, lang),
+      describeProatividade(c.proatividade, lang),
+      c.usar_girias ? "puedes usar modismos ligeros y naturales en español" : "evita jergas excesivas o expresiones demasiado informales",
+      c.pode_brincar ? "puedes hacer comentarios amenos y breves" : "evita bromas",
+      c.chamar_por_nome === false ? "NO llames al cliente por su nombre en cada mensaje" : "llama al cliente por su nombre cuando lo sepas, sin repetirlo en todos los mensajes",
+      c.perguntar_uma_por_vez === false ? "" : "haz SIEMPRE una sola pregunta a la vez (nunca varias juntas)",
+    ].filter(Boolean).join("; ");
+  }
+  if (lang === "en") {
+    return [
+      describePersonalidade(c.personalidade, lang),
+      describeTom(c.tom, lang),
+      describeFormalidade(c.formalidade, lang),
+      describeTamanho(c.tamanho_resposta, lang),
+      describeEmojis(c.emoji_intensidade, c.usar_emojis, lang),
+      describeProatividade(c.proatividade, lang),
+      c.usar_girias ? "light natural idioms are allowed" : "avoid slang or overly casual phrases",
+      c.pode_brincar ? "light, tasteful humor is allowed" : "avoid jokes",
+      c.chamar_por_nome === false ? "do NOT address the customer by name in every message" : "use the customer's name when known without repeating it every message",
+      c.perguntar_uma_por_vez === false ? "" : "ALWAYS ask one question at a time",
+    ].filter(Boolean).join("; ");
+  }
   return [
-    describePersonalidade(c.personalidade),
-    describeTom(c.tom),
-    describeFormalidade(c.formalidade),
-    describeTamanho(c.tamanho_resposta),
-    describeEmojis(c.emoji_intensidade, c.usar_emojis),
-    describeProatividade(c.proatividade),
+    describePersonalidade(c.personalidade, lang),
+    describeTom(c.tom, lang),
+    describeFormalidade(c.formalidade, lang),
+    describeTamanho(c.tamanho_resposta, lang),
+    describeEmojis(c.emoji_intensidade, c.usar_emojis, lang),
+    describeProatividade(c.proatividade, lang),
     c.usar_girias ? "pode usar gírias leves do cotidiano brasileiro" : "evite gírias e expressões muito informais",
     c.pode_brincar ? "pode fazer brincadeiras pontuais e leves" : "evite brincadeiras",
     c.chamar_por_nome === false ? "NÃO chame o cliente pelo nome a cada mensagem" : "chame o cliente pelo nome quando souber, sem repetir em toda mensagem",
@@ -201,7 +363,7 @@ function montaPersonalidade(c: Partial<AgentConfig>): string {
 
 const MAX_KNOWLEDGE_CHARS = 15_000;
 
-function buildKnowledgeFilesBloco(knowledgeFiles: unknown): string {
+function buildKnowledgeFilesBloco(knowledgeFiles: unknown, lang: PromptLang): string {
   if (!Array.isArray(knowledgeFiles) || !knowledgeFiles.length) return "";
   const files = knowledgeFiles as any[];
   const comTexto = files.filter((f) => f?.textStatus === "ok" && typeof f?.text === "string" && f.text.trim());
@@ -210,19 +372,27 @@ function buildKnowledgeFilesBloco(knowledgeFiles: unknown): string {
 
   let restante = MAX_KNOWLEDGE_CHARS;
   const partes: string[] = [];
+  const fileLabel = lang === "es" ? "ARCHIVO" : lang === "en" ? "FILE" : "ARQUIVO";
   for (const f of comTexto) {
     if (restante <= 0) break;
     const trecho = String(f.text).slice(0, restante);
     restante -= trecho.length;
-    partes.push(`--- ARQUIVO: ${f.name || "documento"} ---\n${trecho}`);
+    partes.push(`--- ${fileLabel}: ${f.name || "documento"} ---\n${trecho}`);
   }
   const aviso = pendentes.length
-    ? `\n(Outros ${pendentes.length} arquivo(s) anexado(s) ainda sem texto indexado — ignore os nomes e não invente o conteúdo deles.)`
+    ? lang === "es"
+      ? `\n(Otros ${pendentes.length} archivo(s) adjunto(s) aún sin texto indexado — ignora sus nombres y no inventes su contenido.)`
+      : lang === "en"
+        ? `\n(${pendentes.length} other attached file(s) not indexed yet — ignore their filenames and do not guess their contents.)`
+        : `\n(Outros ${pendentes.length} arquivo(s) anexado(s) ainda sem texto indexado — ignore os nomes e não invente o conteúdo deles.)`
     : "";
-  return (
-    "CONTEÚDO COMPLETO DOS ARQUIVOS DA BASE DE CONHECIMENTO (fonte da verdade — use para responder; se a resposta estiver aqui, NÃO diga que não sabe):\n" +
-    partes.join("\n\n") + aviso
-  );
+  const header =
+    lang === "es"
+      ? "CONTENIDO COMPLETO DE LOS ARCHIVOS DE LA BASE DE CONOCIMIENTO (fuente oficial — úsalo para responder; si la respuesta está aquí, NO digas que no sabes):\n"
+      : lang === "en"
+        ? "FULL KNOWLEDGE BASE FILE CONTENTS (official source — use to reply; if the answer is here, do NOT say you don't know):\n"
+        : "CONTEÚDO COMPLETO DOS ARQUIVOS DA BASE DE CONHECIMENTO (fonte da verdade — use para responder; se a resposta estiver aqui, NÃO diga que não sabe):\n";
+  return header + partes.join("\n\n") + aviso;
 }
 
 
@@ -353,7 +523,11 @@ export function buildSystemPrompt(
   const stages = (opts?.stages && opts.stages.length > 0) ? opts.stages : DEFAULT_STAGES;
   const produtos = opts?.produtos ?? [];
 
-  const personalidade = montaPersonalidade(c);
+  const lang = resolvePromptLang(c.idioma);
+  const isEs = lang === "es";
+  const isEn = lang === "en";
+
+  const personalidade = montaPersonalidade(c, lang);
 
   // Few-shot examples
   const exemplosRaw = c.exemplos_few_shot;
@@ -365,8 +539,14 @@ export function buildSystemPrompt(
       .slice(0, 6);
   }
   const exemplosBloco = exemplos.length
-    ? "EXEMPLOS DE ATENDIMENTO (siga o estilo e o raciocínio destes):\n" +
-      exemplos.map((e, i) => `Exemplo ${i + 1}\nCliente: ${e.cliente}\nAgente: ${e.agente}`).join("\n\n")
+    ? (isEs
+        ? "EJEMPLOS DE ATENCIÓN (sigue el estilo y el criterio de estos):\n" +
+          exemplos.map((e, i) => `Ejemplo ${i + 1}\nCliente: ${e.cliente}\nAgente: ${e.agente}`).join("\n\n")
+        : isEn
+          ? "ATTENDANCE EXAMPLES (follow their style and reasoning):\n" +
+            exemplos.map((e, i) => `Example ${i + 1}\nCustomer: ${e.cliente}\nAgent: ${e.agente}`).join("\n\n")
+          : "EXEMPLOS DE ATENDIMENTO (siga o estilo e o raciocínio destes):\n" +
+            exemplos.map((e, i) => `Exemplo ${i + 1}\nCliente: ${e.cliente}\nAgente: ${e.agente}`).join("\n\n"))
     : "";
 
   // Feedback (aprendizados)
@@ -375,26 +555,50 @@ export function buildSystemPrompt(
   const negativos = fb.filter((f) => f.rating === "down");
   const feedbackBloco =
     fb.length
-      ? "APRENDIZADOS DA EQUIPE (revisões humanas — respeite):\n" +
-        [
-          negativos.length
-            ? "❌ Respostas ruins (NÃO repita este tipo de fala/erro):\n" +
-              negativos.map((f) => `- "${f.texto.slice(0, 220)}"${f.nota ? ` — motivo: ${f.nota.slice(0, 180)}` : ""}`).join("\n")
-            : "",
-          positivos.length
-            ? "✅ Respostas boas (mantenha esse padrão):\n" +
-              positivos.map((f) => `- "${f.texto.slice(0, 220)}"${f.nota ? ` — motivo: ${f.nota.slice(0, 180)}` : ""}`).join("\n")
-            : "",
-        ].filter(Boolean).join("\n\n")
+      ? (isEs
+          ? "APRENDIZAJES DEL EQUIPO (revisiones humanas — respeta):\n" +
+            [
+              negativos.length
+                ? "❌ Respuestas malas (NO repitas este tipo de frase/error):\n" +
+                  negativos.map((f) => `- "${f.texto.slice(0, 220)}"${f.nota ? ` — motivo: ${f.nota.slice(0, 180)}` : ""}`).join("\n")
+                : "",
+              positivos.length
+                ? "✅ Respuestas buenas (mantén este patrón):\n" +
+                  positivos.map((f) => `- "${f.texto.slice(0, 220)}"${f.nota ? ` — motivo: ${f.nota.slice(0, 180)}` : ""}`).join("\n")
+                : "",
+            ].filter(Boolean).join("\n\n")
+          : isEn
+            ? "TEAM LEARNINGS (human reviews — obey):\n" +
+              [
+                negativos.length
+                  ? "❌ Bad replies (DO NOT repeat this kind of wording/error):\n" +
+                    negativos.map((f) => `- "${f.texto.slice(0, 220)}"${f.nota ? ` — reason: ${f.nota.slice(0, 180)}` : ""}`).join("\n")
+                  : "",
+                positivos.length
+                  ? "✅ Good replies (keep this standard):\n" +
+                    positivos.map((f) => `- "${f.texto.slice(0, 220)}"${f.nota ? ` — reason: ${f.nota.slice(0, 180)}` : ""}`).join("\n")
+                  : "",
+              ].filter(Boolean).join("\n\n")
+            : "APRENDIZADOS DA EQUIPE (revisões humanas — respeite):\n" +
+              [
+                negativos.length
+                  ? "❌ Respostas ruins (NÃO repita este tipo de fala/erro):\n" +
+                    negativos.map((f) => `- "${f.texto.slice(0, 220)}"${f.nota ? ` — motivo: ${f.nota.slice(0, 180)}` : ""}`).join("\n")
+                  : "",
+                positivos.length
+                  ? "✅ Respostas boas (mantenha esse padrão):\n" +
+                    positivos.map((f) => `- "${f.texto.slice(0, 220)}"${f.nota ? ` — motivo: ${f.nota.slice(0, 180)}` : ""}`).join("\n")
+                  : "",
+              ].filter(Boolean).join("\n\n"))
       : "";
 
   const fmtItem = (p: ProdutoBrief) => {
     const preco = p.preco !== undefined && p.preco !== null && p.preco !== "" ? ` — $ ${p.preco}` : "";
     const desc = p.descricao ? ` (${p.descricao})` : "";
     const sku = p.sku ? ` [sku:${p.sku}]` : "";
-    const foto = p.foto_url ? " [tem foto]" : "";
-    const dur = p.duracao_min ? ` — duração ${p.duracao_min} min` : "";
-    const agenda = p.agendavel ? " [agendável]" : "";
+    const foto = p.foto_url ? (isEs ? " [tiene foto]" : isEn ? " [has photo]" : " [tem foto]") : "";
+    const dur = p.duracao_min ? (isEs ? ` — duración ${p.duracao_min} min` : isEn ? ` — duration ${p.duracao_min} min` : ` — duração ${p.duracao_min} min`) : "";
+    const agenda = p.agendavel ? (isEs ? " [agendable]" : isEn ? " [bookable]" : " [agendável]") : "";
     return `• ${p.nome}${preco}${dur}${desc}${sku}${foto}${agenda}`;
   };
 
@@ -402,18 +606,42 @@ export function buildSystemPrompt(
   const itensServico = produtos.filter((p) => p.tipo === "servico");
 
   const produtosBloco = produtos.length
-    ? "CATÁLOGO REAL DA EMPRESA (use SOMENTE estes itens e preços):\n" +
-      [
-        itensProduto.length ? "PRODUTOS:\n" + itensProduto.map(fmtItem).join("\n") : "",
-        itensServico.length ? "SERVIÇOS:\n" + itensServico.map(fmtItem).join("\n") : "",
-      ].filter(Boolean).join("\n\n") +
-      (itensServico.some((s) => s.agendavel)
-        ? "\n\nServiços marcados como [agendável] podem ser agendados — respeite a duração informada ao propor horários."
-        : "") +
-      "\n\nENVIO DE PRODUTO PELO WHATSAPP: quando o cliente demonstrar interesse em um produto específico da lista acima, " +
-      "em uma nova linha ao final da resposta, escreva EXATAMENTE o marcador: [PRODUTO:sku] (troque `sku` pelo SKU real). " +
-      "O sistema vai disparar automaticamente a foto, nome, preço e descrição do produto. Pode enviar até 3 produtos por resposta " +
-      "(um marcador por linha). Só use se o produto realmente existe na lista. NÃO cite o marcador na fala normal — ele é interno."
+    ? (isEs
+        ? "CATÁLOGO REAL DE LA EMPRESA (usa ÚNICAMENTE estos artículos y precios):\n" +
+          [
+            itensProduto.length ? "PRODUCTOS:\n" + itensProduto.map(fmtItem).join("\n") : "",
+            itensServico.length ? "SERVICIOS:\n" + itensServico.map(fmtItem).join("\n") : "",
+          ].filter(Boolean).join("\n\n") +
+          (itensServico.some((s) => s.agendavel)
+            ? "\n\nLos servicios marcados como [agendable] pueden agendarse — respeta la duración indicada al proponer horarios."
+            : "") +
+          "\n\nENVÍO DE PRODUCTO POR WHATSAPP: cuando el cliente demuestre interés en un producto específico de la lista anterior, " +
+          "en una nueva línea al final de la respuesta, escribe EXACTAMENTE el marcador: [PRODUTO:sku] (cambia `sku` por el SKU real). " +
+          "El sistema enviará automáticamente la foto, nombre, precio y descripción del producto. Puedes enviar hasta 3 productos por respuesta " +
+          "(un marcador por línea). Úsalo solo si el producto realmente existe en la lista. NO menciones el marcador en el texto normal — es interno."
+        : isEn
+          ? "REAL COMPANY CATALOG (use ONLY these items and prices):\n" +
+            [
+              itensProduto.length ? "PRODUCTS:\n" + itensProduto.map(fmtItem).join("\n") : "",
+              itensServico.length ? "SERVICES:\n" + itensServico.map(fmtItem).join("\n") : "",
+            ].filter(Boolean).join("\n\n") +
+            (itensServico.some((s) => s.agendavel)
+              ? "\n\nServices marked [bookable] can be scheduled — respect the listed duration when proposing slots."
+              : "") +
+            "\n\nPRODUCT SENDING VIA WHATSAPP: when the customer shows interest in a specific listed product, " +
+            "on a new line at the end, write EXACTLY: [PRODUTO:sku]. Up to 3 products per reply. Do NOT mention the tag to the customer."
+          : "CATÁLOGO REAL DA EMPRESA (use SOMENTE estes itens e preços):\n" +
+            [
+              itensProduto.length ? "PRODUTOS:\n" + itensProduto.map(fmtItem).join("\n") : "",
+              itensServico.length ? "SERVIÇOS:\n" + itensServico.map(fmtItem).join("\n") : "",
+            ].filter(Boolean).join("\n\n") +
+            (itensServico.some((s) => s.agendavel)
+              ? "\n\nServiços marcados como [agendável] podem ser agendados — respeite a duração informada ao propor horários."
+              : "") +
+            "\n\nENVIO DE PRODUTO PELO WHATSAPP: quando o cliente demonstrar interesse em um produto específico da lista acima, " +
+            "em uma nova linha ao final da resposta, escreva EXATAMENTE o marcador: [PRODUTO:sku] (troque `sku` pelo SKU real). " +
+            "O sistema vai disparar automaticamente a foto, nome, preço e descrição do produto. Pode enviar até 3 produtos por resposta " +
+            "(um marcador por linha). Só use se o produto realmente existe na lista. NÃO cite o marcador na fala normal — ele é interno.")
     : "";
 
 
@@ -422,10 +650,7 @@ export function buildSystemPrompt(
 
   const canalNome = opts?.canal || "WhatsApp";
   const empresaNome = opts?.companyName || c.nome_empresa || "(empresa)";
-
-  const rawLang = (c.idioma || "es").toLowerCase().trim();
-  const isEs = rawLang.startsWith("es") || /español|spanish/i.test(rawLang);
-  const isEn = rawLang.startsWith("en") || /english/i.test(rawLang);
+  const hasCustomPlaybook = Boolean(c.como_vender && String(c.como_vender).trim());
 
   const blocos = [
     isEs
@@ -475,7 +700,7 @@ Você deve agir EXATAMENTE como instruído abaixo. Houve mudanças no motor de I
           : `ROTEIRO OFICIAL DESTE AGENTE (siga na ORDEM, uma etapa por mensagem, sem pular etapas — este roteiro tem prioridade sobre o "MÉTODO DE ATENDIMENTO" genérico):\n${String(c.como_vender).trim()}`)
       : "",
 
-    describeFoco(c.foco_atendimento),
+    describeFoco(c.foco_atendimento, lang),
     isEs ? `Personalidad: ${personalidade}.` : isEn ? `Personality: ${personalidade}.` : `Personalidade: ${personalidade}.`,
 
     c.regras_rigidas && String(c.regras_rigidas).trim()
@@ -522,7 +747,7 @@ Você deve agir EXATAMENTE como instruído abaixo. Houve mudanças no motor de I
             : "TRECHOS RELEVANTES DA BASE DE CONHECIMENTO (fonte oficial — use para responder com precisão):\n") +
         opts.ragChunks.map((ch) => `[Fuente: ${ch.source_name}]\n${ch.content}`).join("\n\n")
       : !opts?.hasIndexedRagChunks
-        ? buildKnowledgeFilesBloco(c.knowledge_files)
+        ? buildKnowledgeFilesBloco(c.knowledge_files, lang)
         : "",
     opts?.clientMemory && typeof opts.clientMemory === "object" && Object.keys(opts.clientMemory).length > 0
       ? (isEs
@@ -596,7 +821,19 @@ Você deve agir EXATAMENTE como instruído abaixo. Houve mudanças no motor de I
     opts?.resumoContato ? (isEs ? `Contexto del contacto: ${opts.resumoContato}` : `Contexto do contato: ${opts.resumoContato}`) : "",
     opts?.estagioAtual ? (isEs ? `Etapa actual en el CRM: ${opts.estagioAtual}.` : `Estágio atual no CRM: ${opts.estagioAtual}.`) : "",
 
-    isEs
+    hasCustomPlaybook
+      ? (isEs
+          ? `RESGUARDO DE GUION Y ESTILO:
+- Sigue ESTRICTAMENTE el "GUION OFICIAL DE ESTE AGENTE" y respeta siempre "LO QUE NO PUEDES HACER". Nunca inventes precios, políticas ni stock; si falta algún dato o piden humano, transfiere al equipo.
+- Idioma: Español natural, fluido y cercano, mensajes cortos estilo WhatsApp (PROHIBIDO portugués o mezclar idiomas).`
+          : isEn
+          ? `PLAYBOOK & STYLE SAFEGUARD:
+- STRICTLY follow the "OFFICIAL AGENT PLAYBOOK" and respect "WHAT YOU CANNOT DO". Never invent prices or stock; hand off if data is missing or human help is requested.
+- Language: Natural, concise English chat style.`
+          : `RESGUARDO DE ROTEIRO E ESTILO:
+- Siga ESTRITAMENTE o "ROTEIRO OFICIAL DESTE AGENTE" e respeite sempre o que está em "NÃO pode fazer". Nunca invente preços ou dados; se faltar informação ou pedirem humano, transfira para a equipe.
+- Idioma: Português do Brasil natural, frases curtas no estilo WhatsApp.`)
+      : isEs
       ? `MÉTODO DE ATENCIÓN ESTÁNDAR:
 1. Saluda con naturalidad solo en el PRIMER mensaje de la conversación. Después NO repitas saludos ni bienvenidas.
 2. Antes de ofrecer cualquier cosa, ENTIENDE la necesidad del cliente. Haz UNA sola pregunta por vez (nunca varias juntas).
@@ -689,7 +926,7 @@ ESQUEMA OBLIGATORIO:
 
 DIRECTIVAS ESTRICTAS DE CADA CAMPO:
 1. "respuesta_cliente.mensajes":
-   - Array con 1 a 3 mensajes cortos (máximo 3) en estilo conversación de WhatsApp o Instagram.
+   - Array con 1 a 3 mensajes cortos (o array vacío [] ÚNICAMENTE si una Regla Estricta exige silencio total al derivar con pausar_ia_para_humano: true).
    - Cada string en el array representa una burbuja de chat. Si 1 sola frase resuelve, pon un array con 1 solo mensaje.
    - Lenguaje natural, empático, conciso y profesional. NUNCA incluyas código, JSON ni etiquetas dentro del texto para el cliente.
 2. "intencion":
@@ -702,7 +939,7 @@ DIRECTIVAS ESTRICTAS DE CADA CAMPO:
 4. "agendamiento":
    - Si el cliente confirmó una fecha y hora específica para un servicio agendable: { "inicio": "AAAA-MM-DDTHH:MM", "fim": "AAAA-MM-DDTHH:MM", "titulo": "Cita" }, de lo contrario null.
 5. "pedido":
-   - Si el cliente confirmó formalmente un pedido: { "itens": [{"nome": "nombre", "qtd": 1, "valor": 0}], "entrega": "retirada", "pagamento": "pix" }, de lo contrario null.
+   - Si el cliente confirmó formalmente un pedido: { "itens": [{"nome": "nombre", "qtd": 1, "valor": 0}], "entrega": "retirada", "pagamento": "metodo_acordado" }, de lo contrario null.
 6. "sugestao":
    - Si detectas alguna ambigüedad o duda no cubierta en tus reglas rígidas: { "duda": "explicación", "regra": "regla sugerida" }, de lo contrario null.
 7. "memoria_cliente":
@@ -748,7 +985,7 @@ ESQUEMA OBRIGATÓRIO:
 
 DIRETIVAS ESTRITAS DE CADA CAMPO:
 1. "respuesta_cliente.mensajes":
-   - Array com 1 a 3 mensagens curtas no estilo WhatsApp / Instagram.
+   - Array com 1 a 3 mensagens curtas no estilo WhatsApp / Instagram (ou array vazio [] UNICAMENTE se uma Regra Rígida exigir silêncio total ao transferir com pausar_ia_para_humano: true).
    - Cada elemento é uma bolha de chat. Se 1 frase resolver, inclua apenas 1 elemento. NUNCA mais de 3.
    - NUNCA inclua JSON ou marcadores internos dentro do texto visível para o cliente.
 2. "intencion":

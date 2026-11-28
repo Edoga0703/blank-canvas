@@ -973,14 +973,30 @@ export async function processAiResponse(
         } else {
           try {
             const { executeVerifiedTool } = await import("@/lib/agent-tools.server");
+            const isMetaChannel = inst.provider === "meta_instagram" || inst.provider === "meta_messenger";
+            const memObj =
+              card?.client_memory && typeof card.client_memory === "object" && !Array.isArray(card.client_memory)
+                ? (card.client_memory as Record<string, any>)
+                : null;
+            const memoryPhoneRaw = memObj
+              ? (memObj.telefono ?? memObj.telefone ?? memObj.phone ?? memObj.whatsapp ?? null)
+              : null;
+            const cleanMemoryPhone = memoryPhoneRaw ? String(memoryPhoneRaw).replace(/\D/g, "") : "";
+            const looksLikePhone = /^\d{10,15}$/.test(String(number || "").replace(/\D/g, ""));
+            const resolvedToolPhone =
+              (isMetaChannel || !looksLikePhone) && cleanMemoryPhone.length >= 8
+                ? cleanMemoryPhone
+                : number;
+
             const toolRes = await executeVerifiedTool(supabaseAdmin, {
               companyId,
               agentId: cfg.id,
               toolName: matchedTool.name,
               args: parsed.toolCall.argumentos || {},
               context: {
-                phone: number,
-                numero: number,
+                phone: resolvedToolPhone,
+                numero: resolvedToolPhone,
+                sender_id: number,
                 cardId: card?.id ?? null,
                 companyId,
                 channel: opts.channel ?? null,
@@ -1031,7 +1047,7 @@ export async function processAiResponse(
 
             if (followUpResponse) {
               const secondParsed = parseAiOutput(followUpResponse, stages as any);
-              if (secondParsed.parts.length > 0) {
+              if (secondParsed.parts.length > 0 || secondParsed.handoff) {
                 finalResponse = followUpResponse;
                 parsed = {
                   ...secondParsed,
@@ -1134,11 +1150,15 @@ export async function processAiResponse(
     }
 
     // Re-checagem de concorrência: se entrou mensagem mais nova para este contato durante a geração do LLM, cancela envio
-    const { data: latestProcCheck } = await (supabaseAdmin as any)
+    let latestProcQuery = (supabaseAdmin as any)
       .from("ai_message_processing")
       .select("id, created_at")
       .eq("company_id", companyId)
-      .eq("numero", number)
+      .eq("numero", number);
+    if (opts.instanceId) {
+      latestProcQuery = latestProcQuery.eq("instance_id", opts.instanceId);
+    }
+    const { data: latestProcCheck } = await latestProcQuery
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
