@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-28T13:01:07.728893+00:00",
+  "generated_at": "2026-11-28T13:38:40.642260+00:00",
   "files": [
     {
       "path": "package-lock.json",
@@ -91,7 +91,7 @@
     },
     {
       "path": "src/server.ts",
-      "bytes": 4893
+      "bytes": 5981
     },
     {
       "path": "src/start.ts",
@@ -1159,7 +1159,7 @@
     },
     {
       "path": "src/lib/agent-copilot.server.ts",
-      "bytes": 28056
+      "bytes": 27149
     },
     {
       "path": "src/lib/message-actions.functions.ts",
@@ -1167,7 +1167,7 @@
     },
     {
       "path": "src/lib/ai-engine.server.ts",
-      "bytes": 79535
+      "bytes": 80642
     },
     {
       "path": "src/lib/meta-response-window.server.ts",
@@ -1275,7 +1275,7 @@
     },
     {
       "path": "src/lib/ai-prompt.ts",
-      "bytes": 58838
+      "bytes": 73047
     },
     {
       "path": "src/lib/chat-media.functions.ts",
@@ -1443,7 +1443,7 @@
     },
     {
       "path": "src/lib/agent-copilot.functions.ts",
-      "bytes": 53048
+      "bytes": 58560
     },
     {
       "path": "src/lib/csat-config.functions.ts",
@@ -1567,7 +1567,7 @@
     },
     {
       "path": "src/lib/ai-router.server.ts",
-      "bytes": 4050
+      "bytes": 4058
     },
     {
       "path": "src/lib/meta-oauth.server.ts",
@@ -2179,7 +2179,7 @@
     },
     {
       "path": "src/components/agente/agent-copilot-sheet.tsx",
-      "bytes": 49299
+      "bytes": 51344
     },
     {
       "path": "src/components/agente/agent-avatar.tsx",
@@ -2515,7 +2515,7 @@
     },
     {
       "path": "src/lib/messaging/ingest.server.ts",
-      "bytes": 32033
+      "bytes": 32117
     },
     {
       "path": "src/lib/messaging/lovable-whatsapp.generated.server.ts",
@@ -2827,7 +2827,7 @@
     },
     {
       "path": "src/routes/app/agente.tsx",
-      "bytes": 187485
+      "bytes": 187557
     },
     {
       "path": "src/routes/app/prospeccao.tsx",
